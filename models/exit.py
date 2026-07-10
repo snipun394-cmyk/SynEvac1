@@ -16,6 +16,13 @@ class Exit(BaseObject):
 
     is_blocked: bool = False
 
+    # Connectivity -- the Zone this Exit leads out of. Empty string
+    # means "not connected yet". Same convention as Door.zone_a_id/
+    # zone_b_id: never inferred from geometry, only ever set
+    # explicitly. The Navigation Graph derives a Zone <-> Outside
+    # edge from this reference -- never resolved or validated here.
+    zone_id: str = ""
+
     def __post_init__(self):
 
         self.object_type = "Exit"
@@ -79,6 +86,7 @@ class Exit(BaseObject):
                 "width": self.width,
                 "capacity": self.capacity,
                 "is_blocked": self.is_blocked,
+                "zone_id": self.zone_id,
             }
         )
 
@@ -144,5 +152,10 @@ class Exit(BaseObject):
             is_blocked=data.get(
                 "is_blocked",
                 False,
+            ),
+
+            zone_id=data.get(
+                "zone_id",
+                "",
             ),
         )

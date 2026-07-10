@@ -232,6 +232,21 @@ class Building:
             if door.zone_b_id in zone_id_map:
                 door.zone_b_id = zone_id_map[door.zone_b_id]
 
+        for exit_obj in new_floor.exits:
+
+            if exit_obj.zone_id in zone_id_map:
+                exit_obj.zone_id = zone_id_map[exit_obj.zone_id]
+
+        for stair in new_floor.stairs:
+
+            # from_zone_id names a zone on this (duplicated) floor,
+            # same as Door's zone references -- remap it. to_zone_id
+            # names a zone on to_floor_id, a floor that ISN'T being
+            # duplicated, so it is left untouched for the same reason
+            # to_floor_id already is above.
+            if stair.from_zone_id in zone_id_map:
+                stair.from_zone_id = zone_id_map[stair.from_zone_id]
+
         self.add_floor(new_floor)
 
         return new_floor

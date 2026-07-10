@@ -29,6 +29,17 @@ class Staircase(BaseObject):
     from_floor_id: str = ""
     to_floor_id: str = ""
 
+    # Connectivity -- the Zone at each end this Staircase actually
+    # opens into. Empty string means "not connected yet". Same
+    # convention as Door.zone_a_id/zone_b_id and Exit.zone_id: never
+    # inferred from geometry (from_position/to_position are just
+    # coordinates for drawing, not a zone lookup), only ever set
+    # explicitly. The Navigation Graph derives a Zone <-> Zone edge
+    # (on two different floors) from these two references -- never
+    # resolved or validated here.
+    from_zone_id: str = ""
+    to_zone_id: str = ""
+
     width: float = 1.50
 
     # Project-wide default, until Project exposes a real setting.
@@ -87,6 +98,8 @@ class Staircase(BaseObject):
                 "to_position": self.to_position,
                 "from_floor_id": self.from_floor_id,
                 "to_floor_id": self.to_floor_id,
+                "from_zone_id": self.from_zone_id,
+                "to_zone_id": self.to_zone_id,
                 "width": self.width,
             }
         )
@@ -159,6 +172,16 @@ class Staircase(BaseObject):
 
             to_floor_id=data.get(
                 "to_floor_id",
+                "",
+            ),
+
+            from_zone_id=data.get(
+                "from_zone_id",
+                "",
+            ),
+
+            to_zone_id=data.get(
+                "to_zone_id",
                 "",
             ),
 
