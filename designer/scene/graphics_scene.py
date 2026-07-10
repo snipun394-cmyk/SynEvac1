@@ -10,10 +10,12 @@ from PyQt6.QtWidgets import (
 )
 
 from designer.items.exit_item import ExitItem
+from designer.items.stair_item import StairItem
 from designer.items.zone_rectangle import ZoneRectangle
 
 from models.project import Project
 from models.exit import Exit
+from models.staircase import Staircase
 from models.zone import Zone
 
 
@@ -200,7 +202,7 @@ class GraphicsScene(QGraphicsScene):
             if self.selected_item:
                 self.selected_item.set_selected(False)
 
-            if isinstance(item, (ZoneRectangle, ExitItem)):
+            if isinstance(item, (ZoneRectangle, ExitItem, StairItem)):
 
                 self.selected_item = item
 
@@ -449,6 +451,118 @@ class GraphicsScene(QGraphicsScene):
 
             return
 
+        # -------------------------------------------------
+        # Stair Tool
+        # -------------------------------------------------
+
+        if self.current_tool == "stair":
+
+            if self.current_floor.locked:
+                return
+
+            x, y = self.snap(
+                event.scenePos()
+            )
+
+            if self.start_point is None:
+
+                self.start_point = (x, y)
+
+                self.preview_line = QGraphicsLineItem(
+                    0,
+                    0,
+                    0,
+                    0,
+                )
+
+                self.preview_line.setPos(x, y)
+
+                self.preview_line.setPen(
+                    QPen(
+                        QColor(
+                            180,
+                            120,
+                            40,
+                        ),
+                        2,
+                    )
+                )
+
+                self.addItem(
+                    self.preview_line
+                )
+
+                self.dimension_text = (
+                    QGraphicsSimpleTextItem()
+                )
+
+                self.dimension_text.setBrush(
+                    QBrush(
+                        QColor(
+                            255,
+                            255,
+                            0,
+                        )
+                    )
+                )
+
+                self.dimension_text.setZValue(
+                    1000
+                )
+
+                self.addItem(
+                    self.dimension_text
+                )
+
+            else:
+
+                x1, y1 = self.start_point
+
+                stair_model = Staircase(
+                    name=f"Stair {self.current_floor.stair_count + 1}",
+                    start_point=(
+                        x1 / self.GRID_SIZE,
+                        y1 / self.GRID_SIZE,
+                    ),
+                    end_point=(
+                        x / self.GRID_SIZE,
+                        y / self.GRID_SIZE,
+                    ),
+                    floor_id=self.current_floor.id,
+                )
+
+                self.current_floor.add_stair(
+                    stair_model
+                )
+
+                stair_item = StairItem(
+                    x1,
+                    y1,
+                    x,
+                    y,
+                    model=stair_model,
+                )
+
+                self.addItem(stair_item)
+
+                if self.preview_line:
+
+                    self.removeItem(
+                        self.preview_line
+                    )
+
+                if self.dimension_text:
+
+                    self.removeItem(
+                        self.dimension_text
+                    )
+
+                self.preview_line = None
+                self.dimension_text = None
+                self.start_point = None
+
+            return
+
         super().mousePressEvent(event)    # =====================================================
 
     def mouseMoveEvent(self, event):
@@ -494,7 +608,7 @@ class GraphicsScene(QGraphicsScene):
             )
 
         if (
-            self.current_tool == "exit"
+            self.current_tool in ("exit", "stair")
             and self.start_point
             and self.preview_line
         ):
@@ -563,6 +677,15 @@ class GraphicsScene(QGraphicsScene):
                         self.selected_item.model
                     )
 
+                elif isinstance(
+                    self.selected_item,
+                    StairItem,
+                ):
+
+                    self.current_floor.remove_stair(
+                        self.selected_item.model
+                    )
+
                 self.removeItem(
                     self.selected_item
                 )
@@ -609,7 +732,7 @@ class GraphicsScene(QGraphicsScene):
 
             if isinstance(
                 item,
-                (ZoneRectangle, ExitItem),
+                (ZoneRectangle, ExitItem, StairItem),
             ):
                 self.removeItem(item)
 
@@ -665,3 +788,23 @@ class GraphicsScene(QGraphicsScene):
             )
 
             self.addItem(exit_item)
+
+        for stair_obj in self.current_floor.stairs:
+
+            x1, y1 = stair_obj.start_point
+            x2, y2 = stair_obj.end_point
+
+            stair_item = StairItem(
+                x1 * self.GRID_SIZE,
+                y1 * self.GRID_SIZE,
+                x2 * self.GRID_SIZE,
+                y2 * self.GRID_SIZE,
+                model=stair_obj,
+            )
+
+            stair_item.setFlag(
+                QGraphicsItem.GraphicsItemFlag.ItemIsMovable,
+                movable,
+            )
+
+            self.addItem(stair_item)

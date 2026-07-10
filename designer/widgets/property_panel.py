@@ -117,6 +117,46 @@ class PropertyPanel(QWidget):
             self.blocked,
         ]
 
+        # =====================================================
+        # Stair Geometry
+        # =====================================================
+
+        self.stair_start_x = QLineEdit()
+        self.stair_start_y = QLineEdit()
+
+        self.stair_end_x = QLineEdit()
+        self.stair_end_y = QLineEdit()
+
+        self.stair_width = QLineEdit()
+
+        self.stair_length = QLabel("-")
+
+        self.connected_floor = QLineEdit()
+
+        layout.addRow("Start X (m)", self.stair_start_x)
+        layout.addRow("Start Y (m)", self.stair_start_y)
+        layout.addRow("End X (m)", self.stair_end_x)
+        layout.addRow("End Y (m)", self.stair_end_y)
+
+        layout.addRow("Length", self.stair_length)
+
+        layout.addRow("Stair Width (m)", self.stair_width)
+
+        layout.addRow(
+            "Connected Floor ID",
+            self.connected_floor,
+        )
+
+        self.stair_fields = [
+            self.stair_start_x,
+            self.stair_start_y,
+            self.stair_end_x,
+            self.stair_end_y,
+            self.stair_length,
+            self.stair_width,
+            self.connected_floor,
+        ]
+
         self.setLayout(layout)
 
         # =====================================================
@@ -169,8 +209,33 @@ class PropertyPanel(QWidget):
             self.update_exit_blocked
         )
 
+        self.stair_start_x.editingFinished.connect(
+            self.update_stair_geometry
+        )
+
+        self.stair_start_y.editingFinished.connect(
+            self.update_stair_geometry
+        )
+
+        self.stair_end_x.editingFinished.connect(
+            self.update_stair_geometry
+        )
+
+        self.stair_end_y.editingFinished.connect(
+            self.update_stair_geometry
+        )
+
+        self.stair_width.editingFinished.connect(
+            self.update_stair_geometry
+        )
+
+        self.connected_floor.editingFinished.connect(
+            self.update_stair_geometry
+        )
+
         self._set_fields_visible(self.zone_fields, False)
         self._set_fields_visible(self.exit_fields, False)
+        self._set_fields_visible(self.stair_fields, False)
 
     # =====================================================
 
@@ -196,6 +261,7 @@ class PropertyPanel(QWidget):
 
         self._set_fields_visible(self.zone_fields, True)
         self._set_fields_visible(self.exit_fields, False)
+        self._set_fields_visible(self.stair_fields, False)
 
         self.object_type.setText("Zone")
         self.object_id.setText(zone.zone_id)
@@ -256,6 +322,7 @@ class PropertyPanel(QWidget):
 
         self._set_fields_visible(self.zone_fields, False)
         self._set_fields_visible(self.exit_fields, True)
+        self._set_fields_visible(self.stair_fields, False)
 
         model = exit_item.model
 
@@ -309,6 +376,64 @@ class PropertyPanel(QWidget):
         self.blocked.blockSignals(False)
 
     # =====================================================
+    # Stair
+    # =====================================================
+
+    def show_stair(self, stair_item):
+
+        self.current_item = stair_item
+        self._refresh_handler = self.show_stair
+
+        self._set_fields_visible(self.zone_fields, False)
+        self._set_fields_visible(self.exit_fields, False)
+        self._set_fields_visible(self.stair_fields, True)
+
+        model = stair_item.model
+
+        self.object_type.setText("Stair")
+        self.object_id.setText(stair_item.object_id)
+
+        self.object_name.blockSignals(True)
+        self.stair_start_x.blockSignals(True)
+        self.stair_start_y.blockSignals(True)
+        self.stair_end_x.blockSignals(True)
+        self.stair_end_y.blockSignals(True)
+        self.stair_width.blockSignals(True)
+        self.connected_floor.blockSignals(True)
+
+        self.object_name.setText(stair_item.object_name)
+
+        if model is not None:
+
+            sx, sy = model.start_point
+            ex, ey = model.end_point
+
+            self.stair_start_x.setText(f"{sx:.2f}")
+            self.stair_start_y.setText(f"{sy:.2f}")
+            self.stair_end_x.setText(f"{ex:.2f}")
+            self.stair_end_y.setText(f"{ey:.2f}")
+
+            self.stair_length.setText(
+                f"{model.length:.2f} m"
+            )
+
+            self.stair_width.setText(
+                f"{model.width:.2f}"
+            )
+
+            self.connected_floor.setText(
+                model.connected_floor_id
+            )
+
+        self.object_name.blockSignals(False)
+        self.stair_start_x.blockSignals(False)
+        self.stair_start_y.blockSignals(False)
+        self.stair_end_x.blockSignals(False)
+        self.stair_end_y.blockSignals(False)
+        self.stair_width.blockSignals(False)
+        self.connected_floor.blockSignals(False)
+
+    # =====================================================
 
     def refresh(self):
 
@@ -324,6 +449,7 @@ class PropertyPanel(QWidget):
 
         self._set_fields_visible(self.zone_fields, False)
         self._set_fields_visible(self.exit_fields, False)
+        self._set_fields_visible(self.stair_fields, False)
 
         self.object_type.setText(
             "No Selection"
@@ -359,6 +485,16 @@ class PropertyPanel(QWidget):
         self.blocked.blockSignals(True)
         self.blocked.setChecked(False)
         self.blocked.blockSignals(False)
+
+        self.stair_start_x.clear()
+        self.stair_start_y.clear()
+        self.stair_end_x.clear()
+        self.stair_end_y.clear()
+
+        self.stair_width.clear()
+        self.stair_length.setText("-")
+
+        self.connected_floor.clear()
 
     # =====================================================
 
@@ -474,3 +610,55 @@ class PropertyPanel(QWidget):
             self.current_item.model.is_blocked = (
                 self.blocked.isChecked()
             )
+
+    # =====================================================
+
+    def update_stair_geometry(self):
+
+        if self.current_item is None:
+            return
+
+        try:
+
+            x1 = float(self.stair_start_x.text())
+            y1 = float(self.stair_start_y.text())
+
+            x2 = float(self.stair_end_x.text())
+            y2 = float(self.stair_end_y.text())
+
+            w = float(self.stair_width.text())
+
+        except ValueError:
+
+            self.refresh()
+
+            return
+
+        # Captured before setPos()/setLine() -- those trigger
+        # geometry_changed_callback -> refresh(), which would
+        # otherwise repopulate this field from the model before
+        # the new value below is ever written.
+        connected_floor_id = (
+            self.connected_floor.text().strip()
+        )
+
+        self.current_item.setPos(
+            x1 * self.GRID_SIZE,
+            y1 * self.GRID_SIZE,
+        )
+
+        self.current_item.setLine(
+            0,
+            0,
+            (x2 - x1) * self.GRID_SIZE,
+            (y2 - y1) * self.GRID_SIZE,
+        )
+
+        if self.current_item.model is not None:
+
+            self.current_item.model.width = w
+            self.current_item.model.connected_floor_id = (
+                connected_floor_id
+            )
+
+        self.refresh()

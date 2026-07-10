@@ -1,25 +1,22 @@
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 from models.base_object import BaseObject
-from utils.geometry import Point, Polygon
 
 
 @dataclass
 class Staircase(BaseObject):
 
-    polygon: Polygon = field(default_factory=Polygon)
+    start_point: tuple = (0.0, 0.0)
+    end_point: tuple = (0.0, 0.0)
 
     floor_id: str = ""
 
-    connected_floor_id: str = ""
-
     width: float = 1.50
 
-    direction: str = "Both"
-
-    capacity: int = 100
-
-    # =====================================================
+    # Placeholder only -- full multi-floor vertical connectivity
+    # (Navigation Graph inter-floor edges) is deferred. This just
+    # records which floor the stair leads to.
+    connected_floor_id: str = ""
 
     def __post_init__(self):
 
@@ -30,31 +27,45 @@ class Staircase(BaseObject):
     @property
     def center(self):
 
-        if not self.polygon.points:
-            return (0.0, 0.0)
-
-        x = sum(
-            p.x for p in self.polygon.points
-        ) / len(self.polygon.points)
-
-        y = sum(
-            p.y for p in self.polygon.points
-        ) / len(self.polygon.points)
-
-        return (x, y)
+        return (
+            (
+                self.start_point[0]
+                + self.end_point[0]
+            )
+            / 2,
+            (
+                self.start_point[1]
+                + self.end_point[1]
+            )
+            / 2,
+        )
 
     # =====================================================
 
     @property
-    def area(self):
+    def length(self):
 
-        return self.polygon.area
+        x1, y1 = self.start_point
+        x2, y2 = self.end_point
+
+        return (
+            (x2 - x1) ** 2
+            + (y2 - y1) ** 2
+        ) ** 0.5
 
     # =====================================================
 
     def move(self, dx, dy):
 
-        self.polygon.move(dx, dy)
+        self.start_point = (
+            self.start_point[0] + dx,
+            self.start_point[1] + dy,
+        )
+
+        self.end_point = (
+            self.end_point[0] + dx,
+            self.end_point[1] + dy,
+        )
 
     # =====================================================
 
@@ -62,21 +73,15 @@ class Staircase(BaseObject):
 
         data = super().to_dict()
 
-        data.update({
-
-            "polygon": self.polygon.to_list(),
-
-            "floor_id": self.floor_id,
-
-            "connected_floor_id": self.connected_floor_id,
-
-            "width": self.width,
-
-            "direction": self.direction,
-
-            "capacity": self.capacity,
-
-        })
+        data.update(
+            {
+                "start_point": self.start_point,
+                "end_point": self.end_point,
+                "floor_id": self.floor_id,
+                "width": self.width,
+                "connected_floor_id": self.connected_floor_id,
+            }
+        )
 
         return data
 
@@ -85,19 +90,7 @@ class Staircase(BaseObject):
     @classmethod
     def from_dict(cls, data):
 
-        polygon = Polygon()
-
-        for x, y in data.get(
-            "polygon",
-            [],
-        ):
-
-            polygon.add(
-                Point(x, y)
-            )
-
         return cls(
-
             id=data["id"],
 
             name=data.get(
@@ -120,30 +113,32 @@ class Staircase(BaseObject):
                 "",
             ),
 
-            polygon=polygon,
+            start_point=tuple(
+                data.get(
+                    "start_point",
+                    (0.0, 0.0),
+                )
+            ),
+
+            end_point=tuple(
+                data.get(
+                    "end_point",
+                    (0.0, 0.0),
+                )
+            ),
 
             floor_id=data.get(
                 "floor_id",
                 "",
             ),
 
+            width=data.get(
+                "width",
+                1.50,
+            ),
+
             connected_floor_id=data.get(
                 "connected_floor_id",
                 "",
-            ),
-
-            width=data.get(
-                "width",
-                1.5,
-            ),
-
-            direction=data.get(
-                "direction",
-                "Both",
-            ),
-
-            capacity=data.get(
-                "capacity",
-                100,
             ),
         )

@@ -10,6 +10,7 @@ from PyQt6.QtWidgets import (
 )
 
 from designer.items.exit_item import ExitItem
+from designer.items.stair_item import StairItem
 from designer.items.zone_rectangle import ZoneRectangle
 from designer.scene.graphics_view import GraphicsView
 from designer.widgets.bottom_info_bar import BottomInfoBar
@@ -269,6 +270,12 @@ class MainWindow(QMainWindow):
             lambda: self.change_tool(
                 "exit"
             )
+        )
+
+        self.toolbar.stair_action.triggered.connect(
+            lambda: self.change_tool(
+                "stair"
+            )
         )    # =====================================================
 
     def connect_signals(self):
@@ -324,6 +331,9 @@ class MainWindow(QMainWindow):
 
         elif isinstance(item, ExitItem):
             self.property_panel.show_line(item)
+
+        elif isinstance(item, StairItem):
+            self.property_panel.show_stair(item)
 
         item.geometry_changed_callback = (
             lambda i: self.refresh_ui()
