@@ -12,6 +12,7 @@ from PyQt6.QtWidgets import (
 from designer.items.assembly_point_item import AssemblyPointItem
 from designer.items.camera_item import CameraItem
 from designer.items.detector_item import DetectorItem
+from designer.items.door_item import DoorItem
 from designer.items.exit_item import ExitItem
 from designer.items.obstacle_item import ObstacleItem
 from designer.items.stair_item import StairItem
@@ -308,6 +309,12 @@ class MainWindow(QMainWindow):
             lambda: self.change_tool(
                 "obstacle"
             )
+        )
+
+        self.toolbar.door_action.triggered.connect(
+            lambda: self.change_tool(
+                "door"
+            )
         )    # =====================================================
 
     def connect_signals(self):
@@ -402,6 +409,9 @@ class MainWindow(QMainWindow):
 
         elif isinstance(item, ObstacleItem):
             self.property_panel.show_obstacle(item)
+
+        elif isinstance(item, DoorItem):
+            self.property_panel.show_door(item)
 
         item.geometry_changed_callback = (
             lambda i: self.refresh_ui()

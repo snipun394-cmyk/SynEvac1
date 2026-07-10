@@ -88,6 +88,24 @@ class ProjectTree(QTreeWidget):
                 )
 
             # =============================================
+            # Doors
+            # =============================================
+
+            doors_root = QTreeWidgetItem(
+                ["Doors"]
+            )
+
+            floor_item.addChild(doors_root)
+
+            for door in floor.doors:
+
+                doors_root.addChild(
+                    QTreeWidgetItem(
+                        [door.name]
+                    )
+                )
+
+            # =============================================
             # Staircases
             # =============================================
 

@@ -11,6 +11,7 @@ from PyQt6.QtWidgets import (
 )
 
 from models.detector import Detector
+from models.door import Door
 from models.floor import Floor
 from models.obstacle import Obstacle
 
@@ -362,6 +363,70 @@ class PropertyPanel(QWidget):
         ]
 
         # =====================================================
+        # Door Geometry
+        # =====================================================
+
+        self.door_start_x = QLineEdit()
+        self.door_start_y = QLineEdit()
+
+        self.door_end_x = QLineEdit()
+        self.door_end_y = QLineEdit()
+
+        self.door_length = QLabel("-")
+
+        self.door_width = QLineEdit()
+
+        self.door_type = QComboBox()
+
+        for door_type in Door.DOOR_TYPES:
+            self.door_type.addItem(door_type)
+
+        self.door_normally_open = QCheckBox()
+        self.door_locked = QCheckBox()
+        self.door_active = QCheckBox()
+
+        # Connectivity -- the two Zones this Door joins. Zone
+        # touching geometrically never implies connectivity;
+        # only this explicit link does. Populated from whichever
+        # floor the Door itself belongs to; see
+        # _populate_zone_combo().
+        self.door_zone_a = QComboBox()
+        self.door_zone_b = QComboBox()
+
+        layout.addRow("Start X (m)", self.door_start_x)
+        layout.addRow("Start Y (m)", self.door_start_y)
+        layout.addRow("End X (m)", self.door_end_x)
+        layout.addRow("End Y (m)", self.door_end_y)
+
+        layout.addRow("Length", self.door_length)
+
+        layout.addRow("Door Width (m)", self.door_width)
+
+        layout.addRow("Door Type", self.door_type)
+
+        layout.addRow("Normally Open", self.door_normally_open)
+        layout.addRow("Locked", self.door_locked)
+        layout.addRow("Active", self.door_active)
+
+        layout.addRow("Zone A", self.door_zone_a)
+        layout.addRow("Zone B", self.door_zone_b)
+
+        self.door_fields = [
+            self.door_start_x,
+            self.door_start_y,
+            self.door_end_x,
+            self.door_end_y,
+            self.door_length,
+            self.door_width,
+            self.door_type,
+            self.door_normally_open,
+            self.door_locked,
+            self.door_active,
+            self.door_zone_a,
+            self.door_zone_b,
+        ]
+
+        # =====================================================
         # Floor Properties
         #
         # Name reuses self.object_name (same as Zone/Exit/Stair)
@@ -564,6 +629,50 @@ class PropertyPanel(QWidget):
             self.update_obstacle_active
         )
 
+        self.door_start_x.editingFinished.connect(
+            self.update_door_geometry
+        )
+
+        self.door_start_y.editingFinished.connect(
+            self.update_door_geometry
+        )
+
+        self.door_end_x.editingFinished.connect(
+            self.update_door_geometry
+        )
+
+        self.door_end_y.editingFinished.connect(
+            self.update_door_geometry
+        )
+
+        self.door_width.editingFinished.connect(
+            self.update_door_geometry
+        )
+
+        self.door_type.currentIndexChanged.connect(
+            self.update_door_type
+        )
+
+        self.door_normally_open.toggled.connect(
+            self.update_door_normally_open
+        )
+
+        self.door_locked.toggled.connect(
+            self.update_door_locked
+        )
+
+        self.door_active.toggled.connect(
+            self.update_door_active
+        )
+
+        self.door_zone_a.currentIndexChanged.connect(
+            self.update_door_zone_a
+        )
+
+        self.door_zone_b.currentIndexChanged.connect(
+            self.update_door_zone_b
+        )
+
         self.floor_elevation.editingFinished.connect(
             self.update_floor_properties
         )
@@ -579,6 +688,7 @@ class PropertyPanel(QWidget):
         self._set_fields_visible(self.detector_fields, False)
         self._set_fields_visible(self.assembly_fields, False)
         self._set_fields_visible(self.obstacle_fields, False)
+        self._set_fields_visible(self.door_fields, False)
         self._set_fields_visible(self.floor_fields, False)
 
     # =====================================================
@@ -618,6 +728,7 @@ class PropertyPanel(QWidget):
         self._set_fields_visible(self.detector_fields, False)
         self._set_fields_visible(self.assembly_fields, False)
         self._set_fields_visible(self.obstacle_fields, False)
+        self._set_fields_visible(self.door_fields, False)
         self._set_fields_visible(self.floor_fields, False)
 
         self.object_type.setText("Zone")
@@ -684,6 +795,7 @@ class PropertyPanel(QWidget):
         self._set_fields_visible(self.detector_fields, False)
         self._set_fields_visible(self.assembly_fields, False)
         self._set_fields_visible(self.obstacle_fields, False)
+        self._set_fields_visible(self.door_fields, False)
         self._set_fields_visible(self.floor_fields, False)
 
         model = exit_item.model
@@ -753,6 +865,7 @@ class PropertyPanel(QWidget):
         self._set_fields_visible(self.detector_fields, False)
         self._set_fields_visible(self.assembly_fields, False)
         self._set_fields_visible(self.obstacle_fields, False)
+        self._set_fields_visible(self.door_fields, False)
         self._set_fields_visible(self.floor_fields, False)
 
         model = stair_item.model
@@ -837,6 +950,7 @@ class PropertyPanel(QWidget):
         self._set_fields_visible(self.detector_fields, False)
         self._set_fields_visible(self.assembly_fields, False)
         self._set_fields_visible(self.obstacle_fields, False)
+        self._set_fields_visible(self.door_fields, False)
         self._set_fields_visible(self.floor_fields, False)
 
         model = camera_item.model
@@ -907,6 +1021,7 @@ class PropertyPanel(QWidget):
         self._set_fields_visible(self.detector_fields, True)
         self._set_fields_visible(self.assembly_fields, False)
         self._set_fields_visible(self.obstacle_fields, False)
+        self._set_fields_visible(self.door_fields, False)
         self._set_fields_visible(self.floor_fields, False)
 
         model = detector_item.model
@@ -974,6 +1089,7 @@ class PropertyPanel(QWidget):
         self._set_fields_visible(self.detector_fields, False)
         self._set_fields_visible(self.assembly_fields, True)
         self._set_fields_visible(self.obstacle_fields, False)
+        self._set_fields_visible(self.door_fields, False)
         self._set_fields_visible(self.floor_fields, False)
 
         model = assembly_point_item.model
@@ -1044,6 +1160,7 @@ class PropertyPanel(QWidget):
         self._set_fields_visible(self.detector_fields, False)
         self._set_fields_visible(self.assembly_fields, False)
         self._set_fields_visible(self.obstacle_fields, True)
+        self._set_fields_visible(self.door_fields, False)
         self._set_fields_visible(self.floor_fields, False)
 
         model = obstacle_item.model
@@ -1104,6 +1221,105 @@ class PropertyPanel(QWidget):
         self.obstacle_active.blockSignals(False)
 
     # =====================================================
+    # Door
+    # =====================================================
+
+    def show_door(self, door_item):
+
+        self.current_item = door_item
+        self._refresh_handler = self.show_door
+
+        self._set_fields_visible(self.zone_fields, False)
+        self._set_fields_visible(self.exit_fields, False)
+        self._set_fields_visible(self.stair_fields, False)
+        self._set_fields_visible(self.camera_fields, False)
+        self._set_fields_visible(self.detector_fields, False)
+        self._set_fields_visible(self.assembly_fields, False)
+        self._set_fields_visible(self.obstacle_fields, False)
+        self._set_fields_visible(self.door_fields, True)
+        self._set_fields_visible(self.floor_fields, False)
+
+        model = door_item.model
+
+        self.object_type.setText("Door")
+        self.object_id.setText(door_item.object_id)
+
+        self.object_name.blockSignals(True)
+        self.door_start_x.blockSignals(True)
+        self.door_start_y.blockSignals(True)
+        self.door_end_x.blockSignals(True)
+        self.door_end_y.blockSignals(True)
+        self.door_width.blockSignals(True)
+        self.door_type.blockSignals(True)
+        self.door_normally_open.blockSignals(True)
+        self.door_locked.blockSignals(True)
+        self.door_active.blockSignals(True)
+
+        self.object_name.setText(door_item.object_name)
+
+        if model is not None:
+
+            sx, sy = model.start_point
+            ex, ey = model.end_point
+
+            self.door_start_x.setText(f"{sx:.2f}")
+            self.door_start_y.setText(f"{sy:.2f}")
+            self.door_end_x.setText(f"{ex:.2f}")
+            self.door_end_y.setText(f"{ey:.2f}")
+
+            self.door_length.setText(
+                f"{model.length:.2f} m"
+            )
+
+            self.door_width.setText(
+                f"{model.width:.2f}"
+            )
+
+            type_index = self.door_type.findText(
+                model.door_type
+            )
+
+            if type_index != -1:
+                self.door_type.setCurrentIndex(type_index)
+
+            self.door_normally_open.setChecked(
+                model.normally_open
+            )
+
+            self.door_locked.setChecked(
+                model.locked
+            )
+
+            self.door_active.setChecked(
+                model.active
+            )
+
+            self._populate_zone_combo(
+                self.door_zone_a,
+                model,
+                model.zone_a_id,
+                model.zone_b_id,
+            )
+
+            self._populate_zone_combo(
+                self.door_zone_b,
+                model,
+                model.zone_b_id,
+                model.zone_a_id,
+            )
+
+        self.object_name.blockSignals(False)
+        self.door_start_x.blockSignals(False)
+        self.door_start_y.blockSignals(False)
+        self.door_end_x.blockSignals(False)
+        self.door_end_y.blockSignals(False)
+        self.door_width.blockSignals(False)
+        self.door_type.blockSignals(False)
+        self.door_normally_open.blockSignals(False)
+        self.door_locked.blockSignals(False)
+        self.door_active.blockSignals(False)
+
+    # =====================================================
     # Floor
     # =====================================================
 
@@ -1119,6 +1335,7 @@ class PropertyPanel(QWidget):
         self._set_fields_visible(self.detector_fields, False)
         self._set_fields_visible(self.assembly_fields, False)
         self._set_fields_visible(self.obstacle_fields, False)
+        self._set_fields_visible(self.door_fields, False)
         self._set_fields_visible(self.floor_fields, True)
 
         self.object_type.setText("Floor")
@@ -1157,6 +1374,7 @@ class PropertyPanel(QWidget):
         self._set_fields_visible(self.detector_fields, False)
         self._set_fields_visible(self.assembly_fields, False)
         self._set_fields_visible(self.obstacle_fields, False)
+        self._set_fields_visible(self.door_fields, False)
         self._set_fields_visible(self.floor_fields, False)
 
         self.object_type.setText(
@@ -1267,6 +1485,39 @@ class PropertyPanel(QWidget):
         self.obstacle_active.blockSignals(True)
         self.obstacle_active.setChecked(False)
         self.obstacle_active.blockSignals(False)
+
+        self.door_start_x.clear()
+        self.door_start_y.clear()
+        self.door_end_x.clear()
+        self.door_end_y.clear()
+
+        self.door_length.setText("-")
+
+        self.door_width.clear()
+
+        self.door_type.blockSignals(True)
+        self.door_type.setCurrentIndex(0)
+        self.door_type.blockSignals(False)
+
+        self.door_normally_open.blockSignals(True)
+        self.door_normally_open.setChecked(False)
+        self.door_normally_open.blockSignals(False)
+
+        self.door_locked.blockSignals(True)
+        self.door_locked.setChecked(False)
+        self.door_locked.blockSignals(False)
+
+        self.door_active.blockSignals(True)
+        self.door_active.setChecked(False)
+        self.door_active.blockSignals(False)
+
+        self.door_zone_a.blockSignals(True)
+        self.door_zone_a.clear()
+        self.door_zone_a.blockSignals(False)
+
+        self.door_zone_b.blockSignals(True)
+        self.door_zone_b.clear()
+        self.door_zone_b.blockSignals(False)
 
         self.floor_elevation.clear()
         self.floor_height.clear()
@@ -1771,6 +2022,180 @@ class PropertyPanel(QWidget):
             )
 
         self.current_item.refresh_geometry()
+
+    # =====================================================
+
+    def update_door_geometry(self):
+
+        if self.current_item is None:
+            return
+
+        try:
+
+            x1 = float(self.door_start_x.text())
+            y1 = float(self.door_start_y.text())
+
+            x2 = float(self.door_end_x.text())
+            y2 = float(self.door_end_y.text())
+
+            width = float(self.door_width.text())
+
+        except ValueError:
+
+            self.refresh()
+
+            return
+
+        self.current_item.setPos(
+            x1 * self.GRID_SIZE,
+            y1 * self.GRID_SIZE,
+        )
+
+        self.current_item.setLine(
+            0,
+            0,
+            (x2 - x1) * self.GRID_SIZE,
+            (y2 - y1) * self.GRID_SIZE,
+        )
+
+        if self.current_item.model is not None:
+
+            self.current_item.model.width = width
+
+        self.refresh()
+
+    # =====================================================
+
+    def update_door_type(self, index):
+
+        if self.current_item is None:
+            return
+
+        if self.current_item.model is None:
+            return
+
+        self.current_item.model.door_type = (
+            self.door_type.itemText(index)
+        )
+
+        self.current_item.refresh_geometry()
+
+    # =====================================================
+
+    def update_door_normally_open(self):
+
+        if self.current_item is None:
+            return
+
+        if self.current_item.model is not None:
+
+            self.current_item.model.normally_open = (
+                self.door_normally_open.isChecked()
+            )
+
+    # =====================================================
+
+    def update_door_locked(self):
+
+        if self.current_item is None:
+            return
+
+        if self.current_item.model is not None:
+
+            self.current_item.model.locked = (
+                self.door_locked.isChecked()
+            )
+
+        self.current_item.refresh_geometry()
+
+    # =====================================================
+
+    def update_door_active(self):
+
+        if self.current_item is None:
+            return
+
+        if self.current_item.model is not None:
+
+            self.current_item.model.active = (
+                self.door_active.isChecked()
+            )
+
+        self.current_item.refresh_geometry()
+
+    # =====================================================
+    # Populates a Zone-selection combo from whichever floor the
+    # Door itself belongs to (never the whole Building, unlike
+    # Stair's To Floor combo -- a Door only ever connects two
+    # spaces on its own floor). "None" is a valid, persistent
+    # selection here (unlike Stair, which always forces a default)
+    # since a Door may be placed before its connections are made.
+    # =====================================================
+
+    def _populate_zone_combo(self, combo, model, current_zone_id, exclude_zone_id):
+
+        combo.blockSignals(True)
+
+        combo.clear()
+
+        combo.addItem("None", "")
+
+        if self.building is not None:
+
+            floor = self.building.get_floor(model.floor_id)
+
+            if floor is not None:
+
+                for zone in floor.zones:
+
+                    if zone.id == exclude_zone_id:
+                        continue
+
+                    combo.addItem(
+                        zone.name,
+                        zone.id,
+                    )
+
+        index = combo.findData(current_zone_id)
+
+        if index == -1:
+            index = 0
+
+        combo.setCurrentIndex(index)
+
+        combo.blockSignals(False)
+
+    # =====================================================
+
+    def update_door_zone_a(self, index):
+
+        if self.current_item is None:
+            return
+
+        if self.current_item.model is None:
+            return
+
+        zone_id = self.door_zone_a.itemData(index)
+
+        self.current_item.model.zone_a_id = zone_id or ""
+
+        self.refresh()
+
+    # =====================================================
+
+    def update_door_zone_b(self, index):
+
+        if self.current_item is None:
+            return
+
+        if self.current_item.model is None:
+            return
+
+        zone_id = self.door_zone_b.itemData(index)
+
+        self.current_item.model.zone_b_id = zone_id or ""
+
+        self.refresh()
 
     # =====================================================
 

@@ -12,6 +12,7 @@ from PyQt6.QtWidgets import (
 from designer.items.assembly_point_item import AssemblyPointItem
 from designer.items.camera_item import CameraItem
 from designer.items.detector_item import DetectorItem
+from designer.items.door_item import DoorItem
 from designer.items.exit_item import ExitItem
 from designer.items.obstacle_item import ObstacleItem
 from designer.items.stair_item import StairItem
@@ -21,6 +22,7 @@ from models.project import Project
 from models.assembly_point import AssemblyPoint
 from models.camera import Camera
 from models.detector import Detector
+from models.door import Door
 from models.exit import Exit
 from models.obstacle import Obstacle
 from models.staircase import Staircase
@@ -210,7 +212,7 @@ class GraphicsScene(QGraphicsScene):
             if self.selected_item:
                 self.selected_item.set_selected(False)
 
-            if isinstance(item, (ZoneRectangle, ExitItem, StairItem, CameraItem, DetectorItem, AssemblyPointItem, ObstacleItem)):
+            if isinstance(item, (ZoneRectangle, ExitItem, StairItem, CameraItem, DetectorItem, AssemblyPointItem, ObstacleItem, DoorItem)):
 
                 self.selected_item = item
 
@@ -813,6 +815,123 @@ class GraphicsScene(QGraphicsScene):
 
             return
 
+        # -------------------------------------------------
+        # Door Tool
+        #
+        # Click-drag-click line, same interaction as Exit/Stair --
+        # a Door is a traversable-connection line too. Connectivity
+        # (Zone A / Zone B) is set afterwards in the Property
+        # Panel, not by this placement click.
+        # -------------------------------------------------
+
+        if self.current_tool == "door":
+
+            if self.current_floor.locked:
+                return
+
+            x, y = self.snap(
+                event.scenePos()
+            )
+
+            if self.start_point is None:
+
+                self.start_point = (x, y)
+
+                self.preview_line = QGraphicsLineItem(
+                    0,
+                    0,
+                    0,
+                    0,
+                )
+
+                self.preview_line.setPos(x, y)
+
+                self.preview_line.setPen(
+                    QPen(
+                        QColor(
+                            170,
+                            100,
+                            220,
+                        ),
+                        2,
+                    )
+                )
+
+                self.addItem(
+                    self.preview_line
+                )
+
+                self.dimension_text = (
+                    QGraphicsSimpleTextItem()
+                )
+
+                self.dimension_text.setBrush(
+                    QBrush(
+                        QColor(
+                            255,
+                            255,
+                            0,
+                        )
+                    )
+                )
+
+                self.dimension_text.setZValue(
+                    1000
+                )
+
+                self.addItem(
+                    self.dimension_text
+                )
+
+            else:
+
+                x1, y1 = self.start_point
+
+                door_model = Door(
+                    name=f"Door {self.current_floor.door_count + 1}",
+                    start_point=(
+                        x1 / self.GRID_SIZE,
+                        y1 / self.GRID_SIZE,
+                    ),
+                    end_point=(
+                        x / self.GRID_SIZE,
+                        y / self.GRID_SIZE,
+                    ),
+                    floor_id=self.current_floor.id,
+                )
+
+                self.current_floor.add_door(
+                    door_model
+                )
+
+                door_item = DoorItem(
+                    x1,
+                    y1,
+                    x,
+                    y,
+                    model=door_model,
+                )
+
+                self.addItem(door_item)
+
+                if self.preview_line:
+
+                    self.removeItem(
+                        self.preview_line
+                    )
+
+                if self.dimension_text:
+
+                    self.removeItem(
+                        self.dimension_text
+                    )
+
+                self.preview_line = None
+                self.dimension_text = None
+                self.start_point = None
+
+            return
+
         super().mousePressEvent(event)    # =====================================================
 
     def mouseMoveEvent(self, event):
@@ -858,7 +977,7 @@ class GraphicsScene(QGraphicsScene):
             )
 
         if (
-            self.current_tool in ("exit", "stair")
+            self.current_tool in ("exit", "stair", "door")
             and self.start_point
             and self.preview_line
         ):
@@ -972,6 +1091,15 @@ class GraphicsScene(QGraphicsScene):
                         self.selected_item.model
                     )
 
+                elif isinstance(
+                    self.selected_item,
+                    DoorItem,
+                ):
+
+                    self.current_floor.remove_door(
+                        self.selected_item.model
+                    )
+
                 self.removeItem(
                     self.selected_item
                 )
@@ -1018,7 +1146,7 @@ class GraphicsScene(QGraphicsScene):
 
             if isinstance(
                 item,
-                (ZoneRectangle, ExitItem, StairItem, CameraItem, DetectorItem, AssemblyPointItem, ObstacleItem),
+                (ZoneRectangle, ExitItem, StairItem, CameraItem, DetectorItem, AssemblyPointItem, ObstacleItem, DoorItem),
             ):
                 self.removeItem(item)
 
@@ -1164,3 +1292,23 @@ class GraphicsScene(QGraphicsScene):
             )
 
             self.addItem(obstacle_item)
+
+        for door_obj in self.current_floor.doors:
+
+            x1, y1 = door_obj.start_point
+            x2, y2 = door_obj.end_point
+
+            door_item = DoorItem(
+                x1 * self.GRID_SIZE,
+                y1 * self.GRID_SIZE,
+                x2 * self.GRID_SIZE,
+                y2 * self.GRID_SIZE,
+                model=door_obj,
+            )
+
+            door_item.setFlag(
+                QGraphicsItem.GraphicsItemFlag.ItemIsMovable,
+                movable,
+            )
+
+            self.addItem(door_item)

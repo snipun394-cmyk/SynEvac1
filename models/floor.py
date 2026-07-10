@@ -9,6 +9,7 @@ from models.camera import Camera
 from models.detector import Detector
 from models.assembly_point import AssemblyPoint
 from models.obstacle import Obstacle
+from models.door import Door
 
 
 @dataclass
@@ -48,6 +49,7 @@ class Floor:
 
     assembly_points: list[AssemblyPoint] = field(default_factory=list)
     obstacles: list[Obstacle] = field(default_factory=list)
+    doors: list[Door] = field(default_factory=list)
 
     # =====================================================
 
@@ -160,6 +162,19 @@ class Floor:
             self.obstacles.remove(obstacle)
 
     # =====================================================
+    # Doors
+    # =====================================================
+
+    def add_door(self, door):
+
+        self.doors.append(door)
+
+    def remove_door(self, door):
+
+        if door in self.doors:
+            self.doors.remove(door)
+
+    # =====================================================
 
     @property
     def zone_count(self):
@@ -195,6 +210,11 @@ class Floor:
     def obstacle_count(self):
 
         return len(self.obstacles)
+
+    @property
+    def door_count(self):
+
+        return len(self.doors)
 
     # =====================================================
 
@@ -252,6 +272,11 @@ class Floor:
             "obstacles": [
                 obstacle.to_dict()
                 for obstacle in self.obstacles
+            ],
+
+            "doors": [
+                door.to_dict()
+                for door in self.doors
             ],
         }
 
@@ -346,6 +371,12 @@ class Floor:
 
             floor.obstacles.append(
                 Obstacle.from_dict(obstacle_data)
+            )
+
+        for door_data in data.get("doors", []):
+
+            floor.doors.append(
+                Door.from_dict(door_data)
             )
 
         return floor

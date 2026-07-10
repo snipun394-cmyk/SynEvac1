@@ -155,6 +155,7 @@ class Building:
             new_floor.detectors,
             new_floor.assembly_points,
             new_floor.obstacles,
+            new_floor.doors,
         ):
 
             for engineering_object in collection:

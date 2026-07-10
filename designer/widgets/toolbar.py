@@ -42,6 +42,7 @@ class MainToolbar(QToolBar):
 
         self.zone_action = QAction("Zone", self)
         self.exit_action = QAction("Exit", self)
+        self.door_action = QAction("Door", self)
         self.stair_action = QAction("Stair", self)
         self.elevator_action = QAction("Elevator", self)
         self.obstacle_action = QAction("Obstacle", self)
@@ -88,6 +89,7 @@ class MainToolbar(QToolBar):
 
         self.addAction(self.zone_action)
         self.addAction(self.exit_action)
+        self.addAction(self.door_action)
         self.addAction(self.stair_action)
         self.addAction(self.elevator_action)
         self.addAction(self.obstacle_action)
