@@ -1,6 +1,6 @@
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
-    QHBoxLayout,
+    QGridLayout,
     QInputDialog,
     QListWidget,
     QListWidgetItem,
@@ -40,9 +40,15 @@ class FloorList(QWidget):
 
         # =================================================
         # Controls
+        #
+        # Laid out as a 2-column grid rather than one wide row:
+        # 6 buttons in a single QHBoxLayout forced a ~640px
+        # minimum panel width, which pushed the whole MainWindow
+        # (and the Property Panel dock with it) off typical
+        # desktop resolutions.
         # =================================================
 
-        button_layout = QHBoxLayout()
+        button_layout = QGridLayout()
 
         self.add_button = QPushButton("Add")
         self.rename_button = QPushButton("Rename")
@@ -58,16 +64,14 @@ class FloorList(QWidget):
         self.move_up_button.clicked.connect(self.move_selected_floor_up)
         self.move_down_button.clicked.connect(self.move_selected_floor_down)
 
-        for button in (
-            self.add_button,
-            self.rename_button,
-            self.duplicate_button,
-            self.delete_button,
-            self.move_up_button,
-            self.move_down_button,
-        ):
+        button_layout.addWidget(self.add_button, 0, 0)
+        button_layout.addWidget(self.duplicate_button, 0, 1)
 
-            button_layout.addWidget(button)
+        button_layout.addWidget(self.rename_button, 1, 0)
+        button_layout.addWidget(self.delete_button, 1, 1)
+
+        button_layout.addWidget(self.move_up_button, 2, 0)
+        button_layout.addWidget(self.move_down_button, 2, 1)
 
         layout.addLayout(button_layout)
 

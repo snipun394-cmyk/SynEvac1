@@ -70,9 +70,9 @@ class MainWindow(QMainWindow):
         # Bottom Info Bar
         # =====================================================
 
+        # BottomInfoBar owns its own fixed height internally
+        # (tall enough to avoid clipping if its labels wrap).
         self.info_bar = BottomInfoBar()
-
-        self.info_bar.setFixedHeight(30)
 
         self.layout.addWidget(
             self.info_bar
