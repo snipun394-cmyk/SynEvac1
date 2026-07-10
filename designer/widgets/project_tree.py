@@ -177,6 +177,24 @@ class ProjectTree(QTreeWidget):
                     )
                 )
 
+            # =============================================
+            # Obstacles
+            # =============================================
+
+            obstacles_root = QTreeWidgetItem(
+                ["Obstacles"]
+            )
+
+            floor_item.addChild(obstacles_root)
+
+            for obstacle in floor.obstacles:
+
+                obstacles_root.addChild(
+                    QTreeWidgetItem(
+                        [obstacle.name]
+                    )
+                )
+
         building.setExpanded(True)
 
         for i in range(building.childCount()):

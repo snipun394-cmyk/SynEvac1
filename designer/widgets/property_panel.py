@@ -12,6 +12,7 @@ from PyQt6.QtWidgets import (
 
 from models.detector import Detector
 from models.floor import Floor
+from models.obstacle import Obstacle
 
 
 class PropertyPanel(QWidget):
@@ -320,6 +321,47 @@ class PropertyPanel(QWidget):
         ]
 
         # =====================================================
+        # Obstacle Geometry
+        # =====================================================
+
+        self.obstacle_length = QLineEdit()
+        self.obstacle_width = QLineEdit()
+
+        self.obstacle_type = QComboBox()
+
+        for obstacle_type in Obstacle.OBSTACLE_TYPES:
+            self.obstacle_type.addItem(obstacle_type)
+
+        self.obstacle_traversability = QComboBox()
+
+        for traversability in Obstacle.TRAVERSABILITY_OPTIONS:
+            self.obstacle_traversability.addItem(traversability)
+
+        self.obstacle_traversal_cost = QLineEdit()
+
+        self.obstacle_active = QCheckBox()
+
+        layout.addRow("Length (m)", self.obstacle_length)
+        layout.addRow("Width (m)", self.obstacle_width)
+
+        layout.addRow("Type", self.obstacle_type)
+
+        layout.addRow("Traversability", self.obstacle_traversability)
+
+        layout.addRow("Traversal Cost", self.obstacle_traversal_cost)
+
+        layout.addRow("Active", self.obstacle_active)
+
+        self.obstacle_fields = [
+            self.obstacle_length,
+            self.obstacle_width,
+            self.obstacle_type,
+            self.obstacle_traversability,
+            self.obstacle_traversal_cost,
+            self.obstacle_active,
+        ]
+
+        # =====================================================
         # Floor Properties
         #
         # Name reuses self.object_name (same as Zone/Exit/Stair)
@@ -498,6 +540,30 @@ class PropertyPanel(QWidget):
             self.update_assembly_point_active
         )
 
+        self.obstacle_length.editingFinished.connect(
+            self.update_obstacle_geometry
+        )
+
+        self.obstacle_width.editingFinished.connect(
+            self.update_obstacle_geometry
+        )
+
+        self.obstacle_traversal_cost.editingFinished.connect(
+            self.update_obstacle_geometry
+        )
+
+        self.obstacle_type.currentIndexChanged.connect(
+            self.update_obstacle_type
+        )
+
+        self.obstacle_traversability.currentIndexChanged.connect(
+            self.update_obstacle_traversability
+        )
+
+        self.obstacle_active.toggled.connect(
+            self.update_obstacle_active
+        )
+
         self.floor_elevation.editingFinished.connect(
             self.update_floor_properties
         )
@@ -512,6 +578,7 @@ class PropertyPanel(QWidget):
         self._set_fields_visible(self.camera_fields, False)
         self._set_fields_visible(self.detector_fields, False)
         self._set_fields_visible(self.assembly_fields, False)
+        self._set_fields_visible(self.obstacle_fields, False)
         self._set_fields_visible(self.floor_fields, False)
 
     # =====================================================
@@ -550,6 +617,7 @@ class PropertyPanel(QWidget):
         self._set_fields_visible(self.camera_fields, False)
         self._set_fields_visible(self.detector_fields, False)
         self._set_fields_visible(self.assembly_fields, False)
+        self._set_fields_visible(self.obstacle_fields, False)
         self._set_fields_visible(self.floor_fields, False)
 
         self.object_type.setText("Zone")
@@ -615,6 +683,7 @@ class PropertyPanel(QWidget):
         self._set_fields_visible(self.camera_fields, False)
         self._set_fields_visible(self.detector_fields, False)
         self._set_fields_visible(self.assembly_fields, False)
+        self._set_fields_visible(self.obstacle_fields, False)
         self._set_fields_visible(self.floor_fields, False)
 
         model = exit_item.model
@@ -683,6 +752,7 @@ class PropertyPanel(QWidget):
         self._set_fields_visible(self.camera_fields, False)
         self._set_fields_visible(self.detector_fields, False)
         self._set_fields_visible(self.assembly_fields, False)
+        self._set_fields_visible(self.obstacle_fields, False)
         self._set_fields_visible(self.floor_fields, False)
 
         model = stair_item.model
@@ -766,6 +836,7 @@ class PropertyPanel(QWidget):
         self._set_fields_visible(self.camera_fields, True)
         self._set_fields_visible(self.detector_fields, False)
         self._set_fields_visible(self.assembly_fields, False)
+        self._set_fields_visible(self.obstacle_fields, False)
         self._set_fields_visible(self.floor_fields, False)
 
         model = camera_item.model
@@ -835,6 +906,7 @@ class PropertyPanel(QWidget):
         self._set_fields_visible(self.camera_fields, False)
         self._set_fields_visible(self.detector_fields, True)
         self._set_fields_visible(self.assembly_fields, False)
+        self._set_fields_visible(self.obstacle_fields, False)
         self._set_fields_visible(self.floor_fields, False)
 
         model = detector_item.model
@@ -901,6 +973,7 @@ class PropertyPanel(QWidget):
         self._set_fields_visible(self.camera_fields, False)
         self._set_fields_visible(self.detector_fields, False)
         self._set_fields_visible(self.assembly_fields, True)
+        self._set_fields_visible(self.obstacle_fields, False)
         self._set_fields_visible(self.floor_fields, False)
 
         model = assembly_point_item.model
@@ -956,6 +1029,81 @@ class PropertyPanel(QWidget):
         self.assembly_active.blockSignals(False)
 
     # =====================================================
+    # Obstacle
+    # =====================================================
+
+    def show_obstacle(self, obstacle_item):
+
+        self.current_item = obstacle_item
+        self._refresh_handler = self.show_obstacle
+
+        self._set_fields_visible(self.zone_fields, False)
+        self._set_fields_visible(self.exit_fields, False)
+        self._set_fields_visible(self.stair_fields, False)
+        self._set_fields_visible(self.camera_fields, False)
+        self._set_fields_visible(self.detector_fields, False)
+        self._set_fields_visible(self.assembly_fields, False)
+        self._set_fields_visible(self.obstacle_fields, True)
+        self._set_fields_visible(self.floor_fields, False)
+
+        model = obstacle_item.model
+
+        self.object_type.setText("Obstacle")
+        self.object_id.setText(obstacle_item.object_id)
+
+        self.object_name.blockSignals(True)
+        self.obstacle_length.blockSignals(True)
+        self.obstacle_width.blockSignals(True)
+        self.obstacle_type.blockSignals(True)
+        self.obstacle_traversability.blockSignals(True)
+        self.obstacle_traversal_cost.blockSignals(True)
+        self.obstacle_active.blockSignals(True)
+
+        self.object_name.setText(obstacle_item.object_name)
+
+        if model is not None:
+
+            self.obstacle_length.setText(
+                f"{model.length:.2f}"
+            )
+
+            self.obstacle_width.setText(
+                f"{model.width:.2f}"
+            )
+
+            type_index = self.obstacle_type.findText(
+                model.obstacle_type
+            )
+
+            if type_index != -1:
+                self.obstacle_type.setCurrentIndex(type_index)
+
+            traversability_index = self.obstacle_traversability.findText(
+                model.traversability
+            )
+
+            if traversability_index != -1:
+                self.obstacle_traversability.setCurrentIndex(
+                    traversability_index
+                )
+
+            self.obstacle_traversal_cost.setText(
+                f"{model.traversal_cost:.2f}"
+            )
+
+            self.obstacle_active.setChecked(
+                model.active
+            )
+
+        self.object_name.blockSignals(False)
+        self.obstacle_length.blockSignals(False)
+        self.obstacle_width.blockSignals(False)
+        self.obstacle_type.blockSignals(False)
+        self.obstacle_traversability.blockSignals(False)
+        self.obstacle_traversal_cost.blockSignals(False)
+        self.obstacle_active.blockSignals(False)
+
+    # =====================================================
     # Floor
     # =====================================================
 
@@ -970,6 +1118,7 @@ class PropertyPanel(QWidget):
         self._set_fields_visible(self.camera_fields, False)
         self._set_fields_visible(self.detector_fields, False)
         self._set_fields_visible(self.assembly_fields, False)
+        self._set_fields_visible(self.obstacle_fields, False)
         self._set_fields_visible(self.floor_fields, True)
 
         self.object_type.setText("Floor")
@@ -1007,6 +1156,7 @@ class PropertyPanel(QWidget):
         self._set_fields_visible(self.camera_fields, False)
         self._set_fields_visible(self.detector_fields, False)
         self._set_fields_visible(self.assembly_fields, False)
+        self._set_fields_visible(self.obstacle_fields, False)
         self._set_fields_visible(self.floor_fields, False)
 
         self.object_type.setText(
@@ -1100,6 +1250,23 @@ class PropertyPanel(QWidget):
         self.assembly_active.blockSignals(True)
         self.assembly_active.setChecked(False)
         self.assembly_active.blockSignals(False)
+
+        self.obstacle_length.clear()
+        self.obstacle_width.clear()
+
+        self.obstacle_type.blockSignals(True)
+        self.obstacle_type.setCurrentIndex(0)
+        self.obstacle_type.blockSignals(False)
+
+        self.obstacle_traversability.blockSignals(True)
+        self.obstacle_traversability.setCurrentIndex(0)
+        self.obstacle_traversability.blockSignals(False)
+
+        self.obstacle_traversal_cost.clear()
+
+        self.obstacle_active.blockSignals(True)
+        self.obstacle_active.setChecked(False)
+        self.obstacle_active.blockSignals(False)
 
         self.floor_elevation.clear()
         self.floor_height.clear()
@@ -1519,6 +1686,88 @@ class PropertyPanel(QWidget):
 
             self.current_item.model.active = (
                 self.assembly_active.isChecked()
+            )
+
+        self.current_item.refresh_geometry()
+
+    # =====================================================
+
+    def update_obstacle_geometry(self):
+
+        if self.current_item is None:
+            return
+
+        try:
+
+            length = float(self.obstacle_length.text())
+            width = float(self.obstacle_width.text())
+
+            traversal_cost = float(
+                self.obstacle_traversal_cost.text()
+            )
+
+        except ValueError:
+
+            self.refresh()
+
+            return
+
+        self.current_item.setRect(
+            0,
+            0,
+            length * self.GRID_SIZE,
+            width * self.GRID_SIZE,
+        )
+
+        if self.current_item.model is not None:
+
+            self.current_item.model.traversal_cost = traversal_cost
+
+        self.refresh()
+
+    # =====================================================
+
+    def update_obstacle_type(self, index):
+
+        if self.current_item is None:
+            return
+
+        if self.current_item.model is None:
+            return
+
+        self.current_item.model.obstacle_type = (
+            self.obstacle_type.itemText(index)
+        )
+
+        self.current_item.refresh_geometry()
+
+    # =====================================================
+
+    def update_obstacle_traversability(self, index):
+
+        if self.current_item is None:
+            return
+
+        if self.current_item.model is None:
+            return
+
+        self.current_item.model.traversability = (
+            self.obstacle_traversability.itemText(index)
+        )
+
+        self.current_item.refresh_geometry()
+
+    # =====================================================
+
+    def update_obstacle_active(self):
+
+        if self.current_item is None:
+            return
+
+        if self.current_item.model is not None:
+
+            self.current_item.model.active = (
+                self.obstacle_active.isChecked()
             )
 
         self.current_item.refresh_geometry()

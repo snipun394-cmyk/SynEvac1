@@ -13,6 +13,7 @@ from designer.items.assembly_point_item import AssemblyPointItem
 from designer.items.camera_item import CameraItem
 from designer.items.detector_item import DetectorItem
 from designer.items.exit_item import ExitItem
+from designer.items.obstacle_item import ObstacleItem
 from designer.items.stair_item import StairItem
 from designer.items.zone_rectangle import ZoneRectangle
 from designer.scene.graphics_view import GraphicsView
@@ -301,6 +302,12 @@ class MainWindow(QMainWindow):
             lambda: self.change_tool(
                 "assembly_point"
             )
+        )
+
+        self.toolbar.obstacle_action.triggered.connect(
+            lambda: self.change_tool(
+                "obstacle"
+            )
         )    # =====================================================
 
     def connect_signals(self):
@@ -392,6 +399,9 @@ class MainWindow(QMainWindow):
 
         elif isinstance(item, AssemblyPointItem):
             self.property_panel.show_assembly_point(item)
+
+        elif isinstance(item, ObstacleItem):
+            self.property_panel.show_obstacle(item)
 
         item.geometry_changed_callback = (
             lambda i: self.refresh_ui()

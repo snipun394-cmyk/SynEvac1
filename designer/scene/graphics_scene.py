@@ -13,6 +13,7 @@ from designer.items.assembly_point_item import AssemblyPointItem
 from designer.items.camera_item import CameraItem
 from designer.items.detector_item import DetectorItem
 from designer.items.exit_item import ExitItem
+from designer.items.obstacle_item import ObstacleItem
 from designer.items.stair_item import StairItem
 from designer.items.zone_rectangle import ZoneRectangle
 
@@ -21,6 +22,7 @@ from models.assembly_point import AssemblyPoint
 from models.camera import Camera
 from models.detector import Detector
 from models.exit import Exit
+from models.obstacle import Obstacle
 from models.staircase import Staircase
 from models.zone import Zone
 
@@ -208,7 +210,7 @@ class GraphicsScene(QGraphicsScene):
             if self.selected_item:
                 self.selected_item.set_selected(False)
 
-            if isinstance(item, (ZoneRectangle, ExitItem, StairItem, CameraItem, DetectorItem, AssemblyPointItem)):
+            if isinstance(item, (ZoneRectangle, ExitItem, StairItem, CameraItem, DetectorItem, AssemblyPointItem, ObstacleItem)):
 
                 self.selected_item = item
 
@@ -689,12 +691,134 @@ class GraphicsScene(QGraphicsScene):
 
             return
 
+        # -------------------------------------------------
+        # Obstacle Tool
+        #
+        # Click-drag-click rectangle, same interaction as the
+        # Zone Tool -- Obstacle is a filled-rectangle object too.
+        # -------------------------------------------------
+
+        if self.current_tool == "obstacle":
+
+            if self.current_floor.locked:
+                return
+
+            x, y = self.snap(
+                event.scenePos()
+            )
+
+            if self.start_point is None:
+
+                self.start_point = (x, y)
+
+                self.preview_rect = QGraphicsRectItem()
+
+                self.preview_rect.setBrush(
+                    QBrush(
+                        QColor(
+                            210,
+                            60,
+                            40,
+                            60,
+                        )
+                    )
+                )
+
+                self.preview_rect.setPen(
+                    QPen(
+                        QColor(
+                            210,
+                            60,
+                            40,
+                        ),
+                        2,
+                    )
+                )
+
+                self.addItem(
+                    self.preview_rect
+                )
+
+                self.dimension_text = (
+                    QGraphicsSimpleTextItem()
+                )
+
+                self.dimension_text.setBrush(
+                    QBrush(
+                        QColor(
+                            255,
+                            255,
+                            0,
+                        )
+                    )
+                )
+
+                self.dimension_text.setZValue(
+                    1000
+                )
+
+                self.addItem(
+                    self.dimension_text
+                )
+
+            else:
+
+                x1, y1 = self.start_point
+
+                rect = QRectF(
+                    min(x1, x),
+                    min(y1, y),
+                    abs(x - x1),
+                    abs(y - y1),
+                )
+
+                obstacle_model = Obstacle(
+                    name=f"Obstacle {self.current_floor.obstacle_count + 1}",
+                    x=rect.x() / self.GRID_SIZE,
+                    y=rect.y() / self.GRID_SIZE,
+                    length=rect.width() / self.GRID_SIZE,
+                    width=rect.height() / self.GRID_SIZE,
+                    floor_id=self.current_floor.id,
+                )
+
+                self.current_floor.add_obstacle(
+                    obstacle_model
+                )
+
+                obstacle_item = ObstacleItem(
+                    rect.x(),
+                    rect.y(),
+                    obstacle_model.length,
+                    obstacle_model.width,
+                    model=obstacle_model,
+                )
+
+                self.addItem(obstacle_item)
+
+                if self.preview_rect:
+
+                    self.removeItem(
+                        self.preview_rect
+                    )
+
+                if self.dimension_text:
+
+                    self.removeItem(
+                        self.dimension_text
+                    )
+
+                self.preview_rect = None
+                self.dimension_text = None
+                self.start_point = None
+
+            return
+
         super().mousePressEvent(event)    # =====================================================
 
     def mouseMoveEvent(self, event):
 
         if (
-            self.current_tool == "zone"
+            self.current_tool in ("zone", "obstacle")
             and self.start_point
             and self.preview_rect
         ):
@@ -839,6 +963,15 @@ class GraphicsScene(QGraphicsScene):
                         self.selected_item.model
                     )
 
+                elif isinstance(
+                    self.selected_item,
+                    ObstacleItem,
+                ):
+
+                    self.current_floor.remove_obstacle(
+                        self.selected_item.model
+                    )
+
                 self.removeItem(
                     self.selected_item
                 )
@@ -885,7 +1018,7 @@ class GraphicsScene(QGraphicsScene):
 
             if isinstance(
                 item,
-                (ZoneRectangle, ExitItem, StairItem, CameraItem, DetectorItem, AssemblyPointItem),
+                (ZoneRectangle, ExitItem, StairItem, CameraItem, DetectorItem, AssemblyPointItem, ObstacleItem),
             ):
                 self.removeItem(item)
 
@@ -1014,3 +1147,20 @@ class GraphicsScene(QGraphicsScene):
             )
 
             self.addItem(assembly_point_item)
+
+        for obstacle_obj in self.current_floor.obstacles:
+
+            obstacle_item = ObstacleItem(
+                obstacle_obj.x * self.GRID_SIZE,
+                obstacle_obj.y * self.GRID_SIZE,
+                obstacle_obj.length,
+                obstacle_obj.width,
+                model=obstacle_obj,
+            )
+
+            obstacle_item.setFlag(
+                QGraphicsItem.GraphicsItemFlag.ItemIsMovable,
+                movable,
+            )
+
+            self.addItem(obstacle_item)
