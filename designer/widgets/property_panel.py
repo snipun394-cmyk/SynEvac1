@@ -1,10 +1,16 @@
 from PyQt6.QtWidgets import (
+    QApplication,
     QWidget,
+    QComboBox,
     QFormLayout,
     QCheckBox,
+    QHBoxLayout,
     QLabel,
     QLineEdit,
+    QPushButton,
 )
+
+from models.floor import Floor
 
 
 class PropertyPanel(QWidget):
@@ -20,6 +26,11 @@ class PropertyPanel(QWidget):
         # Needed to resolve Stair from_floor_id/to_floor_id into
         # actual Floor elevations for the derived traversal fields.
         self.building = None
+
+        # Fired after a Floor's Name/Elevation/Height is edited here,
+        # so MainWindow can refresh FloorList/ProjectTree (neither of
+        # which is reachable directly from this widget).
+        self.floor_updated_callback = None
 
         layout = QFormLayout()
 
@@ -42,14 +53,14 @@ class PropertyPanel(QWidget):
         self.origin_x = QLineEdit()
         self.origin_y = QLineEdit()
 
-        self.width = QLineEdit()
-        self.height = QLineEdit()
+        self.zone_length = QLineEdit()
+        self.zone_width = QLineEdit()
 
         layout.addRow("Origin X (m)", self.origin_x)
         layout.addRow("Origin Y (m)", self.origin_y)
 
-        layout.addRow("Width (m)", self.width)
-        layout.addRow("Height (m)", self.height)
+        layout.addRow("Length (m)", self.zone_length)
+        layout.addRow("Width (m)", self.zone_width)
 
         # =====================================================
         # Zone Derived Coordinates
@@ -72,8 +83,8 @@ class PropertyPanel(QWidget):
         self.zone_fields = [
             self.origin_x,
             self.origin_y,
-            self.width,
-            self.height,
+            self.zone_length,
+            self.zone_width,
             self.top_left,
             self.top_right,
             self.bottom_right,
@@ -135,7 +146,24 @@ class PropertyPanel(QWidget):
 
         self.stair_length = QLabel("-")
 
-        self.to_floor = QLineEdit()
+        # Destination floor -- names are shown, but the combo
+        # stores each floor's UUID as itemData so the model
+        # keeps storing an id, never a display name.
+        self.to_floor_combo = QComboBox()
+
+        # Read-only/debug only. The combo above is authoritative;
+        # this just exposes the raw UUID for copy/paste.
+        self.to_floor_uuid = QLineEdit()
+        self.to_floor_uuid.setReadOnly(True)
+
+        self.copy_to_floor_button = QPushButton("Copy")
+
+        to_floor_id_row = QWidget()
+        to_floor_id_layout = QHBoxLayout()
+        to_floor_id_layout.setContentsMargins(0, 0, 0, 0)
+        to_floor_id_layout.addWidget(self.to_floor_uuid)
+        to_floor_id_layout.addWidget(self.copy_to_floor_button)
+        to_floor_id_row.setLayout(to_floor_id_layout)
 
         # Derived (Building/Floor elevations) -- never editable.
         self.vertical_height = QLabel("-")
@@ -150,7 +178,8 @@ class PropertyPanel(QWidget):
 
         layout.addRow("Stair Width (m)", self.stair_width)
 
-        layout.addRow("To Floor ID", self.to_floor)
+        layout.addRow("To Floor", self.to_floor_combo)
+        layout.addRow("To Floor ID", to_floor_id_row)
 
         layout.addRow(
             "Vertical Height (m)",
@@ -169,9 +198,29 @@ class PropertyPanel(QWidget):
             self.stair_end_y,
             self.stair_length,
             self.stair_width,
-            self.to_floor,
+            self.to_floor_combo,
+            to_floor_id_row,
             self.vertical_height,
             self.travel_distance,
+        ]
+
+        # =====================================================
+        # Floor Properties
+        #
+        # Name reuses self.object_name (same as Zone/Exit/Stair)
+        # rather than a dedicated field, so there is a single
+        # "Name" row instead of two.
+        # =====================================================
+
+        self.floor_elevation = QLineEdit()
+        self.floor_height = QLineEdit()
+
+        layout.addRow("Elevation (m)", self.floor_elevation)
+        layout.addRow("Floor Height (m)", self.floor_height)
+
+        self.floor_fields = [
+            self.floor_elevation,
+            self.floor_height,
         ]
 
         self.setLayout(layout)
@@ -190,11 +239,11 @@ class PropertyPanel(QWidget):
             self.update_geometry
         )
 
-        self.width.editingFinished.connect(
+        self.zone_length.editingFinished.connect(
             self.update_geometry
         )
 
-        self.height.editingFinished.connect(
+        self.zone_width.editingFinished.connect(
             self.update_geometry
         )
 
@@ -246,13 +295,26 @@ class PropertyPanel(QWidget):
             self.update_stair_geometry
         )
 
-        self.to_floor.editingFinished.connect(
-            self.update_stair_geometry
+        self.to_floor_combo.currentIndexChanged.connect(
+            self.update_stair_to_floor
+        )
+
+        self.copy_to_floor_button.clicked.connect(
+            self.copy_to_floor_id
+        )
+
+        self.floor_elevation.editingFinished.connect(
+            self.update_floor_properties
+        )
+
+        self.floor_height.editingFinished.connect(
+            self.update_floor_properties
         )
 
         self._set_fields_visible(self.zone_fields, False)
         self._set_fields_visible(self.exit_fields, False)
         self._set_fields_visible(self.stair_fields, False)
+        self._set_fields_visible(self.floor_fields, False)
 
     # =====================================================
 
@@ -287,6 +349,7 @@ class PropertyPanel(QWidget):
         self._set_fields_visible(self.zone_fields, True)
         self._set_fields_visible(self.exit_fields, False)
         self._set_fields_visible(self.stair_fields, False)
+        self._set_fields_visible(self.floor_fields, False)
 
         self.object_type.setText("Zone")
         self.object_id.setText(zone.zone_id)
@@ -294,8 +357,8 @@ class PropertyPanel(QWidget):
         self.object_name.blockSignals(True)
         self.origin_x.blockSignals(True)
         self.origin_y.blockSignals(True)
-        self.width.blockSignals(True)
-        self.height.blockSignals(True)
+        self.zone_length.blockSignals(True)
+        self.zone_width.blockSignals(True)
 
         self.object_name.setText(zone.zone_name)
 
@@ -307,8 +370,8 @@ class PropertyPanel(QWidget):
         self.origin_x.setText(f"{tlx:.2f}")
         self.origin_y.setText(f"{tly:.2f}")
 
-        self.width.setText(f"{zone.width_m:.2f}")
-        self.height.setText(f"{zone.height_m:.2f}")
+        self.zone_length.setText(f"{zone.width_m:.2f}")
+        self.zone_width.setText(f"{zone.height_m:.2f}")
 
         self.top_left.setText(
             f"({tlx:.2f}, {tly:.2f})"
@@ -333,8 +396,8 @@ class PropertyPanel(QWidget):
         self.object_name.blockSignals(False)
         self.origin_x.blockSignals(False)
         self.origin_y.blockSignals(False)
-        self.width.blockSignals(False)
-        self.height.blockSignals(False)
+        self.zone_length.blockSignals(False)
+        self.zone_width.blockSignals(False)
 
     # =====================================================
     # Exit
@@ -348,6 +411,7 @@ class PropertyPanel(QWidget):
         self._set_fields_visible(self.zone_fields, False)
         self._set_fields_visible(self.exit_fields, True)
         self._set_fields_visible(self.stair_fields, False)
+        self._set_fields_visible(self.floor_fields, False)
 
         model = exit_item.model
 
@@ -412,6 +476,7 @@ class PropertyPanel(QWidget):
         self._set_fields_visible(self.zone_fields, False)
         self._set_fields_visible(self.exit_fields, False)
         self._set_fields_visible(self.stair_fields, True)
+        self._set_fields_visible(self.floor_fields, False)
 
         model = stair_item.model
 
@@ -424,7 +489,7 @@ class PropertyPanel(QWidget):
         self.stair_end_x.blockSignals(True)
         self.stair_end_y.blockSignals(True)
         self.stair_width.blockSignals(True)
-        self.to_floor.blockSignals(True)
+        self.to_floor_combo.blockSignals(True)
 
         self.object_name.setText(stair_item.object_name)
 
@@ -446,9 +511,7 @@ class PropertyPanel(QWidget):
                 f"{model.width:.2f}"
             )
 
-            self.to_floor.setText(
-                model.to_floor_id
-            )
+            self._populate_to_floor_combo(model)
 
             if self.building is not None:
 
@@ -479,7 +542,36 @@ class PropertyPanel(QWidget):
         self.stair_end_x.blockSignals(False)
         self.stair_end_y.blockSignals(False)
         self.stair_width.blockSignals(False)
-        self.to_floor.blockSignals(False)
+        self.to_floor_combo.blockSignals(False)
+
+    # =====================================================
+    # Floor
+    # =====================================================
+
+    def show_floor(self, floor):
+
+        self.current_item = floor
+        self._refresh_handler = self.show_floor
+
+        self._set_fields_visible(self.zone_fields, False)
+        self._set_fields_visible(self.exit_fields, False)
+        self._set_fields_visible(self.stair_fields, False)
+        self._set_fields_visible(self.floor_fields, True)
+
+        self.object_type.setText("Floor")
+        self.object_id.setText(floor.id)
+
+        self.object_name.blockSignals(True)
+        self.floor_elevation.blockSignals(True)
+        self.floor_height.blockSignals(True)
+
+        self.object_name.setText(floor.name)
+        self.floor_elevation.setText(f"{floor.elevation:.2f}")
+        self.floor_height.setText(f"{floor.height:.2f}")
+
+        self.object_name.blockSignals(False)
+        self.floor_elevation.blockSignals(False)
+        self.floor_height.blockSignals(False)
 
     # =====================================================
 
@@ -498,6 +590,7 @@ class PropertyPanel(QWidget):
         self._set_fields_visible(self.zone_fields, False)
         self._set_fields_visible(self.exit_fields, False)
         self._set_fields_visible(self.stair_fields, False)
+        self._set_fields_visible(self.floor_fields, False)
 
         self.object_type.setText(
             "No Selection"
@@ -510,8 +603,8 @@ class PropertyPanel(QWidget):
         self.origin_x.clear()
         self.origin_y.clear()
 
-        self.width.clear()
-        self.height.clear()
+        self.zone_length.clear()
+        self.zone_width.clear()
 
         self.top_left.setText("-")
         self.top_right.setText("-")
@@ -542,10 +635,17 @@ class PropertyPanel(QWidget):
         self.stair_width.clear()
         self.stair_length.setText("-")
 
-        self.to_floor.clear()
+        self.to_floor_combo.blockSignals(True)
+        self.to_floor_combo.clear()
+        self.to_floor_combo.blockSignals(False)
+
+        self.to_floor_uuid.clear()
 
         self.vertical_height.setText("-")
         self.travel_distance.setText("-")
+
+        self.floor_elevation.clear()
+        self.floor_height.clear()
 
     # =====================================================
 
@@ -560,6 +660,11 @@ class PropertyPanel(QWidget):
             return
 
         self.current_item.rename(name)
+
+        if isinstance(self.current_item, Floor):
+
+            if self.floor_updated_callback:
+                self.floor_updated_callback(self.current_item)
 
     # =====================================================
 
@@ -579,11 +684,11 @@ class PropertyPanel(QWidget):
             )
 
             w = float(
-                self.width.text()
+                self.zone_length.text()
             )
 
             h = float(
-                self.height.text()
+                self.zone_width.text()
             )
 
         except ValueError:
@@ -685,14 +790,6 @@ class PropertyPanel(QWidget):
 
             return
 
-        # Captured before setPos()/setLine() -- those trigger
-        # geometry_changed_callback -> refresh(), which would
-        # otherwise repopulate this field from the model before
-        # the new value below is ever written.
-        to_floor_id = (
-            self.to_floor.text().strip()
-        )
-
         self.current_item.setPos(
             x1 * self.GRID_SIZE,
             y1 * self.GRID_SIZE,
@@ -708,8 +805,105 @@ class PropertyPanel(QWidget):
         if self.current_item.model is not None:
 
             self.current_item.model.width = w
-            self.current_item.model.to_floor_id = (
-                to_floor_id
-            )
 
         self.refresh()
+
+    # =====================================================
+
+    def _populate_to_floor_combo(self, model):
+
+        self.to_floor_combo.blockSignals(True)
+
+        self.to_floor_combo.clear()
+
+        if self.building is not None:
+
+            for floor in self.building.ordered_floors():
+
+                if floor.id == model.from_floor_id:
+                    continue
+
+                self.to_floor_combo.addItem(
+                    floor.name,
+                    floor.id,
+                )
+
+        index = self.to_floor_combo.findData(
+            model.to_floor_id
+        )
+
+        if index == -1 and self.to_floor_combo.count() > 0:
+
+            # No destination floor chosen yet (or it was
+            # deleted) -- default to the first available
+            # floor rather than leaving Vertical Height/Travel
+            # Distance uncomputable.
+            index = 0
+
+            model.to_floor_id = (
+                self.to_floor_combo.itemData(index)
+            )
+
+        self.to_floor_combo.setCurrentIndex(index)
+
+        self.to_floor_combo.blockSignals(False)
+
+        self.to_floor_uuid.setText(model.to_floor_id)
+
+    # =====================================================
+
+    def update_stair_to_floor(self, index):
+
+        if self.current_item is None:
+            return
+
+        if self.current_item.model is None:
+            return
+
+        floor_id = self.to_floor_combo.itemData(index)
+
+        if floor_id is None:
+            return
+
+        self.current_item.model.to_floor_id = floor_id
+
+        self.refresh()
+
+    # =====================================================
+
+    def copy_to_floor_id(self):
+
+        QApplication.clipboard().setText(
+            self.to_floor_uuid.text()
+        )
+
+    # =====================================================
+
+    def update_floor_properties(self):
+
+        if self.current_item is None:
+            return
+
+        try:
+
+            elevation = float(
+                self.floor_elevation.text()
+            )
+
+            height = float(
+                self.floor_height.text()
+            )
+
+        except ValueError:
+
+            self.refresh()
+
+            return
+
+        self.current_item.elevation = elevation
+        self.current_item.height = height
+
+        self.refresh()
+
+        if self.floor_updated_callback:
+            self.floor_updated_callback(self.current_item)

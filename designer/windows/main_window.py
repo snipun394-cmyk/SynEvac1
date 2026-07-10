@@ -303,6 +303,13 @@ class MainWindow(QMainWindow):
             self.project_tree.refresh
         )
 
+        # Property Panel -> Floor List / Project Tree, so edits to
+        # Name/Elevation/Height made in the Properties dock are
+        # reflected back in the Floors dock and the tree.
+        self.property_panel.floor_updated_callback = (
+            self.on_floor_properties_changed
+        )
+
     # =====================================================
 
     def on_active_floor_changed(self, floor):
@@ -316,7 +323,24 @@ class MainWindow(QMainWindow):
         )
 
         if floor is not None:
+
             self.canvas.scene_obj.set_current_floor(floor)
+
+            self.property_panel.show_floor(floor)
+
+        else:
+
+            self.property_panel.clear()
+
+    # =====================================================
+
+    def on_floor_properties_changed(self, floor):
+
+        self.floor_list.refresh()
+
+        self.project_tree.refresh()
+
+        self.info_bar.update_floor(floor.name)
 
     # =====================================================
 
