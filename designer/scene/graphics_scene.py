@@ -9,11 +9,13 @@ from PyQt6.QtWidgets import (
     QGraphicsSimpleTextItem,
 )
 
+from designer.items.camera_item import CameraItem
 from designer.items.exit_item import ExitItem
 from designer.items.stair_item import StairItem
 from designer.items.zone_rectangle import ZoneRectangle
 
 from models.project import Project
+from models.camera import Camera
 from models.exit import Exit
 from models.staircase import Staircase
 from models.zone import Zone
@@ -202,7 +204,7 @@ class GraphicsScene(QGraphicsScene):
             if self.selected_item:
                 self.selected_item.set_selected(False)
 
-            if isinstance(item, (ZoneRectangle, ExitItem, StairItem)):
+            if isinstance(item, (ZoneRectangle, ExitItem, StairItem, CameraItem)):
 
                 self.selected_item = item
 
@@ -563,6 +565,46 @@ class GraphicsScene(QGraphicsScene):
 
             return
 
+        # -------------------------------------------------
+        # Camera Tool
+        #
+        # A Camera is a point object (position + rotation), not
+        # a two-point line like Exit/Stair, so it is placed with
+        # a single click instead of a click-drag-click sequence.
+        # -------------------------------------------------
+
+        if self.current_tool == "camera":
+
+            if self.current_floor.locked:
+                return
+
+            x, y = self.snap(
+                event.scenePos()
+            )
+
+            camera_model = Camera(
+                name=f"Camera {self.current_floor.camera_count + 1}",
+                position=(
+                    x / self.GRID_SIZE,
+                    y / self.GRID_SIZE,
+                ),
+                floor_id=self.current_floor.id,
+            )
+
+            self.current_floor.add_camera(
+                camera_model
+            )
+
+            camera_item = CameraItem(
+                x,
+                y,
+                model=camera_model,
+            )
+
+            self.addItem(camera_item)
+
+            return
+
         super().mousePressEvent(event)    # =====================================================
 
     def mouseMoveEvent(self, event):
@@ -686,6 +728,15 @@ class GraphicsScene(QGraphicsScene):
                         self.selected_item.model
                     )
 
+                elif isinstance(
+                    self.selected_item,
+                    CameraItem,
+                ):
+
+                    self.current_floor.remove_camera(
+                        self.selected_item.model
+                    )
+
                 self.removeItem(
                     self.selected_item
                 )
@@ -732,7 +783,7 @@ class GraphicsScene(QGraphicsScene):
 
             if isinstance(
                 item,
-                (ZoneRectangle, ExitItem, StairItem),
+                (ZoneRectangle, ExitItem, StairItem, CameraItem),
             ):
                 self.removeItem(item)
 
@@ -808,3 +859,20 @@ class GraphicsScene(QGraphicsScene):
             )
 
             self.addItem(stair_item)
+
+        for camera_obj in self.current_floor.cameras:
+
+            x, y = camera_obj.position
+
+            camera_item = CameraItem(
+                x * self.GRID_SIZE,
+                y * self.GRID_SIZE,
+                model=camera_obj,
+            )
+
+            camera_item.setFlag(
+                QGraphicsItem.GraphicsItemFlag.ItemIsMovable,
+                movable,
+            )
+
+            self.addItem(camera_item)

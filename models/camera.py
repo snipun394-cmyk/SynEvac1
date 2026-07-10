@@ -1,3 +1,5 @@
+import math
+
 from dataclasses import dataclass
 
 from models.base_object import BaseObject
@@ -12,9 +14,11 @@ class Camera(BaseObject):
 
     rotation: float = 0.0
 
-    field_of_view: float = 90.0
+    horizontal_fov: float = 90.0
 
-    range: float = 25.0
+    max_range: float = 25.0
+
+    mount_height: float = 3.0
 
     active: bool = True
 
@@ -37,6 +41,45 @@ class Camera(BaseObject):
         self.rotation = angle
 
     # =====================================================
+    # Derived Coverage Geometry
+    #
+    # Never stored -- always recomputed from Position, Rotation,
+    # Horizontal FOV and Max Range. A sector (fan) polygon: the
+    # camera position, followed by points along the arc from
+    # -fov/2 to +fov/2 around the facing direction. 0 degrees
+    # points along +x, increasing clockwise -- matching Qt's own
+    # rotation convention so the model and the graphics item
+    # agree without either depending on the other.
+    # =====================================================
+
+    def coverage_polygon(self, segments=24):
+
+        cx, cy = self.position
+
+        half_fov = self.horizontal_fov / 2
+
+        points = [(cx, cy)]
+
+        for i in range(segments + 1):
+
+            angle_degrees = (
+                self.rotation
+                - half_fov
+                + (self.horizontal_fov * i / segments)
+            )
+
+            angle_radians = math.radians(angle_degrees)
+
+            points.append(
+                (
+                    cx + self.max_range * math.cos(angle_radians),
+                    cy + self.max_range * math.sin(angle_radians),
+                )
+            )
+
+        return points
+
+    # =====================================================
 
     def to_dict(self):
 
@@ -50,9 +93,11 @@ class Camera(BaseObject):
 
             "rotation": self.rotation,
 
-            "field_of_view": self.field_of_view,
+            "horizontal_fov": self.horizontal_fov,
 
-            "range": self.range,
+            "max_range": self.max_range,
+
+            "mount_height": self.mount_height,
 
             "active": self.active,
 
@@ -106,14 +151,19 @@ class Camera(BaseObject):
                 0.0,
             ),
 
-            field_of_view=data.get(
-                "field_of_view",
+            horizontal_fov=data.get(
+                "horizontal_fov",
                 90.0,
             ),
 
-            range=data.get(
-                "range",
+            max_range=data.get(
+                "max_range",
                 25.0,
+            ),
+
+            mount_height=data.get(
+                "mount_height",
+                3.0,
             ),
 
             active=data.get(

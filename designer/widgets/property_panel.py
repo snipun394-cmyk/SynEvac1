@@ -205,6 +205,42 @@ class PropertyPanel(QWidget):
         ]
 
         # =====================================================
+        # Camera Geometry
+        # =====================================================
+
+        self.camera_x = QLineEdit()
+        self.camera_y = QLineEdit()
+
+        self.camera_rotation = QLineEdit()
+
+        self.camera_fov = QLineEdit()
+        self.camera_range = QLineEdit()
+        self.camera_mount_height = QLineEdit()
+
+        self.camera_active = QCheckBox()
+
+        layout.addRow("Position X (m)", self.camera_x)
+        layout.addRow("Position Y (m)", self.camera_y)
+
+        layout.addRow("Rotation (deg)", self.camera_rotation)
+
+        layout.addRow("Horizontal FOV (deg)", self.camera_fov)
+        layout.addRow("Maximum Range (m)", self.camera_range)
+        layout.addRow("Mount Height (m)", self.camera_mount_height)
+
+        layout.addRow("Active", self.camera_active)
+
+        self.camera_fields = [
+            self.camera_x,
+            self.camera_y,
+            self.camera_rotation,
+            self.camera_fov,
+            self.camera_range,
+            self.camera_mount_height,
+            self.camera_active,
+        ]
+
+        # =====================================================
         # Floor Properties
         #
         # Name reuses self.object_name (same as Zone/Exit/Stair)
@@ -303,6 +339,34 @@ class PropertyPanel(QWidget):
             self.copy_to_floor_id
         )
 
+        self.camera_x.editingFinished.connect(
+            self.update_camera_geometry
+        )
+
+        self.camera_y.editingFinished.connect(
+            self.update_camera_geometry
+        )
+
+        self.camera_rotation.editingFinished.connect(
+            self.update_camera_geometry
+        )
+
+        self.camera_fov.editingFinished.connect(
+            self.update_camera_geometry
+        )
+
+        self.camera_range.editingFinished.connect(
+            self.update_camera_geometry
+        )
+
+        self.camera_mount_height.editingFinished.connect(
+            self.update_camera_geometry
+        )
+
+        self.camera_active.toggled.connect(
+            self.update_camera_active
+        )
+
         self.floor_elevation.editingFinished.connect(
             self.update_floor_properties
         )
@@ -314,6 +378,7 @@ class PropertyPanel(QWidget):
         self._set_fields_visible(self.zone_fields, False)
         self._set_fields_visible(self.exit_fields, False)
         self._set_fields_visible(self.stair_fields, False)
+        self._set_fields_visible(self.camera_fields, False)
         self._set_fields_visible(self.floor_fields, False)
 
     # =====================================================
@@ -349,6 +414,7 @@ class PropertyPanel(QWidget):
         self._set_fields_visible(self.zone_fields, True)
         self._set_fields_visible(self.exit_fields, False)
         self._set_fields_visible(self.stair_fields, False)
+        self._set_fields_visible(self.camera_fields, False)
         self._set_fields_visible(self.floor_fields, False)
 
         self.object_type.setText("Zone")
@@ -411,6 +477,7 @@ class PropertyPanel(QWidget):
         self._set_fields_visible(self.zone_fields, False)
         self._set_fields_visible(self.exit_fields, True)
         self._set_fields_visible(self.stair_fields, False)
+        self._set_fields_visible(self.camera_fields, False)
         self._set_fields_visible(self.floor_fields, False)
 
         model = exit_item.model
@@ -476,6 +543,7 @@ class PropertyPanel(QWidget):
         self._set_fields_visible(self.zone_fields, False)
         self._set_fields_visible(self.exit_fields, False)
         self._set_fields_visible(self.stair_fields, True)
+        self._set_fields_visible(self.camera_fields, False)
         self._set_fields_visible(self.floor_fields, False)
 
         model = stair_item.model
@@ -545,6 +613,73 @@ class PropertyPanel(QWidget):
         self.to_floor_combo.blockSignals(False)
 
     # =====================================================
+    # Camera
+    # =====================================================
+
+    def show_camera(self, camera_item):
+
+        self.current_item = camera_item
+        self._refresh_handler = self.show_camera
+
+        self._set_fields_visible(self.zone_fields, False)
+        self._set_fields_visible(self.exit_fields, False)
+        self._set_fields_visible(self.stair_fields, False)
+        self._set_fields_visible(self.camera_fields, True)
+        self._set_fields_visible(self.floor_fields, False)
+
+        model = camera_item.model
+
+        self.object_type.setText("Camera")
+        self.object_id.setText(camera_item.object_id)
+
+        self.object_name.blockSignals(True)
+        self.camera_x.blockSignals(True)
+        self.camera_y.blockSignals(True)
+        self.camera_rotation.blockSignals(True)
+        self.camera_fov.blockSignals(True)
+        self.camera_range.blockSignals(True)
+        self.camera_mount_height.blockSignals(True)
+        self.camera_active.blockSignals(True)
+
+        self.object_name.setText(camera_item.object_name)
+
+        if model is not None:
+
+            px, py = model.position
+
+            self.camera_x.setText(f"{px:.2f}")
+            self.camera_y.setText(f"{py:.2f}")
+
+            self.camera_rotation.setText(
+                f"{model.rotation:.1f}"
+            )
+
+            self.camera_fov.setText(
+                f"{model.horizontal_fov:.1f}"
+            )
+
+            self.camera_range.setText(
+                f"{model.max_range:.2f}"
+            )
+
+            self.camera_mount_height.setText(
+                f"{model.mount_height:.2f}"
+            )
+
+            self.camera_active.setChecked(
+                model.active
+            )
+
+        self.object_name.blockSignals(False)
+        self.camera_x.blockSignals(False)
+        self.camera_y.blockSignals(False)
+        self.camera_rotation.blockSignals(False)
+        self.camera_fov.blockSignals(False)
+        self.camera_range.blockSignals(False)
+        self.camera_mount_height.blockSignals(False)
+        self.camera_active.blockSignals(False)
+
+    # =====================================================
     # Floor
     # =====================================================
 
@@ -556,6 +691,7 @@ class PropertyPanel(QWidget):
         self._set_fields_visible(self.zone_fields, False)
         self._set_fields_visible(self.exit_fields, False)
         self._set_fields_visible(self.stair_fields, False)
+        self._set_fields_visible(self.camera_fields, False)
         self._set_fields_visible(self.floor_fields, True)
 
         self.object_type.setText("Floor")
@@ -590,6 +726,7 @@ class PropertyPanel(QWidget):
         self._set_fields_visible(self.zone_fields, False)
         self._set_fields_visible(self.exit_fields, False)
         self._set_fields_visible(self.stair_fields, False)
+        self._set_fields_visible(self.camera_fields, False)
         self._set_fields_visible(self.floor_fields, False)
 
         self.object_type.setText(
@@ -643,6 +780,19 @@ class PropertyPanel(QWidget):
 
         self.vertical_height.setText("-")
         self.travel_distance.setText("-")
+
+        self.camera_x.clear()
+        self.camera_y.clear()
+
+        self.camera_rotation.clear()
+
+        self.camera_fov.clear()
+        self.camera_range.clear()
+        self.camera_mount_height.clear()
+
+        self.camera_active.blockSignals(True)
+        self.camera_active.setChecked(False)
+        self.camera_active.blockSignals(False)
 
         self.floor_elevation.clear()
         self.floor_height.clear()
@@ -876,6 +1026,69 @@ class PropertyPanel(QWidget):
         QApplication.clipboard().setText(
             self.to_floor_uuid.text()
         )
+
+    # =====================================================
+
+    def update_camera_geometry(self):
+
+        if self.current_item is None:
+            return
+
+        try:
+
+            x = float(self.camera_x.text())
+            y = float(self.camera_y.text())
+
+            rotation = float(
+                self.camera_rotation.text()
+            )
+
+            fov = float(self.camera_fov.text())
+            max_range = float(self.camera_range.text())
+
+            mount_height = float(
+                self.camera_mount_height.text()
+            )
+
+        except ValueError:
+
+            self.refresh()
+
+            return
+
+        self.current_item.setPos(
+            x * self.GRID_SIZE,
+            y * self.GRID_SIZE,
+        )
+
+        self.current_item.set_rotation_degrees(
+            rotation
+        )
+
+        if self.current_item.model is not None:
+
+            self.current_item.model.horizontal_fov = fov
+            self.current_item.model.max_range = max_range
+            self.current_item.model.mount_height = mount_height
+
+        self.current_item.refresh_geometry()
+
+        self.refresh()
+
+    # =====================================================
+
+    def update_camera_active(self):
+
+        if self.current_item is None:
+            return
+
+        if self.current_item.model is not None:
+
+            self.current_item.model.active = (
+                self.camera_active.isChecked()
+            )
+
+        self.current_item.refresh_geometry()
 
     # =====================================================
 

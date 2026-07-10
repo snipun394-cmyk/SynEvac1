@@ -9,6 +9,7 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
+from designer.items.camera_item import CameraItem
 from designer.items.exit_item import ExitItem
 from designer.items.stair_item import StairItem
 from designer.items.zone_rectangle import ZoneRectangle
@@ -280,6 +281,12 @@ class MainWindow(QMainWindow):
             lambda: self.change_tool(
                 "stair"
             )
+        )
+
+        self.toolbar.camera_action.triggered.connect(
+            lambda: self.change_tool(
+                "camera"
+            )
         )    # =====================================================
 
     def connect_signals(self):
@@ -362,6 +369,9 @@ class MainWindow(QMainWindow):
 
         elif isinstance(item, StairItem):
             self.property_panel.show_stair(item)
+
+        elif isinstance(item, CameraItem):
+            self.property_panel.show_camera(item)
 
         item.geometry_changed_callback = (
             lambda i: self.refresh_ui()
