@@ -9,8 +9,11 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
+from designer.items.exit_item import ExitItem
+from designer.items.zone_rectangle import ZoneRectangle
 from designer.scene.graphics_view import GraphicsView
 from designer.widgets.bottom_info_bar import BottomInfoBar
+from designer.widgets.floor_list import FloorList
 from designer.widgets.project_tree import ProjectTree
 from designer.widgets.property_panel import PropertyPanel
 from designer.widgets.toolbar import MainToolbar
@@ -87,6 +90,12 @@ class MainWindow(QMainWindow):
         self.project_tree = ProjectTree()
 
         # =====================================================
+        # Floor List
+        # =====================================================
+
+        self.floor_list = FloorList()
+
+        # =====================================================
         # Build UI
         # =====================================================
 
@@ -108,6 +117,10 @@ class MainWindow(QMainWindow):
 
         self.project_tree.set_project(
             self.canvas.scene_obj.project
+        )
+
+        self.floor_list.set_building(
+            self.canvas.scene_obj.project.building
         )
 
     # =====================================================
@@ -208,6 +221,20 @@ class MainWindow(QMainWindow):
             project_dock,
         )
 
+        floor_dock = QDockWidget(
+            "Floors",
+            self,
+        )
+
+        floor_dock.setWidget(
+            self.floor_list
+        )
+
+        self.addDockWidget(
+            Qt.DockWidgetArea.LeftDockWidgetArea,
+            floor_dock,
+        )
+
         property_dock = QDockWidget(
             "Properties",
             self,
@@ -236,6 +263,12 @@ class MainWindow(QMainWindow):
             lambda: self.change_tool(
                 "zone"
             )
+        )
+
+        self.toolbar.exit_action.triggered.connect(
+            lambda: self.change_tool(
+                "exit"
+            )
         )    # =====================================================
 
     def connect_signals(self):
@@ -250,11 +283,35 @@ class MainWindow(QMainWindow):
             self.on_selection_changed
         )
 
+        # Floor List
+        self.floor_list.active_floor_changed_callback = (
+            self.on_active_floor_changed
+        )
+
+        self.floor_list.floors_changed_callback = (
+            self.project_tree.refresh
+        )
+
     # =====================================================
 
-    def on_selection_changed(self, zone):
+    def on_active_floor_changed(self, floor):
 
-        if zone is None:
+        # Floor List -> MainWindow -> Building/Project -> GraphicsScene.
+        # MainWindow is the coordinator; GraphicsScene only ever
+        # receives an already-decided floor to render.
+
+        self.info_bar.update_floor(
+            floor.name if floor else "-"
+        )
+
+        if floor is not None:
+            self.canvas.scene_obj.set_current_floor(floor)
+
+    # =====================================================
+
+    def on_selection_changed(self, item):
+
+        if item is None:
 
             self.property_panel.clear()
 
@@ -262,10 +319,14 @@ class MainWindow(QMainWindow):
 
             return
 
-        self.property_panel.show_rectangle(zone)
+        if isinstance(item, ZoneRectangle):
+            self.property_panel.show_rectangle(item)
 
-        zone.geometry_changed_callback = (
-            lambda z: self.refresh_ui()
+        elif isinstance(item, ExitItem):
+            self.property_panel.show_line(item)
+
+        item.geometry_changed_callback = (
+            lambda i: self.refresh_ui()
         )
 
         self.project_tree.refresh()
@@ -342,13 +403,15 @@ class MainWindow(QMainWindow):
 
         self.canvas.scene_obj.project = project
 
-        if project.building:
+        if project.building and project.building.floor_count > 0:
 
             self.canvas.scene_obj.current_floor = (
-                project.building.floors[0]
+                project.building.ordered_floors()[0]
             )
 
         self.project_tree.set_project(project)
+
+        self.floor_list.set_building(project.building)
 
         self.canvas.scene_obj.rebuild_scene()
 

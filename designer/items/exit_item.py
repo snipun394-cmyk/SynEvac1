@@ -15,6 +15,16 @@ class ExitItem(QGraphicsLineItem):
 
         self.model = model
 
+        if self.model is not None:
+
+            self.object_id = self.model.id
+            self.object_name = self.model.name
+
+        else:
+
+            self.object_id = ""
+            self.object_name = ""
+
         self.setPos(x1, y1)
 
         self.default_pen = QPen(
@@ -52,6 +62,23 @@ class ExitItem(QGraphicsLineItem):
 
         if (
             change
+            == QGraphicsItem.GraphicsItemChange.ItemPositionChange
+        ):
+
+            x = (
+                round(value.x() / self.GRID_SIZE)
+                * self.GRID_SIZE
+            )
+
+            y = (
+                round(value.y() / self.GRID_SIZE)
+                * self.GRID_SIZE
+            )
+
+            return QPointF(x, y)
+
+        if (
+            change
             == QGraphicsItem.GraphicsItemChange.ItemPositionHasChanged
         ):
 
@@ -64,6 +91,17 @@ class ExitItem(QGraphicsLineItem):
                 )
 
         return super().itemChange(change, value)
+
+    # =====================================================
+
+    def setLine(self, *args):
+
+        super().setLine(*args)
+
+        self.sync_to_model()
+
+        if self.geometry_changed_callback:
+            self.geometry_changed_callback(self)
 
     # =====================================================
 
@@ -87,6 +125,20 @@ class ExitItem(QGraphicsLineItem):
             (self.pos().y() + line.y2())
             / self.GRID_SIZE,
         )
+
+        self.object_name = self.model.name
+
+    # =====================================================
+
+    def rename(self, name):
+
+        self.object_name = name
+
+        if self.model is not None:
+            self.model.name = name
+
+        if self.geometry_changed_callback:
+            self.geometry_changed_callback(self)
 
     # =====================================================
 

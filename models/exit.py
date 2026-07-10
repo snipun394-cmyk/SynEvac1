@@ -91,15 +91,58 @@ class Exit(BaseObject):
 
         return cls(
             id=data["id"],
-            name=data["name"],
+
+            name=data.get(
+                "name",
+                "",
+            ),
+
+            properties=data.get(
+                "properties",
+                {},
+            ),
+
+            created_at=data.get(
+                "created_at",
+                "",
+            ),
+
+            modified_at=data.get(
+                "modified_at",
+                "",
+            ),
+
             start_point=tuple(
-                data["start_point"]
+                data.get(
+                    "start_point",
+                    (0.0, 0.0),
+                )
             ),
+
             end_point=tuple(
-                data["end_point"]
+                data.get(
+                    "end_point",
+                    (0.0, 0.0),
+                )
             ),
-            floor_id=data["floor_id"],
-            width=data["width"],
-            capacity=data["capacity"],
-            is_blocked=data["is_blocked"],
+
+            floor_id=data.get(
+                "floor_id",
+                "",
+            ),
+
+            width=data.get(
+                "width",
+                1.20,
+            ),
+
+            capacity=data.get(
+                "capacity",
+                50,
+            ),
+
+            is_blocked=data.get(
+                "is_blocked",
+                False,
+            ),
         )

@@ -1,18 +1,16 @@
 from dataclasses import dataclass, field
+from datetime import datetime
+from uuid import uuid4
 
 from models.floor import Floor
-from models.zone import Zone
-from models.exit import Exit
-from models.staircase import Staircase
-from models.camera import Camera
-from models.detector import Detector
 
 
 @dataclass
 class Building:
 
-    id: str
     name: str
+
+    id: str = field(default_factory=lambda: str(uuid4()))
 
     floors: list[Floor] = field(default_factory=list)
 
@@ -48,6 +46,167 @@ class Building:
         return len(self.floors)
 
     # =====================================================
+    # Ordering
+    #
+    # display_order, not list position, is the source of
+    # truth for floor sequence. Consumers should read floor
+    # order through ordered_floors() rather than iterating
+    # self.floors directly.
+    # =====================================================
+
+    def ordered_floors(self):
+
+        return sorted(
+            self.floors,
+            key=lambda floor: floor.display_order,
+        )
+
+    # =====================================================
+
+    def _next_display_order(self):
+
+        if not self.floors:
+            return 0
+
+        return max(
+            floor.display_order
+            for floor in self.floors
+        ) + 1
+
+    # =====================================================
+    # Floor Management
+    # =====================================================
+
+    def create_floor(self, name, **kwargs):
+
+        floor = Floor(
+            name=name,
+            display_order=self._next_display_order(),
+            **kwargs,
+        )
+
+        self.add_floor(floor)
+
+        return floor
+
+    # =====================================================
+
+    def rename_floor(self, floor, name):
+
+        if floor not in self.floors:
+            return
+
+        floor.rename(name)
+
+    # =====================================================
+
+    def delete_floor(self, floor):
+
+        if floor not in self.floors:
+            return None
+
+        ordered_before = self.ordered_floors()
+        index = ordered_before.index(floor)
+
+        self.remove_floor(floor)
+
+        ordered_after = self.ordered_floors()
+
+        if not ordered_after:
+            return None
+
+        # Prefer the floor that was directly below the
+        # deleted one; fall back to whatever now occupies
+        # its position. This is a suggestion only -- Building
+        # does not track "the" active floor itself, that
+        # remains session/UI state (see architecture review).
+        fallback_index = max(
+            0,
+            min(index - 1, len(ordered_after) - 1),
+        )
+
+        return ordered_after[fallback_index]
+
+    # =====================================================
+
+    def duplicate_floor(self, floor, name=None):
+
+        if floor not in self.floors:
+            return None
+
+        # Implementation detail only: reuses to_dict()/
+        # from_dict() for this milestone's deep copy. Not a
+        # pattern to be relied on by other systems -- a
+        # dedicated clone mechanism is expected later.
+        new_floor = Floor.from_dict(floor.to_dict())
+
+        new_floor.id = str(uuid4())
+        new_floor.name = name or f"{floor.name} (Copy)"
+        new_floor.display_order = self._next_display_order()
+
+        now = datetime.now().isoformat()
+
+        for collection in (
+            new_floor.zones,
+            new_floor.exits,
+            new_floor.stairs,
+            new_floor.elevators,
+            new_floor.cameras,
+            new_floor.detectors,
+        ):
+
+            for engineering_object in collection:
+
+                engineering_object.id = str(uuid4())
+                engineering_object.floor_id = new_floor.id
+                engineering_object.created_at = now
+                engineering_object.modified_at = now
+
+        self.add_floor(new_floor)
+
+        return new_floor
+
+    # =====================================================
+
+    def move_floor_up(self, floor):
+
+        if floor not in self.floors:
+            return
+
+        ordered = self.ordered_floors()
+        index = ordered.index(floor)
+
+        if index == 0:
+            return
+
+        other = ordered[index - 1]
+
+        floor.display_order, other.display_order = (
+            other.display_order,
+            floor.display_order,
+        )
+
+    # =====================================================
+
+    def move_floor_down(self, floor):
+
+        if floor not in self.floors:
+            return
+
+        ordered = self.ordered_floors()
+        index = ordered.index(floor)
+
+        if index == len(ordered) - 1:
+            return
+
+        other = ordered[index + 1]
+
+        floor.display_order, other.display_order = (
+            other.display_order,
+            floor.display_order,
+        )
+
+    # =====================================================
 
     def to_dict(self):
 
@@ -72,90 +231,8 @@ class Building:
 
         for floor_data in data.get("floors", []):
 
-            floor = Floor(
-                id=floor_data["id"],
-                name=floor_data["name"],
-                elevation=floor_data.get(
-                    "elevation",
-                    0.0,
-                ),
-                floor_plan=floor_data.get(
-                    "floor_plan",
-                    "",
-                ),
+            building.add_floor(
+                Floor.from_dict(floor_data)
             )
-
-            # =============================================
-            # Zones
-            # =============================================
-
-            for zone_data in floor_data.get(
-                "zones",
-                [],
-            ):
-
-                floor.zones.append(
-                    Zone.from_dict(zone_data)
-                )
-
-            # =============================================
-            # Exits
-            # =============================================
-
-            for exit_data in floor_data.get(
-                "exits",
-                [],
-            ):
-
-                floor.exits.append(
-                    Exit.from_dict(exit_data)
-                )
-
-            # =============================================
-            # Stairs
-            # =============================================
-
-            for stair_data in floor_data.get(
-                "stairs",
-                [],
-            ):
-
-                floor.stairs.append(
-                    Staircase.from_dict(
-                        stair_data
-                    )
-                )
-
-            # =============================================
-            # Cameras
-            # =============================================
-
-            for camera_data in floor_data.get(
-                "cameras",
-                [],
-            ):
-
-                floor.cameras.append(
-                    Camera.from_dict(
-                        camera_data
-                    )
-                )
-
-            # =============================================
-            # Detectors
-            # =============================================
-
-            for detector_data in floor_data.get(
-                "detectors",
-                [],
-            ):
-
-                floor.detectors.append(
-                    Detector.from_dict(
-                        detector_data
-                    )
-                )
-
-            building.add_floor(floor)
 
         return building

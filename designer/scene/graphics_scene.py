@@ -1,17 +1,19 @@
 from PyQt6.QtCore import QRectF, Qt
 from PyQt6.QtGui import QColor, QBrush, QKeyEvent, QPen, QPixmap
 from PyQt6.QtWidgets import (
+    QGraphicsItem,
+    QGraphicsLineItem,
     QGraphicsPixmapItem,
     QGraphicsRectItem,
     QGraphicsScene,
     QGraphicsSimpleTextItem,
 )
 
+from designer.items.exit_item import ExitItem
 from designer.items.zone_rectangle import ZoneRectangle
 
 from models.project import Project
-from models.building import Building
-from models.floor import Floor
+from models.exit import Exit
 from models.zone import Zone
 
 
@@ -32,39 +34,32 @@ class GraphicsScene(QGraphicsScene):
 
         # -------------------------------------------------
         # Project Model
+        #
+        # GraphicsScene never constructs Building/Floor
+        # itself -- Project.new_default() is the domain-level
+        # factory that owns default project shape. GraphicsScene
+        # only renders/edits whichever floor it is told is
+        # current.
         # -------------------------------------------------
 
-        self.project = Project(
-            name="Untitled Project"
+        self.project = Project.new_default()
+
+        self.current_floor = (
+            self.project.building.ordered_floors()[0]
         )
-
-        building = Building(
-            id="B001",
-            name="Building",
-        )
-
-        floor = Floor(
-            id="F001",
-            name="Ground Floor",
-        )
-
-        building.add_floor(floor)
-
-        self.project.set_building(building)
-
-        self.current_floor = floor
 
         # -------------------------------------------------
 
         self.current_tool = "select"
 
-        self.floor_plan = None
+        self.floor_plan_item = None
 
         self.start_point = None
         self.preview_rect = None
+        self.preview_line = None
         self.dimension_text = None
 
-        self.selected_zone = None
+        self.selected_item = None
 
         self.selection_changed_callback = None
 
@@ -132,20 +127,58 @@ class GraphicsScene(QGraphicsScene):
         self.current_tool = tool
 
     # =====================================================
+    # Active Floor
+    #
+    # GraphicsScene never decides which floor is active --
+    # it only renders whichever floor it is handed. Activation
+    # is a MainWindow/Building concern (Floor List -> MainWindow
+    # -> Building -> here).
+    # =====================================================
+
+    def set_current_floor(self, floor):
+
+        if floor is None or floor is self.current_floor:
+            return
+
+        self.current_floor = floor
+
+        self.rebuild_scene()
+
+    # =====================================================
+    # Floor Plan
+    #
+    # The image path is owned by Floor.floor_plan. GraphicsScene
+    # only displays whatever the current floor's model says.
+    # =====================================================
 
     def load_floor_plan(self, image_path):
 
-        if self.floor_plan:
+        self.current_floor.floor_plan = image_path
 
-            self.removeItem(self.floor_plan)
+        self._display_floor_plan()
 
-        self.floor_plan = QGraphicsPixmapItem(
-            QPixmap(image_path)
+    # =====================================================
+
+    def _display_floor_plan(self):
+
+        if self.floor_plan_item:
+
+            self.removeItem(self.floor_plan_item)
+
+            self.floor_plan_item = None
+
+        path = self.current_floor.floor_plan
+
+        if not path:
+            return
+
+        self.floor_plan_item = QGraphicsPixmapItem(
+            QPixmap(path)
         )
 
-        self.floor_plan.setZValue(-100)
+        self.floor_plan_item.setZValue(-100)
 
-        self.addItem(self.floor_plan)
+        self.addItem(self.floor_plan_item)
 
     # =====================================================
 
@@ -164,12 +197,12 @@ class GraphicsScene(QGraphicsScene):
                 self.views()[0].transform(),
             )
 
-            if self.selected_zone:
-                self.selected_zone.set_selected(False)
+            if self.selected_item:
+                self.selected_item.set_selected(False)
 
-            if isinstance(item, ZoneRectangle):
+            if isinstance(item, (ZoneRectangle, ExitItem)):
 
-                self.selected_zone = item
+                self.selected_item = item
 
                 item.set_selected(True)
 
@@ -178,7 +211,7 @@ class GraphicsScene(QGraphicsScene):
 
             else:
 
-                self.selected_zone = None
+                self.selected_item = None
 
                 if self.selection_changed_callback:
                     self.selection_changed_callback(None)
@@ -190,6 +223,9 @@ class GraphicsScene(QGraphicsScene):
         # -------------------------------------------------
 
         if self.current_tool == "zone":
+
+            if self.current_floor.locked:
+                return
 
             x, y = self.snap(
                 event.scenePos()
@@ -301,6 +337,118 @@ class GraphicsScene(QGraphicsScene):
 
             return
 
+        # -------------------------------------------------
+        # Exit Tool
+        # -------------------------------------------------
+
+        if self.current_tool == "exit":
+
+            if self.current_floor.locked:
+                return
+
+            x, y = self.snap(
+                event.scenePos()
+            )
+
+            if self.start_point is None:
+
+                self.start_point = (x, y)
+
+                self.preview_line = QGraphicsLineItem(
+                    0,
+                    0,
+                    0,
+                    0,
+                )
+
+                self.preview_line.setPos(x, y)
+
+                self.preview_line.setPen(
+                    QPen(
+                        QColor(
+                            0,
+                            255,
+                            0,
+                        ),
+                        2,
+                    )
+                )
+
+                self.addItem(
+                    self.preview_line
+                )
+
+                self.dimension_text = (
+                    QGraphicsSimpleTextItem()
+                )
+
+                self.dimension_text.setBrush(
+                    QBrush(
+                        QColor(
+                            255,
+                            255,
+                            0,
+                        )
+                    )
+                )
+
+                self.dimension_text.setZValue(
+                    1000
+                )
+
+                self.addItem(
+                    self.dimension_text
+                )
+
+            else:
+
+                x1, y1 = self.start_point
+
+                exit_model = Exit(
+                    name=f"Exit {self.current_floor.exit_count + 1}",
+                    start_point=(
+                        x1 / self.GRID_SIZE,
+                        y1 / self.GRID_SIZE,
+                    ),
+                    end_point=(
+                        x / self.GRID_SIZE,
+                        y / self.GRID_SIZE,
+                    ),
+                    floor_id=self.current_floor.id,
+                )
+
+                self.current_floor.add_exit(
+                    exit_model
+                )
+
+                exit_item = ExitItem(
+                    x1,
+                    y1,
+                    x,
+                    y,
+                    model=exit_model,
+                )
+
+                self.addItem(exit_item)
+
+                if self.preview_line:
+
+                    self.removeItem(
+                        self.preview_line
+                    )
+
+                if self.dimension_text:
+
+                    self.removeItem(
+                        self.dimension_text
+                    )
+
+                self.preview_line = None
+                self.dimension_text = None
+                self.start_point = None
+
+            return
+
         super().mousePressEvent(event)    # =====================================================
 
     def mouseMoveEvent(self, event):
@@ -345,6 +493,42 @@ class GraphicsScene(QGraphicsScene):
                 rect.center().y() - 10,
             )
 
+        if (
+            self.current_tool == "exit"
+            and self.start_point
+            and self.preview_line
+        ):
+
+            x, y = self.snap(
+                event.scenePos()
+            )
+
+            x1, y1 = self.start_point
+
+            self.preview_line.setLine(
+                0,
+                0,
+                x - x1,
+                y - y1,
+            )
+
+            length = (
+                (
+                    (x - x1) ** 2
+                    + (y - y1) ** 2
+                )
+                ** 0.5
+            ) / self.GRID_SIZE
+
+            self.dimension_text.setText(
+                f"{length:.1f} m"
+            )
+
+            self.dimension_text.setPos(
+                (x1 + x) / 2 - 20,
+                (y1 + y) / 2 - 20,
+            )
+
         super().mouseMoveEvent(event)
 
     # =====================================================
@@ -356,22 +540,34 @@ class GraphicsScene(QGraphicsScene):
 
         if event.key() == Qt.Key.Key_Delete:
 
-            if self.selected_zone:
+            if (
+                self.selected_item
+                and not self.current_floor.locked
+            ):
 
-                if hasattr(
-                    self.selected_zone,
-                    "model",
+                if isinstance(
+                    self.selected_item,
+                    ZoneRectangle,
                 ):
 
                     self.current_floor.remove_zone(
-                        self.selected_zone.model
+                        self.selected_item.model
+                    )
+
+                elif isinstance(
+                    self.selected_item,
+                    ExitItem,
+                ):
+
+                    self.current_floor.remove_exit(
+                        self.selected_item.model
                     )
 
                 self.removeItem(
-                    self.selected_zone
+                    self.selected_item
                 )
 
-                self.selected_zone = None
+                self.selected_item = None
 
                 if (
                     self.selection_changed_callback
@@ -405,25 +601,32 @@ class GraphicsScene(QGraphicsScene):
 
     # =====================================================
 
-    def clear_project(self):
+    def clear_graphics_items(self):
 
+        # Clears rendered items only. Must never mutate the
+        # floor's model data -- Building/Floor own that.
         for item in list(self.items()):
 
             if isinstance(
                 item,
-                ZoneRectangle,
+                (ZoneRectangle, ExitItem),
             ):
                 self.removeItem(item)
 
-        self.current_floor.zones.clear()
-
-        self.selected_zone = None
+        self.selected_item = None
 
     # =====================================================
 
     def rebuild_scene(self):
 
-        self.clear_project()
+        self.clear_graphics_items()
+
+        if self.selection_changed_callback:
+            self.selection_changed_callback(None)
+
+        self._display_floor_plan()
+
+        movable = not self.current_floor.locked
 
         for zone in self.current_floor.zones:
 
@@ -436,4 +639,29 @@ class GraphicsScene(QGraphicsScene):
 
             rect.model = zone
 
+            rect.setFlag(
+                QGraphicsItem.GraphicsItemFlag.ItemIsMovable,
+                movable,
+            )
+
             self.addItem(rect)
+
+        for exit_obj in self.current_floor.exits:
+
+            x1, y1 = exit_obj.start_point
+            x2, y2 = exit_obj.end_point
+
+            exit_item = ExitItem(
+                x1 * self.GRID_SIZE,
+                y1 * self.GRID_SIZE,
+                x2 * self.GRID_SIZE,
+                y2 * self.GRID_SIZE,
+                model=exit_obj,
+            )
+
+            exit_item.setFlag(
+                QGraphicsItem.GraphicsItemFlag.ItemIsMovable,
+                movable,
+            )
+
+            self.addItem(exit_item)

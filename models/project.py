@@ -36,6 +36,20 @@ class Project:
 
     # =====================================================
 
+    @classmethod
+    def new_default(cls):
+
+        project = cls(name="Untitled Project")
+
+        building = Building(name="Building")
+        building.create_floor(name="Ground Floor")
+
+        project.set_building(building)
+
+        return project
+
+    # =====================================================
+
     def touch(self):
 
         self.modified_at = datetime.now().isoformat()
