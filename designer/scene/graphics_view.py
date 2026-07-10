@@ -1,4 +1,4 @@
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, QPoint
 from PyQt6.QtGui import QPainter
 from PyQt6.QtWidgets import QGraphicsView
 
@@ -40,13 +40,61 @@ class GraphicsView(QGraphicsView):
             QGraphicsView.ViewportAnchor.AnchorUnderMouse
         )
 
+        # NoDrag, not ScrollHandDrag -- ScrollHandDrag fights over the
+        # same left-button press/release pair that items need for their
+        # own ItemIsMovable dragging, which is what made stairs (and any
+        # other movable item) get stuck following the cursor until a
+        # second click. Panning now lives entirely on the middle mouse
+        # button below, so it never competes with left-click item drags.
         self.setDragMode(
-            QGraphicsView.DragMode.ScrollHandDrag
+            QGraphicsView.DragMode.NoDrag
         )
+
+        self._panning = False
+        self._pan_last_pos = QPoint()
+
+    # =====================================================
+
+    def mousePressEvent(self, event):
+
+        if event.button() == Qt.MouseButton.MiddleButton:
+
+            self._panning = True
+            self._pan_last_pos = event.pos()
+
+            self.viewport().setCursor(
+                Qt.CursorShape.ClosedHandCursor
+            )
+
+            event.accept()
+
+            return
+
+        super().mousePressEvent(event)
 
     # =====================================================
 
     def mouseMoveEvent(self, event):
+
+        if self._panning:
+
+            delta = event.pos() - self._pan_last_pos
+            self._pan_last_pos = event.pos()
+
+            h_bar = self.horizontalScrollBar()
+            v_bar = self.verticalScrollBar()
+
+            h_bar.setValue(
+                h_bar.value() - delta.x()
+            )
+
+            v_bar.setValue(
+                v_bar.value() - delta.y()
+            )
+
+            event.accept()
+
+            return
 
         scene_pos = self.mapToScene(event.pos())
 
@@ -60,6 +108,25 @@ class GraphicsView(QGraphicsView):
             )
 
         super().mouseMoveEvent(event)
+
+    # =====================================================
+
+    def mouseReleaseEvent(self, event):
+
+        if (
+            event.button() == Qt.MouseButton.MiddleButton
+            and self._panning
+        ):
+
+            self._panning = False
+
+            self.viewport().unsetCursor()
+
+            event.accept()
+
+            return
+
+        super().mouseReleaseEvent(event)
 
     # =====================================================
 
