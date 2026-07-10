@@ -286,7 +286,8 @@ class PropertyPanel(QWidget):
         self.assembly_x = QLineEdit()
         self.assembly_y = QLineEdit()
 
-        self.assembly_radius = QLineEdit()
+        self.assembly_length = QLineEdit()
+        self.assembly_width = QLineEdit()
 
         # Optional -- left blank means "unspecified", not zero
         # capacity; see update_assembly_point_geometry().
@@ -299,7 +300,8 @@ class PropertyPanel(QWidget):
         layout.addRow("Position X (m)", self.assembly_x)
         layout.addRow("Position Y (m)", self.assembly_y)
 
-        layout.addRow("Radius (m)", self.assembly_radius)
+        layout.addRow("Length (m)", self.assembly_length)
+        layout.addRow("Width (m)", self.assembly_width)
 
         layout.addRow("Capacity", self.assembly_capacity)
 
@@ -310,7 +312,8 @@ class PropertyPanel(QWidget):
         self.assembly_fields = [
             self.assembly_x,
             self.assembly_y,
-            self.assembly_radius,
+            self.assembly_length,
+            self.assembly_width,
             self.assembly_capacity,
             self.assembly_description,
             self.assembly_active,
@@ -475,7 +478,11 @@ class PropertyPanel(QWidget):
             self.update_assembly_point_geometry
         )
 
-        self.assembly_radius.editingFinished.connect(
+        self.assembly_length.editingFinished.connect(
+            self.update_assembly_point_geometry
+        )
+
+        self.assembly_width.editingFinished.connect(
             self.update_assembly_point_geometry
         )
 
@@ -904,7 +911,8 @@ class PropertyPanel(QWidget):
         self.object_name.blockSignals(True)
         self.assembly_x.blockSignals(True)
         self.assembly_y.blockSignals(True)
-        self.assembly_radius.blockSignals(True)
+        self.assembly_length.blockSignals(True)
+        self.assembly_width.blockSignals(True)
         self.assembly_capacity.blockSignals(True)
         self.assembly_description.blockSignals(True)
         self.assembly_active.blockSignals(True)
@@ -918,8 +926,12 @@ class PropertyPanel(QWidget):
             self.assembly_x.setText(f"{px:.2f}")
             self.assembly_y.setText(f"{py:.2f}")
 
-            self.assembly_radius.setText(
-                f"{model.radius:.2f}"
+            self.assembly_length.setText(
+                f"{model.length:.2f}"
+            )
+
+            self.assembly_width.setText(
+                f"{model.width:.2f}"
             )
 
             self.assembly_capacity.setText(
@@ -937,7 +949,8 @@ class PropertyPanel(QWidget):
         self.object_name.blockSignals(False)
         self.assembly_x.blockSignals(False)
         self.assembly_y.blockSignals(False)
-        self.assembly_radius.blockSignals(False)
+        self.assembly_length.blockSignals(False)
+        self.assembly_width.blockSignals(False)
         self.assembly_capacity.blockSignals(False)
         self.assembly_description.blockSignals(False)
         self.assembly_active.blockSignals(False)
@@ -1079,7 +1092,8 @@ class PropertyPanel(QWidget):
         self.assembly_x.clear()
         self.assembly_y.clear()
 
-        self.assembly_radius.clear()
+        self.assembly_length.clear()
+        self.assembly_width.clear()
         self.assembly_capacity.clear()
         self.assembly_description.clear()
 
@@ -1466,7 +1480,8 @@ class PropertyPanel(QWidget):
             x = float(self.assembly_x.text())
             y = float(self.assembly_y.text())
 
-            radius = float(self.assembly_radius.text())
+            length = float(self.assembly_length.text())
+            width = float(self.assembly_width.text())
 
             capacity_text = self.assembly_capacity.text().strip()
             capacity = int(capacity_text) if capacity_text else 0
@@ -1482,7 +1497,7 @@ class PropertyPanel(QWidget):
             y * self.GRID_SIZE,
         )
 
-        self.current_item.set_radius(radius)
+        self.current_item.set_size(length, width)
 
         if self.current_item.model is not None:
 

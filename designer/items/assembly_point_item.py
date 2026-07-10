@@ -1,21 +1,22 @@
 from PyQt6.QtCore import QPointF
 from PyQt6.QtGui import QBrush, QColor, QPen
-from PyQt6.QtWidgets import QGraphicsItem, QGraphicsEllipseItem
+from PyQt6.QtWidgets import QGraphicsItem, QGraphicsRectItem
 
 
-class AssemblyPointItem(QGraphicsEllipseItem):
+class AssemblyPointItem(QGraphicsRectItem):
 
     GRID_SIZE = 50
 
-    def __init__(self, x, y, radius, model=None):
+    def __init__(self, x, y, length, width, model=None):
 
-        radius_px = radius * self.GRID_SIZE
+        length_px = length * self.GRID_SIZE
+        width_px = width * self.GRID_SIZE
 
         super().__init__(
-            -radius_px,
-            -radius_px,
-            radius_px * 2,
-            radius_px * 2,
+            -length_px / 2,
+            -width_px / 2,
+            length_px,
+            width_px,
         )
 
         self.model = model
@@ -101,9 +102,13 @@ class AssemblyPointItem(QGraphicsEllipseItem):
             self.pos().y() / self.GRID_SIZE,
         )
 
-        self.model.radius = (
-            self.rect().width() / 2
-        ) / self.GRID_SIZE
+        self.model.length = (
+            self.rect().width() / self.GRID_SIZE
+        )
+
+        self.model.width = (
+            self.rect().height() / self.GRID_SIZE
+        )
 
         self.object_name = self.model.name
 
@@ -145,15 +150,16 @@ class AssemblyPointItem(QGraphicsEllipseItem):
 
     # =====================================================
 
-    def set_radius(self, radius_m):
+    def set_size(self, length_m, width_m):
 
-        radius_px = radius_m * self.GRID_SIZE
+        length_px = length_m * self.GRID_SIZE
+        width_px = width_m * self.GRID_SIZE
 
         self.setRect(
-            -radius_px,
-            -radius_px,
-            radius_px * 2,
-            radius_px * 2,
+            -length_px / 2,
+            -width_px / 2,
+            length_px,
+            width_px,
         )
 
     # =====================================================

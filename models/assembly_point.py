@@ -10,7 +10,8 @@ class AssemblyPoint(BaseObject):
 
     floor_id: str = ""
 
-    radius: float = 5.0
+    length: float = 10.0
+    width: float = 10.0
 
     # Optional -- 0 means unspecified/no capacity limit, same
     # convention Zone uses for max_occupancy.
@@ -44,7 +45,9 @@ class AssemblyPoint(BaseObject):
 
             "floor_id": self.floor_id,
 
-            "radius": self.radius,
+            "length": self.length,
+
+            "width": self.width,
 
             "capacity": self.capacity,
 
@@ -97,9 +100,14 @@ class AssemblyPoint(BaseObject):
                 "",
             ),
 
-            radius=data.get(
-                "radius",
-                5.0,
+            length=data.get(
+                "length",
+                10.0,
+            ),
+
+            width=data.get(
+                "width",
+                10.0,
             ),
 
             capacity=data.get(

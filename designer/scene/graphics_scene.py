@@ -680,7 +680,8 @@ class GraphicsScene(QGraphicsScene):
             assembly_point_item = AssemblyPointItem(
                 x,
                 y,
-                assembly_point_model.radius,
+                assembly_point_model.length,
+                assembly_point_model.width,
                 model=assembly_point_model,
             )
 
@@ -1002,7 +1003,8 @@ class GraphicsScene(QGraphicsScene):
             assembly_point_item = AssemblyPointItem(
                 x * self.GRID_SIZE,
                 y * self.GRID_SIZE,
-                assembly_point_obj.radius,
+                assembly_point_obj.length,
+                assembly_point_obj.width,
                 model=assembly_point_obj,
             )
 
