@@ -9,6 +9,7 @@ from PyQt6.QtWidgets import (
     QGraphicsSimpleTextItem,
 )
 
+from designer.items.assembly_point_item import AssemblyPointItem
 from designer.items.camera_item import CameraItem
 from designer.items.detector_item import DetectorItem
 from designer.items.exit_item import ExitItem
@@ -16,6 +17,7 @@ from designer.items.stair_item import StairItem
 from designer.items.zone_rectangle import ZoneRectangle
 
 from models.project import Project
+from models.assembly_point import AssemblyPoint
 from models.camera import Camera
 from models.detector import Detector
 from models.exit import Exit
@@ -206,7 +208,7 @@ class GraphicsScene(QGraphicsScene):
             if self.selected_item:
                 self.selected_item.set_selected(False)
 
-            if isinstance(item, (ZoneRectangle, ExitItem, StairItem, CameraItem, DetectorItem)):
+            if isinstance(item, (ZoneRectangle, ExitItem, StairItem, CameraItem, DetectorItem, AssemblyPointItem)):
 
                 self.selected_item = item
 
@@ -646,6 +648,46 @@ class GraphicsScene(QGraphicsScene):
 
             return
 
+        # -------------------------------------------------
+        # Assembly Point Tool
+        #
+        # A permanent, purely geometric safe-destination marker,
+        # placed with a single click just like Camera/Detector.
+        # -------------------------------------------------
+
+        if self.current_tool == "assembly_point":
+
+            if self.current_floor.locked:
+                return
+
+            x, y = self.snap(
+                event.scenePos()
+            )
+
+            assembly_point_model = AssemblyPoint(
+                name=f"Assembly Point {self.current_floor.assembly_point_count + 1}",
+                position=(
+                    x / self.GRID_SIZE,
+                    y / self.GRID_SIZE,
+                ),
+                floor_id=self.current_floor.id,
+            )
+
+            self.current_floor.add_assembly_point(
+                assembly_point_model
+            )
+
+            assembly_point_item = AssemblyPointItem(
+                x,
+                y,
+                assembly_point_model.radius,
+                model=assembly_point_model,
+            )
+
+            self.addItem(assembly_point_item)
+
+            return
+
         super().mousePressEvent(event)    # =====================================================
 
     def mouseMoveEvent(self, event):
@@ -787,6 +829,15 @@ class GraphicsScene(QGraphicsScene):
                         self.selected_item.model
                     )
 
+                elif isinstance(
+                    self.selected_item,
+                    AssemblyPointItem,
+                ):
+
+                    self.current_floor.remove_assembly_point(
+                        self.selected_item.model
+                    )
+
                 self.removeItem(
                     self.selected_item
                 )
@@ -833,7 +884,7 @@ class GraphicsScene(QGraphicsScene):
 
             if isinstance(
                 item,
-                (ZoneRectangle, ExitItem, StairItem, CameraItem, DetectorItem),
+                (ZoneRectangle, ExitItem, StairItem, CameraItem, DetectorItem, AssemblyPointItem),
             ):
                 self.removeItem(item)
 
@@ -943,3 +994,21 @@ class GraphicsScene(QGraphicsScene):
             )
 
             self.addItem(detector_item)
+
+        for assembly_point_obj in self.current_floor.assembly_points:
+
+            x, y = assembly_point_obj.position
+
+            assembly_point_item = AssemblyPointItem(
+                x * self.GRID_SIZE,
+                y * self.GRID_SIZE,
+                assembly_point_obj.radius,
+                model=assembly_point_obj,
+            )
+
+            assembly_point_item.setFlag(
+                QGraphicsItem.GraphicsItemFlag.ItemIsMovable,
+                movable,
+            )
+
+            self.addItem(assembly_point_item)

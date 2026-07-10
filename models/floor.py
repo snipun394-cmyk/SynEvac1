@@ -7,6 +7,7 @@ from models.staircase import Staircase
 from models.elevator import Elevator
 from models.camera import Camera
 from models.detector import Detector
+from models.assembly_point import AssemblyPoint
 
 
 @dataclass
@@ -43,6 +44,8 @@ class Floor:
 
     cameras: list[Camera] = field(default_factory=list)
     detectors: list[Detector] = field(default_factory=list)
+
+    assembly_points: list[AssemblyPoint] = field(default_factory=list)
 
     # =====================================================
 
@@ -129,6 +132,19 @@ class Floor:
             self.detectors.remove(detector)
 
     # =====================================================
+    # Assembly Points
+    # =====================================================
+
+    def add_assembly_point(self, assembly_point):
+
+        self.assembly_points.append(assembly_point)
+
+    def remove_assembly_point(self, assembly_point):
+
+        if assembly_point in self.assembly_points:
+            self.assembly_points.remove(assembly_point)
+
+    # =====================================================
 
     @property
     def zone_count(self):
@@ -154,6 +170,11 @@ class Floor:
     def detector_count(self):
 
         return len(self.detectors)
+
+    @property
+    def assembly_point_count(self):
+
+        return len(self.assembly_points)
 
     # =====================================================
 
@@ -201,6 +222,11 @@ class Floor:
             "detectors": [
                 detector.to_dict()
                 for detector in self.detectors
+            ],
+
+            "assembly_points": [
+                assembly_point.to_dict()
+                for assembly_point in self.assembly_points
             ],
         }
 
@@ -283,6 +309,12 @@ class Floor:
 
             floor.detectors.append(
                 Detector.from_dict(detector_data)
+            )
+
+        for assembly_point_data in data.get("assembly_points", []):
+
+            floor.assembly_points.append(
+                AssemblyPoint.from_dict(assembly_point_data)
             )
 
         return floor

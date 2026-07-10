@@ -53,6 +53,12 @@ class MainToolbar(QToolBar):
         self.detector_action = QAction("Detector", self)
 
         # =====================================================
+        # Safety
+        # =====================================================
+
+        self.assembly_point_action = QAction("Assembly Point", self)
+
+        # =====================================================
         # View
         # =====================================================
 
@@ -88,6 +94,10 @@ class MainToolbar(QToolBar):
 
         self.addAction(self.camera_action)
         self.addAction(self.detector_action)
+
+        self.addSeparator()
+
+        self.addAction(self.assembly_point_action)
 
         self.addSeparator()
 

@@ -280,6 +280,43 @@ class PropertyPanel(QWidget):
         ]
 
         # =====================================================
+        # Assembly Point Geometry
+        # =====================================================
+
+        self.assembly_x = QLineEdit()
+        self.assembly_y = QLineEdit()
+
+        self.assembly_radius = QLineEdit()
+
+        # Optional -- left blank means "unspecified", not zero
+        # capacity; see update_assembly_point_geometry().
+        self.assembly_capacity = QLineEdit()
+
+        self.assembly_description = QLineEdit()
+
+        self.assembly_active = QCheckBox()
+
+        layout.addRow("Position X (m)", self.assembly_x)
+        layout.addRow("Position Y (m)", self.assembly_y)
+
+        layout.addRow("Radius (m)", self.assembly_radius)
+
+        layout.addRow("Capacity", self.assembly_capacity)
+
+        layout.addRow("Description", self.assembly_description)
+
+        layout.addRow("Active", self.assembly_active)
+
+        self.assembly_fields = [
+            self.assembly_x,
+            self.assembly_y,
+            self.assembly_radius,
+            self.assembly_capacity,
+            self.assembly_description,
+            self.assembly_active,
+        ]
+
+        # =====================================================
         # Floor Properties
         #
         # Name reuses self.object_name (same as Zone/Exit/Stair)
@@ -430,6 +467,30 @@ class PropertyPanel(QWidget):
             self.update_detector_active
         )
 
+        self.assembly_x.editingFinished.connect(
+            self.update_assembly_point_geometry
+        )
+
+        self.assembly_y.editingFinished.connect(
+            self.update_assembly_point_geometry
+        )
+
+        self.assembly_radius.editingFinished.connect(
+            self.update_assembly_point_geometry
+        )
+
+        self.assembly_capacity.editingFinished.connect(
+            self.update_assembly_point_geometry
+        )
+
+        self.assembly_description.editingFinished.connect(
+            self.update_assembly_point_geometry
+        )
+
+        self.assembly_active.toggled.connect(
+            self.update_assembly_point_active
+        )
+
         self.floor_elevation.editingFinished.connect(
             self.update_floor_properties
         )
@@ -443,6 +504,7 @@ class PropertyPanel(QWidget):
         self._set_fields_visible(self.stair_fields, False)
         self._set_fields_visible(self.camera_fields, False)
         self._set_fields_visible(self.detector_fields, False)
+        self._set_fields_visible(self.assembly_fields, False)
         self._set_fields_visible(self.floor_fields, False)
 
     # =====================================================
@@ -480,6 +542,7 @@ class PropertyPanel(QWidget):
         self._set_fields_visible(self.stair_fields, False)
         self._set_fields_visible(self.camera_fields, False)
         self._set_fields_visible(self.detector_fields, False)
+        self._set_fields_visible(self.assembly_fields, False)
         self._set_fields_visible(self.floor_fields, False)
 
         self.object_type.setText("Zone")
@@ -544,6 +607,7 @@ class PropertyPanel(QWidget):
         self._set_fields_visible(self.stair_fields, False)
         self._set_fields_visible(self.camera_fields, False)
         self._set_fields_visible(self.detector_fields, False)
+        self._set_fields_visible(self.assembly_fields, False)
         self._set_fields_visible(self.floor_fields, False)
 
         model = exit_item.model
@@ -611,6 +675,7 @@ class PropertyPanel(QWidget):
         self._set_fields_visible(self.stair_fields, True)
         self._set_fields_visible(self.camera_fields, False)
         self._set_fields_visible(self.detector_fields, False)
+        self._set_fields_visible(self.assembly_fields, False)
         self._set_fields_visible(self.floor_fields, False)
 
         model = stair_item.model
@@ -693,6 +758,7 @@ class PropertyPanel(QWidget):
         self._set_fields_visible(self.stair_fields, False)
         self._set_fields_visible(self.camera_fields, True)
         self._set_fields_visible(self.detector_fields, False)
+        self._set_fields_visible(self.assembly_fields, False)
         self._set_fields_visible(self.floor_fields, False)
 
         model = camera_item.model
@@ -761,6 +827,7 @@ class PropertyPanel(QWidget):
         self._set_fields_visible(self.stair_fields, False)
         self._set_fields_visible(self.camera_fields, False)
         self._set_fields_visible(self.detector_fields, True)
+        self._set_fields_visible(self.assembly_fields, False)
         self._set_fields_visible(self.floor_fields, False)
 
         model = detector_item.model
@@ -813,6 +880,69 @@ class PropertyPanel(QWidget):
         self.detector_active.blockSignals(False)
 
     # =====================================================
+    # Assembly Point
+    # =====================================================
+
+    def show_assembly_point(self, assembly_point_item):
+
+        self.current_item = assembly_point_item
+        self._refresh_handler = self.show_assembly_point
+
+        self._set_fields_visible(self.zone_fields, False)
+        self._set_fields_visible(self.exit_fields, False)
+        self._set_fields_visible(self.stair_fields, False)
+        self._set_fields_visible(self.camera_fields, False)
+        self._set_fields_visible(self.detector_fields, False)
+        self._set_fields_visible(self.assembly_fields, True)
+        self._set_fields_visible(self.floor_fields, False)
+
+        model = assembly_point_item.model
+
+        self.object_type.setText("Assembly Point")
+        self.object_id.setText(assembly_point_item.object_id)
+
+        self.object_name.blockSignals(True)
+        self.assembly_x.blockSignals(True)
+        self.assembly_y.blockSignals(True)
+        self.assembly_radius.blockSignals(True)
+        self.assembly_capacity.blockSignals(True)
+        self.assembly_description.blockSignals(True)
+        self.assembly_active.blockSignals(True)
+
+        self.object_name.setText(assembly_point_item.object_name)
+
+        if model is not None:
+
+            px, py = model.position
+
+            self.assembly_x.setText(f"{px:.2f}")
+            self.assembly_y.setText(f"{py:.2f}")
+
+            self.assembly_radius.setText(
+                f"{model.radius:.2f}"
+            )
+
+            self.assembly_capacity.setText(
+                str(model.capacity) if model.capacity else ""
+            )
+
+            self.assembly_description.setText(
+                model.description
+            )
+
+            self.assembly_active.setChecked(
+                model.active
+            )
+
+        self.object_name.blockSignals(False)
+        self.assembly_x.blockSignals(False)
+        self.assembly_y.blockSignals(False)
+        self.assembly_radius.blockSignals(False)
+        self.assembly_capacity.blockSignals(False)
+        self.assembly_description.blockSignals(False)
+        self.assembly_active.blockSignals(False)
+
+    # =====================================================
     # Floor
     # =====================================================
 
@@ -826,6 +956,7 @@ class PropertyPanel(QWidget):
         self._set_fields_visible(self.stair_fields, False)
         self._set_fields_visible(self.camera_fields, False)
         self._set_fields_visible(self.detector_fields, False)
+        self._set_fields_visible(self.assembly_fields, False)
         self._set_fields_visible(self.floor_fields, True)
 
         self.object_type.setText("Floor")
@@ -862,6 +993,7 @@ class PropertyPanel(QWidget):
         self._set_fields_visible(self.stair_fields, False)
         self._set_fields_visible(self.camera_fields, False)
         self._set_fields_visible(self.detector_fields, False)
+        self._set_fields_visible(self.assembly_fields, False)
         self._set_fields_visible(self.floor_fields, False)
 
         self.object_type.setText(
@@ -943,6 +1075,17 @@ class PropertyPanel(QWidget):
         self.detector_active.blockSignals(True)
         self.detector_active.setChecked(False)
         self.detector_active.blockSignals(False)
+
+        self.assembly_x.clear()
+        self.assembly_y.clear()
+
+        self.assembly_radius.clear()
+        self.assembly_capacity.clear()
+        self.assembly_description.clear()
+
+        self.assembly_active.blockSignals(True)
+        self.assembly_active.setChecked(False)
+        self.assembly_active.blockSignals(False)
 
         self.floor_elevation.clear()
         self.floor_height.clear()
@@ -1307,6 +1450,60 @@ class PropertyPanel(QWidget):
 
             self.current_item.model.active = (
                 self.detector_active.isChecked()
+            )
+
+        self.current_item.refresh_geometry()
+
+    # =====================================================
+
+    def update_assembly_point_geometry(self):
+
+        if self.current_item is None:
+            return
+
+        try:
+
+            x = float(self.assembly_x.text())
+            y = float(self.assembly_y.text())
+
+            radius = float(self.assembly_radius.text())
+
+            capacity_text = self.assembly_capacity.text().strip()
+            capacity = int(capacity_text) if capacity_text else 0
+
+        except ValueError:
+
+            self.refresh()
+
+            return
+
+        self.current_item.setPos(
+            x * self.GRID_SIZE,
+            y * self.GRID_SIZE,
+        )
+
+        self.current_item.set_radius(radius)
+
+        if self.current_item.model is not None:
+
+            self.current_item.model.capacity = capacity
+            self.current_item.model.description = (
+                self.assembly_description.text()
+            )
+
+        self.refresh()
+
+    # =====================================================
+
+    def update_assembly_point_active(self):
+
+        if self.current_item is None:
+            return
+
+        if self.current_item.model is not None:
+
+            self.current_item.model.active = (
+                self.assembly_active.isChecked()
             )
 
         self.current_item.refresh_geometry()

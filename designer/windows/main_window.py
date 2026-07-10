@@ -9,6 +9,7 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
+from designer.items.assembly_point_item import AssemblyPointItem
 from designer.items.camera_item import CameraItem
 from designer.items.detector_item import DetectorItem
 from designer.items.exit_item import ExitItem
@@ -294,6 +295,12 @@ class MainWindow(QMainWindow):
             lambda: self.change_tool(
                 "detector"
             )
+        )
+
+        self.toolbar.assembly_point_action.triggered.connect(
+            lambda: self.change_tool(
+                "assembly_point"
+            )
         )    # =====================================================
 
     def connect_signals(self):
@@ -382,6 +389,9 @@ class MainWindow(QMainWindow):
 
         elif isinstance(item, DetectorItem):
             self.property_panel.show_detector(item)
+
+        elif isinstance(item, AssemblyPointItem):
+            self.property_panel.show_assembly_point(item)
 
         item.geometry_changed_callback = (
             lambda i: self.refresh_ui()

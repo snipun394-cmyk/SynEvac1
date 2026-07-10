@@ -159,6 +159,24 @@ class ProjectTree(QTreeWidget):
                     )
                 )
 
+            # =============================================
+            # Assembly Points
+            # =============================================
+
+            assembly_points_root = QTreeWidgetItem(
+                ["Assembly Points"]
+            )
+
+            floor_item.addChild(assembly_points_root)
+
+            for assembly_point in floor.assembly_points:
+
+                assembly_points_root.addChild(
+                    QTreeWidgetItem(
+                        [assembly_point.name]
+                    )
+                )
+
         building.setExpanded(True)
 
         for i in range(building.childCount()):
