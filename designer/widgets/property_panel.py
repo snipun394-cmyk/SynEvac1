@@ -10,6 +10,7 @@ from PyQt6.QtWidgets import (
     QPushButton,
 )
 
+from models.detector import Detector
 from models.floor import Floor
 
 
@@ -241,6 +242,47 @@ class PropertyPanel(QWidget):
         ]
 
         # =====================================================
+        # Detector Geometry
+        # =====================================================
+
+        self.detector_x = QLineEdit()
+        self.detector_y = QLineEdit()
+
+        self.detector_coverage_width = QLineEdit()
+        self.detector_coverage_length = QLineEdit()
+
+        self.detector_mount_height = QLineEdit()
+
+        self.detector_type = QComboBox()
+
+        for detector_type in Detector.DETECTOR_TYPES:
+            self.detector_type.addItem(detector_type)
+
+        self.detector_active = QCheckBox()
+
+        layout.addRow("Position X (m)", self.detector_x)
+        layout.addRow("Position Y (m)", self.detector_y)
+
+        layout.addRow("Coverage Width (m)", self.detector_coverage_width)
+        layout.addRow("Coverage Length (m)", self.detector_coverage_length)
+
+        layout.addRow("Mount Height (m)", self.detector_mount_height)
+
+        layout.addRow("Detector Type", self.detector_type)
+
+        layout.addRow("Active", self.detector_active)
+
+        self.detector_fields = [
+            self.detector_x,
+            self.detector_y,
+            self.detector_coverage_width,
+            self.detector_coverage_length,
+            self.detector_mount_height,
+            self.detector_type,
+            self.detector_active,
+        ]
+
+        # =====================================================
         # Floor Properties
         #
         # Name reuses self.object_name (same as Zone/Exit/Stair)
@@ -367,6 +409,34 @@ class PropertyPanel(QWidget):
             self.update_camera_active
         )
 
+        self.detector_x.editingFinished.connect(
+            self.update_detector_geometry
+        )
+
+        self.detector_y.editingFinished.connect(
+            self.update_detector_geometry
+        )
+
+        self.detector_coverage_width.editingFinished.connect(
+            self.update_detector_geometry
+        )
+
+        self.detector_coverage_length.editingFinished.connect(
+            self.update_detector_geometry
+        )
+
+        self.detector_mount_height.editingFinished.connect(
+            self.update_detector_geometry
+        )
+
+        self.detector_type.currentIndexChanged.connect(
+            self.update_detector_type
+        )
+
+        self.detector_active.toggled.connect(
+            self.update_detector_active
+        )
+
         self.floor_elevation.editingFinished.connect(
             self.update_floor_properties
         )
@@ -379,6 +449,7 @@ class PropertyPanel(QWidget):
         self._set_fields_visible(self.exit_fields, False)
         self._set_fields_visible(self.stair_fields, False)
         self._set_fields_visible(self.camera_fields, False)
+        self._set_fields_visible(self.detector_fields, False)
         self._set_fields_visible(self.floor_fields, False)
 
     # =====================================================
@@ -415,6 +486,7 @@ class PropertyPanel(QWidget):
         self._set_fields_visible(self.exit_fields, False)
         self._set_fields_visible(self.stair_fields, False)
         self._set_fields_visible(self.camera_fields, False)
+        self._set_fields_visible(self.detector_fields, False)
         self._set_fields_visible(self.floor_fields, False)
 
         self.object_type.setText("Zone")
@@ -478,6 +550,7 @@ class PropertyPanel(QWidget):
         self._set_fields_visible(self.exit_fields, True)
         self._set_fields_visible(self.stair_fields, False)
         self._set_fields_visible(self.camera_fields, False)
+        self._set_fields_visible(self.detector_fields, False)
         self._set_fields_visible(self.floor_fields, False)
 
         model = exit_item.model
@@ -544,6 +617,7 @@ class PropertyPanel(QWidget):
         self._set_fields_visible(self.exit_fields, False)
         self._set_fields_visible(self.stair_fields, True)
         self._set_fields_visible(self.camera_fields, False)
+        self._set_fields_visible(self.detector_fields, False)
         self._set_fields_visible(self.floor_fields, False)
 
         model = stair_item.model
@@ -625,6 +699,7 @@ class PropertyPanel(QWidget):
         self._set_fields_visible(self.exit_fields, False)
         self._set_fields_visible(self.stair_fields, False)
         self._set_fields_visible(self.camera_fields, True)
+        self._set_fields_visible(self.detector_fields, False)
         self._set_fields_visible(self.floor_fields, False)
 
         model = camera_item.model
@@ -680,6 +755,77 @@ class PropertyPanel(QWidget):
         self.camera_active.blockSignals(False)
 
     # =====================================================
+    # Detector
+    # =====================================================
+
+    def show_detector(self, detector_item):
+
+        self.current_item = detector_item
+        self._refresh_handler = self.show_detector
+
+        self._set_fields_visible(self.zone_fields, False)
+        self._set_fields_visible(self.exit_fields, False)
+        self._set_fields_visible(self.stair_fields, False)
+        self._set_fields_visible(self.camera_fields, False)
+        self._set_fields_visible(self.detector_fields, True)
+        self._set_fields_visible(self.floor_fields, False)
+
+        model = detector_item.model
+
+        self.object_type.setText("Detector")
+        self.object_id.setText(detector_item.object_id)
+
+        self.object_name.blockSignals(True)
+        self.detector_x.blockSignals(True)
+        self.detector_y.blockSignals(True)
+        self.detector_coverage_width.blockSignals(True)
+        self.detector_coverage_length.blockSignals(True)
+        self.detector_mount_height.blockSignals(True)
+        self.detector_type.blockSignals(True)
+        self.detector_active.blockSignals(True)
+
+        self.object_name.setText(detector_item.object_name)
+
+        if model is not None:
+
+            px, py = model.position
+
+            self.detector_x.setText(f"{px:.2f}")
+            self.detector_y.setText(f"{py:.2f}")
+
+            self.detector_coverage_width.setText(
+                f"{model.coverage_width:.2f}"
+            )
+
+            self.detector_coverage_length.setText(
+                f"{model.coverage_length:.2f}"
+            )
+
+            self.detector_mount_height.setText(
+                f"{model.mount_height:.2f}"
+            )
+
+            index = self.detector_type.findText(
+                model.detector_type
+            )
+
+            if index != -1:
+                self.detector_type.setCurrentIndex(index)
+
+            self.detector_active.setChecked(
+                model.active
+            )
+
+        self.object_name.blockSignals(False)
+        self.detector_x.blockSignals(False)
+        self.detector_y.blockSignals(False)
+        self.detector_coverage_width.blockSignals(False)
+        self.detector_coverage_length.blockSignals(False)
+        self.detector_mount_height.blockSignals(False)
+        self.detector_type.blockSignals(False)
+        self.detector_active.blockSignals(False)
+
+    # =====================================================
     # Floor
     # =====================================================
 
@@ -692,6 +838,7 @@ class PropertyPanel(QWidget):
         self._set_fields_visible(self.exit_fields, False)
         self._set_fields_visible(self.stair_fields, False)
         self._set_fields_visible(self.camera_fields, False)
+        self._set_fields_visible(self.detector_fields, False)
         self._set_fields_visible(self.floor_fields, True)
 
         self.object_type.setText("Floor")
@@ -727,6 +874,7 @@ class PropertyPanel(QWidget):
         self._set_fields_visible(self.exit_fields, False)
         self._set_fields_visible(self.stair_fields, False)
         self._set_fields_visible(self.camera_fields, False)
+        self._set_fields_visible(self.detector_fields, False)
         self._set_fields_visible(self.floor_fields, False)
 
         self.object_type.setText(
@@ -793,6 +941,22 @@ class PropertyPanel(QWidget):
         self.camera_active.blockSignals(True)
         self.camera_active.setChecked(False)
         self.camera_active.blockSignals(False)
+
+        self.detector_x.clear()
+        self.detector_y.clear()
+
+        self.detector_coverage_width.clear()
+        self.detector_coverage_length.clear()
+
+        self.detector_mount_height.clear()
+
+        self.detector_type.blockSignals(True)
+        self.detector_type.setCurrentIndex(0)
+        self.detector_type.blockSignals(False)
+
+        self.detector_active.blockSignals(True)
+        self.detector_active.setChecked(False)
+        self.detector_active.blockSignals(False)
 
         self.floor_elevation.clear()
         self.floor_height.clear()
@@ -1086,6 +1250,82 @@ class PropertyPanel(QWidget):
 
             self.current_item.model.active = (
                 self.camera_active.isChecked()
+            )
+
+        self.current_item.refresh_geometry()
+
+    # =====================================================
+
+    def update_detector_geometry(self):
+
+        if self.current_item is None:
+            return
+
+        try:
+
+            x = float(self.detector_x.text())
+            y = float(self.detector_y.text())
+
+            coverage_width = float(
+                self.detector_coverage_width.text()
+            )
+
+            coverage_length = float(
+                self.detector_coverage_length.text()
+            )
+
+            mount_height = float(
+                self.detector_mount_height.text()
+            )
+
+        except ValueError:
+
+            self.refresh()
+
+            return
+
+        self.current_item.setPos(
+            x * self.GRID_SIZE,
+            y * self.GRID_SIZE,
+        )
+
+        if self.current_item.model is not None:
+
+            self.current_item.model.coverage_width = coverage_width
+            self.current_item.model.coverage_length = coverage_length
+            self.current_item.model.mount_height = mount_height
+
+        self.current_item.refresh_geometry()
+
+        self.refresh()
+
+    # =====================================================
+
+    def update_detector_type(self, index):
+
+        if self.current_item is None:
+            return
+
+        if self.current_item.model is None:
+            return
+
+        self.current_item.model.detector_type = (
+            self.detector_type.itemText(index)
+        )
+
+        self.current_item.refresh_geometry()
+
+    # =====================================================
+
+    def update_detector_active(self):
+
+        if self.current_item is None:
+            return
+
+        if self.current_item.model is not None:
+
+            self.current_item.model.active = (
+                self.detector_active.isChecked()
             )
 
         self.current_item.refresh_geometry()

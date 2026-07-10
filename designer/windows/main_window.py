@@ -10,6 +10,7 @@ from PyQt6.QtWidgets import (
 )
 
 from designer.items.camera_item import CameraItem
+from designer.items.detector_item import DetectorItem
 from designer.items.exit_item import ExitItem
 from designer.items.stair_item import StairItem
 from designer.items.zone_rectangle import ZoneRectangle
@@ -287,6 +288,12 @@ class MainWindow(QMainWindow):
             lambda: self.change_tool(
                 "camera"
             )
+        )
+
+        self.toolbar.detector_action.triggered.connect(
+            lambda: self.change_tool(
+                "detector"
+            )
         )    # =====================================================
 
     def connect_signals(self):
@@ -372,6 +379,9 @@ class MainWindow(QMainWindow):
 
         elif isinstance(item, CameraItem):
             self.property_panel.show_camera(item)
+
+        elif isinstance(item, DetectorItem):
+            self.property_panel.show_detector(item)
 
         item.geometry_changed_callback = (
             lambda i: self.refresh_ui()
