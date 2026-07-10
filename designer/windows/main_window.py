@@ -3,6 +3,7 @@ from PyQt6.QtGui import QAction
 from PyQt6.QtWidgets import (
     QFileDialog,
     QDockWidget,
+    QInputDialog,
     QMainWindow,
     QSizePolicy,
     QVBoxLayout,
@@ -345,6 +346,17 @@ class MainWindow(QMainWindow):
             self.on_floor_properties_changed
         )
 
+        # Stair Tool -- GraphicsScene never shows dialogs or
+        # switches its own floor (same convention FloorList
+        # already follows); it asks MainWindow to do both.
+        self.canvas.scene_obj.floor_picker_callback = (
+            self.choose_stair_destination_floor
+        )
+
+        self.canvas.scene_obj.floor_switch_requested_callback = (
+            self.switch_to_floor
+        )
+
     # =====================================================
 
     def on_active_floor_changed(self, floor):
@@ -376,6 +388,44 @@ class MainWindow(QMainWindow):
         self.project_tree.refresh()
 
         self.info_bar.update_floor(floor.name)
+
+    # =====================================================
+
+    def choose_stair_destination_floor(self, candidate_floors):
+
+        names = [
+            floor.name
+            for floor in candidate_floors
+        ]
+
+        choice, ok = QInputDialog.getItem(
+            self,
+            "Stair Destination",
+            "Connect to floor:",
+            names,
+            0,
+            False,
+        )
+
+        if not ok:
+            return None
+
+        return candidate_floors[
+            names.index(choice)
+        ]
+
+    # =====================================================
+
+    def switch_to_floor(self, floor):
+
+        # Reuses the exact same path FloorList's own selection
+        # takes (set_active_floor -> active_floor_changed_callback
+        # -> on_active_floor_changed), so the Floors dock, canvas,
+        # and Property Panel all stay in sync with a Tool-driven
+        # switch exactly as they would with a user click.
+        self.floor_list.set_active_floor(floor)
+
+        self.floor_list.refresh()
 
     # =====================================================
 

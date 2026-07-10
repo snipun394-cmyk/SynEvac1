@@ -162,17 +162,25 @@ class PropertyPanel(QWidget):
 
         # =====================================================
         # Stair Geometry
+        #
+        # A Staircase is one shared object with a position on
+        # EACH of the two floors it connects -- both are always
+        # shown and editable here regardless of which marker
+        # (entrance or landing) is actually selected, since
+        # selecting either one edits the same engineering object.
+        # Editing the position that belongs to the floor NOT
+        # currently displayed still writes straight onto the
+        # model; only the marker actually on screen gets its
+        # on-canvas position moved (see update_stair_geometry()).
         # =====================================================
 
-        self.stair_start_x = QLineEdit()
-        self.stair_start_y = QLineEdit()
+        # Read-only -- From Floor is fixed at placement time by
+        # the guided Stair Tool workflow, not editable after the
+        # fact from here.
+        self.stair_from_floor = QLabel("-")
 
-        self.stair_end_x = QLineEdit()
-        self.stair_end_y = QLineEdit()
-
-        self.stair_width = QLineEdit()
-
-        self.stair_length = QLabel("-")
+        self.stair_from_x = QLineEdit()
+        self.stair_from_y = QLineEdit()
 
         # Destination floor -- names are shown, but the combo
         # stores each floor's UUID as itemData so the model
@@ -193,21 +201,25 @@ class PropertyPanel(QWidget):
         to_floor_id_layout.addWidget(self.copy_to_floor_button)
         to_floor_id_row.setLayout(to_floor_id_layout)
 
+        self.stair_to_x = QLineEdit()
+        self.stair_to_y = QLineEdit()
+
+        self.stair_width = QLineEdit()
+
         # Derived (Building/Floor elevations) -- never editable.
         self.vertical_height = QLabel("-")
         self.travel_distance = QLabel("-")
 
-        layout.addRow("Start X (m)", self.stair_start_x)
-        layout.addRow("Start Y (m)", self.stair_start_y)
-        layout.addRow("End X (m)", self.stair_end_x)
-        layout.addRow("End Y (m)", self.stair_end_y)
-
-        layout.addRow("Length", self.stair_length)
-
-        layout.addRow("Stair Width (m)", self.stair_width)
+        layout.addRow("From Floor", self.stair_from_floor)
+        layout.addRow("From Position X (m)", self.stair_from_x)
+        layout.addRow("From Position Y (m)", self.stair_from_y)
 
         layout.addRow("To Floor", self.to_floor_combo)
         layout.addRow("To Floor ID", to_floor_id_row)
+        layout.addRow("To Position X (m)", self.stair_to_x)
+        layout.addRow("To Position Y (m)", self.stair_to_y)
+
+        layout.addRow("Stair Width (m)", self.stair_width)
 
         layout.addRow(
             "Vertical Height (m)",
@@ -220,14 +232,14 @@ class PropertyPanel(QWidget):
         )
 
         self.stair_fields = [
-            self.stair_start_x,
-            self.stair_start_y,
-            self.stair_end_x,
-            self.stair_end_y,
-            self.stair_length,
-            self.stair_width,
+            self.stair_from_floor,
+            self.stair_from_x,
+            self.stair_from_y,
             self.to_floor_combo,
             to_floor_id_row,
+            self.stair_to_x,
+            self.stair_to_y,
+            self.stair_width,
             self.vertical_height,
             self.travel_distance,
         ]
@@ -531,19 +543,19 @@ class PropertyPanel(QWidget):
             self.update_exit_blocked
         )
 
-        self.stair_start_x.editingFinished.connect(
+        self.stair_from_x.editingFinished.connect(
             self.update_stair_geometry
         )
 
-        self.stair_start_y.editingFinished.connect(
+        self.stair_from_y.editingFinished.connect(
             self.update_stair_geometry
         )
 
-        self.stair_end_x.editingFinished.connect(
+        self.stair_to_x.editingFinished.connect(
             self.update_stair_geometry
         )
 
-        self.stair_end_y.editingFinished.connect(
+        self.stair_to_y.editingFinished.connect(
             self.update_stair_geometry
         )
 
@@ -919,10 +931,10 @@ class PropertyPanel(QWidget):
         self.object_id.setText(stair_item.object_id)
 
         self.object_name.blockSignals(True)
-        self.stair_start_x.blockSignals(True)
-        self.stair_start_y.blockSignals(True)
-        self.stair_end_x.blockSignals(True)
-        self.stair_end_y.blockSignals(True)
+        self.stair_from_x.blockSignals(True)
+        self.stair_from_y.blockSignals(True)
+        self.stair_to_x.blockSignals(True)
+        self.stair_to_y.blockSignals(True)
         self.stair_width.blockSignals(True)
         self.to_floor_combo.blockSignals(True)
 
@@ -930,21 +942,33 @@ class PropertyPanel(QWidget):
 
         if model is not None:
 
-            sx, sy = model.start_point
-            ex, ey = model.end_point
+            fx, fy = model.from_position
+            tx, ty = model.to_position
 
-            self.stair_start_x.setText(f"{sx:.2f}")
-            self.stair_start_y.setText(f"{sy:.2f}")
-            self.stair_end_x.setText(f"{ex:.2f}")
-            self.stair_end_y.setText(f"{ey:.2f}")
-
-            self.stair_length.setText(
-                f"{model.length:.2f} m"
-            )
+            self.stair_from_x.setText(f"{fx:.2f}")
+            self.stair_from_y.setText(f"{fy:.2f}")
+            self.stair_to_x.setText(f"{tx:.2f}")
+            self.stair_to_y.setText(f"{ty:.2f}")
 
             self.stair_width.setText(
                 f"{model.width:.2f}"
             )
+
+            if self.building is not None:
+
+                from_floor = self.building.get_floor(
+                    model.from_floor_id
+                )
+
+                self.stair_from_floor.setText(
+                    from_floor.name
+                    if from_floor is not None
+                    else "-"
+                )
+
+            else:
+
+                self.stair_from_floor.setText("-")
 
             self._populate_to_floor_combo(model)
 
@@ -972,10 +996,10 @@ class PropertyPanel(QWidget):
                 self.travel_distance.setText("-")
 
         self.object_name.blockSignals(False)
-        self.stair_start_x.blockSignals(False)
-        self.stair_start_y.blockSignals(False)
-        self.stair_end_x.blockSignals(False)
-        self.stair_end_y.blockSignals(False)
+        self.stair_from_x.blockSignals(False)
+        self.stair_from_y.blockSignals(False)
+        self.stair_to_x.blockSignals(False)
+        self.stair_to_y.blockSignals(False)
         self.stair_width.blockSignals(False)
         self.to_floor_combo.blockSignals(False)
 
@@ -1469,13 +1493,14 @@ class PropertyPanel(QWidget):
         self.blocked.setChecked(False)
         self.blocked.blockSignals(False)
 
-        self.stair_start_x.clear()
-        self.stair_start_y.clear()
-        self.stair_end_x.clear()
-        self.stair_end_y.clear()
+        self.stair_from_floor.setText("-")
+
+        self.stair_from_x.clear()
+        self.stair_from_y.clear()
+        self.stair_to_x.clear()
+        self.stair_to_y.clear()
 
         self.stair_width.clear()
-        self.stair_length.setText("-")
 
         self.to_floor_combo.blockSignals(True)
         self.to_floor_combo.clear()
@@ -1722,13 +1747,13 @@ class PropertyPanel(QWidget):
 
         try:
 
-            x1 = float(self.stair_start_x.text())
-            y1 = float(self.stair_start_y.text())
+            fx = float(self.stair_from_x.text())
+            fy = float(self.stair_from_y.text())
 
-            x2 = float(self.stair_end_x.text())
-            y2 = float(self.stair_end_y.text())
+            tx = float(self.stair_to_x.text())
+            ty = float(self.stair_to_y.text())
 
-            w = float(self.stair_width.text())
+            width = float(self.stair_width.text())
 
         except ValueError:
 
@@ -1736,21 +1761,37 @@ class PropertyPanel(QWidget):
 
             return
 
-        self.current_item.setPos(
-            x1 * self.GRID_SIZE,
-            y1 * self.GRID_SIZE,
-        )
+        model = self.current_item.model
 
-        self.current_item.setLine(
-            0,
-            0,
-            (x2 - x1) * self.GRID_SIZE,
-            (y2 - y1) * self.GRID_SIZE,
-        )
+        if model is not None:
 
-        if self.current_item.model is not None:
+            # Both ends are always writable from here regardless
+            # of which marker is actually selected -- the other
+            # end's floor may not even be the one on screen right
+            # now, so there is no graphics item to move for it;
+            # writing the model directly is enough, and it will
+            # render correctly next time that floor is shown.
+            model.from_position = (fx, fy)
+            model.to_position = (tx, ty)
+            model.width = width
 
-            self.current_item.model.width = w
+        # Only the marker actually being displayed gets its
+        # on-canvas position moved.
+        if self.current_item.role == "from":
+
+            self.current_item.setPos(
+                fx * self.GRID_SIZE,
+                fy * self.GRID_SIZE,
+            )
+
+        else:
+
+            self.current_item.setPos(
+                tx * self.GRID_SIZE,
+                ty * self.GRID_SIZE,
+            )
+
+        self.current_item.refresh_geometry()
 
         self.refresh()
 

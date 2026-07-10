@@ -71,6 +71,26 @@ class GraphicsScene(QGraphicsScene):
         self.preview_line = None
         self.dimension_text = None
 
+        # -------------------------------------------------
+        # Stair Tool -- a Staircase is a single object spanning
+        # two floors, placed across a guided three-step flow
+        # (entrance click -> destination floor chosen -> landing
+        # click). pending_stair holds the in-progress model
+        # between those steps; it is never added to any floor's
+        # Floor.stairs until the landing click completes it, so
+        # a cancelled placement never leaves a half-formed stair
+        # behind. GraphicsScene never shows the destination-floor
+        # picker itself or switches floors on its own -- both are
+        # requested through callbacks MainWindow provides, the
+        # same "Scene never owns dialogs/coordination" convention
+        # FloorList/MainWindow already follow.
+        # -------------------------------------------------
+
+        self.pending_stair = None
+
+        self.floor_picker_callback = None
+        self.floor_switch_requested_callback = None
+
         self.selected_item = None
 
         self.selection_changed_callback = None
@@ -135,6 +155,13 @@ class GraphicsScene(QGraphicsScene):
     # =====================================================
 
     def set_tool(self, tool):
+
+        if tool != "stair":
+
+            # Abandon an in-progress placement rather than let a
+            # stale entrance from a previous "stair" session get
+            # silently completed by a later, unrelated click.
+            self.pending_stair = None
 
         self.current_tool = tool
 
@@ -463,113 +490,101 @@ class GraphicsScene(QGraphicsScene):
 
         # -------------------------------------------------
         # Stair Tool
+        #
+        # Guided three-step flow, spread across two clicks with a
+        # floor switch in between rather than a drag-preview (the
+        # two ends aren't even on the same canvas, so a live
+        # preview line between them makes no sense here the way
+        # it does for Exit/Door). Nothing is added to any floor's
+        # model until the landing click completes it.
         # -------------------------------------------------
 
         if self.current_tool == "stair":
 
-            if self.current_floor.locked:
-                return
+            if self.pending_stair is None:
 
-            x, y = self.snap(
-                event.scenePos()
-            )
+                if self.current_floor.locked:
+                    return
 
-            if self.start_point is None:
-
-                self.start_point = (x, y)
-
-                self.preview_line = QGraphicsLineItem(
-                    0,
-                    0,
-                    0,
-                    0,
+                x, y = self.snap(
+                    event.scenePos()
                 )
 
-                self.preview_line.setPos(x, y)
+                candidate_floors = [
+                    floor
+                    for floor in self.project.building.ordered_floors()
+                    if floor.id != self.current_floor.id
+                    and not floor.locked
+                ]
 
-                self.preview_line.setPen(
-                    QPen(
-                        QColor(
-                            180,
-                            120,
-                            40,
-                        ),
-                        2,
-                    )
+                if not candidate_floors:
+                    return
+
+                if self.floor_picker_callback is None:
+                    return
+
+                destination_floor = self.floor_picker_callback(
+                    candidate_floors
                 )
 
-                self.addItem(
-                    self.preview_line
-                )
+                if destination_floor is None:
+                    return
 
-                self.dimension_text = (
-                    QGraphicsSimpleTextItem()
-                )
-
-                self.dimension_text.setBrush(
-                    QBrush(
-                        QColor(
-                            255,
-                            255,
-                            0,
-                        )
-                    )
-                )
-
-                self.dimension_text.setZValue(
-                    1000
-                )
-
-                self.addItem(
-                    self.dimension_text
-                )
-
-            else:
-
-                x1, y1 = self.start_point
-
-                stair_model = Staircase(
+                self.pending_stair = Staircase(
                     name=f"Stair {self.current_floor.stair_count + 1}",
-                    start_point=(
-                        x1 / self.GRID_SIZE,
-                        y1 / self.GRID_SIZE,
-                    ),
-                    end_point=(
+                    from_position=(
                         x / self.GRID_SIZE,
                         y / self.GRID_SIZE,
                     ),
                     from_floor_id=self.current_floor.id,
+                    to_floor_id=destination_floor.id,
                 )
 
-                self.current_floor.add_stair(
-                    stair_model
+                if self.floor_switch_requested_callback:
+
+                    self.floor_switch_requested_callback(
+                        destination_floor
+                    )
+
+            else:
+
+                if self.current_floor.locked:
+
+                    # Shouldn't happen -- locked floors are
+                    # filtered out of the picker -- but never
+                    # complete a placement on one regardless.
+                    self.pending_stair = None
+
+                    return
+
+                x, y = self.snap(
+                    event.scenePos()
+                )
+
+                self.pending_stair.to_position = (
+                    x / self.GRID_SIZE,
+                    y / self.GRID_SIZE,
+                )
+
+                from_floor = self.project.building.get_floor(
+                    self.pending_stair.from_floor_id
+                )
+
+                from_floor.add_stair(
+                    self.pending_stair
                 )
 
                 stair_item = StairItem(
-                    x1,
-                    y1,
                     x,
                     y,
-                    model=stair_model,
+                    self.pending_stair.width,
+                    "to",
+                    model=self.pending_stair,
                 )
 
                 self.addItem(stair_item)
 
-                if self.preview_line:
-
-                    self.removeItem(
-                        self.preview_line
-                    )
-
-                if self.dimension_text:
-
-                    self.removeItem(
-                        self.dimension_text
-                    )
-
-                self.preview_line = None
-                self.dimension_text = None
-                self.start_point = None
+                self.pending_stair = None
 
             return
 
@@ -977,7 +992,7 @@ class GraphicsScene(QGraphicsScene):
             )
 
         if (
-            self.current_tool in ("exit", "stair", "door")
+            self.current_tool in ("exit", "door")
             and self.start_point
             and self.preview_line
         ):
@@ -1051,9 +1066,21 @@ class GraphicsScene(QGraphicsScene):
                     StairItem,
                 ):
 
-                    self.current_floor.remove_stair(
-                        self.selected_item.model
+                    # A Staircase always lives in its from_floor's
+                    # Floor.stairs, regardless of which marker
+                    # (entrance or landing) was actually clicked --
+                    # deleting either one must remove the whole
+                    # shared object, not just fail silently when
+                    # viewed from the to-floor.
+                    owning_floor = self.project.building.get_floor(
+                        self.selected_item.model.from_floor_id
                     )
+
+                    if owning_floor is not None:
+
+                        owning_floor.remove_stair(
+                            self.selected_item.model
+                        )
 
                 elif isinstance(
                     self.selected_item,
@@ -1203,16 +1230,23 @@ class GraphicsScene(QGraphicsScene):
 
             self.addItem(exit_item)
 
+        # A Staircase is one object rendered on BOTH floors it
+        # connects: the entrance marker where it's actually owned
+        # (self.current_floor.stairs), and the landing marker by
+        # scanning every other floor for a stair whose
+        # to_floor_id names this floor. Both markers share the
+        # same model -- selecting/moving/deleting either one acts
+        # on the one real Staircase.
+
         for stair_obj in self.current_floor.stairs:
 
-            x1, y1 = stair_obj.start_point
-            x2, y2 = stair_obj.end_point
+            x, y = stair_obj.from_position
 
             stair_item = StairItem(
-                x1 * self.GRID_SIZE,
-                y1 * self.GRID_SIZE,
-                x2 * self.GRID_SIZE,
-                y2 * self.GRID_SIZE,
+                x * self.GRID_SIZE,
+                y * self.GRID_SIZE,
+                stair_obj.width,
+                "from",
                 model=stair_obj,
             )
 
@@ -1222,6 +1256,33 @@ class GraphicsScene(QGraphicsScene):
             )
 
             self.addItem(stair_item)
+
+        for other_floor in self.project.building.floors:
+
+            if other_floor.id == self.current_floor.id:
+                continue
+
+            for stair_obj in other_floor.stairs:
+
+                if stair_obj.to_floor_id != self.current_floor.id:
+                    continue
+
+                x, y = stair_obj.to_position
+
+                stair_item = StairItem(
+                    x * self.GRID_SIZE,
+                    y * self.GRID_SIZE,
+                    stair_obj.width,
+                    "to",
+                    model=stair_obj,
+                )
+
+                stair_item.setFlag(
+                    QGraphicsItem.GraphicsItemFlag.ItemIsMovable,
+                    movable,
+                )
+
+                self.addItem(stair_item)
 
         for camera_obj in self.current_floor.cameras:
 

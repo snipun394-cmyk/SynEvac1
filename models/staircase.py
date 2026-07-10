@@ -8,21 +8,23 @@ from models.base_object import BaseObject
 @dataclass
 class Staircase(BaseObject):
 
-    # Reviewed for a future single-staircase (Staircase + Landing)
-    # redesign: today this object lives only in the "from" floor's
-    # Floor.stairs and is never rendered on to_floor_id's floor.
-    # Adding a `to_position` field (a landing coordinate on the
-    # destination floor) needs no migration -- to_dict()/from_dict()
-    # already follow the additive-field, default-via-.get() pattern
-    # used by every object in this codebase, so older .syn files
-    # would simply fall back to the field's default. Ownership can
-    # stay on Floor.stairs; GraphicsScene would just need to also
-    # render a landing marker on whichever floor matches
-    # to_floor_id by scanning the Building it already has a
-    # reference to. No serialization changes are required to leave
-    # this open.
-    start_point: tuple = (0.0, 0.0)
-    end_point: tuple = (0.0, 0.0)
+    # A Staircase is one physical connector spanning exactly two
+    # floors -- one object, one id, rendered on both floors (see
+    # GraphicsScene.rebuild_scene()). from_position/to_position
+    # are each in their OWN floor's coordinate space; there is no
+    # meaningful single "length" or "center" between them the way
+    # there is for a same-floor line like Exit/Door, so those
+    # properties (and a unified move()) were deliberately dropped
+    # when this was redesigned from a single-floor line.
+    #
+    # A future "Stairwell" grouping object (multiple flights
+    # belonging to one physical stairwell spanning >2 floors) can
+    # be layered on top of this without changing what a Staircase
+    # is or how Navigation Graph reads it: Stairwell would just
+    # hold a list of Staircase ids, each Staircase still being the
+    # one flight = one graph edge unit it is today.
+    from_position: tuple = (0.0, 0.0)
+    to_position: tuple = (0.0, 0.0)
 
     from_floor_id: str = ""
     to_floor_id: str = ""
@@ -37,51 +39,6 @@ class Staircase(BaseObject):
         self.object_type = "Staircase"
 
     # =====================================================
-
-    @property
-    def center(self):
-
-        return (
-            (
-                self.start_point[0]
-                + self.end_point[0]
-            )
-            / 2,
-            (
-                self.start_point[1]
-                + self.end_point[1]
-            )
-            / 2,
-        )
-
-    # =====================================================
-
-    @property
-    def length(self):
-
-        x1, y1 = self.start_point
-        x2, y2 = self.end_point
-
-        return (
-            (x2 - x1) ** 2
-            + (y2 - y1) ** 2
-        ) ** 0.5
-
-    # =====================================================
-
-    def move(self, dx, dy):
-
-        self.start_point = (
-            self.start_point[0] + dx,
-            self.start_point[1] + dy,
-        )
-
-        self.end_point = (
-            self.end_point[0] + dx,
-            self.end_point[1] + dy,
-        )
-
-    # =====================================================
     # Derived traversal properties
     #
     # Never stored -- Building remains the single source of
@@ -89,9 +46,8 @@ class Staircase(BaseObject):
     # Building.floor_elevation()). Both take `building` so they
     # can resolve from_floor_id/to_floor_id themselves rather
     # than the Stair holding a Floor reference. If to_floor_id
-    # is unset ("None" chosen deliberately, not auto-picked --
-    # see PropertyPanel._populate_to_floor_combo()), this
-    # correctly returns 0.0 rather than an arbitrary distance.
+    # is unset, this correctly returns 0.0 rather than an
+    # arbitrary distance.
     # =====================================================
 
     def vertical_height(self, building):
@@ -127,8 +83,8 @@ class Staircase(BaseObject):
 
         data.update(
             {
-                "start_point": self.start_point,
-                "end_point": self.end_point,
+                "from_position": self.from_position,
+                "to_position": self.to_position,
                 "from_floor_id": self.from_floor_id,
                 "to_floor_id": self.to_floor_id,
                 "width": self.width,
@@ -141,6 +97,33 @@ class Staircase(BaseObject):
 
     @classmethod
     def from_dict(cls, data):
+
+        # Backward compatibility: pre-redesign .syn files stored
+        # the entrance point as "start_point". Those files never
+        # had a real cross-floor landing coordinate at all -- their
+        # "end_point" was a second point on the SAME floor as
+        # start_point, meaningless as a position on to_floor_id --
+        # so when "to_position" is missing, default it to the
+        # entrance point rather than trusting the old "end_point",
+        # which would silently misplace the landing on a floor it
+        # was never actually measured against. The user can drag
+        # it to the correct spot once, same as any other move.
+        from_position = tuple(
+            data.get(
+                "from_position",
+                data.get(
+                    "start_point",
+                    (0.0, 0.0),
+                ),
+            )
+        )
+
+        to_position = tuple(
+            data.get(
+                "to_position",
+                from_position,
+            )
+        )
 
         return cls(
             id=data["id"],
@@ -165,19 +148,9 @@ class Staircase(BaseObject):
                 "",
             ),
 
-            start_point=tuple(
-                data.get(
-                    "start_point",
-                    (0.0, 0.0),
-                )
-            ),
+            from_position=from_position,
 
-            end_point=tuple(
-                data.get(
-                    "end_point",
-                    (0.0, 0.0),
-                )
-            ),
+            to_position=to_position,
 
             from_floor_id=data.get(
                 "from_floor_id",

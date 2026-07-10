@@ -1,19 +1,24 @@
-from PyQt6.QtCore import QPointF
-from PyQt6.QtGui import QColor, QPen
-from PyQt6.QtWidgets import (
-    QGraphicsItem,
-    QGraphicsLineItem,
-)
+from PyQt6.QtCore import QPointF, QRectF
+from PyQt6.QtGui import QBrush, QColor, QPainterPath, QPen
+from PyQt6.QtWidgets import QGraphicsItem
 
 
-class StairItem(QGraphicsLineItem):
+class StairItem(QGraphicsItem):
 
     GRID_SIZE = 50
 
-    def __init__(self, x1, y1, x2, y2, model=None):
-        super().__init__(0, 0, x2 - x1, y2 - y1)
+    BODY_RADIUS = 8
+
+    # A Staircase is one shared object rendered as two markers --
+    # this is the "from" (entrance) marker on from_floor_id, or
+    # the "to" (landing) marker on to_floor_id. Both markers point
+    # at the same model; itemChange only ever writes back to the
+    # position field this particular marker represents.
+    def __init__(self, x, y, width, role, model=None):
+        super().__init__()
 
         self.model = model
+        self.role = role
 
         if self.model is not None:
 
@@ -25,19 +30,26 @@ class StairItem(QGraphicsLineItem):
             self.object_id = ""
             self.object_name = ""
 
-        self.setPos(x1, y1)
+        self.setPos(x, y)
 
-        self.default_pen = QPen(
-            QColor(180, 120, 40),
-            6,
-        )
+        self._selected = False
 
-        self.selected_pen = QPen(
-            QColor(255, 255, 0),
-            6,
-        )
+        # =====================================================
+        # Appearance
+        # =====================================================
 
-        self.setPen(self.default_pen)
+        self.default_brush = QBrush(QColor(40, 40, 40))
+        self.selected_brush = QBrush(QColor(255, 255, 0))
+
+        self.default_pen = QPen(QColor(180, 120, 40), 4)
+        self.selected_pen = QPen(QColor(255, 255, 0), 4)
+
+        self.default_body_pen = QPen(QColor(220, 220, 220), 2)
+        self.selected_body_pen = QPen(QColor(255, 255, 0), 2)
+
+        # =====================================================
+        # Flags
+        # =====================================================
 
         self.setFlag(
             QGraphicsItem.GraphicsItemFlag.ItemIsSelectable,
@@ -55,6 +67,91 @@ class StairItem(QGraphicsLineItem):
         )
 
         self.geometry_changed_callback = None
+
+    # =====================================================
+    # Width Indicator (derived, local space)
+    #
+    # A short horizontal tick centered on the origin, length =
+    # Width in meters -- the physical width of the stair at this
+    # end. There is no rotation concept here (unlike Camera), so
+    # it is always drawn along local +x.
+    # =====================================================
+
+    def _width_px(self):
+
+        if self.model is None:
+            return 1.5 * self.GRID_SIZE
+
+        return self.model.width * self.GRID_SIZE
+
+    # =====================================================
+
+    def boundingRect(self):
+
+        half_width = self._width_px() / 2
+
+        margin = self.BODY_RADIUS + 4
+
+        radius = half_width + margin
+
+        return QRectF(
+            -radius,
+            -radius,
+            radius * 2,
+            radius * 2,
+        )
+
+    # =====================================================
+    # Hit-testing only the anchor body -- keeps the width tick
+    # from stealing clicks meant for whatever is drawn under it.
+    # =====================================================
+
+    def shape(self):
+
+        path = QPainterPath()
+
+        path.addEllipse(
+            QPointF(0, 0),
+            self.BODY_RADIUS,
+            self.BODY_RADIUS,
+        )
+
+        return path
+
+    # =====================================================
+
+    def paint(self, painter, option, widget=None):
+
+        half_width = self._width_px() / 2
+
+        painter.setPen(
+            self.selected_pen
+            if self._selected
+            else self.default_pen
+        )
+
+        painter.drawLine(
+            QPointF(-half_width, 0),
+            QPointF(half_width, 0),
+        )
+
+        painter.setBrush(
+            self.selected_brush
+            if self._selected
+            else self.default_brush
+        )
+
+        painter.setPen(
+            self.selected_body_pen
+            if self._selected
+            else self.default_body_pen
+        )
+
+        painter.drawEllipse(
+            QPointF(0, 0),
+            self.BODY_RADIUS,
+            self.BODY_RADIUS,
+        )
 
     # =====================================================
 
@@ -94,39 +191,35 @@ class StairItem(QGraphicsLineItem):
 
     # =====================================================
 
-    def setLine(self, *args):
-
-        super().setLine(*args)
-
-        self.sync_to_model()
-
-        if self.geometry_changed_callback:
-            self.geometry_changed_callback(self)
-
-    # =====================================================
-
     def sync_to_model(self):
 
         if self.model is None:
             return
 
-        line = self.line()
-
-        self.model.start_point = (
-            (self.pos().x() + line.x1())
-            / self.GRID_SIZE,
-            (self.pos().y() + line.y1())
-            / self.GRID_SIZE,
+        position = (
+            self.pos().x() / self.GRID_SIZE,
+            self.pos().y() / self.GRID_SIZE,
         )
 
-        self.model.end_point = (
-            (self.pos().x() + line.x2())
-            / self.GRID_SIZE,
-            (self.pos().y() + line.y2())
-            / self.GRID_SIZE,
-        )
+        if self.role == "from":
+            self.model.from_position = position
+        else:
+            self.model.to_position = position
 
         self.object_name = self.model.name
+
+    # =====================================================
+    # Called after the Property Panel writes Width (or the other
+    # end's position) straight onto the model -- geometry that
+    # doesn't move this item's own position, so no itemChange
+    # fires on its own.
+    # =====================================================
+
+    def refresh_geometry(self):
+
+        self.prepareGeometryChange()
+
+        self.update()
 
     # =====================================================
 
@@ -144,7 +237,6 @@ class StairItem(QGraphicsLineItem):
 
     def set_selected(self, selected):
 
-        if selected:
-            self.setPen(self.selected_pen)
-        else:
-            self.setPen(self.default_pen)
+        self._selected = selected
+
+        self.update()

@@ -207,7 +207,20 @@ class Building:
                 else:
                     engineering_object.id = str(uuid4())
 
-                engineering_object.floor_id = new_floor.id
+                if collection is new_floor.stairs:
+
+                    # Staircase has no floor_id -- it is owned by
+                    # from_floor_id instead (see models/staircase.py).
+                    # to_floor_id is deliberately left untouched: it
+                    # names a floor that ISN'T being duplicated, so
+                    # unlike Door's same-floor zone references, it
+                    # never goes stale here.
+                    engineering_object.from_floor_id = new_floor.id
+
+                else:
+
+                    engineering_object.floor_id = new_floor.id
+
                 engineering_object.created_at = now
                 engineering_object.modified_at = now
 
