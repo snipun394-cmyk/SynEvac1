@@ -27,6 +27,26 @@ class Zone(BaseObject):
 
     max_occupancy: int = 0
 
+    # Exposed for the Property Panel combo box rather than
+    # hard-coding the list twice -- same pattern as
+    # Detector.DETECTOR_TYPES/Obstacle.OBSTACLE_TYPES. "Corridor"
+    # and "Stair Lobby" specifically exist because Door's
+    # connectivity model (Zone <-> Zone, explicit, never inferred
+    # from geometry) documents "Zone <-> Corridor" and "Corridor
+    # <-> Stair Lobby" as its own examples.
+    ZONE_TYPES = (
+        "Generic",
+        "Room",
+        "Corridor",
+        "Lobby",
+        "Stair Lobby",
+        "Mechanical",
+        "Electrical",
+        "Storage",
+        "Office",
+        "Outdoor",
+    )
+
     # =====================================================
 
     def __post_init__(self):

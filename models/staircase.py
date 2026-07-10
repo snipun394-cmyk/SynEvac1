@@ -8,6 +8,19 @@ from models.base_object import BaseObject
 @dataclass
 class Staircase(BaseObject):
 
+    # Reviewed for a future single-staircase (Staircase + Landing)
+    # redesign: today this object lives only in the "from" floor's
+    # Floor.stairs and is never rendered on to_floor_id's floor.
+    # Adding a `to_position` field (a landing coordinate on the
+    # destination floor) needs no migration -- to_dict()/from_dict()
+    # already follow the additive-field, default-via-.get() pattern
+    # used by every object in this codebase, so older .syn files
+    # would simply fall back to the field's default. Ownership can
+    # stay on Floor.stairs; GraphicsScene would just need to also
+    # render a landing marker on whichever floor matches
+    # to_floor_id by scanning the Building it already has a
+    # reference to. No serialization changes are required to leave
+    # this open.
     start_point: tuple = (0.0, 0.0)
     end_point: tuple = (0.0, 0.0)
 
@@ -71,10 +84,14 @@ class Staircase(BaseObject):
     # =====================================================
     # Derived traversal properties
     #
-    # Never stored -- Building/Floor remain the single source
-    # of truth for elevation. Both take `building` so they can
-    # resolve from_floor_id/to_floor_id themselves rather than
-    # the Stair holding a Floor reference.
+    # Never stored -- Building remains the single source of
+    # truth for elevation (itself derived, never stored -- see
+    # Building.floor_elevation()). Both take `building` so they
+    # can resolve from_floor_id/to_floor_id themselves rather
+    # than the Stair holding a Floor reference. If to_floor_id
+    # is unset ("None" chosen deliberately, not auto-picked --
+    # see PropertyPanel._populate_to_floor_combo()), this
+    # correctly returns 0.0 rather than an arbitrary distance.
     # =====================================================
 
     def vertical_height(self, building):
@@ -86,8 +103,8 @@ class Staircase(BaseObject):
             return 0.0
 
         return abs(
-            to_floor.elevation
-            - from_floor.elevation
+            building.floor_elevation(to_floor)
+            - building.floor_elevation(from_floor)
         )
 
     # =====================================================

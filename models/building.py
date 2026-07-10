@@ -74,6 +74,33 @@ class Building:
         ) + 1
 
     # =====================================================
+    # Elevation
+    #
+    # Never stored on Floor -- always derived from the
+    # cumulative height of every floor below this one in
+    # display_order. The lowest floor therefore always resolves
+    # to 0.0 with no special-casing required. Reordering floors
+    # or editing any floor's height automatically changes every
+    # elevation above it, since nothing here is cached.
+    # =====================================================
+
+    def floor_elevation(self, floor):
+
+        if floor not in self.floors:
+            return 0.0
+
+        elevation = 0.0
+
+        for other in self.ordered_floors():
+
+            if other is floor:
+                return elevation
+
+            elevation += other.height
+
+        return elevation
+
+    # =====================================================
     # Floor Management
     # =====================================================
 
@@ -146,6 +173,21 @@ class Building:
 
         now = datetime.now().isoformat()
 
+        # Internal same-floor references (Door.zone_a_id/zone_b_id)
+        # must follow their target onto the duplicate -- otherwise
+        # a duplicated Door would still point at the *original*
+        # floor's zones, a dangling reference this method should
+        # never produce. Build the id remap before the re-ID loop
+        # touches anything, so both the old and new zone ids are
+        # known before any zone gets its new id assigned. Any
+        # future object type that references another object on the
+        # same floor should follow this same two-step shape: map
+        # first, then patch after the main re-ID loop below.
+        zone_id_map = {
+            zone.id: str(uuid4())
+            for zone in new_floor.zones
+        }
+
         for collection in (
             new_floor.zones,
             new_floor.exits,
@@ -160,10 +202,22 @@ class Building:
 
             for engineering_object in collection:
 
-                engineering_object.id = str(uuid4())
+                if collection is new_floor.zones:
+                    engineering_object.id = zone_id_map[engineering_object.id]
+                else:
+                    engineering_object.id = str(uuid4())
+
                 engineering_object.floor_id = new_floor.id
                 engineering_object.created_at = now
                 engineering_object.modified_at = now
+
+        for door in new_floor.doors:
+
+            if door.zone_a_id in zone_id_map:
+                door.zone_a_id = zone_id_map[door.zone_a_id]
+
+            if door.zone_b_id in zone_id_map:
+                door.zone_b_id = zone_id_map[door.zone_b_id]
 
         self.add_floor(new_floor)
 

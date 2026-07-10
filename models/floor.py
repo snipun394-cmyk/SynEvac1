@@ -23,15 +23,19 @@ class Floor:
     # Ordering vs. physical position
     #
     # display_order controls UI ordering / active-floor
-    # navigation. elevation is the physical vertical
-    # position. height is the vertical extent of the floor.
-    # These are independent and must never be derived from
-    # one another.
+    # navigation. height is the vertical extent of the floor,
+    # freely editable. Elevation is NOT stored here -- it is
+    # always derived from the cumulative height of every floor
+    # below this one in display_order (see
+    # Building.floor_elevation()), the same "never stored,
+    # always resolved through building" pattern already used by
+    # Staircase.vertical_height(). This guarantees the lowest
+    # floor is always at elevation 0.0 and that elevation can
+    # never drift out of sync with height/order.
     # =====================================================
 
     display_order: int = 0
 
-    elevation: float = 0.0
     height: float = 3.0
 
     floor_plan: str = ""
@@ -226,7 +230,6 @@ class Floor:
 
             "display_order": self.display_order,
 
-            "elevation": self.elevation,
             "height": self.height,
 
             "floor_plan": self.floor_plan,
@@ -299,11 +302,9 @@ class Floor:
                 0,
             ),
 
-            elevation=data.get(
-                "elevation",
-                0.0,
-            ),
-
+            # "elevation" is deliberately not read here even if an
+            # older .syn file still has it -- it is derived, not
+            # loaded. See Building.floor_elevation().
             height=data.get(
                 "height",
                 3.0,

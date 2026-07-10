@@ -14,6 +14,7 @@ from models.detector import Detector
 from models.door import Door
 from models.floor import Floor
 from models.obstacle import Obstacle
+from models.zone import Zone
 
 
 class PropertyPanel(QWidget):
@@ -42,11 +43,27 @@ class PropertyPanel(QWidget):
         # =====================================================
 
         self.object_type = QLabel("No Selection")
-        self.object_id = QLabel("-")
+
+        # Read-only, but copyable -- every object type (Stair
+        # included) shows its id here via this one shared field,
+        # so making it copyable here covers all of them at once
+        # rather than duplicating the id+Copy-button row per type.
+        self.object_id = QLineEdit("-")
+        self.object_id.setReadOnly(True)
+
+        self.copy_object_id_button = QPushButton("Copy")
+
+        object_id_row = QWidget()
+        object_id_layout = QHBoxLayout()
+        object_id_layout.setContentsMargins(0, 0, 0, 0)
+        object_id_layout.addWidget(self.object_id)
+        object_id_layout.addWidget(self.copy_object_id_button)
+        object_id_row.setLayout(object_id_layout)
+
         self.object_name = QLineEdit()
 
         layout.addRow("Object", self.object_type)
-        layout.addRow("ID", self.object_id)
+        layout.addRow("ID", object_id_row)
         layout.addRow("Name", self.object_name)
 
         # =====================================================
@@ -59,11 +76,18 @@ class PropertyPanel(QWidget):
         self.zone_length = QLineEdit()
         self.zone_width = QLineEdit()
 
+        self.zone_type = QComboBox()
+
+        for zone_type in Zone.ZONE_TYPES:
+            self.zone_type.addItem(zone_type)
+
         layout.addRow("Origin X (m)", self.origin_x)
         layout.addRow("Origin Y (m)", self.origin_y)
 
         layout.addRow("Length (m)", self.zone_length)
         layout.addRow("Width (m)", self.zone_width)
+
+        layout.addRow("Zone Type", self.zone_type)
 
         # =====================================================
         # Zone Derived Coordinates
@@ -88,6 +112,7 @@ class PropertyPanel(QWidget):
             self.origin_y,
             self.zone_length,
             self.zone_width,
+            self.zone_type,
             self.top_left,
             self.top_right,
             self.bottom_right,
@@ -434,7 +459,12 @@ class PropertyPanel(QWidget):
         # "Name" row instead of two.
         # =====================================================
 
-        self.floor_elevation = QLineEdit()
+        # Derived -- see Building.floor_elevation(). Never
+        # editable; always the cumulative height of every floor
+        # below this one, so it can never drift out of sync with
+        # height/order the way a freely-typed value could.
+        self.floor_elevation = QLabel("-")
+
         self.floor_height = QLineEdit()
 
         layout.addRow("Elevation (m)", self.floor_elevation)
@@ -467,6 +497,10 @@ class PropertyPanel(QWidget):
 
         self.zone_width.editingFinished.connect(
             self.update_geometry
+        )
+
+        self.zone_type.currentIndexChanged.connect(
+            self.update_zone_type
         )
 
         self.start_x.editingFinished.connect(
@@ -523,6 +557,10 @@ class PropertyPanel(QWidget):
 
         self.copy_to_floor_button.clicked.connect(
             self.copy_to_floor_id
+        )
+
+        self.copy_object_id_button.clicked.connect(
+            self.copy_object_id
         )
 
         self.camera_x.editingFinished.connect(
@@ -673,10 +711,6 @@ class PropertyPanel(QWidget):
             self.update_door_zone_b
         )
 
-        self.floor_elevation.editingFinished.connect(
-            self.update_floor_properties
-        )
-
         self.floor_height.editingFinished.connect(
             self.update_floor_properties
         )
@@ -739,6 +773,7 @@ class PropertyPanel(QWidget):
         self.origin_y.blockSignals(True)
         self.zone_length.blockSignals(True)
         self.zone_width.blockSignals(True)
+        self.zone_type.blockSignals(True)
 
         self.object_name.setText(zone.zone_name)
 
@@ -752,6 +787,15 @@ class PropertyPanel(QWidget):
 
         self.zone_length.setText(f"{zone.width_m:.2f}")
         self.zone_width.setText(f"{zone.height_m:.2f}")
+
+        if zone.model is not None:
+
+            type_index = self.zone_type.findText(
+                zone.model.zone_type
+            )
+
+            if type_index != -1:
+                self.zone_type.setCurrentIndex(type_index)
 
         self.top_left.setText(
             f"({tlx:.2f}, {tly:.2f})"
@@ -778,6 +822,7 @@ class PropertyPanel(QWidget):
         self.origin_y.blockSignals(False)
         self.zone_length.blockSignals(False)
         self.zone_width.blockSignals(False)
+        self.zone_type.blockSignals(False)
 
     # =====================================================
     # Exit
@@ -1342,15 +1387,23 @@ class PropertyPanel(QWidget):
         self.object_id.setText(floor.id)
 
         self.object_name.blockSignals(True)
-        self.floor_elevation.blockSignals(True)
         self.floor_height.blockSignals(True)
 
         self.object_name.setText(floor.name)
-        self.floor_elevation.setText(f"{floor.elevation:.2f}")
+
+        if self.building is not None:
+
+            elevation = self.building.floor_elevation(floor)
+
+            self.floor_elevation.setText(f"{elevation:.2f}")
+
+        else:
+
+            self.floor_elevation.setText("-")
+
         self.floor_height.setText(f"{floor.height:.2f}")
 
         self.object_name.blockSignals(False)
-        self.floor_elevation.blockSignals(False)
         self.floor_height.blockSignals(False)
 
     # =====================================================
@@ -1390,6 +1443,10 @@ class PropertyPanel(QWidget):
 
         self.zone_length.clear()
         self.zone_width.clear()
+
+        self.zone_type.blockSignals(True)
+        self.zone_type.setCurrentIndex(0)
+        self.zone_type.blockSignals(False)
 
         self.top_left.setText("-")
         self.top_right.setText("-")
@@ -1519,7 +1576,7 @@ class PropertyPanel(QWidget):
         self.door_zone_b.clear()
         self.door_zone_b.blockSignals(False)
 
-        self.floor_elevation.clear()
+        self.floor_elevation.setText("-")
         self.floor_height.clear()
 
     # =====================================================
@@ -1585,6 +1642,20 @@ class PropertyPanel(QWidget):
         )
 
         self.refresh()
+
+    # =====================================================
+
+    def update_zone_type(self, index):
+
+        if self.current_item is None:
+            return
+
+        if self.current_item.model is None:
+            return
+
+        self.current_item.model.zone_type = (
+            self.zone_type.itemText(index)
+        )
 
     # =====================================================
 
@@ -1691,6 +1762,16 @@ class PropertyPanel(QWidget):
 
         self.to_floor_combo.clear()
 
+        # "None" is a valid, persistent selection -- a newly
+        # placed Stair must never silently claim a destination
+        # floor the user didn't choose. That auto-pick was exactly
+        # what made Vertical Height look "connected" when it
+        # wasn't, and is why users ended up creating a second,
+        # unrelated Stair instead of intentionally linking this
+        # one. Vertical Height/Travel Distance correctly read 0.0
+        # until a destination is chosen deliberately.
+        self.to_floor_combo.addItem("None", "")
+
         if self.building is not None:
 
             for floor in self.building.ordered_floors():
@@ -1707,17 +1788,8 @@ class PropertyPanel(QWidget):
             model.to_floor_id
         )
 
-        if index == -1 and self.to_floor_combo.count() > 0:
-
-            # No destination floor chosen yet (or it was
-            # deleted) -- default to the first available
-            # floor rather than leaving Vertical Height/Travel
-            # Distance uncomputable.
+        if index == -1:
             index = 0
-
-            model.to_floor_id = (
-                self.to_floor_combo.itemData(index)
-            )
 
         self.to_floor_combo.setCurrentIndex(index)
 
@@ -1750,6 +1822,14 @@ class PropertyPanel(QWidget):
 
         QApplication.clipboard().setText(
             self.to_floor_uuid.text()
+        )
+
+    # =====================================================
+
+    def copy_object_id(self):
+
+        QApplication.clipboard().setText(
+            self.object_id.text()
         )
 
     # =====================================================
@@ -2206,10 +2286,6 @@ class PropertyPanel(QWidget):
 
         try:
 
-            elevation = float(
-                self.floor_elevation.text()
-            )
-
             height = float(
                 self.floor_height.text()
             )
@@ -2220,7 +2296,6 @@ class PropertyPanel(QWidget):
 
             return
 
-        self.current_item.elevation = elevation
         self.current_item.height = height
 
         self.refresh()

@@ -171,8 +171,26 @@ class FloorList(QWidget):
         if not ok or not name.strip():
             return
 
+        # Elevation is derived (see Building.floor_elevation()), so
+        # it is never asked for here -- only Height, which is the
+        # one physical measurement a floor actually needs at
+        # creation time.
+        height, ok = QInputDialog.getDouble(
+            self,
+            "Add Floor",
+            "Floor height (m):",
+            3.0,
+            0.1,
+            100.0,
+            2,
+        )
+
+        if not ok:
+            return
+
         floor = self.building.create_floor(
-            name=name.strip()
+            name=name.strip(),
+            height=height,
         )
 
         self.set_active_floor(floor)
