@@ -124,6 +124,10 @@ class MainWindow(QMainWindow):
             self.canvas.scene_obj.project.building
         )
 
+        self.property_panel.set_building(
+            self.canvas.scene_obj.project.building
+        )
+
     # =====================================================
 
     def create_actions(self):
@@ -422,6 +426,8 @@ class MainWindow(QMainWindow):
         self.project_tree.set_project(project)
 
         self.floor_list.set_building(project.building)
+
+        self.property_panel.set_building(project.building)
 
         self.canvas.scene_obj.rebuild_scene()
 

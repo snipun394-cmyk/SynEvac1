@@ -528,7 +528,7 @@ class GraphicsScene(QGraphicsScene):
                         x / self.GRID_SIZE,
                         y / self.GRID_SIZE,
                     ),
-                    floor_id=self.current_floor.id,
+                    from_floor_id=self.current_floor.id,
                 )
 
                 self.current_floor.add_stair(

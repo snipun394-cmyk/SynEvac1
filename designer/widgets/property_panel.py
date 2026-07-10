@@ -17,6 +17,10 @@ class PropertyPanel(QWidget):
         self.current_item = None
         self._refresh_handler = None
 
+        # Needed to resolve Stair from_floor_id/to_floor_id into
+        # actual Floor elevations for the derived traversal fields.
+        self.building = None
+
         layout = QFormLayout()
 
         # =====================================================
@@ -131,7 +135,11 @@ class PropertyPanel(QWidget):
 
         self.stair_length = QLabel("-")
 
-        self.connected_floor = QLineEdit()
+        self.to_floor = QLineEdit()
+
+        # Derived (Building/Floor elevations) -- never editable.
+        self.vertical_height = QLabel("-")
+        self.travel_distance = QLabel("-")
 
         layout.addRow("Start X (m)", self.stair_start_x)
         layout.addRow("Start Y (m)", self.stair_start_y)
@@ -142,9 +150,16 @@ class PropertyPanel(QWidget):
 
         layout.addRow("Stair Width (m)", self.stair_width)
 
+        layout.addRow("To Floor ID", self.to_floor)
+
         layout.addRow(
-            "Connected Floor ID",
-            self.connected_floor,
+            "Vertical Height (m)",
+            self.vertical_height,
+        )
+
+        layout.addRow(
+            "Travel Distance (m)",
+            self.travel_distance,
         )
 
         self.stair_fields = [
@@ -154,7 +169,9 @@ class PropertyPanel(QWidget):
             self.stair_end_y,
             self.stair_length,
             self.stair_width,
-            self.connected_floor,
+            self.to_floor,
+            self.vertical_height,
+            self.travel_distance,
         ]
 
         self.setLayout(layout)
@@ -229,13 +246,21 @@ class PropertyPanel(QWidget):
             self.update_stair_geometry
         )
 
-        self.connected_floor.editingFinished.connect(
+        self.to_floor.editingFinished.connect(
             self.update_stair_geometry
         )
 
         self._set_fields_visible(self.zone_fields, False)
         self._set_fields_visible(self.exit_fields, False)
         self._set_fields_visible(self.stair_fields, False)
+
+    # =====================================================
+
+    def set_building(self, building):
+
+        self.building = building
+
+        self.refresh()
 
     # =====================================================
 
@@ -399,7 +424,7 @@ class PropertyPanel(QWidget):
         self.stair_end_x.blockSignals(True)
         self.stair_end_y.blockSignals(True)
         self.stair_width.blockSignals(True)
-        self.connected_floor.blockSignals(True)
+        self.to_floor.blockSignals(True)
 
         self.object_name.setText(stair_item.object_name)
 
@@ -421,9 +446,32 @@ class PropertyPanel(QWidget):
                 f"{model.width:.2f}"
             )
 
-            self.connected_floor.setText(
-                model.connected_floor_id
+            self.to_floor.setText(
+                model.to_floor_id
             )
+
+            if self.building is not None:
+
+                height = model.vertical_height(
+                    self.building
+                )
+
+                distance = model.travel_distance(
+                    self.building
+                )
+
+                self.vertical_height.setText(
+                    f"{height:.2f} m"
+                )
+
+                self.travel_distance.setText(
+                    f"{distance:.2f} m"
+                )
+
+            else:
+
+                self.vertical_height.setText("-")
+                self.travel_distance.setText("-")
 
         self.object_name.blockSignals(False)
         self.stair_start_x.blockSignals(False)
@@ -431,7 +479,7 @@ class PropertyPanel(QWidget):
         self.stair_end_x.blockSignals(False)
         self.stair_end_y.blockSignals(False)
         self.stair_width.blockSignals(False)
-        self.connected_floor.blockSignals(False)
+        self.to_floor.blockSignals(False)
 
     # =====================================================
 
@@ -494,7 +542,10 @@ class PropertyPanel(QWidget):
         self.stair_width.clear()
         self.stair_length.setText("-")
 
-        self.connected_floor.clear()
+        self.to_floor.clear()
+
+        self.vertical_height.setText("-")
+        self.travel_distance.setText("-")
 
     # =====================================================
 
@@ -638,8 +689,8 @@ class PropertyPanel(QWidget):
         # geometry_changed_callback -> refresh(), which would
         # otherwise repopulate this field from the model before
         # the new value below is ever written.
-        connected_floor_id = (
-            self.connected_floor.text().strip()
+        to_floor_id = (
+            self.to_floor.text().strip()
         )
 
         self.current_item.setPos(
@@ -657,8 +708,8 @@ class PropertyPanel(QWidget):
         if self.current_item.model is not None:
 
             self.current_item.model.width = w
-            self.current_item.model.connected_floor_id = (
-                connected_floor_id
+            self.current_item.model.to_floor_id = (
+                to_floor_id
             )
 
         self.refresh()

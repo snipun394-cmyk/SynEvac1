@@ -1,3 +1,5 @@
+import math
+
 from dataclasses import dataclass
 
 from models.base_object import BaseObject
@@ -9,14 +11,13 @@ class Staircase(BaseObject):
     start_point: tuple = (0.0, 0.0)
     end_point: tuple = (0.0, 0.0)
 
-    floor_id: str = ""
+    from_floor_id: str = ""
+    to_floor_id: str = ""
 
     width: float = 1.50
 
-    # Placeholder only -- full multi-floor vertical connectivity
-    # (Navigation Graph inter-floor edges) is deferred. This just
-    # records which floor the stair leads to.
-    connected_floor_id: str = ""
+    # Project-wide default, until Project exposes a real setting.
+    DEFAULT_ANGLE_DEGREES = 35.0
 
     def __post_init__(self):
 
@@ -68,6 +69,40 @@ class Staircase(BaseObject):
         )
 
     # =====================================================
+    # Derived traversal properties
+    #
+    # Never stored -- Building/Floor remain the single source
+    # of truth for elevation. Both take `building` so they can
+    # resolve from_floor_id/to_floor_id themselves rather than
+    # the Stair holding a Floor reference.
+    # =====================================================
+
+    def vertical_height(self, building):
+
+        from_floor = building.get_floor(self.from_floor_id)
+        to_floor = building.get_floor(self.to_floor_id)
+
+        if from_floor is None or to_floor is None:
+            return 0.0
+
+        return abs(
+            to_floor.elevation
+            - from_floor.elevation
+        )
+
+    # =====================================================
+
+    def travel_distance(self, building):
+
+        height = self.vertical_height(building)
+
+        angle_radians = math.radians(
+            self.DEFAULT_ANGLE_DEGREES
+        )
+
+        return height / math.sin(angle_radians)
+
+    # =====================================================
 
     def to_dict(self):
 
@@ -77,9 +112,9 @@ class Staircase(BaseObject):
             {
                 "start_point": self.start_point,
                 "end_point": self.end_point,
-                "floor_id": self.floor_id,
+                "from_floor_id": self.from_floor_id,
+                "to_floor_id": self.to_floor_id,
                 "width": self.width,
-                "connected_floor_id": self.connected_floor_id,
             }
         )
 
@@ -127,18 +162,18 @@ class Staircase(BaseObject):
                 )
             ),
 
-            floor_id=data.get(
-                "floor_id",
+            from_floor_id=data.get(
+                "from_floor_id",
+                "",
+            ),
+
+            to_floor_id=data.get(
+                "to_floor_id",
                 "",
             ),
 
             width=data.get(
                 "width",
                 1.50,
-            ),
-
-            connected_floor_id=data.get(
-                "connected_floor_id",
-                "",
             ),
         )
