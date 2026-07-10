@@ -1,3 +1,5 @@
+import math
+
 from dataclasses import dataclass
 
 from models.base_object import BaseObject
@@ -10,9 +12,7 @@ class Detector(BaseObject):
 
     floor_id: str = ""
 
-    coverage_width: float = 6.0
-
-    coverage_length: float = 6.0
+    coverage_radius: float = 3.0
 
     mount_height: float = 3.0
 
@@ -44,26 +44,31 @@ class Detector(BaseObject):
     # =====================================================
     # Derived Coverage Geometry
     #
-    # Never stored -- always recomputed from Position, Coverage
-    # Width and Coverage Length. An axis-aligned rectangle
-    # centered on the detector's position (no rotation concept
-    # for Detector, unlike Camera). Returned as the four corners
-    # so it mirrors Camera.coverage_polygon()'s shape.
+    # Never stored -- always recomputed from Position and
+    # Coverage Radius. A circle centered on the detector's
+    # position (no rotation concept for Detector, unlike Camera).
+    # Returned as points around the perimeter so it mirrors
+    # Camera.coverage_polygon()'s shape.
     # =====================================================
 
-    def coverage_rectangle(self):
+    def coverage_circle(self, segments=32):
 
         cx, cy = self.position
 
-        half_width = self.coverage_width / 2
-        half_length = self.coverage_length / 2
+        points = []
 
-        return [
-            (cx - half_width, cy - half_length),
-            (cx + half_width, cy - half_length),
-            (cx + half_width, cy + half_length),
-            (cx - half_width, cy + half_length),
-        ]
+        for i in range(segments):
+
+            angle_radians = math.radians(360 * i / segments)
+
+            points.append(
+                (
+                    cx + self.coverage_radius * math.cos(angle_radians),
+                    cy + self.coverage_radius * math.sin(angle_radians),
+                )
+            )
+
+        return points
 
     # =====================================================
 
@@ -77,9 +82,7 @@ class Detector(BaseObject):
 
             "floor_id": self.floor_id,
 
-            "coverage_width": self.coverage_width,
-
-            "coverage_length": self.coverage_length,
+            "coverage_radius": self.coverage_radius,
 
             "mount_height": self.mount_height,
 
@@ -132,14 +135,9 @@ class Detector(BaseObject):
                 "",
             ),
 
-            coverage_width=data.get(
-                "coverage_width",
-                6.0,
-            ),
-
-            coverage_length=data.get(
-                "coverage_length",
-                6.0,
+            coverage_radius=data.get(
+                "coverage_radius",
+                3.0,
             ),
 
             mount_height=data.get(

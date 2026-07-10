@@ -77,36 +77,28 @@ class DetectorItem(QGraphicsItem):
     # =====================================================
     # Coverage Geometry (derived)
     #
-    # Local space, axis-aligned, centered on the origin -- there
-    # is no rotation concept for Detector. Mirrors
-    # Detector.coverage_rectangle() in models/detector.py, but
-    # works in scene pixels instead of meters.
+    # Local space, centered on the origin -- there is no rotation
+    # concept for Detector. Mirrors Detector.coverage_circle() in
+    # models/detector.py, but works in scene pixels instead of
+    # meters.
     # =====================================================
 
-    def _coverage_width_px(self):
+    def _coverage_radius_px(self):
 
         if self.model is None:
-            return 6.0 * self.GRID_SIZE
+            return 3.0 * self.GRID_SIZE
 
-        return self.model.coverage_width * self.GRID_SIZE
-
-    def _coverage_length_px(self):
-
-        if self.model is None:
-            return 6.0 * self.GRID_SIZE
-
-        return self.model.coverage_length * self.GRID_SIZE
+        return self.model.coverage_radius * self.GRID_SIZE
 
     def _coverage_rect(self):
 
-        half_width = self._coverage_width_px() / 2
-        half_length = self._coverage_length_px() / 2
+        radius = self._coverage_radius_px()
 
         return QRectF(
-            -half_width,
-            -half_length,
-            half_width * 2,
-            half_length * 2,
+            -radius,
+            -radius,
+            radius * 2,
+            radius * 2,
         )
 
     # =====================================================
@@ -128,12 +120,9 @@ class DetectorItem(QGraphicsItem):
 
     def boundingRect(self):
 
-        half_width = self._coverage_width_px() / 2
-        half_length = self._coverage_length_px() / 2
-
         margin = max(self.BODY_RADIUS, 4)
 
-        radius = max(half_width, half_length) + margin
+        radius = self._coverage_radius_px() + margin
 
         return QRectF(
             -radius,
@@ -144,8 +133,8 @@ class DetectorItem(QGraphicsItem):
 
     # =====================================================
     # Hit-testing only the detector body -- keeps overlapping
-    # coverage rectangles from stealing clicks meant for whatever
-    # is drawn underneath them.
+    # coverage circles from stealing clicks meant for whatever is
+    # drawn underneath them.
     # =====================================================
 
     def shape(self):
@@ -200,7 +189,7 @@ class DetectorItem(QGraphicsItem):
         painter.setBrush(coverage_brush)
         painter.setPen(coverage_pen)
 
-        painter.drawRect(
+        painter.drawEllipse(
             self._coverage_rect()
         )
 
@@ -259,11 +248,10 @@ class DetectorItem(QGraphicsItem):
         return super().itemChange(change, value)
 
     # =====================================================
-    # Called after the Property Panel writes Coverage Width/
-    # Length/Mount Height/Detector Type/Active straight onto the
-    # model -- none of those move the item, so no itemChange
-    # fires on its own and the coverage rectangle needs an
-    # explicit repaint.
+    # Called after the Property Panel writes Coverage Radius/
+    # Mount Height/Detector Type/Active straight onto the model --
+    # none of those move the item, so no itemChange fires on its
+    # own and the coverage circle needs an explicit repaint.
     # =====================================================
 
     def refresh_geometry(self):

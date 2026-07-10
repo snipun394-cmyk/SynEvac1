@@ -248,8 +248,7 @@ class PropertyPanel(QWidget):
         self.detector_x = QLineEdit()
         self.detector_y = QLineEdit()
 
-        self.detector_coverage_width = QLineEdit()
-        self.detector_coverage_length = QLineEdit()
+        self.detector_coverage_radius = QLineEdit()
 
         self.detector_mount_height = QLineEdit()
 
@@ -263,8 +262,7 @@ class PropertyPanel(QWidget):
         layout.addRow("Position X (m)", self.detector_x)
         layout.addRow("Position Y (m)", self.detector_y)
 
-        layout.addRow("Coverage Width (m)", self.detector_coverage_width)
-        layout.addRow("Coverage Length (m)", self.detector_coverage_length)
+        layout.addRow("Coverage Radius (m)", self.detector_coverage_radius)
 
         layout.addRow("Mount Height (m)", self.detector_mount_height)
 
@@ -275,8 +273,7 @@ class PropertyPanel(QWidget):
         self.detector_fields = [
             self.detector_x,
             self.detector_y,
-            self.detector_coverage_width,
-            self.detector_coverage_length,
+            self.detector_coverage_radius,
             self.detector_mount_height,
             self.detector_type,
             self.detector_active,
@@ -417,11 +414,7 @@ class PropertyPanel(QWidget):
             self.update_detector_geometry
         )
 
-        self.detector_coverage_width.editingFinished.connect(
-            self.update_detector_geometry
-        )
-
-        self.detector_coverage_length.editingFinished.connect(
+        self.detector_coverage_radius.editingFinished.connect(
             self.update_detector_geometry
         )
 
@@ -778,8 +771,7 @@ class PropertyPanel(QWidget):
         self.object_name.blockSignals(True)
         self.detector_x.blockSignals(True)
         self.detector_y.blockSignals(True)
-        self.detector_coverage_width.blockSignals(True)
-        self.detector_coverage_length.blockSignals(True)
+        self.detector_coverage_radius.blockSignals(True)
         self.detector_mount_height.blockSignals(True)
         self.detector_type.blockSignals(True)
         self.detector_active.blockSignals(True)
@@ -793,12 +785,8 @@ class PropertyPanel(QWidget):
             self.detector_x.setText(f"{px:.2f}")
             self.detector_y.setText(f"{py:.2f}")
 
-            self.detector_coverage_width.setText(
-                f"{model.coverage_width:.2f}"
-            )
-
-            self.detector_coverage_length.setText(
-                f"{model.coverage_length:.2f}"
+            self.detector_coverage_radius.setText(
+                f"{model.coverage_radius:.2f}"
             )
 
             self.detector_mount_height.setText(
@@ -819,8 +807,7 @@ class PropertyPanel(QWidget):
         self.object_name.blockSignals(False)
         self.detector_x.blockSignals(False)
         self.detector_y.blockSignals(False)
-        self.detector_coverage_width.blockSignals(False)
-        self.detector_coverage_length.blockSignals(False)
+        self.detector_coverage_radius.blockSignals(False)
         self.detector_mount_height.blockSignals(False)
         self.detector_type.blockSignals(False)
         self.detector_active.blockSignals(False)
@@ -945,8 +932,7 @@ class PropertyPanel(QWidget):
         self.detector_x.clear()
         self.detector_y.clear()
 
-        self.detector_coverage_width.clear()
-        self.detector_coverage_length.clear()
+        self.detector_coverage_radius.clear()
 
         self.detector_mount_height.clear()
 
@@ -1266,12 +1252,8 @@ class PropertyPanel(QWidget):
             x = float(self.detector_x.text())
             y = float(self.detector_y.text())
 
-            coverage_width = float(
-                self.detector_coverage_width.text()
-            )
-
-            coverage_length = float(
-                self.detector_coverage_length.text()
+            coverage_radius = float(
+                self.detector_coverage_radius.text()
             )
 
             mount_height = float(
@@ -1291,8 +1273,7 @@ class PropertyPanel(QWidget):
 
         if self.current_item.model is not None:
 
-            self.current_item.model.coverage_width = coverage_width
-            self.current_item.model.coverage_length = coverage_length
+            self.current_item.model.coverage_radius = coverage_radius
             self.current_item.model.mount_height = mount_height
 
         self.current_item.refresh_geometry()
