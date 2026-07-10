@@ -1855,6 +1855,11 @@ class PropertyPanel(QWidget):
 
         self.current_item.model.to_floor_id = floor_id
 
+        # Reconnecting can flip this marker's arrow direction (it
+        # is derived from comparing this floor's elevation against
+        # whatever To Floor now resolves to).
+        self.current_item.refresh_geometry()
+
         self.refresh()
 
     # =====================================================

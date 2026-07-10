@@ -577,8 +577,8 @@ class GraphicsScene(QGraphicsScene):
                 stair_item = StairItem(
                     x,
                     y,
-                    self.pending_stair.width,
                     "to",
+                    self.project.building,
                     model=self.pending_stair,
                 )
 
@@ -1245,8 +1245,8 @@ class GraphicsScene(QGraphicsScene):
             stair_item = StairItem(
                 x * self.GRID_SIZE,
                 y * self.GRID_SIZE,
-                stair_obj.width,
                 "from",
+                self.project.building,
                 model=stair_obj,
             )
 
@@ -1272,8 +1272,8 @@ class GraphicsScene(QGraphicsScene):
                 stair_item = StairItem(
                     x * self.GRID_SIZE,
                     y * self.GRID_SIZE,
-                    stair_obj.width,
                     "to",
+                    self.project.building,
                     model=stair_obj,
                 )
 
