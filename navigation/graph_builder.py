@@ -1,3 +1,5 @@
+import math
+
 from models.connectable_space import SPACE_TYPE_LABELS
 
 from navigation.edge import Edge
@@ -169,6 +171,11 @@ class NavigationGraphGenerator:
                     from_node=endpoint_a.id,
                     to_node=endpoint_b.id,
                     reference=door,
+                    walking_distance=self._door_walking_distance(
+                        endpoint_a,
+                        door,
+                        endpoint_b,
+                    ),
                 )
             )
 
@@ -202,6 +209,10 @@ class NavigationGraphGenerator:
                     from_node=zone.id,
                     to_node=Node.OUTSIDE_NODE_ID,
                     reference=exit_obj,
+                    walking_distance=self._exit_walking_distance(
+                        zone,
+                        exit_obj,
+                    ),
                 )
             )
 
@@ -291,8 +302,52 @@ class NavigationGraphGenerator:
                     from_node=from_zone.id,
                     to_node=to_zone.id,
                     reference=stair,
+                    walking_distance=stair.travel_distance(building),
                 )
             )
+
+    # =====================================================
+    # Walking distance -- geometric, computed once at build time since
+    # it needs both endpoints' positions (or, for Stair, the
+    # Building's floor heights) rather than just one `reference`.
+    # Never stored on Door/Exit/Staircase themselves.
+    # =====================================================
+
+    def _position_of(self, space):
+
+        # Zone exposes `center`, AssemblyPoint exposes `position` --
+        # either way, a single (x, y) point to measure from/to.
+        if hasattr(space, "center"):
+            return space.center
+
+        if hasattr(space, "position"):
+            return space.position
+
+        return None
+
+    def _door_walking_distance(self, endpoint_a, door, endpoint_b):
+
+        position_a = self._position_of(endpoint_a.reference)
+        position_b = self._position_of(endpoint_b.reference)
+
+        if position_a is None or position_b is None:
+            return None
+
+        door_position = door.center
+
+        return (
+            math.dist(position_a, door_position)
+            + math.dist(door_position, position_b)
+        )
+
+    def _exit_walking_distance(self, zone, exit_obj):
+
+        zone_position = self._position_of(zone.reference)
+
+        if zone_position is None:
+            return None
+
+        return math.dist(zone_position, exit_obj.center)
 
     # =====================================================
     # Shared endpoint resolution

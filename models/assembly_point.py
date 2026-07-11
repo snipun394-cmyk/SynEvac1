@@ -29,6 +29,13 @@ class AssemblyPoint(BaseObject):
 
     # =====================================================
 
+    @property
+    def area(self):
+
+        return self.length * self.width
+
+    # =====================================================
+
     def move_to(self, x, y):
 
         self.position = (x, y)
