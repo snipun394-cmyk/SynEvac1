@@ -13,6 +13,7 @@ from pathfinding.engine import PathfindingEngine
 
 from simulator.capacity import DefaultCapacityModel
 from simulator.coordinator import MultiAgentSimulation
+from simulator.decision import ActionType, BehaviorDecision
 from simulator.engine import OccupantSimulator
 from simulator.occupant import OccupantState
 
@@ -482,6 +483,247 @@ class DefaultCapacityModelTests(unittest.TestCase):
         self.assertGreaterEqual(DefaultCapacityModel().capacity(edge), 1)
 
 
+class AddOccupantRoutePassthroughTests(unittest.TestCase):
+
+    # add_occupant(route=...) skips internal OccupantSimulator planning
+    # and uses the caller-supplied Route directly -- the primitive
+    # that makes route-level (not just goal-level) choice possible.
+
+    def test_supplied_route_is_used_as_is(self):
+
+        building = Building(name="B")
+        floor = building.create_floor(name="Ground Floor")
+
+        zone_a = make_zone("A", x=0.0, y=0.0)
+        zone_b = make_zone("B", x=5.0, y=0.0)
+        floor.add_zone(zone_a)
+        floor.add_zone(zone_b)
+
+        door = Door(
+            name="D1", zone_a_id=zone_a.id, zone_b_id=zone_b.id, floor_id=floor.id,
+        )
+        floor.add_door(door)
+        floor.add_exit(Exit(name="Ex", zone_id=zone_b.id, floor_id=floor.id))
+
+        graph = NavigationGraphGenerator().build(building)
+        engine = PathfindingEngine(graph)
+
+        route = engine.nearest_exit(zone_a.id)
+
+        sim = MultiAgentSimulation(engine)
+        sim.add_occupant(start_id=zone_a.id, occupant_id="p1", route=route)
+
+        result = sim.run()
+
+        self.assertEqual(result.occupants["p1"].traversed_edge_ids, route.edge_ids)
+        self.assertEqual(result.occupants["p1"].state, OccupantState.ARRIVED)
+
+
+class SubmitDecisionTests(unittest.TestCase):
+
+    def setUp(self):
+
+        self.building = Building(name="B")
+        self.floor = self.building.create_floor(name="Ground Floor")
+
+        self.zone_a = make_zone("A", x=0.0, y=0.0)
+        self.zone_b = make_zone("B", x=5.0, y=0.0)
+        self.floor.add_zone(self.zone_a)
+        self.floor.add_zone(self.zone_b)
+
+        door = Door(
+            name="D1", zone_a_id=self.zone_a.id, zone_b_id=self.zone_b.id,
+            floor_id=self.floor.id,
+        )
+        self.floor.add_door(door)
+        self.exit_obj = Exit(name="Ex", zone_id=self.zone_b.id, floor_id=self.floor.id)
+        self.floor.add_exit(self.exit_obj)
+
+        self.graph = NavigationGraphGenerator().build(self.building)
+        self.engine = PathfindingEngine(self.graph)
+
+    def test_movement_decision_is_executed_like_add_occupant(self):
+
+        sim = MultiAgentSimulation(self.engine)
+
+        decision = BehaviorDecision(
+            occupant_id="p1",
+            action_type=ActionType.EVACUATE,
+            start_id=self.zone_a.id,
+            goal_id="outside",
+        )
+        sim.submit_decision(decision)
+
+        result = sim.run()
+
+        self.assertEqual(result.occupants["p1"].state, OccupantState.ARRIVED)
+        self.assertEqual(result.occupants["p1"].traversed_edge_ids[-1], self.exit_obj.id)
+
+    def test_non_movement_decision_registers_stationary_occupant(self):
+
+        sim = MultiAgentSimulation(self.engine)
+
+        decision = BehaviorDecision(
+            occupant_id="p1",
+            action_type=ActionType.WAIT,
+            start_id=self.zone_a.id,
+        )
+        sim.submit_decision(decision)
+
+        result = sim.run()
+
+        self.assertEqual(result.occupants["p1"].state, OccupantState.STATIONARY)
+        self.assertIsNone(result.occupants["p1"].arrival_time)
+        self.assertEqual(result.occupants["p1"].steps, [])
+        self.assertNotIn("p1", result.unreachable_occupant_ids)
+
+    def test_decision_with_explicit_route_is_used_as_is(self):
+
+        route = self.engine.nearest_exit(self.zone_a.id)
+
+        sim = MultiAgentSimulation(self.engine)
+
+        decision = BehaviorDecision(
+            occupant_id="p1",
+            action_type=ActionType.EVACUATE,
+            start_id=self.zone_a.id,
+            route=route,
+        )
+        sim.submit_decision(decision)
+
+        result = sim.run()
+
+        self.assertEqual(result.occupants["p1"].traversed_edge_ids, route.edge_ids)
+
+
+class MostRecentDecisionWinsTests(unittest.TestCase):
+
+    # BehaviorDecision is immutable -- a changed decision is a NEW
+    # object submitted again for the same occupant_id, never a
+    # mutation. These tests prove Simulation always executes the most
+    # recently submitted decision, with no stale/duplicate events from
+    # a superseded one.
+
+    def setUp(self):
+
+        self.building = Building(name="B")
+        self.floor = self.building.create_floor(name="Ground Floor")
+
+        self.zone_a = make_zone("A", x=0.0, y=0.0)
+        self.zone_b = make_zone("B", x=5.0, y=0.0)
+        self.floor.add_zone(self.zone_a)
+        self.floor.add_zone(self.zone_b)
+
+        door = Door(
+            name="D1", zone_a_id=self.zone_a.id, zone_b_id=self.zone_b.id,
+            floor_id=self.floor.id,
+        )
+        self.floor.add_door(door)
+        self.exit_obj = Exit(name="Ex", zone_id=self.zone_b.id, floor_id=self.floor.id)
+        self.floor.add_exit(self.exit_obj)
+
+        self.graph = NavigationGraphGenerator().build(self.building)
+        self.engine = PathfindingEngine(self.graph)
+
+    def test_wait_then_evacuate_ends_up_evacuated_not_stationary(self):
+
+        sim = MultiAgentSimulation(self.engine)
+
+        sim.submit_decision(
+            BehaviorDecision(
+                occupant_id="p1", action_type=ActionType.WAIT, start_id=self.zone_a.id,
+            )
+        )
+        sim.submit_decision(
+            BehaviorDecision(
+                occupant_id="p1", action_type=ActionType.EVACUATE,
+                start_id=self.zone_a.id, goal_id="outside",
+            )
+        )
+
+        result = sim.run()
+
+        self.assertEqual(result.occupants["p1"].state, OccupantState.ARRIVED)
+        self.assertEqual(len(result.occupants), 1)
+
+    def test_two_movement_decisions_only_the_second_executes(self):
+
+        # Both decisions would move p1, but to different places --
+        # only the second (most recent) submission's route should
+        # ever actually be walked; no doubled/duplicate steps.
+        second_zone = make_zone("C", x=20.0, y=0.0)
+        self.floor.add_zone(second_zone)
+        door2 = Door(
+            name="D2", zone_a_id=self.zone_a.id, zone_b_id=second_zone.id,
+            floor_id=self.floor.id,
+        )
+        self.floor.add_door(door2)
+
+        graph = NavigationGraphGenerator().build(self.building)
+        engine = PathfindingEngine(graph)
+
+        sim = MultiAgentSimulation(engine)
+
+        sim.submit_decision(
+            BehaviorDecision(
+                occupant_id="p1", action_type=ActionType.EVACUATE,
+                start_id=self.zone_a.id, goal_id="outside",
+            )
+        )
+        sim.submit_decision(
+            BehaviorDecision(
+                occupant_id="p1", action_type=ActionType.EVACUATE,
+                start_id=self.zone_a.id, goal_id=second_zone.id,
+            )
+        )
+
+        result = sim.run()
+
+        self.assertEqual(result.occupants["p1"].traversed_edge_ids, [door2.id])
+        self.assertEqual(len(result.occupants["p1"].steps), 1)
+
+    def test_re_decision_does_not_leave_stale_queue_entries(self):
+
+        # p1 registers WAIT, then EVACUATE; p2 also evacuates through
+        # the same (capacity-1) door. p1's stale WAIT registration
+        # must not leave a phantom queue slot that ever gets released.
+        narrow_door = Door(
+            name="Narrow", zone_a_id=self.zone_a.id, zone_b_id=self.zone_b.id,
+            floor_id=self.floor.id, width=0.5,
+        )
+        # Replace the wide setUp door with a narrow one for this test.
+        self.floor.remove_door(
+            next(d for d in self.floor.doors if d.name == "D1")
+        )
+        self.floor.add_door(narrow_door)
+
+        graph = NavigationGraphGenerator().build(self.building)
+        engine = PathfindingEngine(graph)
+
+        sim = MultiAgentSimulation(engine)
+
+        sim.submit_decision(
+            BehaviorDecision(
+                occupant_id="p1", action_type=ActionType.WAIT, start_id=self.zone_a.id,
+            )
+        )
+        sim.submit_decision(
+            BehaviorDecision(
+                occupant_id="p1", action_type=ActionType.EVACUATE,
+                start_id=self.zone_a.id, goal_id="outside",
+            )
+        )
+        sim.add_occupant(self.zone_a.id, occupant_id="p2")
+
+        result = sim.run()
+
+        self.assertEqual(result.occupants["p1"].state, OccupantState.ARRIVED)
+        self.assertEqual(result.occupants["p2"].state, OccupantState.ARRIVED)
+        # Exactly one of the two had to queue behind the other for the
+        # capacity-1 door -- not zero, not both.
+        self.assertEqual(sim._total_queue_events, 1)
+
+
 class MultiAgentIndependenceTests(unittest.TestCase):
 
     def test_multi_agent_files_never_touch_reference_or_engineering_models(self):
@@ -493,7 +735,7 @@ class MultiAgentIndependenceTests(unittest.TestCase):
 
         new_files = [
             "occupant.py", "capacity.py", "congestion.py",
-            "multi_agent_result.py", "coordinator.py",
+            "multi_agent_result.py", "coordinator.py", "decision.py",
         ]
 
         for filename in new_files:

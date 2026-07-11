@@ -13,16 +13,21 @@ class OccupantState(Enum):
     TRAVERSING = auto()     # currently crossing an edge
     ARRIVED = auto()        # reached the final node of their route
     UNREACHABLE = auto()    # OccupantSimulator found no route at registration time
+    STATIONARY = auto()     # decided not to move (e.g. WAIT/IGNORE) -- not a failure
 
 
 @dataclass
 class Occupant:
 
     # A single agent's runtime record inside a MultiAgentSimulation --
-    # not an engineering model, not touching models/. The route is
-    # fixed once, at registration time (via OccupantSimulator), and
-    # never recomputed -- MultiAgentSimulation only ever advances
-    # current_edge_index forward through it (no dynamic rerouting).
+    # not an engineering model, not touching models/. Never mutated in
+    # place: the route is fixed for the lifetime of *this* Occupant
+    # instance, and MultiAgentSimulation only ever advances
+    # current_edge_index forward through it. A later BehaviorDecision
+    # for the same occupant_id (see simulator/coordinator.py's
+    # generation-based supersession) replaces this instance wholesale
+    # rather than editing it -- there is still no dynamic rerouting of
+    # an Occupant already in flight.
 
     occupant_id: str
     walking_speed: float
