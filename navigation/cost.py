@@ -5,6 +5,13 @@ class CostModel:
     # routing behavior (smoke-aware, congestion-aware, ...) arrives as
     # a new CostModel implementation, not as changes to the graph,
     # Edge, or the pathfinder itself.
+    #
+    # Contract: cost(edge) must return a value >= 0. PathfindingEngine
+    # uses Dijkstra (and Yen's algorithm for alternative routes)
+    # internally, both of which are only correct under non-negative
+    # edge weights -- a CostModel that returns a negative cost (e.g.
+    # to express a "reward") will silently produce incorrect shortest
+    # paths rather than raise an error.
 
     def cost(self, edge):
 

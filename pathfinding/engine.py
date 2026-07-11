@@ -230,6 +230,46 @@ class PathfindingEngine:
         return accepted
 
     # =====================================================
+
+    def distances_from(
+        self,
+        start_id,
+        excluded_node_ids=frozenset(),
+        excluded_edge_ids=frozenset(),
+    ):
+
+        # Single-source Dijkstra to *every* node start_id can reach,
+        # in one pass -- the primitive whole-graph analyses (e.g.
+        # Building Analysis's exit-service-area / max-travel-distance
+        # reports) need, instead of running nearest_exit()/dijkstra()
+        # once per node in the graph. distances_from(Node.
+        # OUTSIDE_NODE_ID) gives every zone's distance to its nearest
+        # exit in a single search.
+        #
+        # Returns {node_id: Route} for every reachable node (start_id
+        # included, with a trivial zero-cost Route to itself).
+        # Unreachable nodes are simply absent -- same "no Route"
+        # contract as every other query on this engine. Never uses a
+        # heuristic: there is no single goal node to estimate towards.
+
+        _, best_cost, predecessor, predecessor_edge = self._relax(
+            start_id,
+            excluded_node_ids=excluded_node_ids,
+            excluded_edge_ids=excluded_edge_ids,
+        )
+
+        return {
+            node_id: self._reconstruct(
+                node_id,
+                start_id,
+                predecessor,
+                predecessor_edge,
+                cost,
+            )
+            for node_id, cost in best_cost.items()
+        }
+
+    # =====================================================
     # Internal search core -- Dijkstra when use_heuristic is False,
     # A* when True. `is_goal` is a predicate over Node rather than a
     # fixed id so nearest_node()/nearest_exit()/nearest_assembly_
@@ -248,10 +288,49 @@ class PathfindingEngine:
         excluded_edge_ids=frozenset(),
     ):
 
+        goal_id, best_cost, predecessor, predecessor_edge = self._relax(
+            start_id,
+            is_goal=is_goal,
+            goal_node=goal_node,
+            use_heuristic=use_heuristic,
+            excluded_node_ids=excluded_node_ids,
+            excluded_edge_ids=excluded_edge_ids,
+        )
+
+        if goal_id is None:
+            return None
+
+        return self._reconstruct(
+            goal_id,
+            start_id,
+            predecessor,
+            predecessor_edge,
+            best_cost[goal_id],
+        )
+
+    # =====================================================
+    # Shared relaxation loop underneath _search() and distances_from().
+    # With `is_goal` set, stops and returns the matching node's id the
+    # moment it's popped (Dijkstra/A* pop in non-decreasing cost
+    # order, so the first match is provably nearest/optimal). With
+    # `is_goal` left None, runs to exhaustion, reaching every node
+    # start_id can reach -- distances_from()'s single-source query.
+    # =====================================================
+
+    def _relax(
+        self,
+        start_id,
+        is_goal=None,
+        goal_node=None,
+        use_heuristic=False,
+        excluded_node_ids=frozenset(),
+        excluded_edge_ids=frozenset(),
+    ):
+
         start_node = self.graph.find_node(start_id)
 
         if start_node is None or start_id in excluded_node_ids:
-            return None
+            return None, {}, {}, {}
 
         counter = itertools.count()
 
@@ -279,15 +358,8 @@ class PathfindingEngine:
 
             current_node = self.graph.find_node(current_id)
 
-            if is_goal(current_node):
-
-                return self._reconstruct(
-                    current_id,
-                    start_id,
-                    predecessor,
-                    predecessor_edge,
-                    best_cost[current_id],
-                )
+            if is_goal is not None and is_goal(current_node):
+                return current_id, best_cost, predecessor, predecessor_edge
 
             for neighbor_node, edge in self.graph.find_neighbors(current_node):
 
@@ -321,6 +393,8 @@ class PathfindingEngine:
                         frontier,
                         (priority, next(counter), neighbor_node.id),
                     )
+
+        return None, best_cost, predecessor, predecessor_edge
 
         return None
 

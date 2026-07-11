@@ -505,5 +505,92 @@ class HeuristicWiringTests(unittest.TestCase):
         self.assertIs(engine.heuristic, custom)
 
 
+class DistancesFromTests(unittest.TestCase):
+
+    # A -- door --> B -- door --> C -- exit --> Outside, plus a
+    # second, farther exit directly off A. Single-source Dijkstra
+    # from Outside should reproduce exactly what nearest_exit() would
+    # find for every zone individually, in one pass.
+
+    def setUp(self):
+
+        self.building = Building(name="B")
+        self.floor = self.building.create_floor(name="Ground Floor")
+
+        self.zone_a = make_zone("A", x=0.0, y=0.0)
+        self.zone_b = make_zone("B", x=5.0, y=0.0)
+        self.zone_c = make_zone("C", x=10.0, y=0.0)
+
+        for zone in (self.zone_a, self.zone_b, self.zone_c):
+            self.floor.add_zone(zone)
+
+        self.door_ab = Door(
+            name="AB", zone_a_id=self.zone_a.id, zone_b_id=self.zone_b.id,
+            floor_id=self.floor.id,
+        )
+        self.door_bc = Door(
+            name="BC", zone_a_id=self.zone_b.id, zone_b_id=self.zone_c.id,
+            floor_id=self.floor.id,
+        )
+        self.floor.add_door(self.door_ab)
+        self.floor.add_door(self.door_bc)
+
+        self.exit_far = Exit(name="Far Exit", zone_id=self.zone_c.id, floor_id=self.floor.id)
+        self.floor.add_exit(self.exit_far)
+
+        self.unreachable = make_zone("Unreachable", x=100.0, y=100.0)
+        self.floor.add_zone(self.unreachable)
+
+        self.graph = NavigationGraphGenerator().build(self.building)
+        self.engine = PathfindingEngine(self.graph)
+
+    def test_distances_from_outside_matches_nearest_exit_for_every_zone(self):
+
+        routes = self.engine.distances_from(Node.OUTSIDE_NODE_ID)
+
+        for zone in (self.zone_a, self.zone_b, self.zone_c):
+
+            nearest = self.engine.nearest_exit(zone.id)
+
+            self.assertIn(zone.id, routes)
+            self.assertAlmostEqual(
+                routes[zone.id].total_cost,
+                nearest.total_cost,
+            )
+
+    def test_start_node_included_with_zero_cost(self):
+
+        routes = self.engine.distances_from(Node.OUTSIDE_NODE_ID)
+
+        self.assertIn(Node.OUTSIDE_NODE_ID, routes)
+        self.assertEqual(routes[Node.OUTSIDE_NODE_ID].total_cost, 0.0)
+        self.assertEqual(routes[Node.OUTSIDE_NODE_ID].node_ids, [Node.OUTSIDE_NODE_ID])
+
+    def test_unreachable_nodes_are_absent(self):
+
+        routes = self.engine.distances_from(Node.OUTSIDE_NODE_ID)
+
+        self.assertNotIn(self.unreachable.id, routes)
+
+    def test_unknown_start_returns_empty_dict(self):
+
+        self.assertEqual(self.engine.distances_from("not-a-real-id"), {})
+
+    def test_routes_reconstruct_correctly_for_every_target(self):
+
+        routes = self.engine.distances_from(self.zone_a.id)
+
+        route_to_c = routes[self.zone_c.id]
+
+        self.assertEqual(
+            route_to_c.node_ids,
+            [self.zone_a.id, self.zone_b.id, self.zone_c.id],
+        )
+        self.assertEqual(
+            route_to_c.edge_ids,
+            [self.door_ab.id, self.door_bc.id],
+        )
+
+
 if __name__ == "__main__":
     unittest.main()
