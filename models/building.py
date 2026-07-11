@@ -1,3 +1,5 @@
+import re
+
 from dataclasses import dataclass, field
 from datetime import datetime
 from uuid import uuid4
@@ -99,6 +101,43 @@ class Building:
             elevation += other.height
 
         return elevation
+
+    # =====================================================
+    # Zone Naming
+    #
+    # Never stored as a counter on Building -- always recomputed
+    # from whatever Zone names already exist across every floor, the
+    # same "derive it, don't cache it" pattern floor_elevation()
+    # already uses. That's what keeps numbering stable after save/
+    # load with no extra persisted state: the next name only ever
+    # depends on the zones actually in the project right now, so a
+    # deleted "Zone 2" is never handed back out to a new zone while
+    # "Zone 3" still exists, and reloading a project can't desync a
+    # counter that was never stored in the first place.
+    # =====================================================
+
+    ZONE_NAME_PATTERN = re.compile(r"^Zone (\d+)$")
+
+    def next_zone_name(self):
+
+        highest = 0
+
+        for floor in self.floors:
+
+            for zone in floor.zones:
+
+                match = self.ZONE_NAME_PATTERN.match(
+                    zone.name
+                )
+
+                if match:
+
+                    highest = max(
+                        highest,
+                        int(match.group(1)),
+                    )
+
+        return f"Zone {highest + 1}"
 
     # =====================================================
     # Floor Management

@@ -336,7 +336,7 @@ class GraphicsScene(QGraphicsScene):
                 )
 
                 zone_model = Zone(
-                    name=f"Zone {self.current_floor.zone_count + 1}",
+                    name=self.project.building.next_zone_name(),
                     x=rect.x() / self.GRID_SIZE,
                     y=rect.y() / self.GRID_SIZE,
                     width=rect.width() / self.GRID_SIZE,
@@ -352,9 +352,8 @@ class GraphicsScene(QGraphicsScene):
                     rect.y(),
                     rect.width(),
                     rect.height(),
+                    model=zone_model,
                 )
-
-                zone.model = zone_model
 
                 self.addItem(zone)
 
@@ -1199,9 +1198,8 @@ class GraphicsScene(QGraphicsScene):
                 zone.y * self.GRID_SIZE,
                 zone.width * self.GRID_SIZE,
                 zone.height * self.GRID_SIZE,
+                model=zone,
             )
-
-            rect.model = zone
 
             rect.setFlag(
                 QGraphicsItem.GraphicsItemFlag.ItemIsMovable,

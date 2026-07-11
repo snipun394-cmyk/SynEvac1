@@ -12,16 +12,6 @@ class ZoneRectangle(QGraphicsRectItem):
 
         self.model = model
 
-        if self.model is not None:
-
-            self.zone_id = self.model.id
-            self.zone_name = self.model.name
-
-        else:
-
-            self.zone_id = ""
-            self.zone_name = ""
-
         self.setPos(x, y)
 
         # =====================================================
@@ -67,6 +57,32 @@ class ZoneRectangle(QGraphicsRectItem):
         self.geometry_changed_callback = None
 
     # =====================================================
+    # zone_id/zone_name are read live from the model rather than
+    # cached at construction time -- a stale copy here is exactly
+    # what left the Property Panel's ID field blank whenever this
+    # item was built with model=None and had .model assigned
+    # afterward (see both call sites in GraphicsScene).
+    # =====================================================
+
+    @property
+    def zone_id(self):
+
+        return (
+            self.model.id
+            if self.model is not None
+            else ""
+        )
+
+    @property
+    def zone_name(self):
+
+        return (
+            self.model.name
+            if self.model is not None
+            else ""
+        )
+
+    # =====================================================
 
     def sync_to_model(self):
 
@@ -82,8 +98,6 @@ class ZoneRectangle(QGraphicsRectItem):
             self.rect().width() / self.GRID_SIZE,
             self.rect().height() / self.GRID_SIZE,
         )
-
-        self.zone_name = self.model.name
 
     # =====================================================
 
@@ -185,8 +199,6 @@ class ZoneRectangle(QGraphicsRectItem):
     # =====================================================
 
     def rename(self, name):
-
-        self.zone_name = name
 
         if self.model is not None:
             self.model.name = name
