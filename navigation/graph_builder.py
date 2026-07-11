@@ -1,7 +1,18 @@
+from models.connectable_space import SPACE_TYPE_LABELS
+
 from navigation.edge import Edge
 from navigation.graph import NavigationGraph
 from navigation.node import Node
 from navigation.validation import ValidationReport
+
+# What a Door may connect. Exit/Stair stay Zone-only (their own
+# _resolve_endpoint() calls below don't pass allowed_types, so they
+# keep the default) -- this is strictly additive for Door and changes
+# nothing about how Zone <-> Zone doors already resolved.
+DOOR_ENDPOINT_TYPES = (
+    Node.ZONE,
+    Node.ASSEMBLY_POINT,
+)
 
 
 class NavigationGraphGenerator:
@@ -52,6 +63,9 @@ class NavigationGraphGenerator:
             self._add_zone_nodes(graph, floor)
 
         for floor in floors:
+            self._add_assembly_point_nodes(graph, floor)
+
+        for floor in floors:
             self._add_door_edges(graph, floor)
 
         for floor in floors:
@@ -80,15 +94,30 @@ class NavigationGraphGenerator:
                 )
             )
 
+    def _add_assembly_point_nodes(self, graph, floor):
+
+        for assembly_point in floor.assembly_points:
+
+            graph.add_node(
+                Node(
+                    id=assembly_point.id,
+                    name=assembly_point.name,
+                    floor_id=floor.id,
+                    node_type=Node.ASSEMBLY_POINT,
+                    reference=assembly_point,
+                )
+            )
+
     # =====================================================
-    # Edges -- Door (Zone <-> Zone, same floor)
+    # Edges -- Door (any connectable space <-> any connectable
+    # space, same floor -- Zone and Assembly Point today)
     # =====================================================
 
     def _add_door_edges(self, graph, floor):
 
         for door in floor.doors:
 
-            zone_a = self._resolve_zone(
+            endpoint_a = self._resolve_endpoint(
                 graph,
                 door.zone_a_id,
                 floor,
@@ -98,9 +127,10 @@ class NavigationGraphGenerator:
                     f"Door '{door.name}' has no Zone A "
                     f"assigned."
                 ),
+                allowed_types=DOOR_ENDPOINT_TYPES,
             )
 
-            zone_b = self._resolve_zone(
+            endpoint_b = self._resolve_endpoint(
                 graph,
                 door.zone_b_id,
                 floor,
@@ -110,18 +140,19 @@ class NavigationGraphGenerator:
                     f"Door '{door.name}' has no Zone B "
                     f"assigned."
                 ),
+                allowed_types=DOOR_ENDPOINT_TYPES,
             )
 
-            if zone_a is None or zone_b is None:
+            if endpoint_a is None or endpoint_b is None:
                 continue
 
-            if zone_a.id == zone_b.id:
+            if endpoint_a.id == endpoint_b.id:
 
                 graph.record_issue(
                     "invalid_reference",
                     (
                         f"Door '{door.name}' has the same "
-                        f"Zone assigned to both Zone A and "
+                        f"space assigned to both Zone A and "
                         f"Zone B."
                     ),
                     severity=ValidationReport.ERROR,
@@ -135,8 +166,8 @@ class NavigationGraphGenerator:
                 Edge(
                     id=door.id,
                     edge_type=Edge.DOOR,
-                    from_node=zone_a.id,
-                    to_node=zone_b.id,
+                    from_node=endpoint_a.id,
+                    to_node=endpoint_b.id,
                     reference=door,
                 )
             )
@@ -149,7 +180,7 @@ class NavigationGraphGenerator:
 
         for exit_obj in floor.exits:
 
-            zone = self._resolve_zone(
+            zone = self._resolve_endpoint(
                 graph,
                 exit_obj.zone_id,
                 floor,
@@ -218,7 +249,7 @@ class NavigationGraphGenerator:
                         floor_id=floor.id,
                     )
 
-            from_zone = self._resolve_zone(
+            from_zone = self._resolve_endpoint(
                 graph,
                 stair.from_zone_id,
                 floor,
@@ -230,7 +261,7 @@ class NavigationGraphGenerator:
                 ),
             )
 
-            to_zone = self._resolve_zone(
+            to_zone = self._resolve_endpoint(
                 graph,
                 stair.to_zone_id,
                 destination_floor,
@@ -264,26 +295,32 @@ class NavigationGraphGenerator:
             )
 
     # =====================================================
-    # Shared zone-reference resolution
+    # Shared endpoint resolution
     #
-    # Every explicit zone reference (Door.zone_a_id/zone_b_id,
+    # Every explicit space reference (Door.zone_a_id/zone_b_id,
     # Exit.zone_id, Staircase.from_zone_id/to_zone_id) goes through
     # this one path so "missing" vs. "points at something that isn't
-    # a real Zone on the expected floor" are reported consistently.
+    # a real, allowed space on the expected floor" are reported
+    # consistently. `allowed_types` defaults to Zone-only, exactly
+    # what every call site used before Door endpoints were
+    # generalized -- Exit and Stair never pass it, so their behavior
+    # (including this method's messages, which read identically to
+    # before whenever allowed_types is just Zone) is unchanged.
     # =====================================================
 
-    def _resolve_zone(
+    def _resolve_endpoint(
         self,
         graph,
-        zone_id,
+        space_id,
         expected_floor,
         owner,
         missing_code,
         missing_message,
         skip_floor_check=False,
+        allowed_types=(Node.ZONE,),
     ):
 
-        if not zone_id:
+        if not space_id:
 
             graph.record_issue(
                 missing_code,
@@ -299,16 +336,21 @@ class NavigationGraphGenerator:
 
             return None
 
-        node = graph.find_node(zone_id)
+        node = graph.find_node(space_id)
 
-        if node is None or node.node_type != Node.ZONE:
+        type_names = " or ".join(
+            SPACE_TYPE_LABELS.get(node_type, node_type)
+            for node_type in allowed_types
+        )
+
+        if node is None or node.node_type not in allowed_types:
 
             graph.record_issue(
                 "invalid_reference",
                 (
-                    f"'{owner.name}' references a Zone id "
-                    f"that doesn't match any Zone in this "
-                    f"Building."
+                    f"'{owner.name}' references an id that "
+                    f"doesn't match any {type_names} in "
+                    f"this Building."
                 ),
                 severity=ValidationReport.ERROR,
                 object_id=owner.id,
@@ -330,7 +372,8 @@ class NavigationGraphGenerator:
             graph.record_issue(
                 "invalid_reference",
                 (
-                    f"'{owner.name}' references a Zone "
+                    f"'{owner.name}' references a "
+                    f"{SPACE_TYPE_LABELS.get(node.node_type, node.node_type)} "
                     f"that belongs to a different floor "
                     f"than expected."
                 ),

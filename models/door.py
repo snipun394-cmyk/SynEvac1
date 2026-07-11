@@ -20,12 +20,19 @@ class Door(BaseObject):
 
     active: bool = True
 
-    # Connectivity -- the two engineering spaces (Zones) this
-    # Door joins. Empty string means "not connected yet". Zone
-    # touching geometrically never implies connectivity on its
-    # own; only an explicit Door creates a traversable link. The
-    # Navigation Graph will later derive graph edges from these
-    # two references -- never resolved or validated here.
+    # Connectivity -- the two navigable spaces this Door joins.
+    # Despite the field names (kept as-is for backward
+    # compatibility -- old .syn files already store a plain id
+    # here), the id is not restricted to a Zone: it names any
+    # connectable space in models/connectable_space.py (Zone or
+    # AssemblyPoint today). Since ids are unique across every
+    # object in a project regardless of type, resolving "what kind
+    # of space is this" is always a lookup, never something that
+    # needs to be stored alongside it. Empty string means "not
+    # connected yet". Geometric touching never implies connectivity
+    # on its own; only an explicit Door creates a traversable link.
+    # The Navigation Graph derives graph edges from these two
+    # references -- never resolved or validated here.
     zone_a_id: str = ""
     zone_b_id: str = ""
 

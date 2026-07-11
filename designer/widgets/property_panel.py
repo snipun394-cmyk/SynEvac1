@@ -10,6 +10,7 @@ from PyQt6.QtWidgets import (
     QPushButton,
 )
 
+from models import connectable_space
 from models.detector import Detector
 from models.door import Door
 from models.floor import Floor
@@ -2255,6 +2256,15 @@ class PropertyPanel(QWidget):
 
     def _populate_zone_combo(self, combo, model, current_zone_id, exclude_zone_id):
 
+        # A Door connects any navigable space registered in
+        # models/connectable_space.py (Zone, Assembly Point today),
+        # not just a Zone -- the field/param names here stay as
+        # "zone" for the same backward-compatibility reason
+        # Door.zone_a_id/zone_b_id kept their names (see door.py).
+        # itemData is still just the plain object id: ids are unique
+        # across every connectable type, so no separate "which type"
+        # data needs to travel with it.
+
         combo.blockSignals(True)
 
         combo.clear()
@@ -2267,14 +2277,17 @@ class PropertyPanel(QWidget):
 
             if floor is not None:
 
-                for zone in floor.zones:
+                for space_type, space in connectable_space.all_connectable_spaces(floor):
 
-                    if zone.id == exclude_zone_id:
+                    if space.id == exclude_zone_id:
                         continue
 
                     combo.addItem(
-                        zone.name,
-                        zone.id,
+                        connectable_space.label_for(
+                            space_type,
+                            space.name,
+                        ),
+                        space.id,
                     )
 
         index = combo.findData(current_zone_id)

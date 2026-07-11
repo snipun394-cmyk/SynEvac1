@@ -18,15 +18,20 @@ class Node:
     node_type: str
     reference: Any = None
 
-    # Node Types -- V1 scope only. More will be added (e.g. "Stair
-    # Landing") only if a future version needs a distinct navigable
-    # space that isn't a Zone.
+    # Node Types. ASSEMBLY_POINT is the same string as
+    # connectable_space.ASSEMBLY_POINT (models/connectable_space.py) --
+    # that module is the registry of what a Door can connect; this is
+    # the graph's own type tag for the Node it produces. More will be
+    # added (e.g. "Outdoor Area") only if a future version needs
+    # another distinct navigable space.
     ZONE = "Zone"
     OUTSIDE = "Outside"
+    ASSEMBLY_POINT = "AssemblyPoint"
 
     NODE_TYPES = (
         ZONE,
         OUTSIDE,
+        ASSEMBLY_POINT,
     )
 
     # The whole graph shares exactly one "Outside" node -- every Exit

@@ -1,6 +1,19 @@
+from models.connectable_space import SPACE_TYPE_LABELS
+
 from navigation.edge import Edge
 from navigation.node import Node
 from navigation.validation import ValidationReport
+
+# Node types whose reachability from Outside actually means something
+# -- Zone and Assembly Point are both places a person can be standing
+# in, unlike the single synthetic Outside node itself. Widening this
+# from Zone-only to include Assembly Point is the only behavior change
+# here: for any graph with zero Assembly Points (every graph before
+# this) the two checks below produce results identical to before.
+CONNECTIVITY_CHECKED_TYPES = (
+    Node.ZONE,
+    Node.ASSEMBLY_POINT,
+)
 
 
 class NavigationGraph:
@@ -190,15 +203,15 @@ class NavigationGraph:
 
     def _validate_zone_connectivity(self, report):
 
-        zone_nodes = [
+        checked_nodes = [
             node
             for node in self.nodes.values()
-            if node.node_type == Node.ZONE
+            if node.node_type in CONNECTIVITY_CHECKED_TYPES
         ]
 
         degree = {
             node.id: 0
-            for node in zone_nodes
+            for node in checked_nodes
         }
 
         outside_ids = {
@@ -228,17 +241,26 @@ class NavigationGraph:
             if edge.to_node in degree:
                 degree[edge.to_node] += 1
 
-        # "Zones without any connections" -- a Zone touched by no
-        # edge at all. The simplest, purely local check.
-        for node in zone_nodes:
+        # "Zones without any connections" -- a Zone (or Assembly
+        # Point) touched by no edge at all. The simplest, purely
+        # local check. Code name kept as "zone_without_connections"
+        # for backward compatibility even though it can now also
+        # fire for an Assembly Point -- the label in the message
+        # still says which one it actually is.
+        for node in checked_nodes:
 
             if degree[node.id] == 0:
+
+                label = SPACE_TYPE_LABELS.get(
+                    node.node_type,
+                    node.node_type,
+                )
 
                 report.add(
                     "zone_without_connections",
                     (
-                        f"Zone '{node.name}' has no Door, Exit, "
-                        f"or Stair connected to it."
+                        f"{label} '{node.name}' has no Door, "
+                        f"Exit, or Stair connected to it."
                     ),
                     severity=ValidationReport.WARNING,
                     object_id=node.id,
@@ -267,17 +289,22 @@ class NavigationGraph:
                 if neighbor not in reachable:
                     frontier.append(neighbor)
 
-        for node in zone_nodes:
+        for node in checked_nodes:
 
             if (
                 degree[node.id] > 0
                 and node.id not in reachable
             ):
 
+                label = SPACE_TYPE_LABELS.get(
+                    node.node_type,
+                    node.node_type,
+                )
+
                 report.add(
                     "isolated_zone",
                     (
-                        f"Zone '{node.name}' has no path to "
+                        f"{label} '{node.name}' has no path to "
                         f"Outside through the current Door/Exit/"
                         f"Stair connections."
                     ),

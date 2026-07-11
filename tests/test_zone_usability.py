@@ -254,8 +254,11 @@ class DoorDropdownUsabilityTests(unittest.TestCase):
             for text, _ in self.combo_entries(self.panel.door_zone_a)
         ]
 
-        self.assertIn("Zone 1", texts)
-        self.assertIn("Zone 2", texts)
+        # Format is "Zone: <name>" (see models/connectable_space.py --
+        # generalized so Doors can also connect Assembly Points, added
+        # in the same pass this dropdown's format was locked in).
+        self.assertIn("Zone: Zone 1", texts)
+        self.assertIn("Zone: Zone 2", texts)
 
         for text in texts:
             self.assertNotEqual(text, self.zone_a.id)
@@ -267,8 +270,8 @@ class DoorDropdownUsabilityTests(unittest.TestCase):
 
         entries = dict(self.combo_entries(self.panel.door_zone_a))
 
-        self.assertEqual(entries["Zone 1"], self.zone_a.id)
-        self.assertEqual(entries["Zone 2"], self.zone_b.id)
+        self.assertEqual(entries["Zone: Zone 1"], self.zone_a.id)
+        self.assertEqual(entries["Zone: Zone 2"], self.zone_b.id)
 
     def test_rename_is_reflected_in_dropdown_on_next_refresh(self):
 
@@ -283,8 +286,8 @@ class DoorDropdownUsabilityTests(unittest.TestCase):
             for text, _ in self.combo_entries(self.panel.door_zone_a)
         ]
 
-        self.assertIn("Conference Room", texts)
-        self.assertNotIn("Zone 1", texts)
+        self.assertIn("Zone: Conference Room", texts)
+        self.assertNotIn("Zone: Zone 1", texts)
 
 
 if __name__ == "__main__":
