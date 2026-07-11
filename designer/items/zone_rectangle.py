@@ -26,6 +26,17 @@ class ZoneRectangle(QGraphicsRectItem):
             QColor(255, 255, 0, 120)
         )
 
+        # Manual Simulation Sandbox path visualization -- an amber
+        # tint distinct from selection's yellow, so a highlighted
+        # Zone on an occupant's planned route reads differently from
+        # one the user has clicked on.
+        self.highlight_brush = QBrush(
+            QColor(255, 165, 0, 120)
+        )
+
+        self._selected = False
+        self._highlighted = False
+
         self.setBrush(self.default_brush)
 
         self.setPen(
@@ -210,8 +221,31 @@ class ZoneRectangle(QGraphicsRectItem):
 
     def set_selected(self, selected):
 
-        if selected:
+        self._selected = selected
+
+        self._update_brush()
+
+    # =====================================================
+    # Manual Simulation Sandbox path visualization -- independent of
+    # selection, so a route can be highlighted while the user has
+    # something else (or nothing) selected. Selection still wins
+    # visually if both are true at once.
+    # =====================================================
+
+    def set_highlighted(self, highlighted):
+
+        self._highlighted = highlighted
+
+        self._update_brush()
+
+    # =====================================================
+
+    def _update_brush(self):
+
+        if self._selected:
             self.setBrush(self.selected_brush)
+        elif self._highlighted:
+            self.setBrush(self.highlight_brush)
         else:
             self.setBrush(self.default_brush)
 

@@ -17,6 +17,10 @@ from models.floor import Floor
 from models.obstacle import Obstacle
 from models.zone import Zone
 
+from navigation.node import Node
+
+from sandbox.occupant import SandboxDestinationType
+
 
 class PropertyPanel(QWidget):
 
@@ -29,13 +33,25 @@ class PropertyPanel(QWidget):
         self._refresh_handler = None
 
         # Needed to resolve Stair from_floor_id/to_floor_id into
-        # actual Floor elevations for the derived traversal fields.
+        # actual Floor elevations for the derived traversal fields,
+        # and (for Occupant) to resolve node ids into readable Zone/
+        # Assembly Point names and to recompute routes.
         self.building = None
+
+        # Manual Simulation Sandbox -- needed to recompute an
+        # Occupant's route when its destination type changes here.
+        # Never used for anything else this panel does.
+        self.sandbox_manager = None
 
         # Fired after a Floor's Name/Elevation/Height is edited here,
         # so MainWindow can refresh FloorList/ProjectTree (neither of
         # which is reachable directly from this widget).
         self.floor_updated_callback = None
+
+        # Fired after an Occupant's destination (and therefore route)
+        # is recomputed here, so MainWindow can refresh the on-canvas
+        # route highlight (not reachable directly from this widget).
+        self.occupant_route_changed_callback = None
 
         layout = QFormLayout()
 
@@ -138,6 +154,16 @@ class PropertyPanel(QWidget):
 
         self.blocked = QCheckBox()
 
+        # Connectivity -- the one Zone this Exit leads out of. Same
+        # convention as Door's Zone A/Zone B combos below: never
+        # inferred from geometry, only this explicit link. Previously
+        # missing entirely from this panel -- an Exit's zone_id had no
+        # way to be set through the Designer UI at all, which is what
+        # silently left NavigationGraphGenerator with no Zone to
+        # attach an Exit edge to even after zone_id looked "assigned"
+        # in the user's intent.
+        self.exit_zone = QComboBox()
+
         layout.addRow("Start X (m)", self.start_x)
         layout.addRow("Start Y (m)", self.start_y)
         layout.addRow("End X (m)", self.end_x)
@@ -150,6 +176,8 @@ class PropertyPanel(QWidget):
 
         layout.addRow("Blocked", self.blocked)
 
+        layout.addRow("Zone", self.exit_zone)
+
         self.exit_fields = [
             self.start_x,
             self.start_y,
@@ -159,6 +187,7 @@ class PropertyPanel(QWidget):
             self.exit_width,
             self.capacity,
             self.blocked,
+            self.exit_zone,
         ]
 
         # =====================================================
@@ -211,14 +240,26 @@ class PropertyPanel(QWidget):
         self.vertical_height = QLabel("-")
         self.travel_distance = QLabel("-")
 
+        # Connectivity -- the Zone at each end this Staircase actually
+        # opens into. Same explicit-reference convention as Door's own
+        # Zone A/Zone B combos below (never inferred from geometry,
+        # only this explicit link) -- previously missing entirely from
+        # this panel, which is exactly what let a Stair look "placed"
+        # on both floors while still producing no Navigation Graph
+        # edge at all.
+        self.stair_from_zone = QComboBox()
+        self.stair_to_zone = QComboBox()
+
         layout.addRow("From Floor", self.stair_from_floor)
         layout.addRow("From Position X (m)", self.stair_from_x)
         layout.addRow("From Position Y (m)", self.stair_from_y)
+        layout.addRow("From Zone", self.stair_from_zone)
 
         layout.addRow("To Floor", self.to_floor_combo)
         layout.addRow("To Floor ID", to_floor_id_row)
         layout.addRow("To Position X (m)", self.stair_to_x)
         layout.addRow("To Position Y (m)", self.stair_to_y)
+        layout.addRow("To Zone", self.stair_to_zone)
 
         layout.addRow("Stair Width (m)", self.stair_width)
 
@@ -236,10 +277,12 @@ class PropertyPanel(QWidget):
             self.stair_from_floor,
             self.stair_from_x,
             self.stair_from_y,
+            self.stair_from_zone,
             self.to_floor_combo,
             to_floor_id_row,
             self.stair_to_x,
             self.stair_to_y,
+            self.stair_to_zone,
             self.stair_width,
             self.vertical_height,
             self.travel_distance,
@@ -488,6 +531,54 @@ class PropertyPanel(QWidget):
             self.floor_height,
         ]
 
+        # =====================================================
+        # Occupant (Manual Simulation Sandbox)
+        #
+        # Read-only "Occupant Information" fields per the milestone,
+        # plus the one editable field: destination type. Everything
+        # else here is derived from sandbox.occupant.SandboxOccupant/
+        # Route, never stored redundantly -- same convention Stair's
+        # Vertical Height/Travel Distance already follow.
+        # =====================================================
+
+        self.occupant_current_floor = QLabel("-")
+        self.occupant_current_zone = QLabel("-")
+        self.occupant_current_node = QLabel("-")
+
+        self.occupant_destination_type = QComboBox()
+
+        for destination_type in SandboxDestinationType.OPTIONS:
+            self.occupant_destination_type.addItem(destination_type)
+
+        self.occupant_destination_node = QLabel("-")
+        self.occupant_next_node = QLabel("-")
+        self.occupant_remaining_distance = QLabel("-")
+        self.occupant_current_speed = QLabel("-")
+        self.occupant_state = QLabel("-")
+
+        layout.addRow("Current Floor", self.occupant_current_floor)
+        layout.addRow("Current Zone", self.occupant_current_zone)
+        layout.addRow("Current Node", self.occupant_current_node)
+
+        layout.addRow("Destination Type", self.occupant_destination_type)
+        layout.addRow("Destination Node", self.occupant_destination_node)
+        layout.addRow("Next Node", self.occupant_next_node)
+        layout.addRow("Remaining Distance (m)", self.occupant_remaining_distance)
+        layout.addRow("Current Speed (m/s)", self.occupant_current_speed)
+        layout.addRow("State", self.occupant_state)
+
+        self.occupant_fields = [
+            self.occupant_current_floor,
+            self.occupant_current_zone,
+            self.occupant_current_node,
+            self.occupant_destination_type,
+            self.occupant_destination_node,
+            self.occupant_next_node,
+            self.occupant_remaining_distance,
+            self.occupant_current_speed,
+            self.occupant_state,
+        ]
+
         self.setLayout(layout)
 
         # =====================================================
@@ -544,6 +635,10 @@ class PropertyPanel(QWidget):
             self.update_exit_blocked
         )
 
+        self.exit_zone.currentIndexChanged.connect(
+            self.update_exit_zone
+        )
+
         self.stair_from_x.editingFinished.connect(
             self.update_stair_geometry
         )
@@ -566,6 +661,14 @@ class PropertyPanel(QWidget):
 
         self.to_floor_combo.currentIndexChanged.connect(
             self.update_stair_to_floor
+        )
+
+        self.stair_from_zone.currentIndexChanged.connect(
+            self.update_stair_from_zone
+        )
+
+        self.stair_to_zone.currentIndexChanged.connect(
+            self.update_stair_to_zone
         )
 
         self.copy_to_floor_button.clicked.connect(
@@ -728,6 +831,10 @@ class PropertyPanel(QWidget):
             self.update_floor_properties
         )
 
+        self.occupant_destination_type.currentIndexChanged.connect(
+            self.update_occupant_destination
+        )
+
         self._set_fields_visible(self.zone_fields, False)
         self._set_fields_visible(self.exit_fields, False)
         self._set_fields_visible(self.stair_fields, False)
@@ -737,6 +844,7 @@ class PropertyPanel(QWidget):
         self._set_fields_visible(self.obstacle_fields, False)
         self._set_fields_visible(self.door_fields, False)
         self._set_fields_visible(self.floor_fields, False)
+        self._set_fields_visible(self.occupant_fields, False)
 
     # =====================================================
 
@@ -745,6 +853,12 @@ class PropertyPanel(QWidget):
         self.building = building
 
         self.refresh()
+
+    # =====================================================
+
+    def set_sandbox_manager(self, sandbox_manager):
+
+        self.sandbox_manager = sandbox_manager
 
     # =====================================================
 
@@ -898,6 +1012,8 @@ class PropertyPanel(QWidget):
                 model.is_blocked
             )
 
+            self._populate_exit_zone_combo(model)
+
         self.object_name.blockSignals(False)
         self.start_x.blockSignals(False)
         self.start_y.blockSignals(False)
@@ -939,6 +1055,11 @@ class PropertyPanel(QWidget):
         self.stair_width.blockSignals(True)
         self.to_floor_combo.blockSignals(True)
 
+        # stair_from_zone/stair_to_zone are populated further below via
+        # _populate_stair_zone_combo(), which already blocks/unblocks
+        # their own signals internally (same convention
+        # _populate_to_floor_combo() already uses for to_floor_combo).
+
         self.object_name.setText(stair_item.object_name)
 
         if model is not None:
@@ -972,6 +1093,14 @@ class PropertyPanel(QWidget):
                 self.stair_from_floor.setText("-")
 
             self._populate_to_floor_combo(model)
+
+            self._populate_stair_zone_combo(
+                self.stair_from_zone, model.from_floor_id, model.from_zone_id,
+            )
+
+            self._populate_stair_zone_combo(
+                self.stair_to_zone, model.to_floor_id, model.to_zone_id,
+            )
 
             if self.building is not None:
 
@@ -1390,6 +1519,146 @@ class PropertyPanel(QWidget):
         self.door_active.blockSignals(False)
 
     # =====================================================
+    # Occupant (Manual Simulation Sandbox)
+    # =====================================================
+
+    def show_occupant(self, occupant_item):
+
+        self.current_item = occupant_item
+        self._refresh_handler = self.show_occupant
+
+        self._set_fields_visible(self.zone_fields, False)
+        self._set_fields_visible(self.exit_fields, False)
+        self._set_fields_visible(self.stair_fields, False)
+        self._set_fields_visible(self.camera_fields, False)
+        self._set_fields_visible(self.detector_fields, False)
+        self._set_fields_visible(self.assembly_fields, False)
+        self._set_fields_visible(self.obstacle_fields, False)
+        self._set_fields_visible(self.door_fields, False)
+        self._set_fields_visible(self.floor_fields, False)
+        self._set_fields_visible(self.occupant_fields, True)
+
+        occupant = occupant_item.occupant
+
+        self.object_type.setText("Occupant")
+        self.object_id.setText(occupant_item.object_id)
+
+        self.object_name.blockSignals(True)
+        self.occupant_destination_type.blockSignals(True)
+
+        self.object_name.setText(occupant_item.object_name)
+
+        if self.building is not None:
+
+            floor = self.building.get_floor(occupant.floor_id)
+
+            self.occupant_current_floor.setText(
+                floor.name if floor is not None else "-"
+            )
+
+        else:
+
+            self.occupant_current_floor.setText("-")
+
+        self.occupant_current_zone.setText(
+            self._resolve_node_label(occupant.zone_id)
+        )
+
+        self.occupant_current_node.setText(
+            self._resolve_node_label(occupant.current_node_id)
+        )
+
+        if occupant.destination_type is not None:
+
+            index = self.occupant_destination_type.findText(
+                occupant.destination_type
+            )
+
+            if index != -1:
+                self.occupant_destination_type.setCurrentIndex(index)
+
+        self.occupant_destination_node.setText(
+            self._resolve_node_label(occupant.destination_node_id)
+        )
+
+        self.occupant_next_node.setText(
+            self._resolve_node_label(occupant.next_node_id)
+        )
+
+        remaining = occupant.remaining_distance
+
+        self.occupant_remaining_distance.setText(
+            f"{remaining:.2f}" if remaining is not None else "-"
+        )
+
+        self.occupant_current_speed.setText(
+            f"{occupant.current_speed:.2f}"
+        )
+
+        self.occupant_state.setText(
+            occupant.state.name
+        )
+
+        self.object_name.blockSignals(False)
+        self.occupant_destination_type.blockSignals(False)
+
+    # =====================================================
+    # node_id -> a readable label: the matching Zone/Assembly Point's
+    # own name if one exists in the current Building, "Outside" for
+    # the Navigation Graph's single shared exterior node, the raw id
+    # as a last resort (e.g. building is None), "-" for no node at
+    # all. Never a second source of truth for a name -- always
+    # resolved live from whichever Building is currently set.
+    # =====================================================
+
+    def _resolve_node_label(self, node_id):
+
+        if node_id is None:
+            return "-"
+
+        if node_id == Node.OUTSIDE_NODE_ID:
+            return "Outside"
+
+        if self.building is not None:
+
+            for floor in self.building.floors:
+
+                for zone in floor.zones:
+
+                    if zone.id == node_id:
+                        return zone.name
+
+                for assembly_point in floor.assembly_points:
+
+                    if assembly_point.id == node_id:
+                        return assembly_point.name
+
+        return node_id
+
+    # =====================================================
+
+    def update_occupant_destination(self, index):
+
+        if self.current_item is None:
+            return
+
+        if self.sandbox_manager is None or self.building is None:
+            return
+
+        destination_type = self.occupant_destination_type.itemText(index)
+
+        self.sandbox_manager.compute_route(
+            self.current_item.occupant, self.building, destination_type,
+        )
+
+        self.current_item.sync_from_occupant()
+
+        self.refresh()
+
+        if self.occupant_route_changed_callback:
+            self.occupant_route_changed_callback(self.current_item.occupant)
+
+    # =====================================================
     # Floor
     # =====================================================
 
@@ -1454,6 +1723,7 @@ class PropertyPanel(QWidget):
         self._set_fields_visible(self.obstacle_fields, False)
         self._set_fields_visible(self.door_fields, False)
         self._set_fields_visible(self.floor_fields, False)
+        self._set_fields_visible(self.occupant_fields, False)
 
         self.object_type.setText(
             "No Selection"
@@ -1494,6 +1764,10 @@ class PropertyPanel(QWidget):
         self.blocked.setChecked(False)
         self.blocked.blockSignals(False)
 
+        self.exit_zone.blockSignals(True)
+        self.exit_zone.clear()
+        self.exit_zone.blockSignals(False)
+
         self.stair_from_floor.setText("-")
 
         self.stair_from_x.clear()
@@ -1508,6 +1782,14 @@ class PropertyPanel(QWidget):
         self.to_floor_combo.blockSignals(False)
 
         self.to_floor_uuid.clear()
+
+        self.stair_from_zone.blockSignals(True)
+        self.stair_from_zone.clear()
+        self.stair_from_zone.blockSignals(False)
+
+        self.stair_to_zone.blockSignals(True)
+        self.stair_to_zone.clear()
+        self.stair_to_zone.blockSignals(False)
 
         self.vertical_height.setText("-")
         self.travel_distance.setText("-")
@@ -1604,6 +1886,20 @@ class PropertyPanel(QWidget):
 
         self.floor_elevation.setText("-")
         self.floor_height.clear()
+
+        self.occupant_current_floor.setText("-")
+        self.occupant_current_zone.setText("-")
+        self.occupant_current_node.setText("-")
+
+        self.occupant_destination_type.blockSignals(True)
+        self.occupant_destination_type.setCurrentIndex(0)
+        self.occupant_destination_type.blockSignals(False)
+
+        self.occupant_destination_node.setText("-")
+        self.occupant_next_node.setText("-")
+        self.occupant_remaining_distance.setText("-")
+        self.occupant_current_speed.setText("-")
+        self.occupant_state.setText("-")
 
     # =====================================================
 
@@ -1740,6 +2036,62 @@ class PropertyPanel(QWidget):
             )
 
     # =====================================================
+    # Populates the Exit's Zone combo from whichever floor the Exit
+    # itself belongs to -- Zones only, deliberately not every
+    # connectable space the way Door's own combo is: NavigationGraph
+    # Generator._add_exit_edges() resolves an Exit's endpoint with the
+    # default allowed_types=(Node.ZONE,), never Assembly Point, so
+    # offering Assembly Point here would let a user pick a selection
+    # that silently produces no edge at all -- the exact "looks
+    # configured but isn't" trap zone_id being unreachable through
+    # this panel already was.
+    # =====================================================
+
+    def _populate_exit_zone_combo(self, model):
+
+        self.exit_zone.blockSignals(True)
+
+        self.exit_zone.clear()
+
+        self.exit_zone.addItem("None", "")
+
+        if self.building is not None:
+
+            floor = self.building.get_floor(model.floor_id)
+
+            if floor is not None:
+
+                for zone in floor.zones:
+
+                    self.exit_zone.addItem(
+                        zone.name,
+                        zone.id,
+                    )
+
+        index = self.exit_zone.findData(model.zone_id)
+
+        if index == -1:
+            index = 0
+
+        self.exit_zone.setCurrentIndex(index)
+
+        self.exit_zone.blockSignals(False)
+
+    # =====================================================
+
+    def update_exit_zone(self, index):
+
+        if self.current_item is None:
+            return
+
+        if self.current_item.model is None:
+            return
+
+        zone_id = self.exit_zone.itemData(index)
+
+        self.current_item.model.zone_id = zone_id or ""
+
+    # =====================================================
 
     def update_stair_geometry(self):
 
@@ -1840,6 +2192,77 @@ class PropertyPanel(QWidget):
         self.to_floor_uuid.setText(model.to_floor_id)
 
     # =====================================================
+    # Populates a Stair endpoint's Zone combo from a given floor_id --
+    # deliberately not the same _populate_zone_combo() Door already
+    # uses, since Door's version reads a single model.floor_id shared
+    # by both ends, while a Stair's two ends belong to two different
+    # floors. Zone-only (not Assembly Point, unlike Door's combo):
+    # NavigationGraphGenerator._add_stair_edges() resolves both ends
+    # with the default allowed_types=(Node.ZONE,), so offering
+    # Assembly Point here would let a user pick a selection that
+    # silently produces no edge at all -- the same reasoning
+    # _populate_exit_zone_combo() already documents.
+    # =====================================================
+
+    def _populate_stair_zone_combo(self, combo, floor_id, current_zone_id):
+
+        combo.blockSignals(True)
+
+        combo.clear()
+
+        combo.addItem("None", "")
+
+        if self.building is not None:
+
+            floor = self.building.get_floor(floor_id)
+
+            if floor is not None:
+
+                for zone in floor.zones:
+
+                    combo.addItem(
+                        zone.name,
+                        zone.id,
+                    )
+
+        index = combo.findData(current_zone_id)
+
+        if index == -1:
+            index = 0
+
+        combo.setCurrentIndex(index)
+
+        combo.blockSignals(False)
+
+    # =====================================================
+
+    def update_stair_from_zone(self, index):
+
+        if self.current_item is None:
+            return
+
+        if self.current_item.model is None:
+            return
+
+        zone_id = self.stair_from_zone.itemData(index)
+
+        self.current_item.model.from_zone_id = zone_id or ""
+
+    # =====================================================
+
+    def update_stair_to_zone(self, index):
+
+        if self.current_item is None:
+            return
+
+        if self.current_item.model is None:
+            return
+
+        zone_id = self.stair_to_zone.itemData(index)
+
+        self.current_item.model.to_zone_id = zone_id or ""
+
+    # =====================================================
 
     def update_stair_to_floor(self, index):
 
@@ -1855,6 +2278,11 @@ class PropertyPanel(QWidget):
             return
 
         self.current_item.model.to_floor_id = floor_id
+
+        # Whatever To Zone was previously selected belonged to the
+        # OLD destination floor -- meaningless (and likely invalid)
+        # against the new one, so it must not silently carry over.
+        self.current_item.model.to_zone_id = ""
 
         self.refresh()
 

@@ -15,6 +15,7 @@ from designer.items.detector_item import DetectorItem
 from designer.items.door_item import DoorItem
 from designer.items.exit_item import ExitItem
 from designer.items.obstacle_item import ObstacleItem
+from designer.items.occupant_item import OccupantItem
 from designer.items.stair_item import StairItem
 from designer.items.zone_rectangle import ZoneRectangle
 
@@ -27,6 +28,9 @@ from models.exit import Exit
 from models.obstacle import Obstacle
 from models.staircase import Staircase
 from models.zone import Zone
+
+from sandbox.manager import SandboxManager
+from sandbox.occupant import SandboxDestinationType
 
 
 class GraphicsScene(QGraphicsScene):
@@ -91,9 +95,38 @@ class GraphicsScene(QGraphicsScene):
         self.floor_picker_callback = None
         self.floor_switch_requested_callback = None
 
+        # Asked after a destination floor is chosen, only when a
+        # Stair already connects that floor pair -- must return True
+        # to proceed, False (or anything falsy) to abandon this
+        # placement. Same "Scene never shows a dialog itself"
+        # contract as floor_picker_callback above.
+        self.duplicate_stair_confirmation_callback = None
+
         self.selected_item = None
 
         self.selection_changed_callback = None
+
+        # -------------------------------------------------
+        # Manual Simulation Sandbox (Simulation V0) -- occupants are
+        # temporary debugging objects, never part of Project/Building,
+        # never touched by Serializer. sandbox_manager is the single
+        # source of truth for what occupants exist; occupant_items is
+        # only a floor_id-scoped rendering cache (whichever
+        # OccupantItem currently represents a given occupant.id on
+        # THIS floor's QGraphicsScene, same "graphics item is a view
+        # over the real state" convention every other item already
+        # follows for its own model).
+        # -------------------------------------------------
+
+        self.sandbox_manager = SandboxManager()
+        self.occupant_items = {}
+        self._highlighted_route_items = []
+
+        # Asked after the Occupant Tool's drag-rectangle is released --
+        # must return (count, distribution) or None (cancelled). Same
+        # "Scene never shows a dialog itself" contract as
+        # floor_picker_callback above.
+        self.occupant_generation_callback = None
 
         self.draw_grid()
 
@@ -151,6 +184,47 @@ class GraphicsScene(QGraphicsScene):
         )
 
         return x, y
+
+    # =====================================================
+    # Which Zone (if any) on `floor` contains this point -- the same
+    # "click inside a Zone" resolution the Occupant Tool already uses
+    # (see sandbox.manager.SandboxManager._find_zone), duplicated here
+    # rather than imported: it is three lines over Zone's own public
+    # contains(), not logic worth coupling GraphicsScene's Stair
+    # authoring to the unrelated Manual Simulation Sandbox package for.
+    # =====================================================
+
+    def _find_zone_at(self, floor, x_m, y_m):
+
+        for zone in floor.zones:
+
+            if zone.contains(x_m, y_m):
+                return zone
+
+        return None
+
+    # =====================================================
+    # Whether a Stair already connects this exact pair of floors, in
+    # either direction -- used only to decide whether the duplicate-
+    # confirmation callback needs to be asked before starting a new
+    # placement. A Staircase can only ever be stored on its own
+    # from_floor's Floor.stairs list (see StairItem's own docstring),
+    # so checking both candidate floors' own lists is sufficient --
+    # no need to scan the whole Building.
+    # =====================================================
+
+    def _stair_connects(self, floor_a, floor_b):
+
+        floor_pair = {floor_a.id, floor_b.id}
+
+        for floor in (floor_a, floor_b):
+
+            for stair in floor.stairs:
+
+                if {stair.from_floor_id, stair.to_floor_id} == floor_pair:
+                    return True
+
+        return False
 
     # =====================================================
 
@@ -239,11 +313,16 @@ class GraphicsScene(QGraphicsScene):
             if self.selected_item:
                 self.selected_item.set_selected(False)
 
-            if isinstance(item, (ZoneRectangle, ExitItem, StairItem, CameraItem, DetectorItem, AssemblyPointItem, ObstacleItem, DoorItem)):
+            if isinstance(item, (ZoneRectangle, ExitItem, StairItem, CameraItem, DetectorItem, AssemblyPointItem, ObstacleItem, DoorItem, OccupantItem)):
 
                 self.selected_item = item
 
                 item.set_selected(True)
+
+                if isinstance(item, OccupantItem):
+                    self._highlight_route(item.occupant)
+                else:
+                    self._clear_route_highlight()
 
                 if self.selection_changed_callback:
                     self.selection_changed_callback(item)
@@ -251,6 +330,8 @@ class GraphicsScene(QGraphicsScene):
             else:
 
                 self.selected_item = None
+
+                self._clear_route_highlight()
 
                 if self.selection_changed_callback:
                     self.selection_changed_callback(None)
@@ -496,6 +577,16 @@ class GraphicsScene(QGraphicsScene):
         # preview line between them makes no sense here the way
         # it does for Exit/Door). Nothing is added to any floor's
         # model until the landing click completes it.
+        #
+        # Both clicks must land inside a Zone -- same "click inside a
+        # Zone" contract Occupant/Camera/Detector already use -- and
+        # both zone ids are captured automatically at creation, so a
+        # completed Stair is *always* fully wired (from_zone_id AND
+        # to_zone_id set) the moment it exists. There is no longer a
+        # way to finish placing a Stair that produces no Navigation
+        # Graph edge: the geometry and the engineering relationship
+        # are established in the same two clicks, never a separate
+        # manual step afterward.
         # -------------------------------------------------
 
         if self.current_tool == "stair":
@@ -508,6 +599,13 @@ class GraphicsScene(QGraphicsScene):
                 x, y = self.snap(
                     event.scenePos()
                 )
+
+                origin_zone = self._find_zone_at(
+                    self.current_floor, x / self.GRID_SIZE, y / self.GRID_SIZE,
+                )
+
+                if origin_zone is None:
+                    return
 
                 candidate_floors = [
                     floor
@@ -529,6 +627,26 @@ class GraphicsScene(QGraphicsScene):
                 if destination_floor is None:
                     return
 
+                if self._stair_connects(self.current_floor, destination_floor):
+
+                    # A stair already connects these two floors --
+                    # this is exactly the situation that used to
+                    # invite a second, independent Staircase object
+                    # for what should be one physical connector.
+                    # MainWindow decides how to ask (Scene never
+                    # shows a dialog itself, same convention
+                    # floor_picker_callback already follows); no
+                    # callback registered is treated conservatively
+                    # as "don't proceed" rather than silently allowing
+                    # a duplicate.
+                    if self.duplicate_stair_confirmation_callback is None:
+                        return
+
+                    if not self.duplicate_stair_confirmation_callback(
+                        self.current_floor, destination_floor,
+                    ):
+                        return
+
                 self.pending_stair = Staircase(
                     name=f"Stair {self.current_floor.stair_count + 1}",
                     from_position=(
@@ -537,6 +655,7 @@ class GraphicsScene(QGraphicsScene):
                     ),
                     from_floor_id=self.current_floor.id,
                     to_floor_id=destination_floor.id,
+                    from_zone_id=origin_zone.id,
                 )
 
                 if self.floor_switch_requested_callback:
@@ -560,10 +679,24 @@ class GraphicsScene(QGraphicsScene):
                     event.scenePos()
                 )
 
+                landing_zone = self._find_zone_at(
+                    self.current_floor, x / self.GRID_SIZE, y / self.GRID_SIZE,
+                )
+
+                if landing_zone is None:
+
+                    # Stays pending -- same "wait for a valid click"
+                    # behavior a missed first click already has,
+                    # rather than abandoning a placement the user is
+                    # still in the middle of.
+                    return
+
                 self.pending_stair.to_position = (
                     x / self.GRID_SIZE,
                     y / self.GRID_SIZE,
                 )
+
+                self.pending_stair.to_zone_id = landing_zone.id
 
                 from_floor = self.project.building.get_floor(
                     self.pending_stair.from_floor_id
@@ -946,12 +1079,125 @@ class GraphicsScene(QGraphicsScene):
 
             return
 
+        # -------------------------------------------------
+        # Occupant Tool (Manual Simulation Sandbox)
+        #
+        # Click-drag-click rectangle, the same two-click interaction
+        # Zone/Obstacle already use ("drag" in this Designer has
+        # always meant "click one corner, move, click the opposite
+        # corner" -- there is no mouseReleaseEvent-based dragging
+        # anywhere in this scene, Zone included). The rectangle itself
+        # is only a placement aid: nothing is added to Floor, and
+        # nothing is added to the scene as a permanent item for it --
+        # it exists only as a temporary preview between the two
+        # clicks, same as Zone/Obstacle's own preview_rect.
+        #
+        # The actual generation (how many occupants, which
+        # distribution) is decided by a dialog GraphicsScene never
+        # shows itself -- occupant_generation_callback is MainWindow's
+        # seam for that, the same "Scene never owns dialogs" contract
+        # the Stair Tool's floor_picker_callback already established.
+        # -------------------------------------------------
+
+        if self.current_tool == "occupant":
+
+            if self.current_floor.locked:
+                return
+
+            x, y = self.snap(
+                event.scenePos()
+            )
+
+            if self.start_point is None:
+
+                self.start_point = (x, y)
+
+                self.preview_rect = QGraphicsRectItem()
+
+                self.preview_rect.setBrush(
+                    QBrush(
+                        QColor(
+                            255,
+                            255,
+                            255,
+                            30,
+                        )
+                    )
+                )
+
+                self.preview_rect.setPen(
+                    QPen(
+                        QColor(
+                            255,
+                            255,
+                            255,
+                        ),
+                        2,
+                        Qt.PenStyle.DashLine,
+                    )
+                )
+
+                self.addItem(
+                    self.preview_rect
+                )
+
+                self.dimension_text = (
+                    QGraphicsSimpleTextItem()
+                )
+
+                self.dimension_text.setBrush(
+                    QBrush(
+                        QColor(
+                            255,
+                            255,
+                            0,
+                        )
+                    )
+                )
+
+                self.dimension_text.setZValue(
+                    1000
+                )
+
+                self.addItem(
+                    self.dimension_text
+                )
+
+            else:
+
+                x1, y1 = self.start_point
+
+                if self.preview_rect:
+
+                    self.removeItem(
+                        self.preview_rect
+                    )
+
+                if self.dimension_text:
+
+                    self.removeItem(
+                        self.dimension_text
+                    )
+
+                self.preview_rect = None
+                self.dimension_text = None
+                self.start_point = None
+
+                self._generate_occupants_in_rectangle(
+                    x1 / self.GRID_SIZE,
+                    y1 / self.GRID_SIZE,
+                    x / self.GRID_SIZE,
+                    y / self.GRID_SIZE,
+                )
+
+            return
+
         super().mousePressEvent(event)    # =====================================================
 
     def mouseMoveEvent(self, event):
 
         if (
-            self.current_tool in ("zone", "obstacle")
+            self.current_tool in ("zone", "obstacle", "occupant")
             and self.start_point
             and self.preview_rect
         ):
@@ -1126,9 +1372,36 @@ class GraphicsScene(QGraphicsScene):
                         self.selected_item.model
                     )
 
-                self.removeItem(
-                    self.selected_item
-                )
+                elif isinstance(
+                    self.selected_item,
+                    OccupantItem,
+                ):
+
+                    # Never touches Floor/Building -- an Occupant was
+                    # never added to either in the first place.
+                    self.sandbox_manager.remove_occupant(
+                        self.selected_item.occupant
+                    )
+
+                    self.occupant_items.pop(
+                        self.selected_item.occupant.occupant_id, None,
+                    )
+
+                self._clear_route_highlight()
+
+                # A selected OccupantItem can legitimately no longer
+                # be a member of this scene at all -- see
+                # sync_occupants(): an occupant that walked onto a
+                # different floor than the one displayed keeps its
+                # selection so the Property Panel can keep tracking
+                # it, but its old item was already removed. Every
+                # other selectable item type is always still in this
+                # scene when selected, so this changes nothing for them.
+                if self.selected_item.scene() is self:
+
+                    self.removeItem(
+                        self.selected_item
+                    )
 
                 self.selected_item = None
 
@@ -1167,16 +1440,22 @@ class GraphicsScene(QGraphicsScene):
     def clear_graphics_items(self):
 
         # Clears rendered items only. Must never mutate the
-        # floor's model data -- Building/Floor own that.
+        # floor's model data -- Building/Floor own that. OccupantItem
+        # is included for the same reason (a rendering cache over
+        # sandbox_manager.occupants, not the source of truth itself)
+        # even though there is no Floor list to leave untouched for it.
         for item in list(self.items()):
 
             if isinstance(
                 item,
-                (ZoneRectangle, ExitItem, StairItem, CameraItem, DetectorItem, AssemblyPointItem, ObstacleItem, DoorItem),
+                (ZoneRectangle, ExitItem, StairItem, CameraItem, DetectorItem, AssemblyPointItem, ObstacleItem, DoorItem, OccupantItem),
             ):
                 self.removeItem(item)
 
         self.selected_item = None
+
+        self.occupant_items = {}
+        self._highlighted_route_items = []
 
     # =====================================================
 
@@ -1371,3 +1650,218 @@ class GraphicsScene(QGraphicsScene):
             )
 
             self.addItem(door_item)
+
+        # Manual Simulation Sandbox -- occupants are never read from
+        # Floor (there is no Floor.occupants), only from
+        # sandbox_manager, and only whichever ones currently stand on
+        # THIS floor. An occupant elsewhere in the building simply has
+        # no on-screen item until its floor is shown, exactly like a
+        # Staircase's far marker.
+        for occupant in self.sandbox_manager.occupants_on_floor(self.current_floor.id):
+
+            occupant_item = OccupantItem(occupant)
+
+            self.occupant_items[occupant.occupant_id] = occupant_item
+
+            self.addItem(occupant_item)
+
+    # =====================================================
+    # Manual Simulation Sandbox -- route highlighting
+    #
+    # Only ever touches items already on screen (self.items()), so
+    # this naturally highlights just the portion of a route that lives
+    # on the currently displayed floor -- the same single-floor-view
+    # constraint every other cross-floor object (Staircase) already
+    # has. Selecting a different item, switching floors (rebuild_scene
+    # already clears selection first), or deleting the occupant all
+    # clear this the same way selection itself already does.
+    # =====================================================
+
+    def _clear_route_highlight(self):
+
+        for item in self._highlighted_route_items:
+            item.set_highlighted(False)
+
+        self._highlighted_route_items = []
+
+    # =====================================================
+
+    def _highlight_route(self, occupant):
+
+        self._clear_route_highlight()
+
+        if occupant is None or occupant.route is None:
+            return
+
+        node_ids = set(occupant.route.node_ids)
+        edge_ids = set(occupant.route.edge_ids)
+
+        for item in self.items():
+
+            if (
+                isinstance(item, ZoneRectangle)
+                and item.model is not None
+                and item.model.id in node_ids
+            ):
+
+                item.set_highlighted(True)
+                self._highlighted_route_items.append(item)
+
+            elif (
+                isinstance(item, (DoorItem, StairItem))
+                and item.model is not None
+                and item.model.id in edge_ids
+            ):
+
+                item.set_highlighted(True)
+                self._highlighted_route_items.append(item)
+
+    # =====================================================
+    # Called by MainWindow after the Property Panel recomputes an
+    # occupant's route (destination changed) -- re-draws the
+    # highlight for whichever occupant is still actually selected,
+    # a no-op if the user has since selected something else.
+    # =====================================================
+
+    def refresh_occupant_route_highlight(self, occupant):
+
+        if (
+            isinstance(self.selected_item, OccupantItem)
+            and self.selected_item.occupant is occupant
+        ):
+            self._highlight_route(occupant)
+
+    # =====================================================
+    # Manual Simulation Sandbox -- called by MainWindow after every
+    # tick()/step() across every occupant (not just rebuild_scene()).
+    #
+    # rebuild_scene() alone is not enough here: it only re-renders
+    # occupants when the DISPLAYED floor changes (a user action), but
+    # an occupant can cross a Stair onto a different floor mid-
+    # simulation while the user keeps watching the floor they started
+    # on. Without this, that occupant's OccupantItem was never removed
+    # -- it kept rendering on the wrong floor's view, repositioned to
+    # its new floor's local meter coordinates as if they belonged to
+    # the floor still on screen (two floors' Zones are not required to
+    # share a coordinate system, so this could place the marker
+    # anywhere). This reconciles occupant_items with "who is actually
+    # on the displayed floor right now" every single step/tick, the
+    # same way rebuild_scene() already does on a floor switch --
+    # removing items for occupants who left, adding items for ones who
+    # arrived (e.g. via a Stair from a floor that wasn't shown), and
+    # only ever syncing position/appearance for ones who stayed.
+    # =====================================================
+
+    def sync_occupants(self):
+
+        # An occupant merely walking onto a different floor than the
+        # one on screen is not the same event as being deleted -- the
+        # occupant is still alive and simulating correctly, just not
+        # renderable on this floor right now. Capturing the selected
+        # occupant (not the transient OccupantItem instance, which is
+        # about to be thrown away) is what lets the Property Panel
+        # keep tracking it across a Stair crossing instead of the
+        # selection silently clearing out from under whoever was
+        # watching it -- previously indistinguishable from a crash.
+        selected_occupant = (
+            self.selected_item.occupant
+            if isinstance(self.selected_item, OccupantItem)
+            else None
+        )
+
+        current_ids = {
+            occupant.occupant_id
+            for occupant in self.sandbox_manager.occupants_on_floor(self.current_floor.id)
+        }
+
+        for occupant_id in list(self.occupant_items.keys()):
+
+            if occupant_id in current_ids:
+                continue
+
+            item = self.occupant_items.pop(occupant_id)
+
+            if item in self._highlighted_route_items:
+                self._highlighted_route_items.remove(item)
+
+            # Deliberately does NOT clear self.selected_item or fire
+            # selection_changed_callback here -- see selected_occupant
+            # above. If this occupant reappears on the now-displayed
+            # floor later in this same call (having arrived via
+            # another Stair), the loop below re-attaches the
+            # selection to its new item; if not, selected_item is left
+            # pointing at this now-scene-less item, which still holds
+            # a perfectly live `occupant` reference for the Property
+            # Panel to keep reading.
+            self.removeItem(item)
+
+        occupants_by_id = {
+            occupant.occupant_id: occupant
+            for occupant in self.sandbox_manager.occupants
+        }
+
+        for occupant_id in current_ids:
+
+            if occupant_id in self.occupant_items:
+
+                self.occupant_items[occupant_id].sync_from_occupant()
+
+            else:
+
+                occupant = occupants_by_id[occupant_id]
+                occupant_item = OccupantItem(occupant)
+
+                self.occupant_items[occupant_id] = occupant_item
+
+                self.addItem(occupant_item)
+
+                if selected_occupant is occupant:
+
+                    # The previously-selected occupant just arrived on
+                    # THIS floor (e.g. via a Stair from one that
+                    # wasn't displayed) -- re-attach the selection to
+                    # its new item so it renders highlighted again,
+                    # exactly as if it had never left.
+                    self.selected_item = occupant_item
+
+                    occupant_item.set_selected(True)
+
+    # =====================================================
+    # Manual Simulation Sandbox -- the Occupant Tool's drag-rectangle
+    # workflow finishes here. Asks MainWindow (via
+    # occupant_generation_callback) for how many occupants and which
+    # distribution, same "Scene never shows a dialog" contract the
+    # Stair Tool's floor_picker_callback already established -- a
+    # cancelled dialog (or no callback registered at all) generates
+    # nothing. Every resulting occupant is given the same default
+    # destination (Exit) a single click used to assign immediately,
+    # so there is always a route to see/animate without an extra step.
+    # =====================================================
+
+    def _generate_occupants_in_rectangle(self, x1_m, y1_m, x2_m, y2_m):
+
+        if self.occupant_generation_callback is None:
+            return
+
+        result = self.occupant_generation_callback()
+
+        if result is None:
+            return
+
+        count, distribution = result
+
+        occupants = self.sandbox_manager.generate_occupants(
+            self.current_floor, x1_m, y1_m, x2_m, y2_m, count, distribution,
+        )
+
+        for occupant in occupants:
+
+            self.sandbox_manager.compute_route(
+                occupant, self.project.building, SandboxDestinationType.EXIT,
+            )
+
+            occupant_item = OccupantItem(occupant)
+
+            self.occupant_items[occupant.occupant_id] = occupant_item
+
+            self.addItem(occupant_item)

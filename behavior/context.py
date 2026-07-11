@@ -9,6 +9,8 @@ from simulator.multi_agent_result import MultiAgentSimulationResult
 
 from behavior.profile import BehaviorProfile
 
+from hazard.snapshot import HazardSnapshot
+
 
 @dataclass
 class DecisionContext:
@@ -35,3 +37,14 @@ class DecisionContext:
     # prior pass's peak_edge_occupancy) -- optional, None on a first
     # pass.
     prior_result: Optional[MultiAgentSimulationResult] = None
+
+    # The Dynamic Hazard Layer's one point of contact with Human
+    # Behavior -- optional, None when no hazard is in play (every
+    # existing DecisionStrategy/RouteChoiceStrategy/
+    # PreMovementDelayStrategy that doesn't look at this field keeps
+    # working unchanged). Gives a strategy direct access to raw
+    # node/edge hazard facts (e.g. HazardSnapshot.node_state(context.
+    # start_id).severity) for decisions -- WAIT vs. EVACUATE vs. HELP
+    # -- that depend on conditions rather than routing cost, which
+    # flows separately through context.engine's own CostModel.
+    hazard_snapshot: Optional[HazardSnapshot] = None

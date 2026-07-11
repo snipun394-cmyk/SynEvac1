@@ -33,6 +33,7 @@ class StairItem(QGraphicsItem):
         self.setPos(x, y)
 
         self._selected = False
+        self._highlighted = False
 
         # =====================================================
         # Appearance
@@ -40,9 +41,11 @@ class StairItem(QGraphicsItem):
 
         self.default_brush = QBrush(QColor(40, 40, 40))
         self.selected_brush = QBrush(QColor(255, 255, 0))
+        self.highlight_brush = QBrush(QColor(255, 165, 0))
 
         self.default_pen = QPen(QColor(180, 120, 40), 4)
         self.selected_pen = QPen(QColor(255, 255, 0), 4)
+        self.highlight_pen = QPen(QColor(255, 165, 0), 4)
 
         self.default_body_pen = QPen(QColor(220, 220, 220), 2)
         self.selected_body_pen = QPen(QColor(255, 255, 0), 2)
@@ -124,28 +127,28 @@ class StairItem(QGraphicsItem):
 
         half_width = self._width_px() / 2
 
-        painter.setPen(
-            self.selected_pen
-            if self._selected
-            else self.default_pen
-        )
+        if self._selected:
+            line_pen, body_brush, body_pen = (
+                self.selected_pen, self.selected_brush, self.selected_body_pen,
+            )
+        elif self._highlighted:
+            line_pen, body_brush, body_pen = (
+                self.highlight_pen, self.highlight_brush, self.selected_body_pen,
+            )
+        else:
+            line_pen, body_brush, body_pen = (
+                self.default_pen, self.default_brush, self.default_body_pen,
+            )
+
+        painter.setPen(line_pen)
 
         painter.drawLine(
             QPointF(-half_width, 0),
             QPointF(half_width, 0),
         )
 
-        painter.setBrush(
-            self.selected_brush
-            if self._selected
-            else self.default_brush
-        )
-
-        painter.setPen(
-            self.selected_body_pen
-            if self._selected
-            else self.default_body_pen
-        )
+        painter.setBrush(body_brush)
+        painter.setPen(body_pen)
 
         painter.drawEllipse(
             QPointF(0, 0),
@@ -238,5 +241,13 @@ class StairItem(QGraphicsItem):
     def set_selected(self, selected):
 
         self._selected = selected
+
+        self.update()
+
+    # =====================================================
+
+    def set_highlighted(self, highlighted):
+
+        self._highlighted = highlighted
 
         self.update()

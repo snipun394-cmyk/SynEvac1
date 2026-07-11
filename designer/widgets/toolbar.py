@@ -61,6 +61,13 @@ class MainToolbar(QToolBar):
         self.assembly_point_action = QAction("Assembly Point", self)
 
         # =====================================================
+        # Manual Simulation Sandbox (Simulation V0)
+        # =====================================================
+
+        self.occupant_action = QAction("Occupant", self)
+        self.simulation_action = QAction("Simulation", self)
+
+        # =====================================================
         # View
         # =====================================================
 
@@ -102,6 +109,11 @@ class MainToolbar(QToolBar):
         self.addSeparator()
 
         self.addAction(self.assembly_point_action)
+
+        self.addSeparator()
+
+        self.addAction(self.occupant_action)
+        self.addAction(self.simulation_action)
 
         self.addSeparator()
 

@@ -28,6 +28,7 @@ class DoorItem(QGraphicsLineItem):
         self.setPos(x1, y1)
 
         self._selected = False
+        self._highlighted = False
 
         # =====================================================
         # Appearance -- violet reads as "connector", distinct
@@ -38,6 +39,10 @@ class DoorItem(QGraphicsLineItem):
         self.selected_pen = QPen(QColor(255, 255, 0), 6)
         self.locked_pen = QPen(QColor(220, 60, 60), 6)
         self.inactive_pen = QPen(QColor(120, 120, 120), 6)
+
+        # Manual Simulation Sandbox path visualization -- amber,
+        # same convention ZoneRectangle/StairItem use.
+        self.highlight_pen = QPen(QColor(255, 165, 0), 6)
 
         self.setFlag(
             QGraphicsItem.GraphicsItemFlag.ItemIsSelectable,
@@ -65,6 +70,12 @@ class DoorItem(QGraphicsLineItem):
         if self._selected:
 
             self.setPen(self.selected_pen)
+
+            return
+
+        if self._highlighted:
+
+            self.setPen(self.highlight_pen)
 
             return
 
@@ -194,5 +205,13 @@ class DoorItem(QGraphicsLineItem):
     def set_selected(self, selected):
 
         self._selected = selected
+
+        self._update_appearance()
+
+    # =====================================================
+
+    def set_highlighted(self, highlighted):
+
+        self._highlighted = highlighted
 
         self._update_appearance()
