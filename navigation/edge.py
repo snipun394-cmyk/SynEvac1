@@ -1,4 +1,4 @@
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
 
 
@@ -33,13 +33,14 @@ class Edge:
     # None means "not derivable" (e.g. an endpoint has no geometry).
     walking_distance: float = None
 
-    # Reserved for future routing modifiers -- Smoke Penalty, Fire
-    # Penalty, Congestion Penalty, Obstacle Penalty, and other dynamic
-    # cost inputs. Never populated or read by the Navigation Graph or
-    # DefaultCostModel; a future CostModel implementation is expected
-    # to read/write this rather than Edge growing a dedicated field
-    # per penalty.
-    dynamic_state: dict = field(default_factory=dict)
+    # Deliberately no dynamic-state field here (blocked, smoke, fire,
+    # congestion, ...) -- same reasoning as Node: rebuilding the graph
+    # replaces every Edge instance, so nothing stored on one would
+    # survive the next rebuild. Smoke/Fire/Congestion/Obstacle
+    # penalties belong to a future Simulation/Dynamic Hazard layer
+    # that keeps its own store keyed by Edge.id and supplies penalised
+    # costs through a CostModel (see navigation/cost.py) that wraps
+    # DefaultCostModel -- not through fields added to Edge.
 
     DOOR = "Door"
     EXIT = "Exit"

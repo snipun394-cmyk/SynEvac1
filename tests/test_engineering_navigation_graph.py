@@ -1,5 +1,7 @@
 import unittest
 
+from dataclasses import fields
+
 from models.assembly_point import AssemblyPoint
 from models.building import Building
 from models.door import Door
@@ -80,11 +82,19 @@ class NodeEngineeringPropertyTests(unittest.TestCase):
         self.assertIsNone(outside.area)
         self.assertIsNone(outside.capacity)
 
-    def test_dynamic_state_defaults_empty_and_is_never_populated_by_the_graph(self):
+    def test_node_carries_no_dynamic_state_fields(self):
 
-        node = self.graph.find_node(self.zone.id)
+        # Occupancy/smoke/temperature/visibility must never live on
+        # Node -- rebuilding the graph replaces every Node instance,
+        # so anything stored here would be lost on the next rebuild.
+        # Future Simulation/Hazard layers own that state themselves.
+        field_names = {f.name for f in fields(Node)}
 
-        self.assertEqual(node.dynamic_state, {})
+        self.assertNotIn("dynamic_state", field_names)
+        self.assertEqual(
+            field_names,
+            {"id", "name", "floor_id", "node_type", "reference"},
+        )
 
 
 class EdgeEngineeringPropertyTests(unittest.TestCase):
@@ -226,20 +236,27 @@ class EdgeEngineeringPropertyTests(unittest.TestCase):
         self.assertEqual(edge.traversal_cost, Edge.DEFAULT_TRAVERSAL_COST)
         self.assertIsNone(edge.traversal_time)
 
-    def test_dynamic_state_defaults_empty_and_is_never_populated_by_the_graph(self):
+    def test_edge_carries_no_dynamic_state_fields(self):
 
-        door = Door(
-            name="D1",
-            zone_a_id=self.zone_a.id,
-            zone_b_id=self.zone_b.id,
-            floor_id=self.floor.id,
+        # Blocked/smoke/fire/congestion must never live on Edge, for
+        # the same reason as Node: rebuilding the graph replaces every
+        # Edge instance. Those penalties belong to a future CostModel
+        # that wraps DefaultCostModel and consults its own external
+        # state (see navigation/cost.py), not to fields on Edge.
+        field_names = {f.name for f in fields(Edge)}
+
+        self.assertNotIn("dynamic_state", field_names)
+        self.assertEqual(
+            field_names,
+            {
+                "id",
+                "edge_type",
+                "from_node",
+                "to_node",
+                "reference",
+                "walking_distance",
+            },
         )
-        self.floor.add_door(door)
-
-        graph = NavigationGraphGenerator().build(self.building)
-        edge = self._find_edge(graph, Edge.DOOR)
-
-        self.assertEqual(edge.dynamic_state, {})
 
 
 class CostModelTests(unittest.TestCase):
@@ -262,6 +279,37 @@ class CostModelTests(unittest.TestCase):
 
         with self.assertRaises(NotImplementedError):
             CostModel().cost(edge)
+
+    def test_hazard_aware_cost_model_can_wrap_the_default_without_touching_edge(self):
+
+        # Proves out the extension point documented in
+        # navigation/cost.py: a future Simulation/Hazard layer owns
+        # its own state (here, a plain dict keyed by edge.id) and
+        # supplies penalised costs by wrapping DefaultCostModel --
+        # Edge itself never has to change or carry that state.
+        edge = Edge(
+            id="e1",
+            edge_type=Edge.DOOR,
+            from_node="a",
+            to_node="b",
+            walking_distance=4.0,
+        )
+
+        class HazardAwareCostModel(CostModel):
+
+            def __init__(self, base_model, hazard_state):
+                self.base_model = base_model
+                self.hazard_state = hazard_state
+
+            def cost(self, edge):
+                penalty = self.hazard_state.get(edge.id, 0.0)
+                return self.base_model.cost(edge) + penalty
+
+        hazard_state = {"e1": 10.0}
+        model = HazardAwareCostModel(DefaultCostModel(), hazard_state)
+
+        self.assertEqual(model.cost(edge), 14.0)
+        self.assertEqual(edge.walking_distance, 4.0)  # Edge itself is untouched
 
 
 class PathfinderCostModelWiringTests(unittest.TestCase):

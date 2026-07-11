@@ -1,4 +1,4 @@
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
 
 
@@ -11,20 +11,22 @@ class Node:
     # model's own id (e.g. the Zone's id), never a freshly generated
     # one, so a Node and the object it represents are always trivially
     # the same thing looked at two ways.
+    #
+    # Deliberately no dynamic-state field here (occupancy, smoke
+    # density, temperature, visibility, ...). NavigationGraphGenerator
+    # rebuilds a fresh Node every time the Building changes, so
+    # anything stored on a Node instance would be silently discarded
+    # on the next rebuild -- exactly wrong for state a future
+    # Simulation/Dynamic Hazard layer wants to persist independently
+    # of the graph's own lifecycle. Those layers should keep their own
+    # store keyed by Node.id, and feed it into routing through a
+    # CostModel (see navigation/cost.py), not through Node itself.
 
     id: str
     name: str
     floor_id: str
     node_type: str
     reference: Any = None
-
-    # Reserved for future subsystems (Simulation, RL, Live AI Decision
-    # Support) to attach transient, per-node runtime state -- e.g.
-    # occupancy, smoke density, temperature, visibility. Never
-    # populated or read by the Navigation Graph itself; a plain dict
-    # rather than dedicated fields so those future properties can
-    # arrive without another Node schema change.
-    dynamic_state: dict = field(default_factory=dict)
 
     # Node Types. ASSEMBLY_POINT is the same string as
     # connectable_space.ASSEMBLY_POINT (models/connectable_space.py) --
