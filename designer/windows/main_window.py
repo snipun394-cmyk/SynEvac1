@@ -801,6 +801,15 @@ class MainWindow(QMainWindow):
 
     def start_simulation(self):
 
+        scene = self.canvas.scene_obj
+
+        scene.sandbox_manager.ensure_routes_current(scene.project.building)
+
+        self._sync_occupant_items()
+
+        if scene.selected_item is not None:
+            self.property_panel.refresh()
+
         self.simulation_timer.start()
 
         self.simulation_panel.set_running_state(True)
@@ -854,6 +863,8 @@ class MainWindow(QMainWindow):
     def step_simulation(self):
 
         scene = self.canvas.scene_obj
+
+        scene.sandbox_manager.ensure_routes_current(scene.project.building)
 
         for occupant in scene.sandbox_manager.occupants:
             scene.sandbox_manager.step(occupant)

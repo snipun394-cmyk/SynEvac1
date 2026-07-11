@@ -2,6 +2,7 @@ from PyQt6.QtCore import QPointF, QRectF
 from PyQt6.QtGui import QBrush, QColor, QPen
 from PyQt6.QtWidgets import QGraphicsItem
 
+from navigation.edge import Edge
 from sandbox.occupant import SandboxOccupantState
 
 
@@ -114,7 +115,7 @@ class OccupantItem(QGraphicsItem):
 
         self.prepareGeometryChange()
 
-        x_m, y_m = self.occupant.position
+        x_m, y_m = self._render_position()
 
         self.setPos(
             x_m * self.GRID_SIZE,
@@ -122,6 +123,80 @@ class OccupantItem(QGraphicsItem):
         )
 
         self.update()
+
+    # =====================================================
+    # occupant.position itself deliberately holds still for the whole
+    # duration of a Stair edge (see SandboxManager._sync_position --
+    # a Stair's two ends live in different floors' coordinate spaces,
+    # so there is no single meaningful position to compute mid-edge).
+    # That's correct for routing/state, but left on its own it makes a
+    # occupant look frozen rather than "entering the stairs" for
+    # however long the crossing takes. This is a display-only easing
+    # toward the Stair's own on-floor landing marker as edge_progress
+    # advances -- occupant.position, the Route, and every other piece
+    # of simulation state are untouched.
+    # =====================================================
+
+    def _render_position(self):
+
+        occupant = self.occupant
+        route = occupant.route
+
+        if route is None:
+            return occupant.position
+
+        node_index = occupant.node_index
+
+        if node_index < len(route.edges):
+
+            edge = route.edges[node_index]
+
+            if edge.edge_type == Edge.STAIR:
+
+                landing = self._stair_landing(edge.reference, occupant.floor_id)
+
+                if landing is not None:
+
+                    start_x, start_y = occupant.position
+                    t = occupant.edge_progress
+
+                    return (
+                        start_x + (landing[0] - start_x) * t,
+                        start_y + (landing[1] - start_y) * t,
+                    )
+
+        # Just arrived (edge_progress is reset to 0.0 the instant
+        # _advance_one_node() fires) and the edge just completed was a
+        # Stair -- show the occupant standing at this floor's landing
+        # first, rather than snapping straight to the Zone center
+        # normal movement resumes from.
+        if node_index > 0 and occupant.edge_progress == 0.0:
+
+            previous_edge = route.edges[node_index - 1]
+
+            if previous_edge.edge_type == Edge.STAIR:
+
+                landing = self._stair_landing(previous_edge.reference, occupant.floor_id)
+
+                if landing is not None:
+                    return landing
+
+        return occupant.position
+
+    # =====================================================
+
+    def _stair_landing(self, stair, floor_id):
+
+        if stair is None:
+            return None
+
+        if floor_id == stair.from_floor_id:
+            return stair.from_position
+
+        if floor_id == stair.to_floor_id:
+            return stair.to_position
+
+        return None
 
     # =====================================================
     # Property Panel's Name field is shared across every object type

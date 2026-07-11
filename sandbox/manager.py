@@ -38,6 +38,12 @@ class SandboxManager:
 
         self._next_number = 1
 
+        # See ensure_routes_current() -- a snapshot of every field
+        # that feeds Navigation Graph connectivity, taken the last
+        # time routes were (re)computed for the whole batch. None
+        # until the first ensure_routes_current() call.
+        self._routes_signature = None
+
     # =====================================================
     # Placement
     # =====================================================
@@ -213,9 +219,65 @@ class SandboxManager:
 
         self.occupants = []
         self._next_number = 1
+        self._routes_signature = None
 
     # =====================================================
     # Routing
+    # =====================================================
+
+    # Lazy route invalidation -- rather than recomputing every
+    # occupant's route on every tick (wasteful) or only ever repairing
+    # them as a side effect of Reset (surprising -- Reset restoring
+    # origin state is a separate concern from a route having gone
+    # stale), a cheap signature of every field that actually feeds
+    # Navigation Graph connectivity is compared once per
+    # start_simulation()/step_simulation() call. Building edits made
+    # between generating occupants and pressing Start/Step (e.g.
+    # finishing a Stair's From/To Zone in the Property Panel) are
+    # picked up in exactly one recompute pass, before the first
+    # simulation step runs -- never mid-playback.
+    def _topology_signature(self, building):
+
+        signature = []
+
+        for floor in building.ordered_floors():
+
+            for zone in floor.zones:
+                signature.append(("zone", zone.id))
+
+            for door in floor.doors:
+                signature.append(
+                    ("door", door.id, door.zone_a_id, door.zone_b_id)
+                )
+
+            for exit_obj in floor.exits:
+                signature.append(("exit", exit_obj.id, exit_obj.zone_id))
+
+            for stair in floor.stairs:
+                signature.append((
+                    "stair", stair.id,
+                    stair.from_floor_id, stair.to_floor_id,
+                    stair.from_zone_id, stair.to_zone_id,
+                ))
+
+        return tuple(signature)
+
+    # =====================================================
+
+    def ensure_routes_current(self, building):
+
+        signature = self._topology_signature(building)
+
+        if signature == self._routes_signature:
+            return
+
+        for occupant in self.occupants:
+
+            if occupant.destination_type is not None:
+                self.compute_route(occupant, building, occupant.destination_type)
+
+        self._routes_signature = signature
+
     # =====================================================
 
     def compute_route(self, occupant, building, destination_type):
