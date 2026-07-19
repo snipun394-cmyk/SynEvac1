@@ -230,3 +230,106 @@ The procedure for the day physical CCTV access actually arrives, with every step
 11. **Update `BuildingState`.** — *ALREADY IMPLEMENTED.* `BuildingStateEstimator` needs zero changes — already proven to receive unique, non-double-counted occupant tracks offline (§16.1).
 
 **In one sentence:** every step except "physically reach a real camera and decode its real video" (steps 6-8's real implementations) is already built and already test-proven; the only genuinely new work still ahead is a real `RTSPFrameSource`, a real `HumanDetector`, and — once more than one camera has real overlapping coverage — a real `LiveReIDIdentityResolver` (unchanged from §15).
+
+## 18. Live CCTV Connection Readiness Audit
+
+Status as of this milestone: still **no physical CCTV/NVR access.** This milestone adds no new code — it is a static audit of the existing seam, so that the day access arrives, connecting one real camera is a scoped adapter task with a known checklist, not fresh exploration. Everything below was determined by reading `live_camera_pipeline/`, `credential_store/`, `camera_manager/`, `models/camera.py`, `models/engineering_asset.py`, and the existing test suite — no guesses about RTSP URL format, authentication, NVR architecture, vendor, codec, resolution, FPS, transport, or ONVIF support are made anywhere in this section, per this milestone's own instruction.
+
+### 18.1 Exact `RTSPFrameSource` integration seam
+
+A future `RTSPFrameSource` is a concrete subclass of `live_camera_pipeline.frame_source.CameraFrameSource` (`live_camera_pipeline/frame_source.py:24`) — the same interface `ReplayFrameSource` (§16) already implements today. Nothing downstream of it changes.
+
+**The interface it must satisfy, method by method:**
+
+| Method | Signature | Contract established by `CameraFrameSource`/`ReplayFrameSource`/`FakeFrameSource` |
+|---|---|---|
+| `start()` | `() -> None` | Transitions the source to a state where `read_frame()` may yield frames. `ReplayFrameSource` treats this as a pure flag flip (no I/O); a real implementation is expected to open the actual connection here — the interface does not forbid `start()` from doing real network I/O, it only requires that after it returns, `is_running` reflects the result. |
+| `stop()` | `() -> None` | Transitions the source out of the running state. `ReplayFrameSource` again just flips the flag. A real implementation must release whatever `start()` acquired (socket/connection) — not specified beyond "must exist," since no concrete network implementation exists yet to establish the convention. |
+| `is_running` | property `-> bool` | Must reflect current start/stop state truthfully. Nothing in the interface ties this to actual stream health — `is_running=True` only means "not stopped," not "frames are currently arriving." (See §18's connection-status gap below — that's a separate concern, deliberately not folded into this property.) |
+| `read_frame()` | `() -> Optional[CameraFrame]` | Called once per source per pipeline cycle by `LiveCameraPipeline.run_cycle()` (`live_camera_pipeline/pipeline.py:51`), synchronously, no polling thread built into the seam. Must return `None` — never raise — when not running or no frame is currently available (`ReplayFrameSource.read_frame()`, `FakeFrameSource.read_frame()` both do this). Whether a real implementation buffers on a background thread or blocks briefly is entirely its own decision; the seam does not require either. |
+
+**Constructor requirements:** the `CameraFrameSource` ABC imposes none — `__init__` is not part of the interface. The established convention (from `ReplayFrameSource.__init__` and `FakeFrameSource.__init__`) is: accept `camera_id: str` as the first argument, and do **no I/O in `__init__`** (`ReplayFrameSource`'s own docstring calls this out explicitly — constructing a source must never touch a disk or network by itself). A future `RTSPFrameSource.__init__` should follow this: accept the endpoint/credential data it needs as plain constructor arguments, connect only inside `start()`.
+
+**`camera_id` identity requirement (critical, not optional):** every `CameraFrame` a source produces must carry the **same `camera_id`** as the pre-existing Digital Twin `Camera.id` already registered in `CameraManager` (`models/engineering_asset.py`'s `BaseObject.id`, discovered via `CameraManager.discover_cameras()`). This is not enforced by any runtime check — it is enforced by convention and by how routing works: `LiveCameraPipeline.frame_sources` is a `Mapping[str, CameraFrameSource]` keyed by `camera_id` (`live_camera_pipeline/pipeline.py:32`), `LiveCameraPipelineDetectionProvider.detections_at(camera_id, time)` is looked up by that same string (`camera_manager/manager.py:252`, via `camera.mode`'s registered provider), and `CameraManager.detections_for_camera()` calls it with `camera.id`. A mismatched `camera_id` anywhere in this chain produces detections that silently never reach the camera they came from — there is no error, only missing data. **Rule for the first real integration: the string handed to `RTSPFrameSource(camera_id=...)` must be copy-pasted from the exact `Camera.id` already shown in the Camera Manager Panel, never invented fresh.**
+
+**`CameraFrame` structure** (`live_camera_pipeline/frame_source.py:6`, frozen dataclass):
+
+- `camera_id: str` — see above.
+- `timestamp: float` — no wall-clock/monotonic-clock convention is established anywhere in this codebase; `ReplayFrameSource` takes a caller-supplied timestamp per frame with no interpretation. A real `RTSPFrameSource` is free to use `time.time()`, a stream's own PTS, or anything else — nothing downstream currently branches on units or epoch, only on ordering for display purposes.
+- `frame_sequence: int` — `ReplayFrameSource` uses a simple 0-based ordinal, incrementing once per `read_frame()` call, **local to that one source's own stream** (not a global/cross-camera counter). No consumer currently treats gaps in this sequence as meaningful (no drop-detection logic reads it today) — a real implementation is free to leave gaps where frames were dropped, but nothing currently surfaces that as a "frames dropped" signal (see §18.3, `TESTS` row).
+- `payload_ref: Optional[Any] = None` — deliberately untyped/opaque. Nothing in `live_camera_pipeline/` ever inspects it (enforced indirectly by `tests/test_no_cv_dependencies.py`'s import guard, since inspecting it as an image would require an image library). Interpreting it is entirely `HumanDetector.detect()`'s job — a real `RTSPFrameSource` can put a decoded numpy frame, a raw byte buffer, or a file handle here; the choice only needs to match whatever the paired `HumanDetector` implementation expects to receive.
+
+**Error handling / connection-status reporting — the one real gap:** `CameraFrameSource` has **no exception contract** and **no connection-status reporting method** of its own. Connection health is tracked entirely externally, on `CameraManager` (`camera_manager/connection_status.py`'s `CameraConnectionState`: `CONFIGURED, CONNECTING, ONLINE, OFFLINE, DEGRADED, STREAM_UNAVAILABLE`, set via `CameraManager.set_connection_status()` / read via `connection_status()`). **Nothing in the codebase today ever calls `set_connection_status()` with anything other than a test's own value** — there is no wiring from a real (or even fake) frame source's actual state into `CameraManager`'s connection-status registry. A future `RTSPFrameSource` (or whatever orchestrates it) is expected to call `camera_manager.set_connection_status(camera_id, state)` itself as connection attempts succeed/fail/degrade; this call site does not exist yet anywhere.
+
+**Reconnect expectations:** undefined by the interface and unexercised by any existing test — no code anywhere calls `start()` a second time after `stop()`. Whether `start()` is idempotent, whether it must be re-callable after a `stop()`, and what happens if `read_frame()` is called before the first `start()` (both `ReplayFrameSource` and `FakeFrameSource` simply return `None`, never raise) are the only precedents to follow; genuine reconnect-after-network-failure behavior (retry/backoff) is unspecified and left to the future implementation.
+
+**Shutdown behavior:** `stop()` is the only shutdown hook the interface defines. `ReplayFrameSource.stop()` does nothing beyond flipping `is_running` because it holds no real resource. A real `RTSPFrameSource.stop()` would need to close its socket/decoder — not specified further since no concrete implementation exists to establish the convention yet.
+
+**Multiplicity / threading:** `LiveCameraPipeline.run_cycle()` iterates every registered source once per call, in the order of `frame_sources.values()`, and always calls `human_detector.detect(frame)` synchronously right after `read_frame()` returns a non-`None` frame (`live_camera_pipeline/pipeline.py:49-56`). There is no concurrency in the orchestrator itself — a slow `read_frame()` on one camera blocks every other camera's cycle. This is an existing, unaddressed scaling limit, not something this audit fixes.
+
+### 18.2 Staged first-camera milestone sequence
+
+Per this milestone's own instruction, the first real-camera work must **not** combine RTSP integration, detection, and ReID into a single step. The dependency chain (confirmed above) supports exactly this staging:
+
+- **Milestone A** — One physical camera → `RTSPFrameSource` → `CameraFrame`. Success condition: `CameraFrame.camera_id` matches the Digital Twin `Camera.id`, frames arrive at a measurable rate, `payload_ref` holds *something* (raw bytes/decoded frame — format is this milestone's own choice, only needs to match what Milestone B's detector expects). No detection, no identity resolution.
+- **Milestone B** — `CameraFrame` → real `HumanDetector` → `RawHumanDetection`. Consumes Milestone A's frames; produces `RawHumanDetection`s with `local_track_id` populated by whatever local tracker accompanies the detector. Can be developed and tested against `ReplayFrameSource`-recorded frames from Milestone A before wiring live, exactly as `MockHumanDetector` already proves the seam offline (§16).
+- **Milestone C** — Two overlapping physical cameras → `LiveReIDIdentityResolver` → `MultiCameraFusionEngine`. Only meaningful once two cameras with real overlapping coverage exist; until then, `MappingIdentityResolver` with an empty mapping (§13 step 12) is the correct, honest interim resolver — every detection gets its own namespaced synthetic id, never silently fused.
+- **Milestone D** — Full `CameraManager` → `BuildingState` → live system integration. This is largely **already done** (§16.1's offline chain proves `CameraManager`→`MultiCameraFusionEngine`→`BuildingStateEstimator`→`BuildingState` end-to-end); what Milestone D actually adds is wiring a real `LiveCameraPipeline` instance (with A/B/C's real components) into whatever composition root constructs `CameraManager` today (`designer/windows/main_window.py`), registering it via `register_detection_provider(DeviceMode.LIVE, provider)`.
+
+The first live-camera milestone (Milestone A alone) proves exactly one claim: **"SynEvac can receive and identify frames from one physical CCTV camera while preserving the Digital Twin Camera Asset identity."** Detection and identity resolution are explicitly out of scope for it.
+
+### 18.3 Diagnostic tool design (not implemented)
+
+A future connection diagnostic utility belongs at **`scripts/diagnose_camera_connection.py`**, alongside the existing `scripts/benchmark_live_camera_pipeline.py` (§11) — both are manual, non-pytest operational tools, not part of the test suite, run directly by a developer.
+
+It should be implementable **today**, entirely against `CameraFrameSource` (i.e. runnable right now against `ReplayFrameSource`, with zero RTSP-specific assumptions), since everything it needs to report is already expressible through the existing interface:
+
+| Report field | Derived from |
+|---|---|
+| Camera Asset (`CAM-001`) | The `camera_id` passed to the diagnostic tool, matched against `CameraManager.get_camera()` |
+| Connection: Connected / Failed | `source.is_running` after `start()`, plus whether `read_frame()` ever returned non-`None` within a timeout |
+| Frame received: Yes / No | Whether any `read_frame()` call returned a `CameraFrame` |
+| Resolution | Not derivable from `CameraFrame` today — `payload_ref` is opaque; a real `RTSPFrameSource` would need to expose this itself (e.g. as a property alongside `read_frame()`), which is new surface not yet designed |
+| Measured FPS | Frame count / elapsed wall-clock time across a fixed sampling window |
+| Frame latency | Time between successive `read_frame()` calls returning a frame, or (if available) `time.time() - frame.timestamp` |
+| Codec | Not derivable from `CameraFrame` at all — same gap as Resolution; only a real source implementation could report this, and only if it chooses to expose it |
+| Frames dropped | Gaps in `frame_sequence` between successive frames, *if* the source's `frame_sequence` convention leaves gaps on drop (not guaranteed — see §18.1) |
+| Digital Twin identity preserved | `frame.camera_id == expected_camera_id`, checked on every frame received |
+
+**Must never print `connection.password` or any resolved credential** — only `credential_ref` (a reference id, not a secret) may appear in output, matching `ConnectionInfo.__repr__`'s existing redaction discipline (§7).
+
+**Why not implemented now:** Resolution and Codec are not derivable from the current `CameraFrameSource`/`CameraFrame` contract at all — building the tool now would mean inventing new interface surface (e.g., new properties on `CameraFrameSource`) speculatively, ahead of any real source needing them, which is exactly the kind of premature design this milestone's own instructions caution against. The tool's design is recorded here so it can be built in an afternoon once `RTSPFrameSource` (Milestone A) exists to give those two fields real values.
+
+### 18.4 Final static audit — what's missing for one real camera
+
+**ALREADY IMPLEMENTED:**
+- `CameraFrameSource` interface + one concrete non-network implementation (`ReplayFrameSource`) proving the seam end-to-end.
+- `CameraFrame`, `RawHumanDetection`, `Detection` data contracts.
+- `HumanDetector`/`IdentityResolver` interfaces + honest reference implementations (`MappingIdentityResolver`, `SimulationIdentityResolver`).
+- `LiveCameraPipeline` orchestrator (`run_cycle()`), `LiveCameraPipelineDetectionProvider`.
+- `CameraManager` registration/routing/mode-switching — proven mode-independent (§16.1).
+- `MultiCameraFusionEngine` → `BuildingStateEstimator` → `BuildingState` — proven with real multi-camera dedup, zero changes needed for Live.
+- `ConnectionInfo` (RTSP/IP/username fields) on `Camera.connection`, editable in the Property Panel, persisted (password excluded).
+- `CredentialStore` interface + `LocalFileCredentialStore`, wired into project save/load.
+- `CameraConnectionState` enum + `CameraManager.set_connection_status()`/`connection_status()` storage (nothing calls the setter yet — see below).
+- Camera Manager Panel status column, mode-aware and truthful about what isn't connected.
+
+**MISSING CODE (buildable today, no camera access required):**
+- The one real `RTSPFrameSource` implementation (Milestone A) — does not exist in any form, not even a stub.
+- Any call site that actually invokes `CameraManager.set_connection_status()` outside of tests — nothing today ever reports a camera as `CONNECTING`/`ONLINE`/`OFFLINE`/`DEGRADED` from real (or even attempted) activity.
+- The diagnostic script (`scripts/diagnose_camera_connection.py`, §18.3) — buildable against `ReplayFrameSource` today, not yet written.
+- Any property for a frame source to report resolution/codec/dropped-frame count — no such surface exists on `CameraFrameSource` yet; would need to be added if a diagnostic tool is expected to show these before real streams exist to inform the design.
+
+**REQUIRES PHYSICAL CCTV ACCESS:**
+- Writing and testing the real `RTSPFrameSource` against an actual stream (the implementation can be *started* without access, but cannot be *proven correct* without one).
+- Populating `docs/architecture/physical_cctv_access_checklist.md` (§19) with real values for one test camera.
+- The real network-reachability "Test connection" step (§17 step 6) — no code exists to attempt this today, by design (guarded by `tests/test_no_cv_dependencies.py`'s forbidden-import list).
+
+**FUTURE COMPUTER VISION (explicitly out of scope of every milestone so far):**
+- Real `HumanDetector` (YOLO or equivalent) — Milestone B.
+- Real `LiveReIDIdentityResolver` (cross-camera appearance-based re-identification) — Milestone C.
+- Any pose estimation, fallen-person detection, or wheelchair detection beyond what `HumanClassification`/`HumanState` already model as evidence types.
+
+**One-sentence answer to "what's missing to display/read frames from one real camera tomorrow":** everything below `RTSPFrameSource` in the chain already works and needs no changes; the only missing code is the `RTSPFrameSource` implementation itself (plus, optionally, wiring `set_connection_status()` calls into it) — nothing else in this codebase blocks that.
+
+See `docs/architecture/physical_cctv_access_checklist.md` for the practical per-camera information checklist to fill out the moment physical access arrives.
