@@ -13,6 +13,7 @@ from PyQt6.QtWidgets import (
 
 from models.engineering_asset import DeviceMode
 
+from camera_manager.connection_status import CameraConnectionState
 from camera_manager.manager import CameraManager
 
 
@@ -251,11 +252,11 @@ class CameraManagerPanel(QWidget):
         self.camera_table.setCellWidget(row, 5, mode_combo)
 
         status = self.manager.camera_status(camera.id)
-        self.camera_table.setItem(row, 6, QTableWidgetItem(self._status_text(status)))
+        self.camera_table.setItem(row, 6, QTableWidgetItem(self._status_text(camera, status)))
 
     # =====================================================
 
-    def _status_text(self, status) -> str:
+    def _status_text(self, camera, status) -> str:
 
         active_text = "Active" if status.active else "Disabled"
 
@@ -264,7 +265,53 @@ class CameraManagerPanel(QWidget):
             else "no provider (placeholder)"
         )
 
-        return f"{active_text} | {status.mode} | {provider_text}"
+        detail_text = self._mode_detail_text(camera, status)
+
+        return f"{active_text} | {status.mode} | {provider_text} | {detail_text}"
+
+    # =====================================================
+    # CCTV Pipeline End-to-End Offline Validation milestone, Phase 8 --
+    # a truthful, mode-aware detail appended to the existing status
+    # column. Every input here already exists (CameraStatus.mode/
+    # has_detection_provider, CameraManager's own runtime-only
+    # connection_status(), Camera.connection's own credential_ref/
+    # password fields) -- nothing here is fabricated, and "Live" never
+    # reports anything but "Not Connected"/"Online" strictly from
+    # whatever connection_status() was actually told (see
+    # camera_manager/connection_status.py -- nothing sets it to ONLINE
+    # today, so a real camera never shows connected until a real Live
+    # adapter exists and reports it).
+    # =====================================================
+
+    def _mode_detail_text(self, camera, status) -> str:
+
+        connection_state = self.manager.connection_status(camera.id)
+
+        if status.mode == DeviceMode.SIMULATION:
+
+            return "Ready" if status.has_detection_provider else "Not Configured"
+
+        if status.mode == DeviceMode.REPLAY:
+
+            if not status.has_detection_provider:
+                return "No Source"
+
+            if connection_state == CameraConnectionState.STREAM_UNAVAILABLE:
+                return "Source Missing"
+
+            return "Source Loaded"
+
+        if status.mode == DeviceMode.LIVE:
+
+            if not camera.connection.credential_ref and not camera.connection.password:
+                return "Credentials Missing"
+
+            if connection_state == CameraConnectionState.ONLINE:
+                return "Online"
+
+            return "Not Connected"
+
+        return ""
 
     # =====================================================
     # Handlers

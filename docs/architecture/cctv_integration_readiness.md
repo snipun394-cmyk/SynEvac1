@@ -171,3 +171,62 @@ When real CCTV access becomes available, gather the following **per physical cam
 ## 15. What remains once real camera access exists
 
 Only the pieces this document explicitly deferred: a real `RTSPFrameSource`, a real `HumanDetector` (YOLO/tracking/pose estimation/fallen-person detection/etc.), and eventually a real `LiveReIDIdentityResolver` for genuine cross-camera re-identification once more than one camera has real overlapping coverage. Nothing else in this document, and nothing downstream of `LiveCameraPipelineDetectionProvider`, should require any change.
+
+## 16. CCTV Pipeline End-to-End Offline Validation milestone
+
+Status as of this milestone: still **no real CCTV camera connected** — physical access was expected within 1-2 days of this milestone but had not arrived yet, so this milestone deliberately proves the entire data path using only offline/deterministic sources instead of waiting. Everything below was built and test-proven with zero network I/O, zero video decoding, and zero real detection model.
+
+**What this milestone added:**
+
+- `live_camera_pipeline.replay_frame_source.ReplayFrameSource` — the first concrete, production `CameraFrameSource` (previously only a test-only `FakeFrameSource` existed, deliberately kept out of the production package per Phase 16's "pure interface" rule). Plays back a fixed, ordered, in-memory sequence of `CameraFrame`s deterministically (`read_frame()`/`reset()`), gated by `start()`/`stop()` with no background thread. `is_source_available` distinguishes "frames provided" / "a `source_path` genuinely exists on disk" from "nothing to play" — the honest signal Phase 8's Camera Manager status now surfaces as `Replay — Source Missing` vs `Replay — Source Loaded`. It deliberately never opens or decodes `source_path` itself (no image-decoding library is imported anywhere in `live_camera_pipeline/`, enforced by `tests/test_no_cv_dependencies.py`) — a real video file's frames still require a real decoder, which remains explicitly out of scope (see §15).
+- `tests/live_camera_pipeline_fixtures.MockHumanDetector` — a deterministic `HumanDetector` stand-in (test-only, same "production package stays pure interface" convention as `FakeHumanDetector` before it), reused across every new test in this milestone instead of duplicated per file.
+- `designer/widgets/camera_manager_panel.py` — the Status column now appends a truthful, mode-aware detail (`Simulation — Ready/Not Configured`, `Replay — No Source/Source Missing/Source Loaded`, `Live — Credentials Missing/Not Connected/Online`), derived entirely from fields that already existed (`CameraStatus.mode`/`has_detection_provider`, `CameraManager.connection_status()`, `Camera.connection.credential_ref`/`password`). `Live` never reports `Online` unless `connection_status()` was explicitly told `ONLINE` by something — nothing in this codebase does that yet, so every Live camera honestly shows `Not Connected` until a real adapter exists.
+- `tests/test_replay_frame_source.py`, `tests/test_cctv_offline_pipeline_validation.py`, and additions to `tests/test_camera_manager_panel.py` — see §16.1 below for exactly what each proves.
+
+**What this milestone deliberately did not touch:** `CameraManager`, `MultiCameraFusionEngine`, `BuildingStateEstimator`, `Detection`, `RawHumanDetection`, `IdentityResolver`, `LiveCameraPipeline`, `LiveCameraPipelineDetectionProvider` — every one of those already existed and already worked (proven by the earlier milestone's own `tests/test_live_camera_pipeline.py`); this milestone only needed to add the one missing concrete class (`ReplayFrameSource`) and prove the full chain end-to-end through it.
+
+### 16.1 The end-to-end chain now proven (offline, deterministic, no CCTV)
+
+```
+Camera(id="CAM-001")                              <- Digital Twin identity, stable
+    -> CameraManager.register_camera / set_camera_mode(REPLAY)
+    -> ReplayFrameSource(camera_id="CAM-001", frames=[...])   <- Camera Source Adapter
+    -> CameraFrame(camera_id, timestamp, frame_sequence, payload_ref)   <- Frame Packet
+    -> MockHumanDetector.detect(frame)             <- Detector Adapter seam
+    -> RawHumanDetection(camera_id, local_track_id, ...)
+    -> MappingIdentityResolver.resolve(...)         <- Identity Resolution seam
+    -> Detection(camera_id, occupant_id, ...)
+    -> LiveCameraPipelineDetectionProvider.publish/detections_at   <- Detection Provider
+    -> CameraManager.detections_for_camera(camera_id, time)
+    -> MultiCameraFusionEngine.fuse(detections, time)   <- Multi-Camera Fusion
+    -> FusionResult.tracks[*].source_camera_ids includes "CAM-001"
+    -> BuildingStateEstimator.estimate(fusion_result=...)   <- Building State
+    -> BuildingState.occupant_tracks[occupant_id].source_camera_ids includes "CAM-001"
+```
+
+Proven explicitly, by test:
+
+- **Camera identity continuity** (`CameraIdentityContinuityTests`): `camera_id` survives every stage above unchanged; the same `Camera` object stays registered when its source or its `ConnectionInfo` (RTSP/IP/credentials) changes.
+- **Multi-camera deduplication** (`MultiCameraDeduplicationTests`, `BuildingStateNoDoubleCountingTests`): two cameras, three physical people (one seen only by CAM-A, one only by CAM-B, one by both) produce **4 raw detections but exactly 3 unique `BuildingState.occupant_tracks`** — never 4. The shared occupant's `FusedTrack.source_camera_ids` contains both cameras.
+- **Mode independence** (`ModeIndependenceTests`): the identical `Detection`/`FusedTrack`/`BuildingState` shape results regardless of whether the camera's registered provider was reached via `DeviceMode.SIMULATION`, `REPLAY`, or `LIVE` — only the upstream provider differs; `CameraManager`, `MultiCameraFusionEngine`, and `BuildingStateEstimator` never branch on mode.
+- **No automatic network connection**: setting `mode=LIVE` and populating real-looking `ConnectionInfo` (RTSP URL, IP, username) never changes `CameraManager.connection_status()` away from its default `CONFIGURED`, and `detections_for_camera()` returns `()` rather than attempting anything, when no provider is registered.
+- **Graceful failure**: a `ReplayFrameSource` with no frames and no existing `source_path` reports `is_source_available=False` and `read_frame()` returns `None` forever (never raises); resolving a Live camera's credential before any password was ever saved returns `None` from `CredentialStore.get_credential()` (never raises, never auto-creates the credential file).
+- **Credential safety**: a real-looking password never appears in `repr(Camera(...))` or `Camera.to_dict()`, re-proven directly in this milestone's own tests (`LiveCredentialSafetyTests`), on top of the earlier milestone's existing coverage.
+
+## 17. Physical CCTV Connection Procedure
+
+The procedure for the day physical CCTV access actually arrives, with every step marked against what is **ALREADY IMPLEMENTED** (built and test-proven, today), what **REQUIRES PHYSICAL CCTV ACCESS** (cannot be done, tested, or even meaningfully attempted before then), and what is **FUTURE COMPUTER-VISION WORK** (explicitly out of scope of every milestone so far, real vision/ML work for later).
+
+1. **Open the Digital Twin.** — *ALREADY IMPLEMENTED.* No change needed.
+2. **Select the already-placed Camera Asset.** — *ALREADY IMPLEMENTED.* `Camera.id` is the permanent Digital Twin identity (§13 step 2, re-proven end-to-end offline in §16.1); the Camera Manager Panel already lists every camera building-wide.
+3. **Set Mode = Live.** — *ALREADY IMPLEMENTED.* `CameraManagerPanel`'s mode dropdown already calls `CameraManager.set_camera_mode(camera_id, DeviceMode.LIVE)`; proven to change nothing else about the Camera Asset (§16.1 "Camera identity continuity").
+4. **Enter/configure RTSP/IP endpoint.** — *ALREADY IMPLEMENTED.* `ConnectionInfo.rtsp_address`/`ip_address`/`username` already exist on `Camera.connection`, editable via the Property Panel, persisted (password excluded) via `Serializer.save()`.
+5. **Associate credential reference.** — *ALREADY IMPLEMENTED.* Typing a password once captures it into `LocalFileCredentialStore` and assigns `credential_ref` (§7); the Camera Manager Panel now honestly reports `Live — Credentials Missing` until this step is done (§16, Phase 8).
+6. **Test connection.** — *REQUIRES PHYSICAL CCTV ACCESS.* No code exists to attempt a real connection at all today (by design — see §14's guard test forbidding `cv2`/`torch`/`ultralytics`/`onvif` imports in every camera-adjacent package). This is where a real network reachability check gets written, and the one place `CameraManager.set_connection_status()` would first ever be called with something other than a test's own value.
+7. **Receive `FramePacket`s carrying the existing `camera_id`.** — *PARTIALLY IMPLEMENTED / REQUIRES PHYSICAL CCTV ACCESS.* The `FramePacket` type (`CameraFrame`) and the `CameraFrameSource` interface it flows through already exist and are already proven end-to-end via `ReplayFrameSource` (§16). What's missing is the one real implementation: an `RTSPFrameSource` that actually opens a stream and decodes real frames — this needs a real image-decoding library and a real stream to test against, neither available yet.
+8. **Feed frames into the detector adapter.** — *PARTIALLY IMPLEMENTED / FUTURE COMPUTER-VISION WORK.* The adapter seam (`HumanDetector.detect(frame) -> RawHumanDetection`) already exists and is already proven end-to-end via `MockHumanDetector` (§16). The real detector behind it (YOLO or equivalent) is genuine computer-vision work, not started.
+9. **Produce `Detection`s.** — *ALREADY IMPLEMENTED.* `IdentityResolver.resolve(...)` -> `Detection` already works end-to-end today, offline (§16.1) — `MappingIdentityResolver` is a real, honest, non-ML strategy usable as-is on day one (start with an empty mapping, per §13 step 12).
+10. **Fuse overlapping-camera detections.** — *ALREADY IMPLEMENTED.* `MultiCameraFusionEngine` needs zero changes — already proven against real multi-camera duplicate suppression offline (§16.1).
+11. **Update `BuildingState`.** — *ALREADY IMPLEMENTED.* `BuildingStateEstimator` needs zero changes — already proven to receive unique, non-double-counted occupant tracks offline (§16.1).
+
+**In one sentence:** every step except "physically reach a real camera and decode its real video" (steps 6-8's real implementations) is already built and already test-proven; the only genuinely new work still ahead is a real `RTSPFrameSource`, a real `HumanDetector`, and — once more than one camera has real overlapping coverage — a real `LiveReIDIdentityResolver` (unchanged from §15).

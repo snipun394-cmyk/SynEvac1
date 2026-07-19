@@ -7,9 +7,11 @@ _app = QApplication.instance() or QApplication(sys.argv)
 
 from designer.widgets.camera_manager_panel import CameraManagerPanel
 
+from camera_manager.connection_status import CameraConnectionState
+
 from models.building import Building
 from models.camera import Camera
-from models.engineering_asset import DeviceMode
+from models.engineering_asset import ConnectionInfo, DeviceMode
 from models.zone import Zone
 
 
@@ -176,6 +178,94 @@ class CameraManagerPanelTests(unittest.TestCase):
         self.panel._rerun_last()
 
         self.assertEqual(self.panel.camera_table.rowCount(), 4)
+
+
+class CameraManagerPanelModeDetailStatusTests(unittest.TestCase):
+
+    # CCTV Pipeline End-to-End Offline Validation milestone, Phase 8:
+    # the status column's appended mode-detail segment must be
+    # truthful and derived only from information the panel already has
+    # -- never a fabricated "Connected" for Live mode.
+
+    def setUp(self):
+
+        self.building = Building(name="B")
+        self.floor = self.building.create_floor(name="Ground Floor")
+
+        self.camera = Camera(name="Cam", floor_id=self.floor.id)
+        self.floor.add_camera(self.camera)
+
+        self.panel = CameraManagerPanel()
+        self.panel.refresh(self.building)
+
+    def _status_text(self):
+
+        self.panel._rerun_last()
+        return self.panel.camera_table.item(0, 6).text()
+
+    def test_simulation_with_no_provider_is_not_configured(self):
+
+        self.assertIn("Not Configured", self._status_text())
+
+    def test_simulation_with_provider_is_ready(self):
+
+        self.panel.manager.register_detection_provider(DeviceMode.SIMULATION, object())
+
+        self.assertIn("Ready", self._status_text())
+
+    def test_replay_with_no_provider_is_no_source(self):
+
+        self.panel.manager.set_camera_mode(self.camera.id, DeviceMode.REPLAY)
+
+        self.assertIn("No Source", self._status_text())
+
+    def test_replay_with_stream_unavailable_is_source_missing(self):
+
+        self.panel.manager.register_detection_provider(DeviceMode.REPLAY, object())
+        self.panel.manager.set_camera_mode(self.camera.id, DeviceMode.REPLAY)
+        self.panel.manager.set_connection_status(
+            self.camera.id, CameraConnectionState.STREAM_UNAVAILABLE,
+        )
+
+        self.assertIn("Source Missing", self._status_text())
+
+    def test_replay_with_provider_and_no_stream_issue_is_source_loaded(self):
+
+        self.panel.manager.register_detection_provider(DeviceMode.REPLAY, object())
+        self.panel.manager.set_camera_mode(self.camera.id, DeviceMode.REPLAY)
+
+        self.assertIn("Source Loaded", self._status_text())
+
+    def test_live_with_no_credentials_is_credentials_missing(self):
+
+        self.panel.manager.set_camera_mode(self.camera.id, DeviceMode.LIVE)
+
+        self.assertIn("Credentials Missing", self._status_text())
+
+    def test_live_with_credential_ref_but_not_online_is_not_connected(self):
+
+        self.camera.connection = ConnectionInfo(credential_ref="CAM-CRED-1")
+        self.panel.manager.set_camera_mode(self.camera.id, DeviceMode.LIVE)
+
+        status_text = self._status_text()
+
+        self.assertIn("Not Connected", status_text)
+        self.assertNotIn("Credentials Missing", status_text)
+
+    def test_live_never_fabricates_online_without_an_explicit_connection_status(self):
+
+        self.camera.connection = ConnectionInfo(credential_ref="CAM-CRED-1")
+        self.panel.manager.set_camera_mode(self.camera.id, DeviceMode.LIVE)
+
+        self.assertNotIn("Online", self._status_text())
+
+    def test_live_reports_online_only_when_connection_status_is_explicitly_online(self):
+
+        self.camera.connection = ConnectionInfo(credential_ref="CAM-CRED-1")
+        self.panel.manager.set_camera_mode(self.camera.id, DeviceMode.LIVE)
+        self.panel.manager.set_connection_status(self.camera.id, CameraConnectionState.ONLINE)
+
+        self.assertIn("Online", self._status_text())
 
 
 if __name__ == "__main__":
