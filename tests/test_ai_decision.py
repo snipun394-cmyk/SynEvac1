@@ -304,6 +304,151 @@ class AIDecisionEngineTests(unittest.TestCase):
         self.assertIsInstance(self.decision_engine.announcement_template, DefaultVoiceAnnouncementTemplate)
 
 
+class RouteCachingRegressionTests(unittest.TestCase):
+
+    # Platform-refinement performance fix (docs/validation/
+    # technical_report.md §7.2): AIDecisionEngine now caches each
+    # zone's nearest_exit() route, keyed on a fingerprint of
+    # hazard_snapshot.edge_states, and reuses it across decide() calls
+    # whose edge_states are unchanged instead of recomputing a full
+    # search per zone every call. These tests prove that caching never
+    # changes an observable result -- only how often nearest_exit() is
+    # actually invoked underneath.
+
+    def setUp(self):
+
+        (
+            self.building, self.floor, self.room, self.corridor, self.lobby,
+            self.door1, self.door2, self.exit_obj, self.base_engine,
+        ) = build_three_zone_building()
+
+        self.decision_engine = AIDecisionEngine(self.base_engine)
+
+    def test_occupant_count_is_always_fresh_even_when_the_route_cache_is_reused(self):
+
+        # Same (empty) edge_states on both calls -- the route cache
+        # hits on the second call -- but occupancy must never be
+        # served from that cache: it comes from occupancy_snapshot,
+        # not from anything hazard-derived.
+
+        first = self.decision_engine.decide(
+            HazardSnapshot(),
+            OccupancySnapshot(observations={self.room.id: OccupancyObservation(occupant_count=2.0)}),
+            time=0.0,
+        )
+        second = self.decision_engine.decide(
+            HazardSnapshot(),
+            OccupancySnapshot(observations={self.room.id: OccupancyObservation(occupant_count=9.0)}),
+            time=1.0,
+        )
+
+        self.assertEqual(first.zone_recommendation(self.room.id).occupant_count, 2.0)
+        self.assertEqual(second.zone_recommendation(self.room.id).occupant_count, 9.0)
+
+    def test_severity_is_always_fresh_even_when_edge_states_are_unchanged(self):
+
+        # node_states differ (room's hazard_score goes from clear to
+        # CRITICAL) but edge_states stay empty on both calls -- the
+        # route cache fingerprint is identical, so the cached route is
+        # reused, but severity/is_unsafe must still reflect this
+        # call's own hazard_snapshot, not the previous one's.
+
+        first = self.decision_engine.decide(HazardSnapshot(), OccupancySnapshot(), time=0.0)
+        self.assertNotIn(self.room.id, first.unsafe_zone_ids)
+
+        second = self.decision_engine.decide(
+            HazardSnapshot(node_states={self.room.id: HazardNodeState(hazard_score=0.9)}),
+            OccupancySnapshot(),
+            time=1.0,
+        )
+
+        self.assertIn(self.room.id, second.unsafe_zone_ids)
+        self.assertEqual(
+            second.zone_recommendation(self.room.id).severity, HazardSeverity.CRITICAL,
+        )
+        self.assertTrue(second.zone_recommendation(self.room.id).is_reachable)
+
+    def test_route_cache_invalidates_when_edge_states_change(self):
+
+        first = self.decision_engine.decide(HazardSnapshot(), OccupancySnapshot(), time=0.0)
+        self.assertTrue(first.zone_recommendation(self.room.id).is_reachable)
+
+        second = self.decision_engine.decide(
+            HazardSnapshot(edge_states={self.door1.id: HazardEdgeState(traversable=False)}),
+            OccupancySnapshot(),
+            time=1.0,
+        )
+        self.assertFalse(second.zone_recommendation(self.room.id).is_reachable)
+        self.assertIsNone(second.zone_recommendation(self.room.id).recommended_route)
+
+        # And un-blocking it again (back to the original, empty
+        # edge_states) must restore the original route rather than
+        # sticking with whatever was cached from the blocked call.
+        third = self.decision_engine.decide(HazardSnapshot(), OccupancySnapshot(), time=2.0)
+        self.assertTrue(third.zone_recommendation(self.room.id).is_reachable)
+        self.assertEqual(
+            third.zone_recommendation(self.room.id).recommended_route.edge_ids,
+            first.zone_recommendation(self.room.id).recommended_route.edge_ids,
+        )
+
+    def test_identical_edge_states_content_hits_the_cache_across_distinct_snapshot_objects(self):
+
+        # HazardEvolutionEngine.evolve() (hazard_evolution/engine.py)
+        # constructs a brand-new HazardSnapshot object every tick, with
+        # a fresh snapshot_id/timestamp, even when no source touched
+        # anything -- two snapshots with byte-identical edge_states
+        # content but different identity/timestamp must still produce
+        # identical zone recommendations.
+
+        edge_states = {self.door1.id: HazardEdgeState(cost_penalty=5.0)}
+
+        first = self.decision_engine.decide(
+            HazardSnapshot(timestamp=0.0, edge_states=edge_states), OccupancySnapshot(), time=0.0,
+        )
+        second = self.decision_engine.decide(
+            HazardSnapshot(timestamp=5.0, edge_states=edge_states), OccupancySnapshot(), time=5.0,
+        )
+
+        self.assertEqual(
+            first.zone_recommendation(self.room.id).recommended_route.edge_ids,
+            second.zone_recommendation(self.room.id).recommended_route.edge_ids,
+        )
+        self.assertEqual(
+            first.zone_recommendation(self.room.id).recommended_route.total_cost,
+            second.zone_recommendation(self.room.id).recommended_route.total_cost,
+        )
+
+    def test_nearest_exit_is_not_recalled_when_edge_states_are_unchanged(self):
+
+        # The actual performance claim, proven directly: a second
+        # decide() call with unchanged edge_states must not invoke
+        # PathfindingEngine.nearest_exit() again for any zone.
+
+        self.decision_engine.decide(HazardSnapshot(), OccupancySnapshot(), time=0.0)
+
+        call_count = {"n": 0}
+
+        # _zone_routes() builds its own hazard-aware PathfindingEngine
+        # internally (not self.base_engine), so the spy must sit on
+        # PathfindingEngine.nearest_exit at the class level to observe
+        # calls made through that throwaway instance too.
+        from pathfinding.engine import PathfindingEngine as _PFE
+
+        original_class_nearest_exit = _PFE.nearest_exit
+
+        def spy_nearest_exit(self_engine, start_id):
+            call_count["n"] += 1
+            return original_class_nearest_exit(self_engine, start_id)
+
+        _PFE.nearest_exit = spy_nearest_exit
+        try:
+            self.decision_engine.decide(HazardSnapshot(), OccupancySnapshot(), time=1.0)
+        finally:
+            _PFE.nearest_exit = original_class_nearest_exit
+
+        self.assertEqual(call_count["n"], 0)
+
+
 class SeverityOccupancyPriorityRuleTests(unittest.TestCase):
 
     def test_rank_orders_by_severity_then_occupancy_then_zone_id(self):

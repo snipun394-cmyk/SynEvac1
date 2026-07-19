@@ -105,7 +105,12 @@ class StaticHerdingRouteChoiceStrategy(RouteChoiceStrategy):
         if not exit_edge_counts:
             return self.fallback.choose(context)
 
-        if self.rng.random() > self.follow_probability:
+        # Prefers context.rng when supplied -- see
+        # ComplianceDecisionStrategy's identical comment
+        # (docs/architecture/reproducibility_review.md §7.2).
+        rng = context.rng if context.rng is not None else self.rng
+
+        if rng.random() > self.follow_probability:
             return self.fallback.choose(context)
 
         majority_exit_edge_id, _ = exit_edge_counts.most_common(1)[0]
@@ -199,3 +204,146 @@ class HelpTargetRouteChoiceStrategy(RouteChoiceStrategy):
             return self.fallback.choose(context)
 
         return RouteChoice(goal_id=target_decision.start_id, route=route)
+
+
+class LoadBalancingRouteChoiceStrategy(RouteChoiceStrategy):
+
+    # Anti-herding: distributes occupants across the top `max_alternatives`
+    # candidate exits (PathfindingEngine.alternative_paths(), unmodified)
+    # instead of everyone taking the single shortest one. Reuses the
+    # exact tallying pattern StaticHerdingRouteChoiceStrategy already
+    # established (Counter over context.decisions_so_far, keyed by the
+    # actual Exit edge id, not goal_id -- V1's shared "Outside" node
+    # makes goal_id useless for this) -- this strategy just steers away
+    # from the majority instead of toward it.
+    #
+    # Each candidate's load is normalized by its exit's own modeled
+    # capacity (Edge.capacity -- Exit models one, Door/Stair don't) so
+    # a crowded low-capacity exit is recognized as more loaded than an
+    # equally-crowded high-capacity one, not just compared by headcount.
+    # An exit with no modeled capacity falls back to an undivided load
+    # count of 1, the same "None means not applicable, not zero"
+    # reading Edge.capacity's own docstring already uses. Ties (e.g. no
+    # occupant has been assigned to any candidate yet, and every
+    # candidate's exit has equal capacity) are broken toward the
+    # cheaper route, so this degrades to ShortestRouteChoiceStrategy's
+    # own choice whenever load truly can't distinguish the candidates --
+    # exactly the first occupant registered against a building whose
+    # exits are otherwise identical.
+    #
+    # No route.route ever changes after this call -- like every other
+    # RouteChoiceStrategy, this runs once, at registration/decision
+    # time, never mid-simulation (MultiAgentSimulation's own "no
+    # dynamic rerouting of an occupant already in flight" invariant is
+    # untouched).
+
+    def __init__(self, max_alternatives=5, fallback=None):
+
+        self.max_alternatives = max_alternatives
+        self.fallback = fallback or ShortestRouteChoiceStrategy()
+
+    # =====================================================
+
+    def choose(self, context) -> RouteChoice:
+
+        baseline = context.engine.nearest_exit(context.start_id)
+
+        if baseline is None:
+            return self.fallback.choose(context)
+
+        candidates = context.engine.alternative_paths(
+            context.start_id, baseline.goal.id, k=self.max_alternatives,
+        )
+
+        if not candidates:
+            return self.fallback.choose(context)
+
+        exit_edge_counts = Counter(
+            decision.route.edges[-1].id
+            for decision in context.decisions_so_far.values()
+            if decision.route is not None and decision.route.edges
+        )
+
+        best = min(
+            candidates,
+            key=lambda route: (self._load_score(route, exit_edge_counts), route.total_cost),
+        )
+
+        return RouteChoice(goal_id=best.goal.id, route=best)
+
+    # =====================================================
+
+    def _load_score(self, route, exit_edge_counts) -> float:
+
+        if not route.edges:
+            return 0.0
+
+        exit_edge = route.edges[-1]
+        assigned = exit_edge_counts.get(exit_edge.id, 0)
+
+        effective_capacity = exit_edge.capacity if exit_edge.capacity else 1
+
+        return (assigned + 1) / effective_capacity
+
+
+class HazardAwareRouteChoiceStrategy(RouteChoiceStrategy):
+
+    # Prefers a safer route over a shorter one -- but only once hazard
+    # information actually exists. context.hazard_snapshot is
+    # DecisionContext's own documented, optional "Dynamic Hazard
+    # Layer's one point of contact with Human Behavior" field (None by
+    # default everywhere today); when it's None this strategy delegates
+    # to `fallback` (ShortestRouteChoiceStrategy by default) with zero
+    # difference in outcome from not having this strategy at all --
+    # every existing caller/test that never supplies a hazard_snapshot
+    # is completely unaffected.
+    #
+    # When hazard data is present, scores each of the top
+    # `max_alternatives` candidate routes (alternative_paths(),
+    # unmodified) by total_cost plus a weighted sum of
+    # HazardSnapshot.node_state(node_id).hazard_score across every node
+    # the route passes through -- reusing only the already-existing
+    # HazardSnapshot reader, never inventing a second hazard scale.
+    # Candidates arrive already sorted by ascending total_cost (Yen's
+    # algorithm's own guarantee), so a tie in combined score still
+    # resolves toward the cheaper/shorter one.
+
+    def __init__(self, max_alternatives=3, hazard_score_weight=50.0, fallback=None):
+
+        self.max_alternatives = max_alternatives
+        self.hazard_score_weight = hazard_score_weight
+        self.fallback = fallback or ShortestRouteChoiceStrategy()
+
+    # =====================================================
+
+    def choose(self, context) -> RouteChoice:
+
+        if context.hazard_snapshot is None:
+            return self.fallback.choose(context)
+
+        baseline = context.engine.nearest_exit(context.start_id)
+
+        if baseline is None:
+            return self.fallback.choose(context)
+
+        candidates = context.engine.alternative_paths(
+            context.start_id, baseline.goal.id, k=self.max_alternatives,
+        )
+
+        if not candidates:
+            return self.fallback.choose(context)
+
+        best = min(candidates, key=lambda route: self._combined_score(context, route))
+
+        return RouteChoice(goal_id=best.goal.id, route=best)
+
+    # =====================================================
+
+    def _combined_score(self, context, route) -> float:
+
+        hazard_total = sum(
+            context.hazard_snapshot.node_state(node_id).hazard_score
+            for node_id in route.node_ids
+        )
+
+        return route.total_cost + self.hazard_score_weight * hazard_total

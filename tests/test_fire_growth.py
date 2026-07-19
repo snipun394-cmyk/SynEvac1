@@ -127,12 +127,21 @@ class FireGrowthModelNeverTouchesDownstreamLayersTests(unittest.TestCase):
 
     def test_model_module_imports_nothing_from_simulation_behavior_or_pathfinding(self):
 
+        # `navigation` itself is allowed (not forbidden here) -- exactly
+        # the same precedent tests/test_smoke_propagation.py's own
+        # equivalent test already establishes for SmokePropagationModel:
+        # FireSpreadModel legitimately reads navigation.edge.Edge's
+        # plain, static topology (edge_type/reference/walking_distance),
+        # never navigation.cost/pathfinding's own routing behavior --
+        # the second assertion below is the one that actually guards
+        # that distinction.
+
         import pathlib
         import re
 
         package_dir = pathlib.Path(__file__).resolve().parent.parent / "fire_growth"
 
-        forbidden = r"^\s*(from|import)\s+(simulator|behavior|pathfinding|models|designer|navigation)\b"
+        forbidden = r"^\s*(from|import)\s+(simulator|behavior|pathfinding|models|designer)\b"
 
         for path in package_dir.glob("*.py"):
 
@@ -141,7 +150,13 @@ class FireGrowthModelNeverTouchesDownstreamLayersTests(unittest.TestCase):
             self.assertIsNone(
                 re.search(forbidden, text, re.MULTILINE),
                 f"{path.name} imports a downstream/engineering layer directly -- "
-                f"FireGrowthModel must only ever produce HazardContribution objects",
+                f"FireGrowthModel/FireSpreadModel must only ever produce HazardContribution objects",
+            )
+
+            self.assertIsNone(
+                re.search(r"^\s*(from|import)\s+navigation\.cost\b", text, re.MULTILINE),
+                f"{path.name} imports navigation.cost -- fire_growth sources must "
+                f"only ever read static graph topology, never a CostModel",
             )
 
 

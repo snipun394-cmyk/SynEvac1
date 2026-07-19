@@ -10,6 +10,9 @@ from navigation.graph_builder import NavigationGraphGenerator
 
 from pathfinding.engine import PathfindingEngine
 
+from hazard.node_state import HazardNodeState
+from hazard.snapshot import HazardSnapshot
+
 from simulator.coordinator import MultiAgentSimulation
 from simulator.decision import ActionType
 from simulator.occupant import OccupantState
@@ -27,11 +30,17 @@ from behavior_library.decision_strategies import (
     BasicHelpingDecisionStrategy,
     ComplianceDecisionStrategy,
 )
-from behavior_library.pre_movement_strategies import ProbabilisticPreMovementDelay
+from behavior_library.pre_movement_strategies import (
+    FollowLeaderPreMovementDelayStrategy,
+    HesitationPreMovementDelayStrategy,
+    ProbabilisticPreMovementDelay,
+)
 from behavior_library.route_choice_strategies import (
     FamiliarityBasedRouteChoiceStrategy,
     FollowLeaderRouteChoiceStrategy,
+    HazardAwareRouteChoiceStrategy,
     HelpTargetRouteChoiceStrategy,
+    LoadBalancingRouteChoiceStrategy,
     StaticHerdingRouteChoiceStrategy,
 )
 
@@ -101,13 +110,14 @@ def build_two_exit_building():
     return building, floor, start, room_b, room_c, door_b, door_c, exit_b, exit_c, engine
 
 
-def make_context(engine, start_id, profile=None, decisions_so_far=None):
+def make_context(engine, start_id, profile=None, decisions_so_far=None, hazard_snapshot=None):
 
     return DecisionContext(
         graph=engine.graph if engine is not None else None, engine=engine,
         profile=profile or BehaviorProfile(occupant_id="p1"),
         start_id=start_id,
         decisions_so_far=decisions_so_far or {},
+        hazard_snapshot=hazard_snapshot,
     )
 
 
@@ -186,6 +196,57 @@ class ComplianceDecisionStrategyTests(unittest.TestCase):
         intent = strategy.decide(context)
 
         self.assertEqual(intent.action_type, ActionType.HELP)
+
+
+def build_symmetric_two_exit_building():
+
+    # Start -- door_b --> RoomB -- exit_b --> Outside   (mirror image)
+    # Start -- door_c --> RoomC -- exit_c --> Outside   (mirror image)
+    #
+    # Symmetric geometry (RoomB/RoomC equidistant from Start, mirrored
+    # across the x-axis) so both routes cost approximately the same --
+    # unlike build_two_exit_building's deliberately short/long pair,
+    # this is what exercises "genuinely tied options" (hesitation),
+    # rather than one route dominating the other.
+
+    building = Building(name="B")
+    floor = building.create_floor(name="Ground Floor")
+
+    start = make_zone("Start", x=0.0, y=0.0)
+    room_b = make_zone("RoomB", x=10.0, y=10.0)
+    room_c = make_zone("RoomC", x=10.0, y=-10.0)
+
+    floor.add_zone(start)
+    floor.add_zone(room_b)
+    floor.add_zone(room_c)
+
+    door_b = Door(name="DB", zone_a_id=start.id, zone_b_id=room_b.id, floor_id=floor.id)
+    door_c = Door(name="DC", zone_a_id=start.id, zone_b_id=room_c.id, floor_id=floor.id)
+    floor.add_door(door_b)
+    floor.add_door(door_c)
+
+    exit_b = Exit(name="ExB", zone_id=room_b.id, floor_id=floor.id)
+    exit_c = Exit(name="ExC", zone_id=room_c.id, floor_id=floor.id)
+    floor.add_exit(exit_b)
+    floor.add_exit(exit_c)
+
+    graph = NavigationGraphGenerator().build(building)
+    engine = PathfindingEngine(graph)
+
+    return building, floor, start, room_b, room_c, door_b, door_c, exit_b, exit_c, engine
+
+
+class _FixedDelay:
+
+    # Deterministic stand-in PreMovementDelayStrategy -- used to prove
+    # a new strategy's `fallback`/composition actually gets called
+    # rather than silently defaulting to NoPreMovementDelay's 0.0.
+
+    def __init__(self, value):
+        self.value = value
+
+    def delay(self, context):
+        return self.value
 
 
 class _FixedRandom(random.Random):
@@ -619,6 +680,333 @@ class RealisticEvacuationScenarioTests(unittest.TestCase):
         self.assertLess(
             result.occupants["immediate"].arrival_time,
             result.occupants["delayed"].arrival_time,
+        )
+
+
+class LoadBalancingRouteChoiceStrategyTests(unittest.TestCase):
+
+    def setUp(self):
+
+        (
+            self.building, self.floor, self.start, self.room_b, self.room_c,
+            self.door_b, self.door_c, self.exit_b, self.exit_c, self.engine,
+        ) = build_two_exit_building()
+
+    def _decision_via(self, exit_edge_id, other_edge_id):
+
+        from pathfinding.route import Route
+        from simulator.decision import BehaviorDecision
+
+        node = self.engine.graph.find_node(self.start.id)
+        edge = next(e for e in self.engine.graph.edges if e.id == exit_edge_id)
+
+        route = Route(nodes=[node], edges=[edge], total_cost=1.0, total_distance=1.0)
+
+        return BehaviorDecision(
+            occupant_id="peer", action_type=ActionType.EVACUATE,
+            start_id="start-decoy", goal_id="outside", route=route,
+        )
+
+    def test_no_peers_and_equal_capacity_matches_shortest_route_choice(self):
+
+        context = make_context(self.engine, self.start.id)
+
+        balanced_choice = LoadBalancingRouteChoiceStrategy(max_alternatives=2).choose(context)
+        shortest_choice = ShortestRouteChoiceStrategy().choose(context)
+
+        self.assertEqual(balanced_choice.route.edge_ids, shortest_choice.route.edge_ids)
+
+    def test_steers_away_from_the_already_loaded_exit(self):
+
+        decisions_so_far = {
+            "peer1": self._decision_via(self.exit_b.id, self.exit_c.id),
+            "peer2": self._decision_via(self.exit_b.id, self.exit_c.id),
+            "peer3": self._decision_via(self.exit_b.id, self.exit_c.id),
+        }
+        context = make_context(self.engine, self.start.id, decisions_so_far=decisions_so_far)
+
+        choice = LoadBalancingRouteChoiceStrategy(max_alternatives=2).choose(context)
+
+        # exit_b (the short route, per build_two_exit_building) is
+        # already loaded with 3 peers -- despite being farther, exit_c
+        # is chosen instead.
+        self.assertIn(self.exit_c.id, choice.route.edge_ids)
+
+    def test_normalizes_load_by_each_exits_own_modeled_capacity(self):
+
+        # exit_b is the shorter route but modeled with capacity 1 --
+        # a single already-assigned peer already makes it look "full",
+        # so exit_c (capacity 50 default, unused) wins despite being
+        # longer and having strictly fewer people assigned so far.
+        self.exit_b.capacity = 1
+
+        decisions_so_far = {"peer1": self._decision_via(self.exit_b.id, self.exit_c.id)}
+        context = make_context(self.engine, self.start.id, decisions_so_far=decisions_so_far)
+
+        choice = LoadBalancingRouteChoiceStrategy(max_alternatives=2).choose(context)
+
+        self.assertIn(self.exit_c.id, choice.route.edge_ids)
+
+    def test_falls_back_when_unreachable(self):
+
+        isolated_building = Building(name="Isolated")
+        floor = isolated_building.create_floor(name="F")
+        zone = make_zone("Z", x=0.0, y=0.0)
+        floor.add_zone(zone)
+
+        graph = NavigationGraphGenerator().build(isolated_building)
+        engine = PathfindingEngine(graph)
+
+        context = make_context(engine, zone.id)
+        choice = LoadBalancingRouteChoiceStrategy().choose(context)
+
+        self.assertIsNone(choice.goal_id)
+        self.assertIsNone(choice.route)
+
+
+class HazardAwareRouteChoiceStrategyTests(unittest.TestCase):
+
+    def setUp(self):
+
+        (
+            self.building, self.floor, self.start, self.room_b, self.room_c,
+            self.door_b, self.door_c, self.exit_b, self.exit_c, self.engine,
+        ) = build_two_exit_building()
+
+    def test_no_hazard_snapshot_matches_shortest_route_choice(self):
+
+        context = make_context(self.engine, self.start.id)
+
+        hazard_choice = HazardAwareRouteChoiceStrategy().choose(context)
+        shortest_choice = ShortestRouteChoiceStrategy().choose(context)
+
+        self.assertEqual(hazard_choice.route.edge_ids, shortest_choice.route.edge_ids)
+
+    def test_prefers_the_safer_longer_route_when_hazard_is_present(self):
+
+        hazard_snapshot = HazardSnapshot(
+            node_states={self.room_b.id: HazardNodeState(hazard_score=0.9)},
+        )
+        context = make_context(self.engine, self.start.id, hazard_snapshot=hazard_snapshot)
+
+        shortest_choice = ShortestRouteChoiceStrategy().choose(context)
+        self.assertIn(self.exit_b.id, shortest_choice.route.edge_ids)  # sanity: b is normally cheaper
+
+        choice = HazardAwareRouteChoiceStrategy(
+            max_alternatives=2, hazard_score_weight=100.0,
+        ).choose(context)
+
+        self.assertIn(self.exit_c.id, choice.route.edge_ids)
+
+    def test_falls_back_when_unreachable(self):
+
+        isolated_building = Building(name="Isolated")
+        floor = isolated_building.create_floor(name="F")
+        zone = make_zone("Z", x=0.0, y=0.0)
+        floor.add_zone(zone)
+
+        graph = NavigationGraphGenerator().build(isolated_building)
+        engine = PathfindingEngine(graph)
+
+        hazard_snapshot = HazardSnapshot(node_states={zone.id: HazardNodeState(hazard_score=0.9)})
+        context = make_context(engine, zone.id, hazard_snapshot=hazard_snapshot)
+
+        choice = HazardAwareRouteChoiceStrategy().choose(context)
+
+        self.assertIsNone(choice.goal_id)
+        self.assertIsNone(choice.route)
+
+
+class HesitationPreMovementDelayStrategyTests(unittest.TestCase):
+
+    def test_single_dominant_route_produces_zero_hesitation(self):
+
+        _, _, room, corridor, door, exit_obj, engine = build_two_zone_building()
+        context = make_context(engine, room.id)
+
+        self.assertEqual(HesitationPreMovementDelayStrategy().delay(context), 0.0)
+
+    def test_tied_routes_produce_positive_and_deterministic_hesitation(self):
+
+        (
+            building, floor, start, room_b, room_c,
+            door_b, door_c, exit_b, exit_c, engine,
+        ) = build_symmetric_two_exit_building()
+
+        context = make_context(engine, start.id)
+        strategy = HesitationPreMovementDelayStrategy(max_alternatives=2)
+
+        first = strategy.delay(context)
+        second = strategy.delay(context)
+
+        self.assertGreater(first, 0.0)
+        self.assertEqual(first, second)
+
+    def test_hesitation_is_capped(self):
+
+        (
+            building, floor, start, room_b, room_c,
+            door_b, door_c, exit_b, exit_c, engine,
+        ) = build_symmetric_two_exit_building()
+
+        context = make_context(engine, start.id)
+        strategy = HesitationPreMovementDelayStrategy(
+            max_alternatives=2, hesitation_per_tied_option=1000.0, max_hesitation=5.0,
+        )
+
+        self.assertEqual(strategy.delay(context), 5.0)
+
+    def test_composes_with_a_custom_fallback_base_delay(self):
+
+        _, _, room, corridor, door, exit_obj, engine = build_two_zone_building()
+        context = make_context(engine, room.id)
+
+        strategy = HesitationPreMovementDelayStrategy(fallback=_FixedDelay(3.0))
+
+        self.assertEqual(strategy.delay(context), 3.0)
+
+    def test_falls_back_when_unreachable(self):
+
+        isolated_building = Building(name="Isolated")
+        floor = isolated_building.create_floor(name="F")
+        zone = make_zone("Z", x=0.0, y=0.0)
+        floor.add_zone(zone)
+
+        graph = NavigationGraphGenerator().build(isolated_building)
+        engine = PathfindingEngine(graph)
+
+        context = make_context(engine, zone.id)
+
+        self.assertEqual(HesitationPreMovementDelayStrategy().delay(context), 0.0)
+
+
+class FollowLeaderPreMovementDelayStrategyTests(unittest.TestCase):
+
+    def setUp(self):
+
+        (
+            self.building, self.floor, self.room, self.corridor,
+            self.door, self.exit_obj, self.engine,
+        ) = build_two_zone_building()
+
+    def test_no_leader_trait_falls_back_to_no_delay(self):
+
+        context = make_context(self.engine, self.room.id)
+
+        self.assertEqual(FollowLeaderPreMovementDelayStrategy().delay(context), 0.0)
+
+    def test_leader_not_yet_decided_falls_back(self):
+
+        profile = BehaviorProfile(occupant_id="follower", role=Role.FOLLOWER)
+        profile.traits["leader_occupant_id"] = "leader-1"
+        context = make_context(self.engine, self.room.id, profile=profile)
+
+        self.assertEqual(FollowLeaderPreMovementDelayStrategy().delay(context), 0.0)
+
+    def test_follows_leader_departure_time_plus_gap(self):
+
+        from simulator.decision import BehaviorDecision
+
+        leader_decision = BehaviorDecision(
+            occupant_id="leader-1", action_type=ActionType.EVACUATE,
+            start_id=self.room.id, goal_id="outside", depart_time=5.0,
+        )
+
+        profile = BehaviorProfile(occupant_id="follower", role=Role.FOLLOWER)
+        profile.traits["leader_occupant_id"] = "leader-1"
+        context = make_context(
+            self.engine, self.room.id, profile=profile,
+            decisions_so_far={"leader-1": leader_decision},
+        )
+
+        delay = FollowLeaderPreMovementDelayStrategy(follow_gap=2.0).delay(context)
+
+        self.assertEqual(delay, 7.0)
+
+    def test_composes_with_a_custom_fallback_when_no_leader(self):
+
+        context = make_context(self.engine, self.room.id)
+        strategy = FollowLeaderPreMovementDelayStrategy(fallback=_FixedDelay(4.0))
+
+        self.assertEqual(strategy.delay(context), 4.0)
+
+
+class SimulationEngineV2EndToEndTests(unittest.TestCase):
+
+    # Exercises the four new strategies through the real
+    # HumanBehaviorLayer/MultiAgentSimulation pipeline (not just the
+    # strategy in isolation) -- proves they compose correctly and that
+    # nothing about MultiAgentSimulation itself needed to change.
+
+    def test_load_balancing_spreads_occupants_across_two_exits(self):
+
+        (
+            building, floor, start, room_b, room_c,
+            door_b, door_c, exit_b, exit_c, engine,
+        ) = build_two_exit_building()
+
+        exit_b.capacity = 1
+
+        sim = MultiAgentSimulation(engine)
+        layer = HumanBehaviorLayer(sim)
+
+        for i in range(3):
+            layer.register(
+                start.id,
+                BehaviorProfile(occupant_id=f"occ-{i}"),
+                decision_strategy=AlwaysEvacuateDecisionStrategy(),
+                route_choice_strategy=LoadBalancingRouteChoiceStrategy(max_alternatives=2),
+            )
+
+        result = sim.run()
+
+        used_exits = {result.occupants[f"occ-{i}"].traversed_edge_ids[-1] for i in range(3)}
+
+        self.assertIn(exit_c.id, used_exits)
+
+    def test_load_balancing_and_leader_following_are_deterministic_across_runs(self):
+
+        def run_once():
+
+            (
+                building, floor, start, room_b, room_c,
+                door_b, door_c, exit_b, exit_c, engine,
+            ) = build_two_exit_building()
+
+            exit_b.capacity = 1
+
+            sim = MultiAgentSimulation(engine)
+            layer = HumanBehaviorLayer(sim)
+
+            layer.register(
+                start.id, BehaviorProfile(occupant_id="leader", role=Role.LEADER),
+                decision_strategy=AlwaysEvacuateDecisionStrategy(),
+                route_choice_strategy=LoadBalancingRouteChoiceStrategy(max_alternatives=2),
+            )
+
+            follower_profile = BehaviorProfile(occupant_id="follower", role=Role.FOLLOWER)
+            follower_profile.traits["leader_occupant_id"] = "leader"
+
+            layer.register(
+                start.id, follower_profile,
+                decision_strategy=AlwaysEvacuateDecisionStrategy(),
+                route_choice_strategy=LoadBalancingRouteChoiceStrategy(max_alternatives=2),
+                pre_movement_strategy=FollowLeaderPreMovementDelayStrategy(follow_gap=2.0),
+            )
+
+            return sim.run()
+
+        first = run_once()
+        second = run_once()
+
+        self.assertEqual(
+            first.occupants["leader"].arrival_time, second.occupants["leader"].arrival_time,
+        )
+        self.assertEqual(
+            first.occupants["follower"].depart_time, second.occupants["follower"].depart_time,
+        )
+        self.assertGreaterEqual(
+            first.occupants["follower"].depart_time, first.occupants["leader"].depart_time,
         )
 
 

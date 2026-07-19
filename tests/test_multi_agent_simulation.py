@@ -11,7 +11,8 @@ from navigation.graph_builder import NavigationGraphGenerator
 
 from pathfinding.engine import PathfindingEngine
 
-from simulator.capacity import DefaultCapacityModel
+from simulator.capacity import DefaultCapacityModel, StairCapacityModel, derive_stair_capacity
+from simulator.congestion import DefaultCongestionModel, StairAwareCongestionModel
 from simulator.coordinator import MultiAgentSimulation
 from simulator.decision import ActionType, BehaviorDecision
 from simulator.engine import OccupantSimulator
@@ -279,6 +280,192 @@ class MultiFloorCapacityTests(unittest.TestCase):
 
         self.assertEqual(first_stair_step.queue_wait_time, 0.0)
         self.assertGreater(second_stair_step.queue_wait_time, 0.0)
+
+
+class StairCapacityModelTests(unittest.TestCase):
+
+    def _make_stair_edge(self, width=1.5, vertical_height=3.0):
+
+        building = Building(name="B")
+        ground = building.create_floor(name="Ground Floor")
+        floor1 = building.create_floor(name="Floor 1", height=vertical_height)
+
+        lobby = make_zone("Lobby", x=0.0, y=0.0)
+        upstairs = make_zone("Upstairs", x=0.0, y=0.0, floor_id=floor1.id)
+
+        ground.add_zone(lobby)
+        floor1.add_zone(upstairs)
+
+        stair = Staircase(
+            name="Stair", from_floor_id=ground.id, to_floor_id=floor1.id,
+            from_zone_id=lobby.id, to_zone_id=upstairs.id, width=width,
+        )
+        ground.add_stair(stair)
+
+        graph = NavigationGraphGenerator().build(building)
+
+        return next(e for e in graph.edges if e.edge_type == Edge.STAIR)
+
+    def test_stair_capacity_is_lower_than_default_model_for_the_same_edge(self):
+
+        edge = self._make_stair_edge(width=1.5, vertical_height=3.0)
+
+        default_capacity = DefaultCapacityModel().capacity(edge)
+        stair_capacity = StairCapacityModel().capacity(edge)
+
+        self.assertLess(stair_capacity, default_capacity)
+
+    def test_non_stair_edges_are_delegated_to_the_base_model_unchanged(self):
+
+        building = Building(name="B")
+        floor = building.create_floor(name="Ground Floor")
+        zone_a = make_zone("A", x=0.0, y=0.0)
+        zone_b = make_zone("B", x=5.0, y=0.0)
+        floor.add_zone(zone_a)
+        floor.add_zone(zone_b)
+
+        door = Door(name="D", zone_a_id=zone_a.id, zone_b_id=zone_b.id, floor_id=floor.id, width=2.0)
+        floor.add_door(door)
+
+        graph = NavigationGraphGenerator().build(building)
+        edge = next(e for e in graph.edges if e.edge_type == Edge.DOOR)
+
+        self.assertEqual(StairCapacityModel().capacity(edge), DefaultCapacityModel().capacity(edge))
+
+    def test_capacity_is_always_floored_at_one(self):
+
+        edge = self._make_stair_edge(width=0.1, vertical_height=30.0)
+
+        self.assertGreaterEqual(StairCapacityModel().capacity(edge), 1)
+
+    def test_derive_stair_capacity_matches_the_model(self):
+
+        edge = self._make_stair_edge(width=2.0, vertical_height=6.0)
+
+        self.assertEqual(
+            derive_stair_capacity(edge.width, edge.walking_distance),
+            StairCapacityModel().capacity(edge),
+        )
+
+    def test_derive_stair_capacity_handles_missing_width(self):
+
+        self.assertEqual(derive_stair_capacity(None), StairCapacityModel.MINIMUM_CAPACITY)
+
+
+class StairAwareCongestionModelTests(unittest.TestCase):
+
+    def test_delegates_non_stair_edges_to_the_base_model_unchanged(self):
+
+        door_edge = Edge(id="d1", edge_type=Edge.DOOR, from_node="a", to_node="b")
+
+        base = DefaultCongestionModel()
+        wrapped = StairAwareCongestionModel(base)
+
+        self.assertAlmostEqual(
+            wrapped.speed_factor(door_edge, 2, 3, opposing_occupants=5),
+            base.speed_factor(door_edge, 2, 3),
+        )
+
+    def test_opposing_occupants_slow_a_stair_below_the_base_factor(self):
+
+        stair_edge = Edge(id="s1", edge_type=Edge.STAIR, from_node="a", to_node="b")
+
+        base = DefaultCongestionModel()
+        wrapped = StairAwareCongestionModel(base)
+
+        base_factor = base.speed_factor(stair_edge, 0, 2)
+        counterflow_factor = wrapped.speed_factor(stair_edge, 0, 2, opposing_occupants=1)
+
+        self.assertLess(counterflow_factor, base_factor)
+
+    def test_speed_factor_never_drops_below_the_base_models_minimum(self):
+
+        stair_edge = Edge(id="s1", edge_type=Edge.STAIR, from_node="a", to_node="b")
+
+        wrapped = StairAwareCongestionModel(DefaultCongestionModel())
+
+        factor = wrapped.speed_factor(stair_edge, 0, 2, opposing_occupants=50)
+
+        self.assertGreaterEqual(factor, DefaultCongestionModel.MINIMUM_SPEED_FACTOR)
+
+
+class StairCounterflowIntegrationTests(unittest.TestCase):
+
+    # End-to-end through MultiAgentSimulation itself (not the
+    # congestion model in isolation): two occupants cross the same
+    # wide stair concurrently in opposite directions and should take
+    # longer than a single occupant crossing alone, purely from the
+    # counter-flow penalty (capacity is wide enough that neither one
+    # ever queues).
+
+    def _build(self):
+
+        building = Building(name="B")
+        ground = building.create_floor(name="Ground Floor")
+        floor1 = building.create_floor(name="Floor 1", height=3.0)
+
+        lobby = make_zone("Lobby", x=0.0, y=0.0)
+        upstairs = make_zone("Upstairs", x=0.0, y=0.0, floor_id=floor1.id)
+
+        ground.add_zone(lobby)
+        floor1.add_zone(upstairs)
+
+        # Deliberately only one Exit, at lobby -- an Exit at upstairs
+        # too would give pathfinding a same-cost-or-cheaper shortcut
+        # through the shared "outside" node instead of the stair
+        # (both zones sit at the same (0, 0) coordinates here), which
+        # would defeat this test's whole premise.
+        ground.add_exit(Exit(name="Ex", zone_id=lobby.id, floor_id=ground.id))
+
+        stair = Staircase(
+            name="Wide Stair", from_floor_id=ground.id, to_floor_id=floor1.id,
+            from_zone_id=lobby.id, to_zone_id=upstairs.id, width=4.0,
+        )
+        ground.add_stair(stair)
+
+        graph = NavigationGraphGenerator().build(building)
+        engine = PathfindingEngine(graph)
+
+        return building, lobby, upstairs, engine
+
+    def test_concurrent_opposite_direction_crossing_is_slower_than_alone(self):
+
+        # Speed is computed once, at the moment each occupant is
+        # admitted onto the edge (same as every other congestion
+        # factor in this simulation -- it is never recomputed later
+        # as new occupants join). "up" is registered first and is
+        # admitted before "down" exists on the edge at all, so it
+        # sees zero opposing occupants and pays no penalty; "down" is
+        # admitted second and sees "up" already crossing, so it does.
+
+        _, lobby, upstairs, solo_engine = self._build()
+
+        solo_sim = MultiAgentSimulation(
+            solo_engine, capacity_model=StairCapacityModel(),
+            congestion_model=StairAwareCongestionModel(),
+        )
+        solo_sim.add_occupant(lobby.id, upstairs.id, occupant_id="solo")
+        solo_result = solo_sim.run()
+        solo_step = solo_result.occupants["solo"].steps[0]
+        solo_duration = solo_step.end_time - solo_step.start_time
+
+        _, lobby2, upstairs2, counterflow_engine = self._build()
+
+        counterflow_sim = MultiAgentSimulation(
+            counterflow_engine, capacity_model=StairCapacityModel(),
+            congestion_model=StairAwareCongestionModel(),
+        )
+        counterflow_sim.add_occupant(lobby2.id, upstairs2.id, occupant_id="up")
+        counterflow_sim.add_occupant(upstairs2.id, lobby2.id, occupant_id="down")
+        counterflow_result = counterflow_sim.run()
+
+        up_step = counterflow_result.occupants["up"].steps[0]
+        up_duration = up_step.end_time - up_step.start_time
+        down_step = counterflow_result.occupants["down"].steps[0]
+        down_duration = down_step.end_time - down_step.start_time
+
+        self.assertAlmostEqual(up_duration, solo_duration)
+        self.assertGreater(down_duration, solo_duration)
 
 
 class UnreachableOccupantTests(unittest.TestCase):
@@ -576,6 +763,61 @@ class SubmitDecisionTests(unittest.TestCase):
         self.assertIsNone(result.occupants["p1"].arrival_time)
         self.assertEqual(result.occupants["p1"].steps, [])
         self.assertNotIn("p1", result.unreachable_occupant_ids)
+
+    def test_route_unavailable_decision_registers_unreachable_not_stationary(self):
+
+        # Ground-truth-classification correctness fix (validation Phase
+        # 5 finding, docs/validation/technical_report.md §6): a
+        # BehaviorDecision with goal_id=None/route=None looks identical
+        # whether it came from a genuine WAIT/IGNORE (the case above) or
+        # from a movement-required decision for which no route to any
+        # exit exists. route_unavailable=True disambiguates the latter
+        # -- submit_decision() must register it as UNREACHABLE, not
+        # STATIONARY, and it must be counted in unreachable_occupant_ids.
+
+        sim = MultiAgentSimulation(self.engine)
+
+        decision = BehaviorDecision(
+            occupant_id="p1",
+            action_type=ActionType.EVACUATE,
+            start_id=self.zone_a.id,
+            route_unavailable=True,
+        )
+        sim.submit_decision(decision)
+
+        result = sim.run()
+
+        self.assertEqual(result.occupants["p1"].state, OccupantState.UNREACHABLE)
+        self.assertIsNone(result.occupants["p1"].arrival_time)
+        self.assertEqual(result.occupants["p1"].steps, [])
+        self.assertIn("p1", result.unreachable_occupant_ids)
+
+    def test_route_unavailable_true_takes_priority_over_a_supplied_goal_or_route(self):
+
+        # route_unavailable is set by HumanBehaviorLayer.register() only
+        # when goal_id/route are already both None (see
+        # behavior/orchestrator.py) -- but submit_decision() itself
+        # checks route_unavailable first, so it is the authoritative
+        # signal regardless of what goal_id/route happen to carry.
+
+        route = self.engine.nearest_exit(self.zone_a.id)
+
+        sim = MultiAgentSimulation(self.engine)
+
+        decision = BehaviorDecision(
+            occupant_id="p1",
+            action_type=ActionType.EVACUATE,
+            start_id=self.zone_a.id,
+            goal_id=route.goal.id,
+            route=route,
+            route_unavailable=True,
+        )
+        sim.submit_decision(decision)
+
+        result = sim.run()
+
+        self.assertEqual(result.occupants["p1"].state, OccupantState.UNREACHABLE)
+        self.assertIn("p1", result.unreachable_occupant_ids)
 
     def test_decision_with_explicit_route_is_used_as_is(self):
 

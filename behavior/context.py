@@ -1,3 +1,5 @@
+import random
+
 from dataclasses import dataclass, field
 from typing import Dict, Optional
 
@@ -48,3 +50,13 @@ class DecisionContext:
     # -- that depend on conditions rather than routing cost, which
     # flows separately through context.engine's own CostModel.
     hazard_snapshot: Optional[HazardSnapshot] = None
+
+    # The reproducibility seam -- docs/architecture/reproducibility_review.md
+    # §7.1: optional, None by default so every existing strategy that
+    # doesn't look at it keeps working unchanged. When supplied (by
+    # HumanBehaviorLayer.register(), ultimately derived per-occupant by
+    # register_occupants() from the Scenario's own seed), a strategy
+    # that draws randomness should prefer this over its own self.rng --
+    # see ComplianceDecisionStrategy/ProbabilisticPreMovementDelay/
+    # StaticHerdingRouteChoiceStrategy in behavior_library.
+    rng: Optional[random.Random] = None

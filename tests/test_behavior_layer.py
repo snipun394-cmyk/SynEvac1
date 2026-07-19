@@ -233,6 +233,40 @@ class HumanBehaviorLayerOrchestrationTests(unittest.TestCase):
         self.assertEqual(result.occupants["bob"].state, OccupantState.STATIONARY)
         self.assertIsNone(result.occupants["bob"].arrival_time)
 
+    def test_movement_required_but_unreachable_registers_unreachable_not_stationary(self):
+
+        # Ground-truth-classification correctness fix (validation Phase
+        # 5 finding, docs/validation/technical_report.md §6): a zone
+        # with no route to any exit under the default
+        # ShortestRouteChoiceStrategy used to register as STATIONARY --
+        # indistinguishable from a genuine WAIT/IGNORE decision -- even
+        # though intent.requires_movement was True. It must now
+        # register as UNREACHABLE and be counted in
+        # unreachable_occupant_ids.
+
+        isolated_building = Building(name="Isolated")
+        isolated_floor = isolated_building.create_floor(name="F")
+        isolated_zone = make_zone("Trapped", x=0.0, y=0.0)
+        isolated_floor.add_zone(isolated_zone)
+
+        isolated_graph = NavigationGraphGenerator().build(isolated_building)
+        isolated_engine = PathfindingEngine(isolated_graph)
+
+        sim = MultiAgentSimulation(isolated_engine)
+        layer = HumanBehaviorLayer(sim)
+
+        layer.register(
+            isolated_zone.id,
+            BehaviorProfile(occupant_id="bob"),
+            decision_strategy=AlwaysEvacuateDecisionStrategy(),
+        )
+
+        result = sim.run()
+
+        self.assertEqual(result.occupants["bob"].state, OccupantState.UNREACHABLE)
+        self.assertIsNone(result.occupants["bob"].arrival_time)
+        self.assertIn("bob", result.unreachable_occupant_ids)
+
     def test_custom_pre_movement_delay_shifts_depart_time(self):
 
         class FixedDelay(PreMovementDelayStrategy):

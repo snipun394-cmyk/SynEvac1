@@ -1,0 +1,116 @@
+{
+  "campaign_summary": {
+    "requested": 800,
+    "generated": 800,
+    "accepted": 800,
+    "rejected": 0,
+    "average_evacuation_time": 115.1926040702701,
+    "average_simulation_duration": 0.00850868299998183
+  },
+  "evacuation_time_regression": {
+    "random_forest": {
+      "mae": 13.301211859785905,
+      "rmse": 18.13196469328271,
+      "r2": 0.8458204400375455,
+      "train_time_seconds": 0.36422419999871636,
+      "train_rows": 640,
+      "test_rows": 160
+    },
+    "gradient_boosting": {
+      "mae": 12.605940149939233,
+      "rmse": 16.997689915994485,
+      "r2": 0.8645069943336453,
+      "train_time_seconds": 0.10922030000074301,
+      "train_rows": 640,
+      "test_rows": 160
+    },
+    "xgboost": {
+      "mae": 14.049657369055428,
+      "rmse": 19.613288399668075,
+      "r2": 0.8195994317791486,
+      "train_time_seconds": 1.4148284000038984,
+      "train_rows": 640,
+      "test_rows": 160
+    }
+  },
+  "bottleneck_occurrence_classification": {
+    "random_forest": {
+      "accuracy": 0.91875,
+      "precision": 0.8517740429505136,
+      "recall": 0.8966833377204527,
+      "f1": 0.8715335680316225,
+      "roc_auc": 0.9642011055540932,
+      "train_time_seconds": 0.30403690000093775,
+      "train_rows": 640,
+      "test_rows": 160,
+      "confusion_matrix": {
+        "labels": [
+          "False",
+          "True"
+        ],
+        "matrix": [
+          [
+            25,
+            4
+          ],
+          [
+            9,
+            122
+          ]
+        ]
+      }
+    },
+    "gradient_boosting": {
+      "accuracy": 0.91875,
+      "precision": 0.8663419913419914,
+      "recall": 0.8564095814688075,
+      "f1": 0.8612500833833634,
+      "roc_auc": 0.9655172413793103,
+      "train_time_seconds": 0.1631169999964186,
+      "train_rows": 640,
+      "test_rows": 160,
+      "confusion_matrix": {
+        "labels": [
+          "False",
+          "True"
+        ],
+        "matrix": [
+          [
+            22,
+            7
+          ],
+          [
+            6,
+            125
+          ]
+        ]
+      }
+    },
+    "xgboost": {
+      "accuracy": 0.91875,
+      "precision": 0.85546875,
+      "recall": 0.8832587523032377,
+      "f1": 0.8683460978542945,
+      "roc_auc": 0.9599894709133983,
+      "train_time_seconds": 0.09019889999763109,
+      "train_rows": 640,
+      "test_rows": 160,
+      "confusion_matrix": {
+        "labels": [
+          "False",
+          "True"
+        ],
+        "matrix": [
+          [
+            24,
+            5
+          ],
+          [
+            8,
+            123
+          ]
+        ]
+      }
+    }
+  }
+}

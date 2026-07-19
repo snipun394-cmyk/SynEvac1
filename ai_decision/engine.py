@@ -92,17 +92,25 @@ class AIDecisionEngine(DecisionEngine):
             for finding in BuildingAnalysisEngine(base_engine).critical_connectors()
         }
 
+        # Per-zone nearest_exit() route cache -- keyed on a fingerprint
+        # of hazard_snapshot.edge_states (see _zone_routes() for why
+        # edge_states alone is a sound cache key). Starts empty/None so
+        # the very first decide() call always computes fresh.
+        self._route_cache_fingerprint = None
+        self._route_cache = {}
+
     # =====================================================
 
     def decide(self, hazard_snapshot, occupancy_snapshot, time: float) -> DecisionRecommendation:
 
-        hazard_engine = self._hazard_aware_engine(hazard_snapshot)
+        zone_nodes = self._zone_nodes()
+        routes_by_zone_id = self._zone_routes(hazard_snapshot, zone_nodes)
 
         zone_recommendations = {
             node.id: self._zone_recommendation(
-                node, hazard_engine, hazard_snapshot, occupancy_snapshot,
+                node, routes_by_zone_id[node.id], hazard_snapshot, occupancy_snapshot,
             )
-            for node in self._zone_nodes()
+            for node in zone_nodes
         }
 
         unsafe_zone_ids = [
@@ -160,14 +168,47 @@ class AIDecisionEngine(DecisionEngine):
 
     # =====================================================
 
+    def _zone_routes(self, hazard_snapshot, zone_nodes):
+
+        # PathfindingEngine's search (pathfinding/engine.py::_relax)
+        # only ever consults edge.traversable (structural, fixed) and
+        # self.cost_model.cost(edge) -- and HazardAwareCostModel.cost()
+        # itself only reads hazard_snapshot.edge_state(edge.id), never
+        # node_states. So two hazard_snapshots with identical
+        # edge_states are guaranteed to yield identical nearest_exit()
+        # results for every zone, regardless of node_states/timestamp/
+        # snapshot_id differing between them. HazardEvolutionEngine
+        # produces a brand-new HazardSnapshot object every tick even
+        # when no source touched anything (see
+        # HazardEvolutionEngine._touched_ids()), so a fingerprint of
+        # edge_states content -- not object identity -- is what lets
+        # ticks with no relevant hazard change reuse the previous
+        # tick's routes instead of re-running a full search per zone.
+        # Phase 6 profiling identified this exact recomputation
+        # (nearest_exit() called from scratch for every zone, every
+        # tick) as ~72% of per-tick simulation time.
+        fingerprint = frozenset(hazard_snapshot.edge_states.items())
+
+        if fingerprint != self._route_cache_fingerprint:
+
+            hazard_engine = self._hazard_aware_engine(hazard_snapshot)
+
+            self._route_cache = {
+                node.id: hazard_engine.nearest_exit(node.id) for node in zone_nodes
+            }
+            self._route_cache_fingerprint = fingerprint
+
+        return self._route_cache
+
+    # =====================================================
+
     def _zone_recommendation(
-        self, node, hazard_engine, hazard_snapshot, occupancy_snapshot,
+        self, node, route, hazard_snapshot, occupancy_snapshot,
     ) -> ZoneRecommendation:
 
         severity = hazard_snapshot.node_state(node.id).severity
         occupant_count = occupancy_snapshot.observation_at(node.id).occupant_count
 
-        route = hazard_engine.nearest_exit(node.id)
         is_reachable = route is not None
 
         # A zone with no safe route to any exit is unsafe regardless of

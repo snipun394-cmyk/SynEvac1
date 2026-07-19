@@ -67,7 +67,16 @@ class ComplianceDecisionStrategy(DecisionStrategy):
 
     def decide(self, context) -> ActionIntent:
 
-        roll = self.rng.random()
+        # Prefers context.rng when supplied -- docs/architecture/
+        # reproducibility_review.md §7.2: HumanBehaviorLayer.register()
+        # threads a per-occupant, Scenario-seed-derived rng through
+        # DecisionContext in the production path; self.rng remains the
+        # fallback for direct/standalone construction (e.g. tests that
+        # seed this strategy's own rng and call decide() without a full
+        # DecisionContext.rng).
+        rng = context.rng if context.rng is not None else self.rng
+
+        roll = rng.random()
 
         if roll <= context.profile.compliance_level:
             return self.compliant_strategy.decide(context)

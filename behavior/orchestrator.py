@@ -38,6 +38,7 @@ class HumanBehaviorLayer:
         route_choice_strategy=None,
         pre_movement_strategy=None,
         base_depart_time=0.0,
+        rng=None,
     ):
 
         context = DecisionContext(
@@ -46,6 +47,7 @@ class HumanBehaviorLayer:
             profile=profile,
             start_id=start_id,
             decisions_so_far=dict(self._decisions_so_far),
+            rng=rng,
         )
 
         intent = decision_strategy.decide(context)
@@ -58,15 +60,60 @@ class HumanBehaviorLayer:
             delay_strategy = pre_movement_strategy or NoPreMovementDelay()
             delay = delay_strategy.delay(context)
 
+            # Movement was required (intent.requires_movement) but the
+            # Navigation Stage found no route to any exit -- a
+            # structural disconnection, not a choice to stay put.
+            # Flagged explicitly via route_unavailable rather than left
+            # for submit_decision() to infer from goal_id/route alone:
+            # both this case and a genuine WAIT/IGNORE decision produce
+            # goal_id=None/route=None, which is indistinguishable
+            # without this flag. See docs/validation/technical_report.md
+            # §6 for how this gap was found.
+            # Occupant Attributes integration -- profile.walking_speed
+            # itself is never mutated (a real, protected guarantee this
+            # codebase relies on); only this decision's own effective
+            # speed incorporates the occupant's deterministic
+            # "effective_walking_speed_multiplier" trait (combining
+            # walking_speed_multiplier/stamina/fatigue_resistance/
+            # mobility_factor into one already-computed factor, set by
+            # the Behaviour Profile Resolver's own registration step).
+            # Absent for any profile that predates this feature --
+            # defaults to 1.0, i.e. exactly profile.walking_speed,
+            # completely unchanged. profile.walking_speed may itself be
+            # None (BehaviorProfile's own documented default, e.g. a
+            # profile built without an explicit speed) -- guarded rather
+            # than multiplied, the same "None means not set, never
+            # coerced to a number" honesty every other Optional[float]
+            # in this codebase already gets.
+            #
+            # Skipped for an ASSISTED occupant specifically: behavior_
+            # library.assistance_strategies.AssistanceAwareRouteChoiceStrategy
+            # (an existing, unmodified strategy) already overwrites
+            # profile.walking_speed with their helper's own already-
+            # finalized effective speed ("the assisted occupant then
+            # moves at that same already-reduced pace" -- that class's
+            # own docstring) -- applying this occupant's own multiplier
+            # on top would double-count it. "assistance_role"/"ASSISTED"
+            # are that module's own trait vocabulary, restated here as
+            # plain strings (not imported) rather than reversing the
+            # behavior_library-depends-on-behavior direction.
+            if profile.walking_speed is None or profile.traits.get("assistance_role") == "ASSISTED":
+                effective_speed = profile.walking_speed
+            else:
+                effective_speed = profile.walking_speed * profile.traits.get(
+                    "effective_walking_speed_multiplier", 1.0,
+                )
+
             decision = BehaviorDecision(
                 occupant_id=profile.occupant_id,
                 action_type=intent.action_type,
                 start_id=start_id,
                 goal_id=route_choice.goal_id,
                 route=route_choice.route,
-                walking_speed=profile.walking_speed,
+                walking_speed=effective_speed,
                 depart_time=base_depart_time + delay,
                 metadata=intent.metadata,
+                route_unavailable=(route_choice.goal_id is None and route_choice.route is None),
             )
 
         else:

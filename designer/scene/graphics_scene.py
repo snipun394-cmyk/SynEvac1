@@ -1,5 +1,5 @@
-from PyQt6.QtCore import QRectF, Qt
-from PyQt6.QtGui import QColor, QBrush, QKeyEvent, QPen, QPixmap
+from PyQt6.QtCore import QPointF, QRectF, Qt
+from PyQt6.QtGui import QColor, QBrush, QKeyEvent, QPen, QPixmap, QPolygonF
 from PyQt6.QtWidgets import (
     QGraphicsItem,
     QGraphicsLineItem,
@@ -14,8 +14,11 @@ from designer.items.camera_item import CameraItem
 from designer.items.detector_item import DetectorItem
 from designer.items.door_item import DoorItem
 from designer.items.exit_item import ExitItem
+from designer.items.heat_detector_item import HeatDetectorItem
 from designer.items.obstacle_item import ObstacleItem
 from designer.items.occupant_item import OccupantItem
+from designer.items.smoke_detector_item import SmokeDetectorItem
+from designer.items.speaker_item import SpeakerItem
 from designer.items.stair_item import StairItem
 from designer.items.zone_rectangle import ZoneRectangle
 
@@ -25,7 +28,10 @@ from models.camera import Camera
 from models.detector import Detector
 from models.door import Door
 from models.exit import Exit
+from models.heat_detector import HeatDetector
 from models.obstacle import Obstacle
+from models.smoke_detector import SmokeDetector
+from models.speaker import Speaker
 from models.staircase import Staircase
 from models.zone import Zone
 
@@ -121,6 +127,21 @@ class GraphicsScene(QGraphicsScene):
         self.sandbox_manager = SandboxManager()
         self.occupant_items = {}
         self._highlighted_route_items = []
+
+        # -------------------------------------------------
+        # Camera Coverage & Visibility Engine -- purely a rendering
+        # concern, same "graphics item is a view over the real state"
+        # pattern as everything else in this class. show_camera_
+        # coverage is never serialized (Serializer never touches
+        # GraphicsScene at all); _coverage_overlay_items are plain
+        # QGraphicsPolygonItem/QGraphicsRectItem instances added on
+        # TOP of the real ZoneRectangle/CameraItem items, never
+        # replacing them, and are excluded from clear_graphics_items()'s
+        # isinstance() filter so they need their own bookkeeping here.
+        # -------------------------------------------------
+
+        self.show_camera_coverage = False
+        self._coverage_overlay_items = []
 
         # Asked after the Occupant Tool's drag-rectangle is released --
         # must return (count, distribution) or None (cancelled). Same
@@ -313,7 +334,7 @@ class GraphicsScene(QGraphicsScene):
             if self.selected_item:
                 self.selected_item.set_selected(False)
 
-            if isinstance(item, (ZoneRectangle, ExitItem, StairItem, CameraItem, DetectorItem, AssemblyPointItem, ObstacleItem, DoorItem, OccupantItem)):
+            if isinstance(item, (ZoneRectangle, ExitItem, StairItem, CameraItem, DetectorItem, SmokeDetectorItem, HeatDetectorItem, SpeakerItem, AssemblyPointItem, ObstacleItem, DoorItem, OccupantItem)):
 
                 self.selected_item = item
 
@@ -796,6 +817,120 @@ class GraphicsScene(QGraphicsScene):
             )
 
             self.addItem(detector_item)
+
+            return
+
+        # -------------------------------------------------
+        # Smoke Detector Tool (Building Sensor Network Framework) --
+        # a point object placed with a single click just like Camera/
+        # Detector.
+        # -------------------------------------------------
+
+        if self.current_tool == "smoke_detector":
+
+            if self.current_floor.locked:
+                return
+
+            x, y = self.snap(
+                event.scenePos()
+            )
+
+            smoke_detector_model = SmokeDetector(
+                name=f"Smoke Detector {self.current_floor.smoke_detector_count + 1}",
+                position=(
+                    x / self.GRID_SIZE,
+                    y / self.GRID_SIZE,
+                ),
+                floor_id=self.current_floor.id,
+            )
+
+            self.current_floor.add_smoke_detector(
+                smoke_detector_model
+            )
+
+            smoke_detector_item = SmokeDetectorItem(
+                x,
+                y,
+                model=smoke_detector_model,
+            )
+
+            self.addItem(smoke_detector_item)
+
+            return
+
+        # -------------------------------------------------
+        # Heat Detector Tool (Building Sensor Network Framework) --
+        # a point object placed with a single click just like Camera/
+        # Detector.
+        # -------------------------------------------------
+
+        if self.current_tool == "heat_detector":
+
+            if self.current_floor.locked:
+                return
+
+            x, y = self.snap(
+                event.scenePos()
+            )
+
+            heat_detector_model = HeatDetector(
+                name=f"Heat Detector {self.current_floor.heat_detector_count + 1}",
+                position=(
+                    x / self.GRID_SIZE,
+                    y / self.GRID_SIZE,
+                ),
+                floor_id=self.current_floor.id,
+            )
+
+            self.current_floor.add_heat_detector(
+                heat_detector_model
+            )
+
+            heat_detector_item = HeatDetectorItem(
+                x,
+                y,
+                model=heat_detector_model,
+            )
+
+            self.addItem(heat_detector_item)
+
+            return
+
+        # -------------------------------------------------
+        # Speaker Tool (Zoned Voice Evacuation & Speaker Network
+        # Framework) -- a point object placed with a single click just
+        # like Camera/Detector/Smoke Detector/Heat Detector.
+        # -------------------------------------------------
+
+        if self.current_tool == "speaker":
+
+            if self.current_floor.locked:
+                return
+
+            x, y = self.snap(
+                event.scenePos()
+            )
+
+            speaker_model = Speaker(
+                name=f"Speaker {self.current_floor.speaker_count + 1}",
+                position=(
+                    x / self.GRID_SIZE,
+                    y / self.GRID_SIZE,
+                ),
+                floor_id=self.current_floor.id,
+            )
+
+            self.current_floor.add_speaker(
+                speaker_model
+            )
+
+            speaker_item = SpeakerItem(
+                x,
+                y,
+                model=speaker_model,
+            )
+
+            self.addItem(speaker_item)
 
             return
 
@@ -1347,6 +1482,33 @@ class GraphicsScene(QGraphicsScene):
 
                 elif isinstance(
                     self.selected_item,
+                    SmokeDetectorItem,
+                ):
+
+                    self.current_floor.remove_smoke_detector(
+                        self.selected_item.model
+                    )
+
+                elif isinstance(
+                    self.selected_item,
+                    HeatDetectorItem,
+                ):
+
+                    self.current_floor.remove_heat_detector(
+                        self.selected_item.model
+                    )
+
+                elif isinstance(
+                    self.selected_item,
+                    SpeakerItem,
+                ):
+
+                    self.current_floor.remove_speaker(
+                        self.selected_item.model
+                    )
+
+                elif isinstance(
+                    self.selected_item,
                     AssemblyPointItem,
                 ):
 
@@ -1448,7 +1610,7 @@ class GraphicsScene(QGraphicsScene):
 
             if isinstance(
                 item,
-                (ZoneRectangle, ExitItem, StairItem, CameraItem, DetectorItem, AssemblyPointItem, ObstacleItem, DoorItem, OccupantItem),
+                (ZoneRectangle, ExitItem, StairItem, CameraItem, DetectorItem, SmokeDetectorItem, HeatDetectorItem, SpeakerItem, AssemblyPointItem, ObstacleItem, DoorItem, OccupantItem),
             ):
                 self.removeItem(item)
 
@@ -1456,6 +1618,11 @@ class GraphicsScene(QGraphicsScene):
 
         self.occupant_items = {}
         self._highlighted_route_items = []
+
+        for item in self._coverage_overlay_items:
+            self.removeItem(item)
+
+        self._coverage_overlay_items = []
 
     # =====================================================
 
@@ -1595,6 +1762,57 @@ class GraphicsScene(QGraphicsScene):
 
             self.addItem(detector_item)
 
+        for smoke_detector_obj in self.current_floor.smoke_detectors:
+
+            x, y = smoke_detector_obj.position
+
+            smoke_detector_item = SmokeDetectorItem(
+                x * self.GRID_SIZE,
+                y * self.GRID_SIZE,
+                model=smoke_detector_obj,
+            )
+
+            smoke_detector_item.setFlag(
+                QGraphicsItem.GraphicsItemFlag.ItemIsMovable,
+                movable,
+            )
+
+            self.addItem(smoke_detector_item)
+
+        for heat_detector_obj in self.current_floor.heat_detectors:
+
+            x, y = heat_detector_obj.position
+
+            heat_detector_item = HeatDetectorItem(
+                x * self.GRID_SIZE,
+                y * self.GRID_SIZE,
+                model=heat_detector_obj,
+            )
+
+            heat_detector_item.setFlag(
+                QGraphicsItem.GraphicsItemFlag.ItemIsMovable,
+                movable,
+            )
+
+            self.addItem(heat_detector_item)
+
+        for speaker_obj in self.current_floor.speakers:
+
+            x, y = speaker_obj.position
+
+            speaker_item = SpeakerItem(
+                x * self.GRID_SIZE,
+                y * self.GRID_SIZE,
+                model=speaker_obj,
+            )
+
+            speaker_item.setFlag(
+                QGraphicsItem.GraphicsItemFlag.ItemIsMovable,
+                movable,
+            )
+
+            self.addItem(speaker_item)
+
         for assembly_point_obj in self.current_floor.assembly_points:
 
             x, y = assembly_point_obj.position
@@ -1664,6 +1882,115 @@ class GraphicsScene(QGraphicsScene):
             self.occupant_items[occupant.occupant_id] = occupant_item
 
             self.addItem(occupant_item)
+
+        self.refresh_camera_coverage()
+
+    # =====================================================
+    # Camera Coverage & Visibility Engine -- Designer visualization
+    #
+    # Purely additive over the always-on naive FOV cone every
+    # CameraItem already draws (designer/items/camera_item.py,
+    # unchanged) -- this overlay shows the occlusion-aware truth
+    # (visibility/engine.py, visibility/coverage.py) on top of it,
+    # only while toggled on, and recomputed from scratch on every
+    # call rather than incrementally patched. For a Designer-sized
+    # floor plan (tens of zones/obstacles, a handful of cameras) this
+    # is comfortably sub-frame; see visibility/engine.py's own
+    # performance notes for the cost model if that assumption ever
+    # needs revisiting for a much larger floor.
+    # =====================================================
+
+    def set_show_camera_coverage(self, enabled):
+
+        self.show_camera_coverage = enabled
+
+        self.refresh_camera_coverage()
+
+    # =====================================================
+
+    def refresh_camera_coverage(self):
+
+        for item in self._coverage_overlay_items:
+            self.removeItem(item)
+
+        self._coverage_overlay_items = []
+
+        if not self.show_camera_coverage:
+            return
+
+        if self.current_floor is None or self.project.building is None:
+            return
+
+        from visibility.coverage import compute_floor_coverage
+
+        result = compute_floor_coverage(
+            self.current_floor.cameras, self.project.building, self.current_floor,
+        )
+
+        self._draw_zone_coverage_overlays(result)
+        self._draw_camera_visibility_polygons(result)
+
+    # =====================================================
+
+    def _draw_zone_coverage_overlays(self, floor_coverage):
+
+        for zone in self.current_floor.zones:
+
+            if zone.id in floor_coverage.uncovered_zone_ids:
+                color = QColor(220, 40, 40, 90)
+            elif zone.id in floor_coverage.overlapping_zone_ids:
+                color = QColor(180, 40, 220, 90)
+            else:
+                continue
+
+            overlay = QGraphicsRectItem(
+                zone.x * self.GRID_SIZE,
+                zone.y * self.GRID_SIZE,
+                zone.width * self.GRID_SIZE,
+                zone.height * self.GRID_SIZE,
+            )
+
+            overlay.setBrush(QBrush(color))
+            overlay.setPen(QPen(Qt.PenStyle.NoPen))
+
+            self._add_coverage_overlay(overlay, z_value=5)
+
+    # =====================================================
+
+    def _draw_camera_visibility_polygons(self, floor_coverage):
+
+        for camera_id, visibility in floor_coverage.per_camera.items():
+
+            if len(visibility.visibility_polygon) < 3:
+                continue
+
+            polygon = QPolygonF(
+                [
+                    QPointF(x * self.GRID_SIZE, y * self.GRID_SIZE)
+                    for x, y in visibility.visibility_polygon
+                ]
+            )
+
+            overlay = self.addPolygon(
+                polygon,
+                QPen(QColor(0, 255, 140, 200), 2),
+                QBrush(QColor(0, 255, 140, 45)),
+            )
+
+            self._add_coverage_overlay(overlay, z_value=6)
+
+    # =====================================================
+
+    def _add_coverage_overlay(self, item, z_value):
+
+        item.setZValue(z_value)
+        item.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsSelectable, False)
+        item.setAcceptedMouseButtons(Qt.MouseButton.NoButton)
+
+        self._coverage_overlay_items.append(item)
+
+        if item.scene() is None:
+            self.addItem(item)
 
     # =====================================================
     # Manual Simulation Sandbox -- route highlighting

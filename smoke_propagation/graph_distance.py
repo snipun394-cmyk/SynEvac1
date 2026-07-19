@@ -15,7 +15,16 @@ import math
 DEFAULT_HOP_DISTANCE = 1.0
 
 
-def shortest_graph_distances(graph, source_node_id, edge_types):
+def _default_edge_weight(edge):
+
+    return (
+        edge.walking_distance
+        if edge.walking_distance is not None
+        else DEFAULT_HOP_DISTANCE
+    )
+
+
+def shortest_graph_distances(graph, source_node_id, edge_types, edge_weight_fn=None):
 
     # Self-contained Dijkstra over graph.find_neighbors(), restricted
     # to edges whose edge_type is in edge_types -- deliberately not
@@ -27,6 +36,19 @@ def shortest_graph_distances(graph, source_node_id, edge_types):
     # included, at distance 0.0); a node absent from the result is
     # simply not reachable that way, same "absent means unreachable"
     # convention PathfindingEngine.distances_from() already uses.
+    #
+    # edge_weight_fn(edge) -> float is optional -- defaults to the
+    # original, unchanged behavior (physical walking_distance) so
+    # every existing caller (SmokePropagationModel) is completely
+    # unaffected. Added so fire_growth.spread.FireSpreadModel can reuse
+    # this exact algorithm with a door-type/state-aware weight instead
+    # of duplicating the Dijkstra implementation a second time --
+    # still "the graph's own static topology, read once," just weighted
+    # differently per HazardSource, exactly the same seam
+    # FireGrowthCurve/SmokeGrowthCurve already establish for their own
+    # models.
+
+    weight_fn = edge_weight_fn if edge_weight_fn is not None else _default_edge_weight
 
     if graph.find_node(source_node_id) is None:
         return {}
@@ -58,11 +80,7 @@ def shortest_graph_distances(graph, source_node_id, edge_types):
             if neighbor_node.id in visited:
                 continue
 
-            weight = (
-                edge.walking_distance
-                if edge.walking_distance is not None
-                else DEFAULT_HOP_DISTANCE
-            )
+            weight = weight_fn(edge)
 
             candidate = distance + weight
 

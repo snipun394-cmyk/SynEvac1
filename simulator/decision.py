@@ -21,6 +21,26 @@ class ActionType(Enum):
     RETURN_FOR_BELONGINGS = auto()
     FOLLOW_GROUP = auto()
 
+    # Human Population & Assisted Evacuation Modeling Phase 3 --
+    # additive, same "illustrative, not exhaustive" extension the
+    # comment above already invites. ESCORT/PUSH_WHEELCHAIR/DRAG/CARRY
+    # are the HELPER side of an assistance pairing (behavior_library.
+    # assistance_strategies.AssistanceAwareDecisionStrategy); ASSISTED
+    # is the receiving side, for any assistance type.
+    ESCORT = auto()
+    PUSH_WHEELCHAIR = auto()
+    DRAG = auto()
+    CARRY = auto()
+    ASSISTED = auto()
+
+    # Phase 4 -- Firefighter Modeling, kept in its own contiguous block
+    # for discoverability (never used by, or referenced from, civilian
+    # behavior_library code -- see behavior_library.firefighter_strategies).
+    FIREFIGHTER_SEARCH = auto()
+    FIREFIGHTER_RESCUE = auto()
+    FIREFIGHTER_REPORT_HAZARD = auto()
+    FIREFIGHTER_GUIDE = auto()
+
 
 @dataclass(frozen=True)
 class BehaviorDecision:
@@ -56,12 +76,24 @@ class BehaviorDecision:
     action_type: ActionType
     start_id: str
 
-    # None/None together means a non-movement decision (WAIT, IGNORE,
-    # ...) -- Simulation treats the *absence* of a goal/route as the
-    # signal to register the occupant as stationary, never by
-    # inspecting action_type itself.
+    # None/None together means either a non-movement decision (WAIT,
+    # IGNORE, ...) or a movement decision for which no route to any
+    # exit exists -- route_unavailable disambiguates the two (see
+    # below). Simulation treats the *absence* of a goal/route, with
+    # route_unavailable False, as the signal to register the occupant
+    # as stationary, never by inspecting action_type itself.
     goal_id: Optional[str] = None
     route: Optional[Route] = None
+
+    # True only when the Navigation Stage was run (movement was
+    # required) and found no route to any exit -- a structural
+    # disconnection from every exit, not a choice to stay put. Set by
+    # HumanBehaviorLayer.register(), the only place that still knows
+    # whether movement was required once goal_id/route have already
+    # collapsed to None/None. False (the default) preserves every
+    # existing caller's behavior unchanged. See
+    # docs/validation/technical_report.md §6.
+    route_unavailable: bool = False
 
     walking_speed: Optional[float] = None
     depart_time: Optional[float] = None

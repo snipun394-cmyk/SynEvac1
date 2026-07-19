@@ -7,6 +7,9 @@ from models.staircase import Staircase
 from models.elevator import Elevator
 from models.camera import Camera
 from models.detector import Detector
+from models.heat_detector import HeatDetector
+from models.smoke_detector import SmokeDetector
+from models.speaker import Speaker
 from models.assembly_point import AssemblyPoint
 from models.obstacle import Obstacle
 from models.door import Door
@@ -50,6 +53,24 @@ class Floor:
 
     cameras: list[Camera] = field(default_factory=list)
     detectors: list[Detector] = field(default_factory=list)
+
+    # Building Sensor Network Framework -- additive, alongside (never
+    # replacing) the pre-existing generic `detectors` list above.
+    # SmokeDetector/HeatDetector are the new, first-class per-type
+    # assets (models/sensor_asset.py); the old generic Detector class
+    # is untouched and remains fully supported for backward
+    # compatibility and for detector types with no dedicated class yet
+    # (Flame, Gas).
+    smoke_detectors: list[SmokeDetector] = field(default_factory=list)
+    heat_detectors: list[HeatDetector] = field(default_factory=list)
+
+    # Zoned Voice Evacuation & Speaker Network Framework -- additive,
+    # same SensorAsset-based convention as smoke_detectors/heat_detectors
+    # above. A Speaker is an output device, not a sensor, but shares the
+    # exact same asset-management shape (zone_ids/active/health_status),
+    # so it is placed alongside them here rather than in a parallel
+    # per-type list scheme.
+    speakers: list[Speaker] = field(default_factory=list)
 
     assembly_points: list[AssemblyPoint] = field(default_factory=list)
     obstacles: list[Obstacle] = field(default_factory=list)
@@ -140,6 +161,45 @@ class Floor:
             self.detectors.remove(detector)
 
     # =====================================================
+    # Smoke Detectors
+    # =====================================================
+
+    def add_smoke_detector(self, smoke_detector):
+
+        self.smoke_detectors.append(smoke_detector)
+
+    def remove_smoke_detector(self, smoke_detector):
+
+        if smoke_detector in self.smoke_detectors:
+            self.smoke_detectors.remove(smoke_detector)
+
+    # =====================================================
+    # Heat Detectors
+    # =====================================================
+
+    def add_heat_detector(self, heat_detector):
+
+        self.heat_detectors.append(heat_detector)
+
+    def remove_heat_detector(self, heat_detector):
+
+        if heat_detector in self.heat_detectors:
+            self.heat_detectors.remove(heat_detector)
+
+    # =====================================================
+    # Speakers
+    # =====================================================
+
+    def add_speaker(self, speaker):
+
+        self.speakers.append(speaker)
+
+    def remove_speaker(self, speaker):
+
+        if speaker in self.speakers:
+            self.speakers.remove(speaker)
+
+    # =====================================================
     # Assembly Points
     # =====================================================
 
@@ -206,6 +266,21 @@ class Floor:
         return len(self.detectors)
 
     @property
+    def smoke_detector_count(self):
+
+        return len(self.smoke_detectors)
+
+    @property
+    def heat_detector_count(self):
+
+        return len(self.heat_detectors)
+
+    @property
+    def speaker_count(self):
+
+        return len(self.speakers)
+
+    @property
     def assembly_point_count(self):
 
         return len(self.assembly_points)
@@ -265,6 +340,21 @@ class Floor:
             "detectors": [
                 detector.to_dict()
                 for detector in self.detectors
+            ],
+
+            "smoke_detectors": [
+                smoke_detector.to_dict()
+                for smoke_detector in self.smoke_detectors
+            ],
+
+            "heat_detectors": [
+                heat_detector.to_dict()
+                for heat_detector in self.heat_detectors
+            ],
+
+            "speakers": [
+                speaker.to_dict()
+                for speaker in self.speakers
             ],
 
             "assembly_points": [
@@ -360,6 +450,24 @@ class Floor:
 
             floor.detectors.append(
                 Detector.from_dict(detector_data)
+            )
+
+        for smoke_detector_data in data.get("smoke_detectors", []):
+
+            floor.smoke_detectors.append(
+                SmokeDetector.from_dict(smoke_detector_data)
+            )
+
+        for heat_detector_data in data.get("heat_detectors", []):
+
+            floor.heat_detectors.append(
+                HeatDetector.from_dict(heat_detector_data)
+            )
+
+        for speaker_data in data.get("speakers", []):
+
+            floor.speakers.append(
+                Speaker.from_dict(speaker_data)
             )
 
         for assembly_point_data in data.get("assembly_points", []):

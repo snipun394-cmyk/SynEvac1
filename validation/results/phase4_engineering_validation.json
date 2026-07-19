@@ -1,0 +1,74 @@
+[
+  {
+    "check": "recommended_exit_matches_closer_exit",
+    "status": "PASS",
+    "details": {
+      "preferred_exit": "exit-near",
+      "recommended_exit": "exit-near"
+    }
+  },
+  {
+    "check": "recommended_stair_matches_only_viable_route",
+    "status": "PASS",
+    "details": {
+      "preferred_stair": "stair-1",
+      "recommended_stair": "stair-1"
+    }
+  },
+  {
+    "check": "bottleneck_prediction_identifies_narrow_door",
+    "status": "PASS",
+    "details": {
+      "doors_that_became_bottlenecks": [
+        "door-narrow"
+      ],
+      "worst_door": "door-narrow",
+      "peak_congestion_location_id": "zone-1"
+    }
+  },
+  {
+    "check": "hazard_spread_starts_at_ignition_zone",
+    "status": "PASS",
+    "details": {
+      "first_hazardous_zone": "zone-origin",
+      "hazard_spread_order": [
+        "zone-origin"
+      ],
+      "maximum_hazard_zone": "zone-origin"
+    }
+  },
+  {
+    "check": "ground_truth_occupant_accounting_is_consistent",
+    "status": "PASS",
+    "details": {
+      "reachable_occupants": 8,
+      "unreachable_occupants": 0,
+      "total_occupants": 8,
+      "people_evacuated": 8,
+      "total_evacuation_time": 5.460621045056156,
+      "expected_total_evacuation_time": 5.460621045056156
+    }
+  },
+  {
+    "check": "decision_policy_threshold_rule_matches_its_own_documented_constants",
+    "status": "PASS",
+    "details": {
+      "risk=0.9,hazardous=False": {
+        "expected": "SHELTER_IN_PLACE",
+        "actual": "SHELTER_IN_PLACE"
+      },
+      "risk=0.5,hazardous=True": {
+        "expected": "EVACUATE_IMMEDIATELY",
+        "actual": "EVACUATE_IMMEDIATELY"
+      },
+      "risk=0.5,hazardous=False": {
+        "expected": "EVACUATE_IMMEDIATELY",
+        "actual": "EVACUATE_IMMEDIATELY"
+      },
+      "risk=0.1,hazardous=False": {
+        "expected": "EVACUATE_IMMEDIATELY",
+        "actual": "EVACUATE_IMMEDIATELY"
+      }
+    }
+  }
+]

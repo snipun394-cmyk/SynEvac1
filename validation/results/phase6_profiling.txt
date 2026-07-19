@@ -1,0 +1,104 @@
+===== generation (peak memory: 2.17 MB) =====
+         682818 function calls in 1.093 seconds
+
+   Ordered by: cumulative time
+   List reduced from 214 to 15 due to restriction <15>
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+        1    0.000    0.000    1.152    1.152 C:\Users\riddh\Desktop\SynEvac1\validation\phase6_profiling.py:76(<lambda>)
+        1    0.006    0.006    1.152    1.152 C:\Users\riddh\Desktop\SynEvac1\scenario_pipeline\pipeline.py:118(run_batch_pipeline)
+      500    0.012    0.000    1.036    0.002 C:\Users\riddh\Desktop\SynEvac1\scenario_pipeline\pipeline.py:37(run_pipeline)
+      748    0.016    0.000    0.562    0.001 C:\Users\riddh\Desktop\SynEvac1\scenario_validator\validator.py:36(validate)
+      748    0.012    0.000    0.447    0.001 C:\Users\riddh\Desktop\SynEvac1\scenario_generator\generator.py:40(generate_scenario)
+     1996    0.010    0.000    0.277    0.000 C:\Python314\Lib\json\__init__.py:183(dumps)
+      748    0.005    0.000    0.267    0.000 C:\Users\riddh\Desktop\SynEvac1\scenario_validator\dataset_validation.py:72(validate_dataset)
+     1996    0.005    0.000    0.266    0.000 C:\Python314\Lib\json\encoder.py:183(encode)
+     1996    0.259    0.000    0.259    0.000 C:\Python314\Lib\json\encoder.py:205(iterencode)
+     1248    0.007    0.000    0.216    0.000 C:\Users\riddh\Desktop\SynEvac1\scenario_validator\dataset_validation.py:34(_content_hash_from_data)
+      748    0.020    0.000    0.182    0.000 C:\Users\riddh\Desktop\SynEvac1\scenario_validator\navigation_validation.py:119(validate_navigation)
+     7480    0.015    0.000    0.147    0.000 C:\Users\riddh\Desktop\SynEvac1\scenario_generator\seed_manager.py:88(category_rng)
+      748    0.004    0.000    0.134    0.000 C:\Users\riddh\Desktop\SynEvac1\scenario_generator\metadata_builder.py:50(build_metadata)
+      748    0.003    0.000    0.105    0.000 C:\Users\riddh\Desktop\SynEvac1\scenario_generator\metadata_builder.py:22(compute_definition_content_hash)
+      500    0.001    0.000    0.100    0.000 C:\Users\riddh\Desktop\SynEvac1\scenario_validator\dataset_validation.py:53(compute_candidate_content_hash)
+
+
+
+
+===== simulation (peak memory: 12.77 MB) =====
+         1417688 function calls in 1.548 seconds
+
+   Ordered by: cumulative time
+   List reduced from 246 to 15 due to restriction <15>
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+        1    0.013    0.013    1.674    1.674 C:\Users\riddh\Desktop\SynEvac1\validation\phase6_profiling.py:82(_simulate)
+      500    0.004    0.000    0.935    0.002 C:\Users\riddh\Desktop\SynEvac1\simulation_runtime\runtime.py:149(run)
+     4064    0.029    0.000    0.929    0.000 C:\Users\riddh\Desktop\SynEvac1\simulation_runtime\runtime.py:97(tick)
+     4064    0.054    0.000    0.508    0.000 C:\Users\riddh\Desktop\SynEvac1\ai_decision\engine.py:104(decide)
+     4064    0.014    0.000    0.270    0.000 C:\Users\riddh\Desktop\SynEvac1\hazard_evolution\provider.py:47(snapshot_at)
+     4064    0.058    0.000    0.255    0.000 C:\Users\riddh\Desktop\SynEvac1\hazard_evolution\engine.py:36(evolve)
+      500    0.027    0.000    0.249    0.000 C:\Users\riddh\Desktop\SynEvac1\behaviour_profile_resolver\registrar.py:51(register_occupants)
+      500    0.004    0.000    0.233    0.000 C:\Users\riddh\Desktop\SynEvac1\scenario_runner\runner.py:21(run)
+     5359    0.096    0.000    0.201    0.000 C:\Users\riddh\Desktop\SynEvac1\pathfinding\engine.py:320(_relax)
+     3359    0.004    0.000    0.191    0.000 C:\Users\riddh\Desktop\SynEvac1\pathfinding\engine.py:100(nearest_exit)
+     3359    0.002    0.000    0.187    0.000 C:\Users\riddh\Desktop\SynEvac1\pathfinding\engine.py:82(nearest_node)
+     1960    0.020    0.000    0.185    0.000 C:\Users\riddh\Desktop\SynEvac1\behavior\orchestrator.py:33(register)
+     3359    0.005    0.000    0.185    0.000 C:\Users\riddh\Desktop\SynEvac1\pathfinding\engine.py:281(_search)
+    12192    0.060    0.000    0.154    0.000 C:\Users\riddh\Desktop\SynEvac1\ai_decision\engine.py:205(_zone_recommendation)
+      500    0.003    0.000    0.138    0.000 C:\Users\riddh\Desktop\SynEvac1\scenario_runner\building_initializer.py:36(build_initialized_building)
+
+
+
+
+===== dataset_export (peak memory: 1.78 MB) =====
+         297808 function calls (297796 primitive calls) in 0.220 seconds
+
+   Ordered by: cumulative time
+   List reduced from 105 to 15 due to restriction <15>
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+        1    0.002    0.002    0.220    0.220 C:\Users\riddh\Desktop\SynEvac1\validation\phase6_profiling.py:105(<lambda>)
+        1    0.000    0.000    0.218    0.218 C:\Users\riddh\Desktop\SynEvac1\dataset_builder\builder.py:84(export_all)
+        1    0.000    0.000    0.135    0.135 C:\Users\riddh\Desktop\SynEvac1\dataset_builder\builder.py:74(build_all)
+        3    0.001    0.000    0.082    0.027 C:\Users\riddh\Desktop\SynEvac1\dataset_builder\exporters.py:14(export_csv)
+        1    0.001    0.001    0.072    0.072 C:\Users\riddh\Desktop\SynEvac1\dataset_builder\builder.py:63(build_zone_results)
+      500    0.034    0.000    0.071    0.000 C:\Users\riddh\Desktop\SynEvac1\dataset_builder\labels.py:70(extract_zone_results)
+     2503    0.003    0.000    0.047    0.000 C:\Python314\Lib\csv.py:224(writerow)
+        1    0.000    0.000    0.045    0.045 C:\Users\riddh\Desktop\SynEvac1\dataset_builder\builder.py:51(build_scenario_features)
+      500    0.004    0.000    0.045    0.000 C:\Users\riddh\Desktop\SynEvac1\dataset_builder\feature_extractor.py:40(extract_scenario_features)
+        1    0.000    0.000    0.042    0.042 C:\Users\riddh\Desktop\SynEvac1\dataset_builder\exporters.py:56(export_zone_results_csv)
+     2503    0.023    0.000    0.040    0.000 {method 'writerow' of '_csv.writer' objects}
+     2500    0.017    0.000    0.031    0.000 C:\Users\riddh\Desktop\SynEvac1\dataset_builder\exporters.py:81(_sanitized_row)
+   109154    0.023    0.000    0.023    0.000 {method 'get' of 'dict' objects}
+        1    0.000    0.000    0.020    0.020 C:\Users\riddh\Desktop\SynEvac1\dataset_builder\exporters.py:46(export_scenario_features_csv)
+        1    0.000    0.000    0.020    0.020 C:\Users\riddh\Desktop\SynEvac1\dataset_builder\exporters.py:51(export_simulation_outcomes_csv)
+
+
+
+
+===== ground_truth_and_decision_policy (peak memory: 0.06 MB) =====
+         509097 function calls in 0.603 seconds
+
+   Ordered by: cumulative time
+   List reduced from 112 to 15 due to restriction <15>
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+        1    0.010    0.010    0.651    0.651 C:\Users\riddh\Desktop\SynEvac1\validation\phase6_profiling.py:109(_ground_truth_and_policy)
+      500    0.196    0.000    0.412    0.001 C:\Users\riddh\Desktop\SynEvac1\dataset_builder\timeline.py:62(extract_timeline_rows)
+      500    0.011    0.000    0.182    0.000 C:\Users\riddh\Desktop\SynEvac1\ground_truth\analyzer.py:70(analyze)
+    45204    0.043    0.000    0.087    0.000 C:\Users\riddh\Desktop\SynEvac1\hazard\snapshot.py:56(node_state)
+    21548    0.017    0.000    0.076    0.000 {built-in method builtins.max}
+      500    0.011    0.000    0.064    0.000 C:\Users\riddh\Desktop\SynEvac1\ground_truth\risk_analysis.py:120(compute_fire_summary)
+      500    0.008    0.000    0.046    0.000 C:\Users\riddh\Desktop\SynEvac1\ground_truth\risk_analysis.py:15(compute_zone_risk_scores)
+      500    0.005    0.000    0.045    0.000 C:\Users\riddh\Desktop\SynEvac1\decision_policy\policy.py:125(generate_policy)
+     1500    0.002    0.000    0.035    0.000 C:\Users\riddh\Desktop\SynEvac1\ground_truth\risk_analysis.py:105(_zone_peak_hazard_score)
+     4064    0.021    0.000    0.031    0.000 C:\Users\riddh\Desktop\SynEvac1\dataset_builder\timeline.py:307(_current_congestion)
+    13692    0.006    0.000    0.030    0.000 C:\Users\riddh\Desktop\SynEvac1\ground_truth\risk_analysis.py:110(<genexpr>)
+    31428    0.028    0.000    0.028    0.000 {method 'values' of 'dict' objects}
+    13692    0.004    0.000    0.027    0.000 C:\Users\riddh\Desktop\SynEvac1\ground_truth\risk_analysis.py:153(<genexpr>)
+    14500    0.010    0.000    0.025    0.000 C:\Users\riddh\Desktop\SynEvac1\models\building.py:59(ordered_floors)
+    12192    0.012    0.000    0.021    0.000 C:\Users\riddh\Desktop\SynEvac1\occupancy\snapshot.py:50(observation_at)
+
+
+
+

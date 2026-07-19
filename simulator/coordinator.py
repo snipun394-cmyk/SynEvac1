@@ -135,10 +135,27 @@ class MultiAgentSimulation:
         # any events still pending under a superseded decision are
         # silently ignored (see _begin_registration()/
         # _process_next_event()). Simulation does not interpret
-        # `decision.action_type` at all -- movement vs. no movement is
-        # determined purely by whether goal_id/route is set, keeping
-        # this method exactly as decoupled from behavioral vocabulary
-        # as the rest of Simulation is from engineering models.
+        # `decision.action_type` at all -- movement vs. no movement vs.
+        # unreachable is determined purely by goal_id/route/
+        # route_unavailable, keeping this method exactly as decoupled
+        # from behavioral vocabulary as the rest of Simulation is from
+        # engineering models.
+
+        if decision.route_unavailable:
+            # Movement was required but no route to any exit exists --
+            # a structural disconnection, not a choice to stay put.
+            # Registered the same way add_occupant() registers any
+            # other unreachable occupant (reached_goal=False), not as
+            # stationary. See docs/validation/technical_report.md §6.
+            return self._register(
+                decision.occupant_id,
+                route=None,
+                reached_goal=False,
+                walking_speed=decision.walking_speed or Edge.ASSUMED_WALK_SPEED_M_PER_S,
+                depart_time=(
+                    decision.depart_time if decision.depart_time is not None else 0.0
+                ),
+            )
 
         if decision.goal_id is None and decision.route is None:
             return self._register_stationary(decision.occupant_id)
@@ -316,8 +333,16 @@ class MultiAgentSimulation:
 
         capacity = self.capacity_model.capacity(edge)
         other_occupants = len(edge_occupants) - 1
+
+        opposing_occupants = 0
+
+        if edge.edge_type == Edge.STAIR:
+            opposing_occupants = self._count_opposing_occupants(
+                edge, edge_occupants, from_node, to_node, occupant.occupant_id,
+            )
+
         speed_factor = self.congestion_model.speed_factor(
-            edge, other_occupants, capacity,
+            edge, other_occupants, capacity, opposing_occupants=opposing_occupants,
         )
         effective_speed = occupant.walking_speed * speed_factor
 
@@ -343,6 +368,37 @@ class MultiAgentSimulation:
         )
 
         self._schedule(end_time, self.ARRIVE_AT_NODE, occupant.occupant_id)
+
+    # =====================================================
+
+    def _count_opposing_occupants(self, edge, edge_occupants, from_node, to_node, occupant_id):
+
+        # Every V1 edge is bidirectional (see navigation/edge.py), so
+        # two occupants can legitimately be on the same Stair edge at
+        # once travelling opposite ways -- one's from_node/to_node is
+        # the other's to_node/from_node. Reuses each other occupant's
+        # already-tracked route/current_edge_index; no new tracking
+        # state is added for this.
+
+        count = 0
+
+        for other_id in edge_occupants:
+
+            if other_id == occupant_id:
+                continue
+
+            other = self._occupants.get(other_id)
+
+            if other is None:
+                continue
+
+            other_from = other.route.nodes[other.current_edge_index]
+            other_to = other.route.nodes[other.current_edge_index + 1]
+
+            if other_from.id == to_node.id and other_to.id == from_node.id:
+                count += 1
+
+        return count
 
     # =====================================================
 

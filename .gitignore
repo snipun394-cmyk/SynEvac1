@@ -1,0 +1,21 @@
+__pycache__/
+*.pyc
+*.pyo
+
+# Locally-generated project/session artifacts (not source)
+/p1.syn
+/p2.syn
+/p3.syn
+/p4.syn
+/test1/
+/test2/
+/test3/
+/tests/test4/
+/tests/test5/
+/tests/test6/
+/tests/scenarios/
+/tests/catalog.csv
+
+# Local credential store (see credential_store/local_file_store.py) --
+# never lives inside the repo, but guard against accidental placement.
+.synevac/

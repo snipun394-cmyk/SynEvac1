@@ -1,0 +1,800 @@
+{
+  "training_time_seconds": 50.116902999994636,
+  "total_timesteps": 50000,
+  "convergence_history": [
+    {
+      "timesteps": 5000,
+      "average_reward": 11.811666690590366
+    },
+    {
+      "timesteps": 10000,
+      "average_reward": 11.71950670755723
+    },
+    {
+      "timesteps": 15000,
+      "average_reward": 11.837248114314118
+    },
+    {
+      "timesteps": 20000,
+      "average_reward": 11.888410961761625
+    },
+    {
+      "timesteps": 25000,
+      "average_reward": 11.657303148247845
+    },
+    {
+      "timesteps": 30000,
+      "average_reward": 11.758378843142859
+    },
+    {
+      "timesteps": 35000,
+      "average_reward": 11.783960266866611
+    },
+    {
+      "timesteps": 40000,
+      "average_reward": 11.784585266866612
+    },
+    {
+      "timesteps": 45000,
+      "average_reward": 11.938823809209131
+    },
+    {
+      "timesteps": 50000,
+      "average_reward": 11.770669555004735
+    }
+  ],
+  "comparison": {
+    "rl_policy": {
+      "label": "rl_policy",
+      "average_reward": 11.900576673623501,
+      "average_evacuation_time": 89.48366631882485,
+      "average_people_trapped": 0.0,
+      "average_peak_congestion": 8.45,
+      "episode_count": 20
+    },
+    "no_intervention": {
+      "label": "no_intervention",
+      "average_reward": 11.798000978728489,
+      "average_evacuation_time": 85.6499510635755,
+      "average_people_trapped": 0.0,
+      "average_peak_congestion": 8.05,
+      "episode_count": 20
+    },
+    "decision_policy": {
+      "label": "decision_policy",
+      "average_reward": 11.961701673623502,
+      "average_evacuation_time": 89.48366631882485,
+      "average_people_trapped": 0.0,
+      "average_peak_congestion": 8.45,
+      "episode_count": 20
+    }
+  },
+  "episode_detail": {
+    "rl_policy": [
+      {
+        "scenario_id": "scn-84cf356827359104",
+        "total_reward": 12.047399504104146,
+        "total_evacuation_time": 94.75502479479269,
+        "people_trapped": 0,
+        "people_evacuated": 9,
+        "peak_congestion_value": 9,
+        "exits_underutilized": [
+          "exit-b"
+        ],
+        "exits_exceeding_capacity": []
+      },
+      {
+        "scenario_id": "scn-9e367ac92d45be3e",
+        "total_reward": 12.293213741341678,
+        "total_evacuation_time": 104.33931293291604,
+        "people_trapped": 0,
+        "people_evacuated": 10,
+        "peak_congestion_value": 10,
+        "exits_underutilized": [
+          "exit-b"
+        ],
+        "exits_exceeding_capacity": []
+      },
+      {
+        "scenario_id": "scn-63d38fbe9fd7a896",
+        "total_reward": 11.53077102962908,
+        "total_evacuation_time": 75.58644851854598,
+        "people_trapped": 0,
+        "people_evacuated": 7,
+        "peak_congestion_value": 7,
+        "exits_underutilized": [
+          "exit-b"
+        ],
+        "exits_exceeding_capacity": []
+      },
+      {
+        "scenario_id": "scn-4486ff0542f1d2f9",
+        "total_reward": 12.293213741341678,
+        "total_evacuation_time": 104.33931293291604,
+        "people_trapped": 0,
+        "people_evacuated": 10,
+        "peak_congestion_value": 10,
+        "exits_underutilized": [
+          "exit-b"
+        ],
+        "exits_exceeding_capacity": []
+      },
+      {
+        "scenario_id": "scn-9c224a4433ab1a71",
+        "total_reward": 11.789085266866612,
+        "total_evacuation_time": 85.17073665666933,
+        "people_trapped": 0,
+        "people_evacuated": 8,
+        "peak_congestion_value": 8,
+        "exits_underutilized": [
+          "exit-b"
+        ],
+        "exits_exceeding_capacity": []
+      },
+      {
+        "scenario_id": "scn-a9e5c57a9b485a39",
+        "total_reward": 12.047399504104146,
+        "total_evacuation_time": 94.75502479479269,
+        "people_trapped": 0,
+        "people_evacuated": 9,
+        "peak_congestion_value": 9,
+        "exits_underutilized": [
+          "exit-b"
+        ],
+        "exits_exceeding_capacity": []
+      },
+      {
+        "scenario_id": "scn-9f2be97cf367fb3f",
+        "total_reward": 11.53077102962908,
+        "total_evacuation_time": 75.58644851854598,
+        "people_trapped": 0,
+        "people_evacuated": 7,
+        "peak_congestion_value": 7,
+        "exits_underutilized": [
+          "exit-b"
+        ],
+        "exits_exceeding_capacity": []
+      },
+      {
+        "scenario_id": "scn-592d77b81db6ef4d",
+        "total_reward": 12.293213741341678,
+        "total_evacuation_time": 104.33931293291604,
+        "people_trapped": 0,
+        "people_evacuated": 10,
+        "peak_congestion_value": 10,
+        "exits_underutilized": [
+          "exit-b"
+        ],
+        "exits_exceeding_capacity": []
+      },
+      {
+        "scenario_id": "scn-e2f62a306c013d64",
+        "total_reward": 11.262456792391546,
+        "total_evacuation_time": 66.00216038042262,
+        "people_trapped": 0,
+        "people_evacuated": 6,
+        "peak_congestion_value": 6,
+        "exits_underutilized": [
+          "exit-b"
+        ],
+        "exits_exceeding_capacity": []
+      },
+      {
+        "scenario_id": "scn-ee0b08c8c80ab82d",
+        "total_reward": 11.789085266866612,
+        "total_evacuation_time": 85.17073665666933,
+        "people_trapped": 0,
+        "people_evacuated": 8,
+        "peak_congestion_value": 8,
+        "exits_underutilized": [
+          "exit-b"
+        ],
+        "exits_exceeding_capacity": []
+      },
+      {
+        "scenario_id": "scn-25576a5208289234",
+        "total_reward": 11.789085266866612,
+        "total_evacuation_time": 85.17073665666933,
+        "people_trapped": 0,
+        "people_evacuated": 8,
+        "peak_congestion_value": 8,
+        "exits_underutilized": [
+          "exit-b"
+        ],
+        "exits_exceeding_capacity": []
+      },
+      {
+        "scenario_id": "scn-11f8cad095a720c8",
+        "total_reward": 12.293213741341678,
+        "total_evacuation_time": 104.33931293291604,
+        "people_trapped": 0,
+        "people_evacuated": 10,
+        "peak_congestion_value": 10,
+        "exits_underutilized": [
+          "exit-b"
+        ],
+        "exits_exceeding_capacity": []
+      },
+      {
+        "scenario_id": "scn-30402338e2c2cbc0",
+        "total_reward": 12.293213741341678,
+        "total_evacuation_time": 104.33931293291604,
+        "people_trapped": 0,
+        "people_evacuated": 10,
+        "peak_congestion_value": 10,
+        "exits_underutilized": [
+          "exit-b"
+        ],
+        "exits_exceeding_capacity": []
+      },
+      {
+        "scenario_id": "scn-33d78bad663cda3d",
+        "total_reward": 12.047399504104146,
+        "total_evacuation_time": 94.75502479479269,
+        "people_trapped": 0,
+        "people_evacuated": 9,
+        "peak_congestion_value": 9,
+        "exits_underutilized": [
+          "exit-b"
+        ],
+        "exits_exceeding_capacity": []
+      },
+      {
+        "scenario_id": "scn-918fc4a81a1adf0e",
+        "total_reward": 12.047399504104146,
+        "total_evacuation_time": 94.75502479479269,
+        "people_trapped": 0,
+        "people_evacuated": 9,
+        "peak_congestion_value": 9,
+        "exits_underutilized": [
+          "exit-b"
+        ],
+        "exits_exceeding_capacity": []
+      },
+      {
+        "scenario_id": "scn-93a9565fcd12d990",
+        "total_reward": 11.789085266866612,
+        "total_evacuation_time": 85.17073665666933,
+        "people_trapped": 0,
+        "people_evacuated": 8,
+        "peak_congestion_value": 8,
+        "exits_underutilized": [
+          "exit-b"
+        ],
+        "exits_exceeding_capacity": []
+      },
+      {
+        "scenario_id": "scn-7d76ac942578e117",
+        "total_reward": 11.789085266866612,
+        "total_evacuation_time": 85.17073665666933,
+        "people_trapped": 0,
+        "people_evacuated": 8,
+        "peak_congestion_value": 8,
+        "exits_underutilized": [
+          "exit-b"
+        ],
+        "exits_exceeding_capacity": []
+      },
+      {
+        "scenario_id": "scn-1921dc39bb78888e",
+        "total_reward": 12.293213741341678,
+        "total_evacuation_time": 104.33931293291604,
+        "people_trapped": 0,
+        "people_evacuated": 10,
+        "peak_congestion_value": 10,
+        "exits_underutilized": [
+          "exit-b"
+        ],
+        "exits_exceeding_capacity": []
+      },
+      {
+        "scenario_id": "scn-70be912776a53d72",
+        "total_reward": 11.262456792391546,
+        "total_evacuation_time": 66.00216038042262,
+        "people_trapped": 0,
+        "people_evacuated": 6,
+        "peak_congestion_value": 6,
+        "exits_underutilized": [
+          "exit-b"
+        ],
+        "exits_exceeding_capacity": []
+      },
+      {
+        "scenario_id": "scn-009536ba38eff33b",
+        "total_reward": 11.53077102962908,
+        "total_evacuation_time": 75.58644851854598,
+        "people_trapped": 0,
+        "people_evacuated": 7,
+        "peak_congestion_value": 7,
+        "exits_underutilized": [
+          "exit-b"
+        ],
+        "exits_exceeding_capacity": []
+      }
+    ],
+    "no_intervention": [
+      {
+        "scenario_id": "scn-4dc5837bf6558626",
+        "total_reward": 11.53077102962908,
+        "total_evacuation_time": 75.58644851854598,
+        "people_trapped": 0,
+        "people_evacuated": 7,
+        "peak_congestion_value": 7,
+        "exits_underutilized": [
+          "exit-b"
+        ],
+        "exits_exceeding_capacity": []
+      },
+      {
+        "scenario_id": "scn-72c7485727887b5f",
+        "total_reward": 11.789085266866612,
+        "total_evacuation_time": 85.17073665666933,
+        "people_trapped": 0,
+        "people_evacuated": 8,
+        "peak_congestion_value": 8,
+        "exits_underutilized": [
+          "exit-b"
+        ],
+        "exits_exceeding_capacity": []
+      },
+      {
+        "scenario_id": "scn-8562799d598a5233",
+        "total_reward": 12.293213741341678,
+        "total_evacuation_time": 104.33931293291604,
+        "people_trapped": 0,
+        "people_evacuated": 10,
+        "peak_congestion_value": 10,
+        "exits_underutilized": [
+          "exit-b"
+        ],
+        "exits_exceeding_capacity": []
+      },
+      {
+        "scenario_id": "scn-5dc7acf2d56e61a8",
+        "total_reward": 12.293213741341678,
+        "total_evacuation_time": 104.33931293291604,
+        "people_trapped": 0,
+        "people_evacuated": 10,
+        "peak_congestion_value": 10,
+        "exits_underutilized": [
+          "exit-b"
+        ],
+        "exits_exceeding_capacity": []
+      },
+      {
+        "scenario_id": "scn-090ce8e08443e5d7",
+        "total_reward": 11.262456792391546,
+        "total_evacuation_time": 66.00216038042262,
+        "people_trapped": 0,
+        "people_evacuated": 6,
+        "peak_congestion_value": 6,
+        "exits_underutilized": [
+          "exit-b"
+        ],
+        "exits_exceeding_capacity": []
+      },
+      {
+        "scenario_id": "scn-35429bba73a3f47b",
+        "total_reward": 11.789085266866612,
+        "total_evacuation_time": 85.17073665666933,
+        "people_trapped": 0,
+        "people_evacuated": 8,
+        "peak_congestion_value": 8,
+        "exits_underutilized": [
+          "exit-b"
+        ],
+        "exits_exceeding_capacity": []
+      },
+      {
+        "scenario_id": "scn-be0b8f6ee79f1cbb",
+        "total_reward": 12.293213741341678,
+        "total_evacuation_time": 104.33931293291604,
+        "people_trapped": 0,
+        "people_evacuated": 10,
+        "peak_congestion_value": 10,
+        "exits_underutilized": [
+          "exit-b"
+        ],
+        "exits_exceeding_capacity": []
+      },
+      {
+        "scenario_id": "scn-ed74e1179860ac9a",
+        "total_reward": 12.047399504104146,
+        "total_evacuation_time": 94.75502479479269,
+        "people_trapped": 0,
+        "people_evacuated": 9,
+        "peak_congestion_value": 9,
+        "exits_underutilized": [
+          "exit-b"
+        ],
+        "exits_exceeding_capacity": []
+      },
+      {
+        "scenario_id": "scn-0183fec397752b5f",
+        "total_reward": 12.293213741341678,
+        "total_evacuation_time": 104.33931293291604,
+        "people_trapped": 0,
+        "people_evacuated": 10,
+        "peak_congestion_value": 10,
+        "exits_underutilized": [
+          "exit-b"
+        ],
+        "exits_exceeding_capacity": []
+      },
+      {
+        "scenario_id": "scn-e600a2ce3c5f15ba",
+        "total_reward": 11.53077102962908,
+        "total_evacuation_time": 75.58644851854598,
+        "people_trapped": 0,
+        "people_evacuated": 7,
+        "peak_congestion_value": 7,
+        "exits_underutilized": [
+          "exit-b"
+        ],
+        "exits_exceeding_capacity": []
+      },
+      {
+        "scenario_id": "scn-be117850df32b52d",
+        "total_reward": 11.789085266866612,
+        "total_evacuation_time": 85.17073665666933,
+        "people_trapped": 0,
+        "people_evacuated": 8,
+        "peak_congestion_value": 8,
+        "exits_underutilized": [
+          "exit-b"
+        ],
+        "exits_exceeding_capacity": []
+      },
+      {
+        "scenario_id": "scn-5d22a61edb3c21ef",
+        "total_reward": 11.53077102962908,
+        "total_evacuation_time": 75.58644851854598,
+        "people_trapped": 0,
+        "people_evacuated": 7,
+        "peak_congestion_value": 7,
+        "exits_underutilized": [
+          "exit-b"
+        ],
+        "exits_exceeding_capacity": []
+      },
+      {
+        "scenario_id": "scn-86d7cda3bc0c1c9c",
+        "total_reward": 11.53077102962908,
+        "total_evacuation_time": 75.58644851854598,
+        "people_trapped": 0,
+        "people_evacuated": 7,
+        "peak_congestion_value": 7,
+        "exits_underutilized": [
+          "exit-b"
+        ],
+        "exits_exceeding_capacity": []
+      },
+      {
+        "scenario_id": "scn-39aab9a746cfdfe8",
+        "total_reward": 12.047399504104146,
+        "total_evacuation_time": 94.75502479479269,
+        "people_trapped": 0,
+        "people_evacuated": 9,
+        "peak_congestion_value": 9,
+        "exits_underutilized": [
+          "exit-b"
+        ],
+        "exits_exceeding_capacity": []
+      },
+      {
+        "scenario_id": "scn-0a6843a467b9c268",
+        "total_reward": 11.262456792391546,
+        "total_evacuation_time": 66.00216038042262,
+        "people_trapped": 0,
+        "people_evacuated": 6,
+        "peak_congestion_value": 6,
+        "exits_underutilized": [
+          "exit-b"
+        ],
+        "exits_exceeding_capacity": []
+      },
+      {
+        "scenario_id": "scn-c40c2f643d96ad1b",
+        "total_reward": 12.047399504104146,
+        "total_evacuation_time": 94.75502479479269,
+        "people_trapped": 0,
+        "people_evacuated": 9,
+        "peak_congestion_value": 9,
+        "exits_underutilized": [
+          "exit-b"
+        ],
+        "exits_exceeding_capacity": []
+      },
+      {
+        "scenario_id": "scn-0273796547ea391d",
+        "total_reward": 11.53077102962908,
+        "total_evacuation_time": 75.58644851854598,
+        "people_trapped": 0,
+        "people_evacuated": 7,
+        "peak_congestion_value": 7,
+        "exits_underutilized": [
+          "exit-b"
+        ],
+        "exits_exceeding_capacity": []
+      },
+      {
+        "scenario_id": "scn-cade8adc3897fa23",
+        "total_reward": 11.262456792391546,
+        "total_evacuation_time": 66.00216038042262,
+        "people_trapped": 0,
+        "people_evacuated": 6,
+        "peak_congestion_value": 6,
+        "exits_underutilized": [
+          "exit-b"
+        ],
+        "exits_exceeding_capacity": []
+      },
+      {
+        "scenario_id": "scn-7ae5e12ded8b528d",
+        "total_reward": 11.789085266866612,
+        "total_evacuation_time": 85.17073665666933,
+        "people_trapped": 0,
+        "people_evacuated": 8,
+        "peak_congestion_value": 8,
+        "exits_underutilized": [
+          "exit-b"
+        ],
+        "exits_exceeding_capacity": []
+      },
+      {
+        "scenario_id": "scn-1c8d94670295a410",
+        "total_reward": 12.047399504104146,
+        "total_evacuation_time": 94.75502479479269,
+        "people_trapped": 0,
+        "people_evacuated": 9,
+        "peak_congestion_value": 9,
+        "exits_underutilized": [
+          "exit-b"
+        ],
+        "exits_exceeding_capacity": []
+      }
+    ],
+    "decision_policy": [
+      {
+        "scenario_id": "scn-494bc4890de1858b",
+        "total_reward": 11.59077102962908,
+        "total_evacuation_time": 75.58644851854598,
+        "people_trapped": 0,
+        "people_evacuated": 7,
+        "peak_congestion_value": 7,
+        "exits_underutilized": [
+          "exit-b"
+        ],
+        "exits_exceeding_capacity": []
+      },
+      {
+        "scenario_id": "scn-ab5fc967f3a9acde",
+        "total_reward": 11.59077102962908,
+        "total_evacuation_time": 75.58644851854598,
+        "people_trapped": 0,
+        "people_evacuated": 7,
+        "peak_congestion_value": 7,
+        "exits_underutilized": [
+          "exit-b"
+        ],
+        "exits_exceeding_capacity": []
+      },
+      {
+        "scenario_id": "scn-665bbb32aa5e6f32",
+        "total_reward": 11.59077102962908,
+        "total_evacuation_time": 75.58644851854598,
+        "people_trapped": 0,
+        "people_evacuated": 7,
+        "peak_congestion_value": 7,
+        "exits_underutilized": [
+          "exit-b"
+        ],
+        "exits_exceeding_capacity": []
+      },
+      {
+        "scenario_id": "scn-20e338f03a968775",
+        "total_reward": 11.59077102962908,
+        "total_evacuation_time": 75.58644851854598,
+        "people_trapped": 0,
+        "people_evacuated": 7,
+        "peak_congestion_value": 7,
+        "exits_underutilized": [
+          "exit-b"
+        ],
+        "exits_exceeding_capacity": []
+      },
+      {
+        "scenario_id": "scn-3c05837679e92386",
+        "total_reward": 12.353213741341676,
+        "total_evacuation_time": 104.33931293291604,
+        "people_trapped": 0,
+        "people_evacuated": 10,
+        "peak_congestion_value": 10,
+        "exits_underutilized": [
+          "exit-b"
+        ],
+        "exits_exceeding_capacity": []
+      },
+      {
+        "scenario_id": "scn-af35b274a433a1b1",
+        "total_reward": 11.849085266866613,
+        "total_evacuation_time": 85.17073665666933,
+        "people_trapped": 0,
+        "people_evacuated": 8,
+        "peak_congestion_value": 8,
+        "exits_underutilized": [
+          "exit-b"
+        ],
+        "exits_exceeding_capacity": []
+      },
+      {
+        "scenario_id": "scn-70f4cd16686595cf",
+        "total_reward": 12.353213741341676,
+        "total_evacuation_time": 104.33931293291604,
+        "people_trapped": 0,
+        "people_evacuated": 10,
+        "peak_congestion_value": 10,
+        "exits_underutilized": [
+          "exit-b"
+        ],
+        "exits_exceeding_capacity": []
+      },
+      {
+        "scenario_id": "scn-98617d78269f13df",
+        "total_reward": 12.107399504104144,
+        "total_evacuation_time": 94.75502479479269,
+        "people_trapped": 0,
+        "people_evacuated": 9,
+        "peak_congestion_value": 9,
+        "exits_underutilized": [
+          "exit-b"
+        ],
+        "exits_exceeding_capacity": []
+      },
+      {
+        "scenario_id": "scn-01eb66dad31d6701",
+        "total_reward": 12.107399504104144,
+        "total_evacuation_time": 94.75502479479269,
+        "people_trapped": 0,
+        "people_evacuated": 9,
+        "peak_congestion_value": 9,
+        "exits_underutilized": [
+          "exit-b"
+        ],
+        "exits_exceeding_capacity": []
+      },
+      {
+        "scenario_id": "scn-9fcedadde7cd6ecf",
+        "total_reward": 11.849085266866613,
+        "total_evacuation_time": 85.17073665666933,
+        "people_trapped": 0,
+        "people_evacuated": 8,
+        "peak_congestion_value": 8,
+        "exits_underutilized": [
+          "exit-b"
+        ],
+        "exits_exceeding_capacity": []
+      },
+      {
+        "scenario_id": "scn-420a7ae507d2d94e",
+        "total_reward": 12.107399504104144,
+        "total_evacuation_time": 94.75502479479269,
+        "people_trapped": 0,
+        "people_evacuated": 9,
+        "peak_congestion_value": 9,
+        "exits_underutilized": [
+          "exit-b"
+        ],
+        "exits_exceeding_capacity": []
+      },
+      {
+        "scenario_id": "scn-698bd2d4e54d1081",
+        "total_reward": 12.107399504104144,
+        "total_evacuation_time": 94.75502479479269,
+        "people_trapped": 0,
+        "people_evacuated": 9,
+        "peak_congestion_value": 9,
+        "exits_underutilized": [
+          "exit-b"
+        ],
+        "exits_exceeding_capacity": []
+      },
+      {
+        "scenario_id": "scn-d5557b62e0ef4b53",
+        "total_reward": 12.107399504104144,
+        "total_evacuation_time": 94.75502479479269,
+        "people_trapped": 0,
+        "people_evacuated": 9,
+        "peak_congestion_value": 9,
+        "exits_underutilized": [
+          "exit-b"
+        ],
+        "exits_exceeding_capacity": []
+      },
+      {
+        "scenario_id": "scn-b8f6585512bd3f16",
+        "total_reward": 12.353213741341676,
+        "total_evacuation_time": 104.33931293291604,
+        "people_trapped": 0,
+        "people_evacuated": 10,
+        "peak_congestion_value": 10,
+        "exits_underutilized": [
+          "exit-b"
+        ],
+        "exits_exceeding_capacity": []
+      },
+      {
+        "scenario_id": "scn-576eb74a6862e465",
+        "total_reward": 12.353213741341676,
+        "total_evacuation_time": 104.33931293291604,
+        "people_trapped": 0,
+        "people_evacuated": 10,
+        "peak_congestion_value": 10,
+        "exits_underutilized": [
+          "exit-b"
+        ],
+        "exits_exceeding_capacity": []
+      },
+      {
+        "scenario_id": "scn-943de81f0802fd8b",
+        "total_reward": 12.353213741341676,
+        "total_evacuation_time": 104.33931293291604,
+        "people_trapped": 0,
+        "people_evacuated": 10,
+        "peak_congestion_value": 10,
+        "exits_underutilized": [
+          "exit-b"
+        ],
+        "exits_exceeding_capacity": []
+      },
+      {
+        "scenario_id": "scn-82b9fac45547eab4",
+        "total_reward": 12.107399504104144,
+        "total_evacuation_time": 94.75502479479269,
+        "people_trapped": 0,
+        "people_evacuated": 9,
+        "peak_congestion_value": 9,
+        "exits_underutilized": [
+          "exit-b"
+        ],
+        "exits_exceeding_capacity": []
+      },
+      {
+        "scenario_id": "scn-960d9774816142dd",
+        "total_reward": 11.59077102962908,
+        "total_evacuation_time": 75.58644851854598,
+        "people_trapped": 0,
+        "people_evacuated": 7,
+        "peak_congestion_value": 7,
+        "exits_underutilized": [
+          "exit-b"
+        ],
+        "exits_exceeding_capacity": []
+      },
+      {
+        "scenario_id": "scn-9d1496ffb510d67a",
+        "total_reward": 11.322456792391545,
+        "total_evacuation_time": 66.00216038042262,
+        "people_trapped": 0,
+        "people_evacuated": 6,
+        "peak_congestion_value": 6,
+        "exits_underutilized": [
+          "exit-b"
+        ],
+        "exits_exceeding_capacity": []
+      },
+      {
+        "scenario_id": "scn-6f7d32e2b5efb2be",
+        "total_reward": 11.849085266866613,
+        "total_evacuation_time": 85.17073665666933,
+        "people_trapped": 0,
+        "people_evacuated": 8,
+        "peak_congestion_value": 8,
+        "exits_underutilized": [
+          "exit-b"
+        ],
+        "exits_exceeding_capacity": []
+      }
+    ]
+  }
+}

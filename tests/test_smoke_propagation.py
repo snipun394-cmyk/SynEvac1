@@ -266,6 +266,86 @@ class SmokePropagationModelTests(unittest.TestCase):
         )
 
 
+class SmokeDilutionTests(unittest.TestCase):
+
+    # Phase 3's own "smoke dilution" requirement: a node further from
+    # the source must reach a LOWER peak concentration than one closer
+    # in, not merely the identical peak reached later. dilution_half_
+    # distance defaults to None (off) so every test above this class
+    # -- and every existing caller -- is completely unaffected; these
+    # tests are the one place it's exercised.
+
+    def setUp(self):
+        self.graph = build_multi_floor_graph()
+        self.curve = TSquaredSmokeGrowthCurve(growth_time=1.0)  # saturates almost immediately
+
+    def _model(self, dilution_half_distance):
+        return SmokePropagationModel(
+            self.graph, ignition_node_id="ignition", ignition_time=0.0,
+            growth_curve=self.curve, front_speed=1.0,
+            dilution_half_distance=dilution_half_distance,
+        )
+
+    def test_dilution_off_by_default(self):
+
+        model = SmokePropagationModel(
+            self.graph, ignition_node_id="ignition", ignition_time=0.0,
+            growth_curve=self.curve, front_speed=1.0,
+        )
+        self.assertIsNone(model.dilution_half_distance)
+
+        contribution = model.propose(HazardSnapshot(), time=1000.0, dt=0.0)
+
+        # "near" (distance 5) and "far" (distance 15) both fully
+        # saturate identically without dilution -- the pre-existing,
+        # unchanged behavior.
+        self.assertAlmostEqual(contribution.node_state("near").smoke_level, 1.0)
+        self.assertAlmostEqual(contribution.node_state("far").smoke_level, 1.0)
+
+    def test_farther_node_reaches_a_lower_peak_than_a_nearer_node(self):
+
+        model = self._model(dilution_half_distance=10.0)
+
+        contribution = model.propose(HazardSnapshot(), time=1000.0, dt=0.0)
+
+        near_level = contribution.node_state("near").smoke_level  # distance 5
+        far_level = contribution.node_state("far").smoke_level    # distance 15
+
+        self.assertGreater(near_level, far_level)
+        self.assertLess(far_level, 1.0)  # genuinely diluted, not merely delayed
+
+    def test_ignition_node_itself_is_never_diluted(self):
+
+        model = self._model(dilution_half_distance=10.0)
+
+        contribution = model.propose(HazardSnapshot(), time=1000.0, dt=0.0)
+
+        self.assertAlmostEqual(contribution.node_state("ignition").smoke_level, 1.0)
+
+    def test_dilution_at_exactly_one_half_distance_halves_the_peak(self):
+
+        model = self._model(dilution_half_distance=5.0)  # "near" is at distance 5
+
+        contribution = model.propose(HazardSnapshot(), time=1000.0, dt=0.0)
+
+        self.assertAlmostEqual(contribution.node_state("near").smoke_level, 0.5)
+
+    def test_visibility_reflects_the_diluted_smoke_level_not_the_undiluted_one(self):
+
+        model = self._model(dilution_half_distance=5.0)
+
+        contribution = model.propose(HazardSnapshot(), time=1000.0, dt=0.0)
+        state = contribution.node_state("near")
+
+        self.assertEqual(state.visibility, visibility_from_smoke_level(state.smoke_level))
+        self.assertGreater(state.visibility, MIN_VISIBILITY_M)
+
+    def test_zero_or_negative_dilution_half_distance_is_rejected(self):
+
+        with self.assertRaises(ValueError):
+            self._model(dilution_half_distance=0.0)
+
+
 class SmokePropagationModelNeverTouchesDownstreamLayersTests(unittest.TestCase):
 
     def test_module_imports_nothing_from_simulation_behavior_pathfinding_or_the_building_model(self):

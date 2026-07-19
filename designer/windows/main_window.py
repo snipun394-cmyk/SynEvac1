@@ -12,26 +12,39 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
+from designer.campaign import CampaignController, CampaignWindow
 from designer.items.assembly_point_item import AssemblyPointItem
 from designer.items.camera_item import CameraItem
 from designer.items.detector_item import DetectorItem
 from designer.items.door_item import DoorItem
 from designer.items.exit_item import ExitItem
+from designer.items.heat_detector_item import HeatDetectorItem
 from designer.items.obstacle_item import ObstacleItem
 from designer.items.occupant_item import OccupantItem
+from designer.items.smoke_detector_item import SmokeDetectorItem
+from designer.items.speaker_item import SpeakerItem
 from designer.items.stair_item import StairItem
 from designer.items.zone_rectangle import ZoneRectangle
 from designer.scene.graphics_view import GraphicsView
 from designer.widgets.bottom_info_bar import BottomInfoBar
+from designer.widgets.building_state_debug_panel import BuildingStateDebugPanel
+from designer.widgets.camera_manager_panel import CameraManagerPanel
+from designer.widgets.speaker_manager_panel import SpeakerManagerPanel
+from designer.widgets.camera_validation_panel import CameraValidationPanel
 from designer.widgets.floor_list import FloorList
 from designer.widgets.occupant_generation_dialog import OccupantGenerationDialog
+from designer.widgets.perception_debug_panel import PerceptionDebugPanel
 from designer.widgets.project_tree import ProjectTree
 from designer.widgets.property_panel import PropertyPanel
 from designer.widgets.simulation_panel import SimulationPanel
 from designer.widgets.toolbar import MainToolbar
 from designer.validation import validate_building_authoring
 
+from models.project import Project
+
 from serialization.serializer import Serializer
+
+from credential_store.local_file_store import LocalFileCredentialStore
 
 
 class MainWindow(QMainWindow):
@@ -41,6 +54,13 @@ class MainWindow(QMainWindow):
 
         self.setWindowTitle("SynEvac Studio")
         self.resize(1600, 900)
+
+        # One store for the whole session -- every camera's password
+        # (present or future) is captured/resolved through this, never
+        # written into a saved .syn project file. See
+        # credential_store/local_file_store.py; constructing it does
+        # no disk I/O until a password actually needs saving.
+        self._credential_store = LocalFileCredentialStore()
 
         # =====================================================
         # Central Widget
@@ -114,6 +134,80 @@ class MainWindow(QMainWindow):
         self.simulation_time = 0.0
 
         # =====================================================
+        # Perception Debug Panel (verification/visualization only --
+        # see designer/widgets/perception_debug_panel.py and
+        # designer/perception_debug_runner.py. Never touched by, and
+        # never touches, the Rule-Based Engine or any perception
+        # algorithm's own logic -- it only displays what the existing
+        # Phase 1-4 Perception classes already compute.)
+        # =====================================================
+
+        self.perception_debug_panel = PerceptionDebugPanel()
+
+        # =====================================================
+        # Building State Debug Panel (verification/visualization only --
+        # see designer/widgets/building_state_debug_panel.py and
+        # designer/building_state_debug_runner.py. Displays the Building
+        # State Estimator's fused BuildingState snapshot -- occupant
+        # tracks, zone occupancy, camera/detector asset state, hazard
+        # summary, building-wide alarm status, and consistency
+        # diagnostics. Performs no AI reasoning or decision-making of
+        # any kind; purely additive alongside the existing Perception
+        # Debug Panel.)
+        # =====================================================
+
+        self.building_state_debug_panel = BuildingStateDebugPanel()
+
+        # =====================================================
+        # Camera Manager Panel (Building-wide Camera Asset
+        # administration -- see designer/widgets/camera_manager_panel.py
+        # and camera_manager/manager.py. Never performs computer vision
+        # or visibility computation itself; only manages Camera Assets
+        # and routes to whatever DetectionProvider is registered for
+        # each one's current mode.)
+        # =====================================================
+
+        self.camera_manager_panel = CameraManagerPanel()
+
+        self.camera_manager_panel.on_camera_changed = self._on_camera_manager_changed
+
+        # =====================================================
+        # Speaker Manager Panel (Zoned Voice Evacuation & Speaker
+        # Network Framework -- Building-wide Speaker Asset administration,
+        # see designer/widgets/speaker_manager_panel.py and
+        # speaker_manager/manager.py. Never performs recommendation
+        # reasoning or broadcasts anything itself; only manages Speaker
+        # Assets.)
+        # =====================================================
+
+        self.speaker_manager_panel = SpeakerManagerPanel()
+
+        # =====================================================
+        # Camera Calibration & Placement Validation Panel -- an
+        # on-demand engineering report (see designer/widgets/
+        # camera_validation_panel.py and camera_validation/validator.py).
+        # Unlike Camera Manager/Perception Debug, this is never
+        # refreshed on every simulation tick -- only once when a
+        # project first loads, and whenever the engineer presses its
+        # own Run Validation button.
+        # =====================================================
+
+        self.camera_validation_panel = CameraValidationPanel()
+
+        # =====================================================
+        # Scenario Campaign Studio -- lazily created on first open
+        # (open_campaign_studio()), same "built once, reused, refreshed
+        # with current state on reopen" convention nothing else in
+        # MainWindow currently needs since every other dock is built
+        # up front; this one is a heavy, occasional-use tool window
+        # rather than part of the default Designer layout, so it is
+        # not built until the user actually asks for it.
+        # =====================================================
+
+        self.campaign_window = None
+        self.campaign_controller = None
+
+        # =====================================================
         # Project Tree
         # =====================================================
 
@@ -124,6 +218,21 @@ class MainWindow(QMainWindow):
         # =====================================================
 
         self.floor_list = FloorList()
+
+        # =====================================================
+        # Unsaved-Changes Tracking
+        #
+        # Deliberately coarse: hooks Qt's own built-in QGraphicsScene.
+        # changed signal (fires whenever the scene's rendered content
+        # changes -- an item added, moved, or removed) rather than
+        # threading a dirty flag through every individual mutation
+        # method across items/controllers/scene. This is a real,
+        # working "was anything touched since the last save/open/new"
+        # signal, not a fully precise semantic change tracker -- see
+        # _mark_dirty()/_confirm_discard_unsaved_changes() below.
+        # =====================================================
+
+        self._dirty = False
 
         # =====================================================
         # Build UI
@@ -157,6 +266,19 @@ class MainWindow(QMainWindow):
             self.canvas.scene_obj.project.building
         )
 
+        self._refresh_perception_debug_panel()
+        self._refresh_building_state_debug_panel()
+        self._refresh_camera_manager_panel()
+        self._refresh_speaker_manager_panel()
+
+        # Camera Validation is deliberately NOT refreshed on every
+        # simulation tick (see CameraValidationPanel's own docstring)
+        # -- only once here, at initial project load, and otherwise on
+        # its own Run Validation button / whenever its dock is shown.
+        self.camera_validation_panel.refresh(
+            self.canvas.scene_obj.project.building
+        )
+
     # =====================================================
 
     def create_actions(self):
@@ -179,6 +301,10 @@ class MainWindow(QMainWindow):
         self.import_floor_action = QAction(
             "Import Floor Plan",
             self,
+        )
+
+        self.new_action.triggered.connect(
+            self.new_project
         )
 
         self.open_action.triggered.connect(
@@ -211,6 +337,60 @@ class MainWindow(QMainWindow):
             self.validate_project
         )
 
+        self.toggle_perception_debug_panel_action = QAction(
+            "Perception Debug Panel",
+            self,
+        )
+
+        self.toggle_perception_debug_panel_action.triggered.connect(
+            self.toggle_perception_debug_panel
+        )
+
+        self.toggle_building_state_debug_panel_action = QAction(
+            "Building State Debug Panel",
+            self,
+        )
+
+        self.toggle_building_state_debug_panel_action.triggered.connect(
+            self.toggle_building_state_debug_panel
+        )
+
+        self.toggle_camera_manager_panel_action = QAction(
+            "Camera Manager Panel",
+            self,
+        )
+
+        self.toggle_camera_manager_panel_action.triggered.connect(
+            self.toggle_camera_manager_panel
+        )
+
+        self.toggle_speaker_manager_panel_action = QAction(
+            "Speaker Manager Panel",
+            self,
+        )
+
+        self.toggle_speaker_manager_panel_action.triggered.connect(
+            self.toggle_speaker_manager_panel
+        )
+
+        self.toggle_camera_validation_panel_action = QAction(
+            "Camera Validation Panel",
+            self,
+        )
+
+        self.toggle_camera_validation_panel_action.triggered.connect(
+            self.toggle_camera_validation_panel
+        )
+
+        self.open_campaign_studio_action = QAction(
+            "Scenario Campaign Studio...",
+            self,
+        )
+
+        self.open_campaign_studio_action.triggered.connect(
+            self.open_campaign_studio
+        )
+
     # =====================================================
 
     def create_menu(self):
@@ -220,7 +400,29 @@ class MainWindow(QMainWindow):
         file_menu = menubar.addMenu("File")
 
         menubar.addMenu("Edit")
-        menubar.addMenu("View")
+
+        view_menu = menubar.addMenu("View")
+
+        view_menu.addAction(
+            self.toggle_perception_debug_panel_action
+        )
+
+        view_menu.addAction(
+            self.toggle_building_state_debug_panel_action
+        )
+
+        view_menu.addAction(
+            self.toggle_camera_manager_panel_action
+        )
+
+        view_menu.addAction(
+            self.toggle_speaker_manager_panel_action
+        )
+
+        view_menu.addAction(
+            self.toggle_camera_validation_panel_action
+        )
+
         menubar.addMenu("Insert")
 
         simulation_menu = menubar.addMenu("Simulation")
@@ -230,6 +432,12 @@ class MainWindow(QMainWindow):
         )
 
         menubar.addMenu("AI")
+
+        campaign_menu = menubar.addMenu("Campaign")
+
+        campaign_menu.addAction(
+            self.open_campaign_studio_action
+        )
 
         tools_menu = menubar.addMenu("Tools")
 
@@ -332,9 +540,165 @@ class MainWindow(QMainWindow):
         # layout.
         self.simulation_dock.hide()
 
+        self.perception_debug_dock = QDockWidget(
+            "Perception Debug",
+            self,
+        )
+
+        self.perception_debug_dock.setWidget(
+            self.perception_debug_panel
+        )
+
+        self.addDockWidget(
+            Qt.DockWidgetArea.BottomDockWidgetArea,
+            self.perception_debug_dock,
+        )
+
+        self.tabifyDockWidget(
+            self.simulation_dock,
+            self.perception_debug_dock,
+        )
+
+        self.building_state_debug_dock = QDockWidget(
+            "Building State Debug",
+            self,
+        )
+
+        self.building_state_debug_dock.setWidget(
+            self.building_state_debug_panel
+        )
+
+        self.addDockWidget(
+            Qt.DockWidgetArea.BottomDockWidgetArea,
+            self.building_state_debug_dock,
+        )
+
+        self.tabifyDockWidget(
+            self.perception_debug_dock,
+            self.building_state_debug_dock,
+        )
+
+        # Hidden by default, same opt-in convention as
+        # simulation_dock -- verification/debug tooling, not part of
+        # the default Designer layout.
+        self.perception_debug_dock.hide()
+
+        # Hidden by default, same opt-in convention as
+        # perception_debug_dock above.
+        self.building_state_debug_dock.hide()
+
+        self.camera_manager_dock = QDockWidget(
+            "Camera Manager",
+            self,
+        )
+
+        self.camera_manager_dock.setWidget(
+            self.camera_manager_panel
+        )
+
+        self.addDockWidget(
+            Qt.DockWidgetArea.BottomDockWidgetArea,
+            self.camera_manager_dock,
+        )
+
+        self.tabifyDockWidget(
+            self.perception_debug_dock,
+            self.camera_manager_dock,
+        )
+
+        # Hidden by default, same opt-in convention as the other
+        # bottom docks -- not part of the default Designer layout.
+        self.camera_manager_dock.hide()
+
+        self.speaker_manager_dock = QDockWidget(
+            "Speaker Manager",
+            self,
+        )
+
+        self.speaker_manager_dock.setWidget(
+            self.speaker_manager_panel
+        )
+
+        self.addDockWidget(
+            Qt.DockWidgetArea.BottomDockWidgetArea,
+            self.speaker_manager_dock,
+        )
+
+        self.tabifyDockWidget(
+            self.camera_manager_dock,
+            self.speaker_manager_dock,
+        )
+
+        # Hidden by default, same opt-in convention as the other
+        # bottom docks -- not part of the default Designer layout.
+        self.speaker_manager_dock.hide()
+
+        self.camera_validation_dock = QDockWidget(
+            "Camera Validation",
+            self,
+        )
+
+        self.camera_validation_dock.setWidget(
+            self.camera_validation_panel
+        )
+
+        self.addDockWidget(
+            Qt.DockWidgetArea.BottomDockWidgetArea,
+            self.camera_validation_dock,
+        )
+
+        self.tabifyDockWidget(
+            self.speaker_manager_dock,
+            self.camera_validation_dock,
+        )
+
+        # Hidden by default, same opt-in convention as the other
+        # bottom docks -- not part of the default Designer layout.
+        self.camera_validation_dock.hide()
+
     # =====================================================
 
     def connect_toolbar(self):
+
+        # File/View actions: MainToolbar constructs its own separate
+        # QAction instances from the File menu's (same convention the
+        # drawing-tool buttons below already follow -- one QAction per
+        # widget, wired to the same MainWindow handler). Undo/Redo/
+        # Elevator are deliberately left unconnected -- see toolbar.py,
+        # they are disabled at construction time with an explanatory
+        # tooltip instead of wired to a handler that doesn't exist.
+
+        self.toolbar.new_action.triggered.connect(
+            self.new_project
+        )
+
+        self.toolbar.open_action.triggered.connect(
+            self.open_project
+        )
+
+        self.toolbar.save_action.triggered.connect(
+            self.save_project
+        )
+
+        self.toolbar.zoom_in_action.triggered.connect(
+            self.canvas.zoom_in
+        )
+
+        self.toolbar.zoom_out_action.triggered.connect(
+            self.canvas.zoom_out
+        )
+
+        self.toolbar.reset_view_action.triggered.connect(
+            self.canvas.reset_view
+        )
+
+        self.toolbar.coverage_action.toggled.connect(
+            self.canvas.scene_obj.set_show_camera_coverage
+        )
+
+        self.property_panel.on_visual_change = (
+            self.canvas.scene_obj.refresh_camera_coverage
+        )
 
         self.toolbar.select_action.triggered.connect(
             lambda: self.change_tool(
@@ -372,6 +736,24 @@ class MainWindow(QMainWindow):
             )
         )
 
+        self.toolbar.smoke_detector_action.triggered.connect(
+            lambda: self.change_tool(
+                "smoke_detector"
+            )
+        )
+
+        self.toolbar.heat_detector_action.triggered.connect(
+            lambda: self.change_tool(
+                "heat_detector"
+            )
+        )
+
+        self.toolbar.speaker_action.triggered.connect(
+            lambda: self.change_tool(
+                "speaker"
+            )
+        )
+
         self.toolbar.assembly_point_action.triggered.connect(
             lambda: self.change_tool(
                 "assembly_point"
@@ -403,6 +785,12 @@ class MainWindow(QMainWindow):
     # =====================================================
 
     def connect_signals(self):
+
+        # Unsaved-Changes Tracking -- QGraphicsScene's own built-in
+        # `changed` signal, see the field's own comment in __init__.
+        self.canvas.scene_obj.changed.connect(
+            self._mark_dirty
+        )
 
         # Bottom Information Bar
         self.canvas.status_callback = (
@@ -667,6 +1055,15 @@ class MainWindow(QMainWindow):
         elif isinstance(item, DetectorItem):
             self.property_panel.show_detector(item)
 
+        elif isinstance(item, SmokeDetectorItem):
+            self.property_panel.show_smoke_detector(item)
+
+        elif isinstance(item, HeatDetectorItem):
+            self.property_panel.show_heat_detector(item)
+
+        elif isinstance(item, SpeakerItem):
+            self.property_panel.show_speaker(item)
+
         elif isinstance(item, AssemblyPointItem):
             self.property_panel.show_assembly_point(item)
 
@@ -693,6 +1090,8 @@ class MainWindow(QMainWindow):
 
         self.project_tree.refresh()
 
+        self.canvas.scene_obj.refresh_camera_coverage()
+
     # =====================================================
 
     def change_tool(self, tool):
@@ -718,7 +1117,7 @@ class MainWindow(QMainWindow):
 
     # =====================================================
 
-    def save_project(self):
+    def save_project(self) -> bool:
 
         filename, _ = QFileDialog.getSaveFileName(
             self,
@@ -728,7 +1127,7 @@ class MainWindow(QMainWindow):
         )
 
         if not filename:
-            return
+            return False
 
         if not filename.endswith(".syn"):
 
@@ -737,11 +1136,48 @@ class MainWindow(QMainWindow):
         Serializer.save(
             self.canvas.scene_obj.get_project(),
             filename,
+            credential_store=self._credential_store,
         )
+
+        self._dirty = False
+
+        return True
+
+    # =====================================================
+
+    def new_project(self):
+
+        if not self._confirm_discard_unsaved_changes():
+            return
+
+        self.stop_simulation()
+
+        self.canvas.scene_obj.sandbox_manager.clear()
+
+        self.canvas.scene_obj.project = Project.new_default()
+
+        if self.canvas.scene_obj.project.building.floor_count > 0:
+
+            self.canvas.scene_obj.current_floor = (
+                self.canvas.scene_obj.project.building.ordered_floors()[0]
+            )
+
+        self.project_tree.set_project(self.canvas.scene_obj.project)
+
+        self.floor_list.set_building(self.canvas.scene_obj.project.building)
+
+        self.property_panel.set_building(self.canvas.scene_obj.project.building)
+
+        self.canvas.scene_obj.rebuild_scene()
+
+        self._dirty = False
 
     # =====================================================
 
     def open_project(self):
+
+        if not self._confirm_discard_unsaved_changes():
+            return
 
         filename, _ = QFileDialog.getOpenFileName(
             self,
@@ -753,7 +1189,7 @@ class MainWindow(QMainWindow):
         if not filename:
             return
 
-        project = Serializer.load(filename)
+        project = Serializer.load(filename, credential_store=self._credential_store)
 
         # Occupants belong to whichever project placed them -- never
         # saved, never reloaded, and meaningless (dangling floor_id/
@@ -780,6 +1216,45 @@ class MainWindow(QMainWindow):
 
         self.canvas.scene_obj.rebuild_scene()
 
+        self._dirty = False
+
+    # =====================================================
+
+    def _mark_dirty(self, *_args):
+
+        self._dirty = True
+
+    # =====================================================
+
+    def _confirm_discard_unsaved_changes(self) -> bool:
+
+        # Gate before any destructive action (new/open/close). Returns
+        # True when it is safe to proceed (nothing unsaved, the user
+        # chose Discard, or the user chose Save and it actually
+        # completed), False when the caller should abort (Cancel, or
+        # Save was chosen but the file dialog itself was cancelled).
+
+        if not self._dirty:
+            return True
+
+        choice = QMessageBox.question(
+            self,
+            "Unsaved Changes",
+            "This project has unsaved changes. Save before continuing?",
+            QMessageBox.StandardButton.Save
+            | QMessageBox.StandardButton.Discard
+            | QMessageBox.StandardButton.Cancel,
+            QMessageBox.StandardButton.Save,
+        )
+
+        if choice == QMessageBox.StandardButton.Cancel:
+            return False
+
+        if choice == QMessageBox.StandardButton.Save:
+            return self.save_project()
+
+        return True  # Discard
+
     # =====================================================
     # Manual Simulation Sandbox (Simulation V0)
     #
@@ -799,6 +1274,88 @@ class MainWindow(QMainWindow):
 
     # =====================================================
 
+    def toggle_perception_debug_panel(self):
+
+        self.perception_debug_dock.setVisible(
+            not self.perception_debug_dock.isVisible()
+        )
+
+    # =====================================================
+
+    def toggle_building_state_debug_panel(self):
+
+        self.building_state_debug_dock.setVisible(
+            not self.building_state_debug_dock.isVisible()
+        )
+
+    # =====================================================
+
+    def toggle_camera_manager_panel(self):
+
+        visible = not self.camera_manager_dock.isVisible()
+
+        self.camera_manager_dock.setVisible(visible)
+
+        if visible:
+            self._refresh_camera_manager_panel()
+
+    # =====================================================
+
+    def toggle_speaker_manager_panel(self):
+
+        visible = not self.speaker_manager_dock.isVisible()
+
+        self.speaker_manager_dock.setVisible(visible)
+
+        if visible:
+            self._refresh_speaker_manager_panel()
+
+    # =====================================================
+
+    def toggle_camera_validation_panel(self):
+
+        visible = not self.camera_validation_dock.isVisible()
+
+        self.camera_validation_dock.setVisible(visible)
+
+        if visible:
+            self.camera_validation_panel.refresh(
+                self.canvas.scene_obj.project.building
+            )
+
+    # =====================================================
+    # Scenario Campaign Studio -- the graphical orchestration layer
+    # over the already-frozen scenario_definition/scenario_generator/
+    # scenario_validator/scenario_pipeline/scenario_storage/
+    # scenario_runner/behaviour_profile_resolver/simulation_runtime/
+    # ai_decision pipeline (designer/campaign/). MainWindow's only
+    # responsibility here is the same one it already has for every
+    # other tool: own the window, hand it the current Building, do
+    # nothing else -- CampaignController/CampaignWorker own everything
+    # about how a campaign actually runs.
+    # =====================================================
+
+    def open_campaign_studio(self):
+
+        if self.campaign_window is None:
+
+            self.campaign_window = CampaignWindow()
+
+            self.campaign_controller = CampaignController(
+                self.campaign_window,
+                lambda: self.canvas.scene_obj.project.building,
+            )
+
+        self.campaign_window.set_building(
+            self.canvas.scene_obj.project.building
+        )
+
+        self.campaign_window.show()
+        self.campaign_window.raise_()
+        self.campaign_window.activateWindow()
+
+    # =====================================================
+
     def start_simulation(self):
 
         scene = self.canvas.scene_obj
@@ -809,6 +1366,11 @@ class MainWindow(QMainWindow):
 
         if scene.selected_item is not None:
             self.property_panel.refresh()
+
+        self._refresh_perception_debug_panel()
+        self._refresh_building_state_debug_panel()
+        self._refresh_camera_manager_panel()
+        self._refresh_speaker_manager_panel()
 
         self.simulation_timer.start()
 
@@ -858,6 +1420,11 @@ class MainWindow(QMainWindow):
         if scene.selected_item is not None:
             self.property_panel.refresh()
 
+        self._refresh_perception_debug_panel()
+        self._refresh_building_state_debug_panel()
+        self._refresh_camera_manager_panel()
+        self._refresh_speaker_manager_panel()
+
     # =====================================================
 
     def step_simulation(self):
@@ -872,6 +1439,11 @@ class MainWindow(QMainWindow):
         self._sync_occupant_items()
 
         self.property_panel.refresh()
+
+        self._refresh_perception_debug_panel()
+        self._refresh_building_state_debug_panel()
+        self._refresh_camera_manager_panel()
+        self._refresh_speaker_manager_panel()
 
     # =====================================================
 
@@ -895,6 +1467,87 @@ class MainWindow(QMainWindow):
 
         self.property_panel.refresh()
 
+        self._refresh_perception_debug_panel()
+        self._refresh_building_state_debug_panel()
+        self._refresh_camera_manager_panel()
+        self._refresh_speaker_manager_panel()
+
+    # =====================================================
+
+    def _refresh_perception_debug_panel(self):
+
+        # Only visible/active dock this touches -- see
+        # perception_debug_panel.py's own "dumb widget, MainWindow
+        # pushes updates in" convention. Kept as its own method (rather
+        # than inlined at each call site) so the panel could later be
+        # made toggle-aware (e.g. skip recomputation while hidden)
+        # without touching every call site.
+
+        scene = self.canvas.scene_obj
+
+        self.perception_debug_panel.refresh(
+            scene.project.building,
+            scene.sandbox_manager,
+            self.simulation_time,
+        )
+
+    # =====================================================
+
+    def _refresh_building_state_debug_panel(self):
+
+        # Same "own method, so it can be made toggle-aware later
+        # without touching every call site" reasoning as
+        # _refresh_perception_debug_panel() above.
+
+        scene = self.canvas.scene_obj
+
+        self.building_state_debug_panel.refresh(
+            scene.project.building,
+            scene.sandbox_manager,
+            self.simulation_time,
+        )
+
+    # =====================================================
+
+    def _refresh_camera_manager_panel(self):
+
+        # Same "own method, so it can be made toggle-aware later
+        # without touching every call site" reasoning as
+        # _refresh_perception_debug_panel() above.
+
+        self.camera_manager_panel.refresh(
+            self.canvas.scene_obj.project.building
+        )
+
+    # =====================================================
+
+    def _refresh_speaker_manager_panel(self):
+
+        # Same "own method, so it can be made toggle-aware later
+        # without touching every call site" reasoning as
+        # _refresh_perception_debug_panel() above.
+
+        self.speaker_manager_panel.refresh(
+            self.canvas.scene_obj.project.building
+        )
+
+    # =====================================================
+
+    def _on_camera_manager_changed(self):
+
+        # An enable/disable or mode change made through the Camera
+        # Manager Panel mutates the same Camera object the Property
+        # Panel (if that camera happens to be selected) and the Camera
+        # Coverage overlay both already read -- refresh both exactly
+        # the way editing those same fields through the Property Panel
+        # itself already does (see PropertyPanel.on_visual_change's own
+        # wiring below).
+
+        if self.canvas.scene_obj.selected_item is not None:
+            self.property_panel.refresh()
+
+        self.canvas.scene_obj.refresh_camera_coverage()
+
     # =====================================================
 
     def _sync_occupant_items(self):
@@ -911,5 +1564,9 @@ class MainWindow(QMainWindow):
     # =====================================================
 
     def closeEvent(self, event):
+
+        if not self._confirm_discard_unsaved_changes():
+            event.ignore()
+            return
 
         event.accept()

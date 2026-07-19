@@ -13,8 +13,11 @@ from PyQt6.QtWidgets import (
 from models import connectable_space
 from models.detector import Detector
 from models.door import Door
+from models.engineering_asset import DeviceMode
 from models.floor import Floor
 from models.obstacle import Obstacle
+from models.sensor_asset import HealthStatus
+from models.speaker import Speaker
 from models.zone import Zone
 
 from navigation.node import Node
@@ -31,6 +34,15 @@ class PropertyPanel(QWidget):
 
         self.current_item = None
         self._refresh_handler = None
+
+        # Set once by MainWindow -- notified whenever an edit made
+        # through this panel could change what's rendered beyond the
+        # panel/item itself (today: Camera geometry/active edits,
+        # which the Camera Coverage overlay -- designer/scene/
+        # graphics_scene.py::refresh_camera_coverage() -- needs to
+        # react to). None is a valid, common state (no such listener
+        # registered) and every call site guards for it.
+        self.on_visual_change = None
 
         # Needed to resolve Stair from_floor_id/to_floor_id into
         # actual Floor elevations for the derived traversal fields,
@@ -303,6 +315,37 @@ class PropertyPanel(QWidget):
 
         self.camera_active = QCheckBox()
 
+        # Assigned Zone -- reuses the same _populate_zone_combo() Door's
+        # Zone A/Zone B combos already establish, resolved from the
+        # camera's own floor_id. V1 assigns a single zone through this
+        # combo; the model underneath (Camera.zone_ids) already holds a
+        # tuple so a future multi-select UI can widen this without any
+        # model change.
+        self.camera_zone = QComboBox()
+
+        self.camera_resolution = QLineEdit()
+        self.camera_fps = QLineEdit()
+
+        # Simulation / Replay / Live -- see models.engineering_asset.
+        # DeviceMode. Only Simulation is meaningful today; this combo
+        # just records the user's choice for a future Replay/Live
+        # integration to read.
+        self.camera_mode = QComboBox()
+
+        for mode in DeviceMode.ALL:
+            self.camera_mode.addItem(mode)
+
+        # Connection Info -- placeholders only, never read/connected to
+        # by anything today (see models.engineering_asset.ConnectionInfo).
+        self.camera_rtsp = QLineEdit()
+        self.camera_ip = QLineEdit()
+        self.camera_username = QLineEdit()
+
+        self.camera_password = QLineEdit()
+        self.camera_password.setEchoMode(
+            QLineEdit.EchoMode.Password
+        )
+
         layout.addRow("Position X (m)", self.camera_x)
         layout.addRow("Position Y (m)", self.camera_y)
 
@@ -314,6 +357,32 @@ class PropertyPanel(QWidget):
 
         layout.addRow("Active", self.camera_active)
 
+        layout.addRow("Assigned Zone", self.camera_zone)
+
+        layout.addRow("Resolution", self.camera_resolution)
+        layout.addRow("FPS", self.camera_fps)
+
+        layout.addRow("Mode", self.camera_mode)
+
+        layout.addRow("RTSP Address", self.camera_rtsp)
+        layout.addRow("IP Address", self.camera_ip)
+        layout.addRow("Username", self.camera_username)
+        layout.addRow("Password", self.camera_password)
+
+        # Camera Coverage & Visibility Engine -- derived, never
+        # editable (same convention as Stair's Vertical Height/Travel
+        # Distance above), recomputed by VisibilityEngine every time
+        # show_camera() runs. See visibility/engine.py.
+        self.camera_visible_zones = QLabel("-")
+        self.camera_partial_zones = QLabel("-")
+        self.camera_hidden_zones = QLabel("-")
+        self.camera_max_visible_distance = QLabel("-")
+
+        layout.addRow("Visible Zones", self.camera_visible_zones)
+        layout.addRow("Partially Visible Zones", self.camera_partial_zones)
+        layout.addRow("Hidden Zones", self.camera_hidden_zones)
+        layout.addRow("Max Visible Distance (m)", self.camera_max_visible_distance)
+
         self.camera_fields = [
             self.camera_x,
             self.camera_y,
@@ -322,6 +391,18 @@ class PropertyPanel(QWidget):
             self.camera_range,
             self.camera_mount_height,
             self.camera_active,
+            self.camera_zone,
+            self.camera_resolution,
+            self.camera_fps,
+            self.camera_mode,
+            self.camera_rtsp,
+            self.camera_ip,
+            self.camera_username,
+            self.camera_password,
+            self.camera_visible_zones,
+            self.camera_partial_zones,
+            self.camera_hidden_zones,
+            self.camera_max_visible_distance,
         ]
 
         # =====================================================
@@ -360,6 +441,178 @@ class PropertyPanel(QWidget):
             self.detector_mount_height,
             self.detector_type,
             self.detector_active,
+        ]
+
+        # =====================================================
+        # Smoke Detector (Building Sensor Network Framework) --
+        # additive, alongside (never replacing) the generic Detector
+        # section above.
+        # =====================================================
+
+        self.smoke_detector_x = QLineEdit()
+        self.smoke_detector_y = QLineEdit()
+
+        self.smoke_detector_active = QCheckBox()
+
+        self.smoke_detector_health = QComboBox()
+
+        for health_status in HealthStatus.ALL:
+            self.smoke_detector_health.addItem(health_status)
+
+        self.smoke_detector_mode = QComboBox()
+
+        for mode in DeviceMode.ALL:
+            self.smoke_detector_mode.addItem(mode)
+
+        self.smoke_detector_threshold = QLineEdit()
+
+        self.smoke_detector_installation_date = QLineEdit()
+
+        # A manually-entered smoke_level reading -- this framework has
+        # no live hazard simulation wired into the Designer (see
+        # designer/perception_debug_runner.py's own identical note for
+        # Perception), so this lets an engineer directly test a
+        # detector's activation_threshold against a hand-entered
+        # reading, the same "hand-set, no time evolution" role
+        # PerceptionDebugPanel's own Hazard Injector plays -- an
+        # independent, self-contained control, not wired to that panel.
+        self.smoke_detector_test_level = QLineEdit()
+
+        self.smoke_detector_state = QLabel("-")
+
+        layout.addRow("Position X (m)", self.smoke_detector_x)
+        layout.addRow("Position Y (m)", self.smoke_detector_y)
+
+        layout.addRow("Active", self.smoke_detector_active)
+
+        layout.addRow("Health Status", self.smoke_detector_health)
+        layout.addRow("Mode", self.smoke_detector_mode)
+
+        layout.addRow("Activation Threshold (smoke level 0-1)", self.smoke_detector_threshold)
+        layout.addRow("Installation Date", self.smoke_detector_installation_date)
+
+        layout.addRow("Test Smoke Level (0-1)", self.smoke_detector_test_level)
+        layout.addRow("Current State", self.smoke_detector_state)
+
+        self.smoke_detector_fields = [
+            self.smoke_detector_x,
+            self.smoke_detector_y,
+            self.smoke_detector_active,
+            self.smoke_detector_health,
+            self.smoke_detector_mode,
+            self.smoke_detector_threshold,
+            self.smoke_detector_installation_date,
+            self.smoke_detector_test_level,
+            self.smoke_detector_state,
+        ]
+
+        # =====================================================
+        # Heat Detector (Building Sensor Network Framework) -- reuses
+        # the exact same framework/state model as Smoke Detector above.
+        # =====================================================
+
+        self.heat_detector_x = QLineEdit()
+        self.heat_detector_y = QLineEdit()
+
+        self.heat_detector_active = QCheckBox()
+
+        self.heat_detector_health = QComboBox()
+
+        for health_status in HealthStatus.ALL:
+            self.heat_detector_health.addItem(health_status)
+
+        self.heat_detector_mode = QComboBox()
+
+        for mode in DeviceMode.ALL:
+            self.heat_detector_mode.addItem(mode)
+
+        self.heat_detector_threshold = QLineEdit()
+
+        self.heat_detector_installation_date = QLineEdit()
+
+        self.heat_detector_test_temperature = QLineEdit()
+
+        self.heat_detector_state = QLabel("-")
+
+        layout.addRow("Position X (m)", self.heat_detector_x)
+        layout.addRow("Position Y (m)", self.heat_detector_y)
+
+        layout.addRow("Active", self.heat_detector_active)
+
+        layout.addRow("Health Status", self.heat_detector_health)
+        layout.addRow("Mode", self.heat_detector_mode)
+
+        layout.addRow("Activation Threshold (°C)", self.heat_detector_threshold)
+        layout.addRow("Installation Date", self.heat_detector_installation_date)
+
+        layout.addRow("Test Temperature (°C)", self.heat_detector_test_temperature)
+        layout.addRow("Current State", self.heat_detector_state)
+
+        self.heat_detector_fields = [
+            self.heat_detector_x,
+            self.heat_detector_y,
+            self.heat_detector_active,
+            self.heat_detector_health,
+            self.heat_detector_mode,
+            self.heat_detector_threshold,
+            self.heat_detector_installation_date,
+            self.heat_detector_test_temperature,
+            self.heat_detector_state,
+        ]
+
+        # =====================================================
+        # Speaker (Zoned Voice Evacuation & Speaker Network Framework)
+        # -- reuses the same SensorAsset foundation as Smoke/Heat
+        # Detector above, minus the detector-only test-reading/current-
+        # state controls (a Speaker is an output device -- it has no
+        # compute_state()/alarm concept of its own to test against).
+        # =====================================================
+
+        self.speaker_x = QLineEdit()
+        self.speaker_y = QLineEdit()
+
+        self.speaker_active = QCheckBox()
+
+        self.speaker_health = QComboBox()
+
+        for health_status in HealthStatus.ALL:
+            self.speaker_health.addItem(health_status)
+
+        self.speaker_mode = QComboBox()
+
+        for mode in DeviceMode.ALL:
+            self.speaker_mode.addItem(mode)
+
+        self.speaker_type = QComboBox()
+
+        for speaker_type in Speaker.SPEAKER_TYPES:
+            self.speaker_type.addItem(speaker_type)
+
+        self.speaker_volume = QLineEdit()
+
+        self.speaker_installation_date = QLineEdit()
+
+        layout.addRow("Position X (m)", self.speaker_x)
+        layout.addRow("Position Y (m)", self.speaker_y)
+
+        layout.addRow("Active", self.speaker_active)
+
+        layout.addRow("Health Status", self.speaker_health)
+        layout.addRow("Mode", self.speaker_mode)
+
+        layout.addRow("Speaker Type", self.speaker_type)
+        layout.addRow("Volume Level (dB)", self.speaker_volume)
+        layout.addRow("Installation Date", self.speaker_installation_date)
+
+        self.speaker_fields = [
+            self.speaker_x,
+            self.speaker_y,
+            self.speaker_active,
+            self.speaker_health,
+            self.speaker_mode,
+            self.speaker_type,
+            self.speaker_volume,
+            self.speaker_installation_date,
         ]
 
         # =====================================================
@@ -707,6 +960,38 @@ class PropertyPanel(QWidget):
             self.update_camera_active
         )
 
+        self.camera_zone.currentIndexChanged.connect(
+            self.update_camera_zone
+        )
+
+        self.camera_resolution.editingFinished.connect(
+            self.update_camera_metadata
+        )
+
+        self.camera_fps.editingFinished.connect(
+            self.update_camera_metadata
+        )
+
+        self.camera_mode.currentIndexChanged.connect(
+            self.update_camera_mode
+        )
+
+        self.camera_rtsp.editingFinished.connect(
+            self.update_camera_connection
+        )
+
+        self.camera_ip.editingFinished.connect(
+            self.update_camera_connection
+        )
+
+        self.camera_username.editingFinished.connect(
+            self.update_camera_connection
+        )
+
+        self.camera_password.editingFinished.connect(
+            self.update_camera_connection
+        )
+
         self.detector_x.editingFinished.connect(
             self.update_detector_geometry
         )
@@ -729,6 +1014,95 @@ class PropertyPanel(QWidget):
 
         self.detector_active.toggled.connect(
             self.update_detector_active
+        )
+
+        self.smoke_detector_x.editingFinished.connect(
+            self.update_smoke_detector_geometry
+        )
+
+        self.smoke_detector_y.editingFinished.connect(
+            self.update_smoke_detector_geometry
+        )
+
+        self.smoke_detector_active.toggled.connect(
+            self.update_smoke_detector_active
+        )
+
+        self.smoke_detector_health.currentIndexChanged.connect(
+            self.update_smoke_detector_health
+        )
+
+        self.smoke_detector_mode.currentIndexChanged.connect(
+            self.update_smoke_detector_mode
+        )
+
+        self.smoke_detector_threshold.editingFinished.connect(
+            self.update_smoke_detector_threshold
+        )
+
+        self.smoke_detector_installation_date.editingFinished.connect(
+            self.update_smoke_detector_installation_date
+        )
+
+        self.smoke_detector_test_level.editingFinished.connect(
+            self.update_smoke_detector_test_reading
+        )
+
+        self.heat_detector_x.editingFinished.connect(
+            self.update_heat_detector_geometry
+        )
+
+        self.heat_detector_y.editingFinished.connect(
+            self.update_heat_detector_geometry
+        )
+
+        self.heat_detector_active.toggled.connect(
+            self.update_heat_detector_active
+        )
+
+        self.heat_detector_health.currentIndexChanged.connect(
+            self.update_heat_detector_health
+        )
+
+        self.heat_detector_mode.currentIndexChanged.connect(
+            self.update_heat_detector_mode
+        )
+
+        self.heat_detector_threshold.editingFinished.connect(
+            self.update_heat_detector_threshold
+        )
+
+        self.heat_detector_installation_date.editingFinished.connect(
+            self.update_heat_detector_installation_date
+        )
+
+        self.heat_detector_test_temperature.editingFinished.connect(
+            self.update_heat_detector_test_reading
+        )
+
+        self.speaker_x.editingFinished.connect(
+            self.update_speaker_geometry
+        )
+        self.speaker_y.editingFinished.connect(
+            self.update_speaker_geometry
+        )
+        self.speaker_active.toggled.connect(
+            self.update_speaker_active
+        )
+        self.speaker_health.currentIndexChanged.connect(
+            self.update_speaker_health
+        )
+        self.speaker_mode.currentIndexChanged.connect(
+            self.update_speaker_mode
+        )
+        self.speaker_type.currentIndexChanged.connect(
+            self.update_speaker_type
+        )
+        self.speaker_volume.editingFinished.connect(
+            self.update_speaker_volume
+        )
+        self.speaker_installation_date.editingFinished.connect(
+            self.update_speaker_installation_date
         )
 
         self.assembly_x.editingFinished.connect(
@@ -840,6 +1214,9 @@ class PropertyPanel(QWidget):
         self._set_fields_visible(self.stair_fields, False)
         self._set_fields_visible(self.camera_fields, False)
         self._set_fields_visible(self.detector_fields, False)
+        self._set_fields_visible(self.smoke_detector_fields, False)
+        self._set_fields_visible(self.heat_detector_fields, False)
+        self._set_fields_visible(self.speaker_fields, False)
         self._set_fields_visible(self.assembly_fields, False)
         self._set_fields_visible(self.obstacle_fields, False)
         self._set_fields_visible(self.door_fields, False)
@@ -887,6 +1264,9 @@ class PropertyPanel(QWidget):
         self._set_fields_visible(self.stair_fields, False)
         self._set_fields_visible(self.camera_fields, False)
         self._set_fields_visible(self.detector_fields, False)
+        self._set_fields_visible(self.smoke_detector_fields, False)
+        self._set_fields_visible(self.heat_detector_fields, False)
+        self._set_fields_visible(self.speaker_fields, False)
         self._set_fields_visible(self.assembly_fields, False)
         self._set_fields_visible(self.obstacle_fields, False)
         self._set_fields_visible(self.door_fields, False)
@@ -965,6 +1345,9 @@ class PropertyPanel(QWidget):
         self._set_fields_visible(self.stair_fields, False)
         self._set_fields_visible(self.camera_fields, False)
         self._set_fields_visible(self.detector_fields, False)
+        self._set_fields_visible(self.smoke_detector_fields, False)
+        self._set_fields_visible(self.heat_detector_fields, False)
+        self._set_fields_visible(self.speaker_fields, False)
         self._set_fields_visible(self.assembly_fields, False)
         self._set_fields_visible(self.obstacle_fields, False)
         self._set_fields_visible(self.door_fields, False)
@@ -1037,6 +1420,9 @@ class PropertyPanel(QWidget):
         self._set_fields_visible(self.stair_fields, True)
         self._set_fields_visible(self.camera_fields, False)
         self._set_fields_visible(self.detector_fields, False)
+        self._set_fields_visible(self.smoke_detector_fields, False)
+        self._set_fields_visible(self.heat_detector_fields, False)
+        self._set_fields_visible(self.speaker_fields, False)
         self._set_fields_visible(self.assembly_fields, False)
         self._set_fields_visible(self.obstacle_fields, False)
         self._set_fields_visible(self.door_fields, False)
@@ -1147,6 +1533,9 @@ class PropertyPanel(QWidget):
         self._set_fields_visible(self.stair_fields, False)
         self._set_fields_visible(self.camera_fields, True)
         self._set_fields_visible(self.detector_fields, False)
+        self._set_fields_visible(self.smoke_detector_fields, False)
+        self._set_fields_visible(self.heat_detector_fields, False)
+        self._set_fields_visible(self.speaker_fields, False)
         self._set_fields_visible(self.assembly_fields, False)
         self._set_fields_visible(self.obstacle_fields, False)
         self._set_fields_visible(self.door_fields, False)
@@ -1165,6 +1554,14 @@ class PropertyPanel(QWidget):
         self.camera_range.blockSignals(True)
         self.camera_mount_height.blockSignals(True)
         self.camera_active.blockSignals(True)
+        self.camera_zone.blockSignals(True)
+        self.camera_resolution.blockSignals(True)
+        self.camera_fps.blockSignals(True)
+        self.camera_mode.blockSignals(True)
+        self.camera_rtsp.blockSignals(True)
+        self.camera_ip.blockSignals(True)
+        self.camera_username.blockSignals(True)
+        self.camera_password.blockSignals(True)
 
         self.object_name.setText(camera_item.object_name)
 
@@ -1195,6 +1592,28 @@ class PropertyPanel(QWidget):
                 model.active
             )
 
+            self._populate_zone_combo(
+                self.camera_zone,
+                model,
+                model.zone_ids[0] if model.zone_ids else "",
+                "",
+            )
+
+            self.camera_resolution.setText(model.resolution)
+            self.camera_fps.setText(str(model.fps))
+
+            mode_index = self.camera_mode.findText(model.mode)
+
+            if mode_index != -1:
+                self.camera_mode.setCurrentIndex(mode_index)
+
+            self.camera_rtsp.setText(model.connection.rtsp_address)
+            self.camera_ip.setText(model.connection.ip_address)
+            self.camera_username.setText(model.connection.username)
+            self.camera_password.setText(model.connection.password)
+
+            self._update_camera_visibility_stats(model)
+
         self.object_name.blockSignals(False)
         self.camera_x.blockSignals(False)
         self.camera_y.blockSignals(False)
@@ -1203,6 +1622,42 @@ class PropertyPanel(QWidget):
         self.camera_range.blockSignals(False)
         self.camera_mount_height.blockSignals(False)
         self.camera_active.blockSignals(False)
+        self.camera_zone.blockSignals(False)
+        self.camera_resolution.blockSignals(False)
+        self.camera_fps.blockSignals(False)
+        self.camera_mode.blockSignals(False)
+        self.camera_rtsp.blockSignals(False)
+        self.camera_ip.blockSignals(False)
+        self.camera_username.blockSignals(False)
+        self.camera_password.blockSignals(False)
+
+    # =====================================================
+
+    def _update_camera_visibility_stats(self, model):
+
+        # Only meaningful once a Building is known (set_building()) --
+        # a Camera Item can exist in isolation in a few tests/tools
+        # that never call set_building(), same guard every other
+        # Building-dependent Camera/Stair field already uses.
+        if self.building is None:
+
+            self.camera_visible_zones.setText("-")
+            self.camera_partial_zones.setText("-")
+            self.camera_hidden_zones.setText("-")
+            self.camera_max_visible_distance.setText("-")
+
+            return
+
+        from visibility.engine import VisibilityEngine
+
+        visibility = VisibilityEngine().compute_camera_visibility(model, self.building)
+
+        self.camera_visible_zones.setText(str(len(visibility.visible_zone_ids)))
+        self.camera_partial_zones.setText(str(len(visibility.partially_visible_zone_ids)))
+        self.camera_hidden_zones.setText(str(len(visibility.hidden_zone_ids)))
+        self.camera_max_visible_distance.setText(
+            f"{visibility.max_visible_distance:.2f}"
+        )
 
     # =====================================================
     # Detector
@@ -1218,6 +1673,9 @@ class PropertyPanel(QWidget):
         self._set_fields_visible(self.stair_fields, False)
         self._set_fields_visible(self.camera_fields, False)
         self._set_fields_visible(self.detector_fields, True)
+        self._set_fields_visible(self.smoke_detector_fields, False)
+        self._set_fields_visible(self.heat_detector_fields, False)
+        self._set_fields_visible(self.speaker_fields, False)
         self._set_fields_visible(self.assembly_fields, False)
         self._set_fields_visible(self.obstacle_fields, False)
         self._set_fields_visible(self.door_fields, False)
@@ -1273,6 +1731,358 @@ class PropertyPanel(QWidget):
         self.detector_active.blockSignals(False)
 
     # =====================================================
+    # Smoke Detector (Building Sensor Network Framework)
+    # =====================================================
+
+    def show_smoke_detector(self, smoke_detector_item):
+
+        self.current_item = smoke_detector_item
+        self._refresh_handler = self.show_smoke_detector
+
+        self._set_fields_visible(self.zone_fields, False)
+        self._set_fields_visible(self.exit_fields, False)
+        self._set_fields_visible(self.stair_fields, False)
+        self._set_fields_visible(self.camera_fields, False)
+        self._set_fields_visible(self.detector_fields, False)
+        self._set_fields_visible(self.smoke_detector_fields, True)
+        self._set_fields_visible(self.heat_detector_fields, False)
+        self._set_fields_visible(self.speaker_fields, False)
+        self._set_fields_visible(self.assembly_fields, False)
+        self._set_fields_visible(self.obstacle_fields, False)
+        self._set_fields_visible(self.door_fields, False)
+        self._set_fields_visible(self.floor_fields, False)
+
+        model = smoke_detector_item.model
+
+        self.object_type.setText("Smoke Detector")
+        self.object_id.setText(smoke_detector_item.object_id)
+
+        self.object_name.blockSignals(True)
+        self.smoke_detector_x.blockSignals(True)
+        self.smoke_detector_y.blockSignals(True)
+        self.smoke_detector_active.blockSignals(True)
+        self.smoke_detector_health.blockSignals(True)
+        self.smoke_detector_mode.blockSignals(True)
+        self.smoke_detector_threshold.blockSignals(True)
+        self.smoke_detector_installation_date.blockSignals(True)
+        self.smoke_detector_test_level.blockSignals(True)
+
+        self.object_name.setText(smoke_detector_item.object_name)
+
+        if model is not None:
+
+            px, py = model.position
+
+            self.smoke_detector_x.setText(f"{px:.2f}")
+            self.smoke_detector_y.setText(f"{py:.2f}")
+
+            self.smoke_detector_active.setChecked(model.active)
+
+            health_index = self.smoke_detector_health.findText(model.health_status)
+
+            if health_index != -1:
+                self.smoke_detector_health.setCurrentIndex(health_index)
+
+            mode_index = self.smoke_detector_mode.findText(model.mode)
+
+            if mode_index != -1:
+                self.smoke_detector_mode.setCurrentIndex(mode_index)
+
+            self.smoke_detector_threshold.setText(f"{model.activation_threshold:.2f}")
+            self.smoke_detector_installation_date.setText(model.installation_date)
+
+            self._refresh_smoke_detector_state(smoke_detector_item)
+
+        self.object_name.blockSignals(False)
+        self.smoke_detector_x.blockSignals(False)
+        self.smoke_detector_y.blockSignals(False)
+        self.smoke_detector_active.blockSignals(False)
+        self.smoke_detector_health.blockSignals(False)
+        self.smoke_detector_mode.blockSignals(False)
+        self.smoke_detector_threshold.blockSignals(False)
+        self.smoke_detector_installation_date.blockSignals(False)
+        self.smoke_detector_test_level.blockSignals(False)
+
+    # =====================================================
+
+    def _refresh_smoke_detector_state(self, smoke_detector_item):
+
+        # Recomputes and displays Current State from whatever "Test
+        # Smoke Level" is currently entered -- see this class's own
+        # module-level note by smoke_detector_test_level on why this
+        # manual reading exists (no live hazard simulation is wired
+        # into the Designer). Blank input is treated as "no reading"
+        # (None), the same convention SmokeDetector.compute_state()
+        # itself already documents, never a guessed 0.0.
+
+        model = smoke_detector_item.model
+
+        if model is None:
+            return
+
+        text = self.smoke_detector_test_level.text().strip()
+
+        try:
+            smoke_level = float(text) if text else None
+        except ValueError:
+            smoke_level = None
+
+        state = model.compute_state(smoke_level)
+
+        self.smoke_detector_state.setText(state.name)
+
+        smoke_detector_item.current_state = state
+        smoke_detector_item.refresh_geometry()
+
+    # =====================================================
+    # Heat Detector (Building Sensor Network Framework)
+    # =====================================================
+
+    def show_heat_detector(self, heat_detector_item):
+
+        self.current_item = heat_detector_item
+        self._refresh_handler = self.show_heat_detector
+
+        self._set_fields_visible(self.zone_fields, False)
+        self._set_fields_visible(self.exit_fields, False)
+        self._set_fields_visible(self.stair_fields, False)
+        self._set_fields_visible(self.camera_fields, False)
+        self._set_fields_visible(self.detector_fields, False)
+        self._set_fields_visible(self.smoke_detector_fields, False)
+        self._set_fields_visible(self.heat_detector_fields, True)
+        self._set_fields_visible(self.speaker_fields, False)
+        self._set_fields_visible(self.assembly_fields, False)
+        self._set_fields_visible(self.obstacle_fields, False)
+        self._set_fields_visible(self.door_fields, False)
+        self._set_fields_visible(self.floor_fields, False)
+
+        model = heat_detector_item.model
+
+        self.object_type.setText("Heat Detector")
+        self.object_id.setText(heat_detector_item.object_id)
+
+        self.object_name.blockSignals(True)
+        self.heat_detector_x.blockSignals(True)
+        self.heat_detector_y.blockSignals(True)
+        self.heat_detector_active.blockSignals(True)
+        self.heat_detector_health.blockSignals(True)
+        self.heat_detector_mode.blockSignals(True)
+        self.heat_detector_threshold.blockSignals(True)
+        self.heat_detector_installation_date.blockSignals(True)
+        self.heat_detector_test_temperature.blockSignals(True)
+
+        self.object_name.setText(heat_detector_item.object_name)
+
+        if model is not None:
+
+            px, py = model.position
+
+            self.heat_detector_x.setText(f"{px:.2f}")
+            self.heat_detector_y.setText(f"{py:.2f}")
+
+            self.heat_detector_active.setChecked(model.active)
+
+            health_index = self.heat_detector_health.findText(model.health_status)
+
+            if health_index != -1:
+                self.heat_detector_health.setCurrentIndex(health_index)
+
+            mode_index = self.heat_detector_mode.findText(model.mode)
+
+            if mode_index != -1:
+                self.heat_detector_mode.setCurrentIndex(mode_index)
+
+            self.heat_detector_threshold.setText(f"{model.activation_threshold:.2f}")
+            self.heat_detector_installation_date.setText(model.installation_date)
+
+            self._refresh_heat_detector_state(heat_detector_item)
+
+        self.object_name.blockSignals(False)
+        self.heat_detector_x.blockSignals(False)
+        self.heat_detector_y.blockSignals(False)
+        self.heat_detector_active.blockSignals(False)
+        self.heat_detector_health.blockSignals(False)
+        self.heat_detector_mode.blockSignals(False)
+        self.heat_detector_threshold.blockSignals(False)
+        self.heat_detector_installation_date.blockSignals(False)
+        self.heat_detector_test_temperature.blockSignals(False)
+
+    # =====================================================
+
+    def _refresh_heat_detector_state(self, heat_detector_item):
+
+        model = heat_detector_item.model
+
+        if model is None:
+            return
+
+        text = self.heat_detector_test_temperature.text().strip()
+
+        try:
+            temperature = float(text) if text else None
+        except ValueError:
+            temperature = None
+
+        state = model.compute_state(temperature)
+
+        self.heat_detector_state.setText(state.name)
+
+        heat_detector_item.current_state = state
+        heat_detector_item.refresh_geometry()
+
+    # =====================================================
+    # Speaker (Zoned Voice Evacuation & Speaker Network Framework)
+    # =====================================================
+
+    def show_speaker(self, speaker_item):
+
+        self.current_item = speaker_item
+        self._refresh_handler = self.show_speaker
+
+        self._set_fields_visible(self.zone_fields, False)
+        self._set_fields_visible(self.exit_fields, False)
+        self._set_fields_visible(self.stair_fields, False)
+        self._set_fields_visible(self.camera_fields, False)
+        self._set_fields_visible(self.detector_fields, False)
+        self._set_fields_visible(self.smoke_detector_fields, False)
+        self._set_fields_visible(self.heat_detector_fields, False)
+        self._set_fields_visible(self.speaker_fields, True)
+        self._set_fields_visible(self.assembly_fields, False)
+        self._set_fields_visible(self.obstacle_fields, False)
+        self._set_fields_visible(self.door_fields, False)
+        self._set_fields_visible(self.floor_fields, False)
+
+        model = speaker_item.model
+
+        self.object_type.setText("Speaker")
+        self.object_id.setText(speaker_item.object_id)
+
+        self.object_name.blockSignals(True)
+        self.speaker_x.blockSignals(True)
+        self.speaker_y.blockSignals(True)
+        self.speaker_active.blockSignals(True)
+        self.speaker_health.blockSignals(True)
+        self.speaker_mode.blockSignals(True)
+        self.speaker_type.blockSignals(True)
+        self.speaker_volume.blockSignals(True)
+        self.speaker_installation_date.blockSignals(True)
+
+        self.object_name.setText(speaker_item.object_name)
+
+        if model is not None:
+
+            px, py = model.position
+
+            self.speaker_x.setText(f"{px:.2f}")
+            self.speaker_y.setText(f"{py:.2f}")
+
+            self.speaker_active.setChecked(model.active)
+
+            health_index = self.speaker_health.findText(model.health_status)
+
+            if health_index != -1:
+                self.speaker_health.setCurrentIndex(health_index)
+
+            mode_index = self.speaker_mode.findText(model.mode)
+
+            if mode_index != -1:
+                self.speaker_mode.setCurrentIndex(mode_index)
+
+            type_index = self.speaker_type.findText(model.speaker_type)
+
+            if type_index != -1:
+                self.speaker_type.setCurrentIndex(type_index)
+
+            self.speaker_volume.setText(f"{model.volume_level:.1f}")
+            self.speaker_installation_date.setText(model.installation_date)
+
+        self.object_name.blockSignals(False)
+        self.speaker_x.blockSignals(False)
+        self.speaker_y.blockSignals(False)
+        self.speaker_active.blockSignals(False)
+        self.speaker_health.blockSignals(False)
+        self.speaker_mode.blockSignals(False)
+        self.speaker_type.blockSignals(False)
+        self.speaker_volume.blockSignals(False)
+        self.speaker_installation_date.blockSignals(False)
+
+    # =====================================================
+
+    def update_speaker_geometry(self):
+
+        if self.current_item is None:
+            return
+
+        try:
+            x = float(self.speaker_x.text())
+            y = float(self.speaker_y.text())
+        except ValueError:
+            return
+
+        self.current_item.setPos(x * self.GRID_SIZE, y * self.GRID_SIZE)
+        self.current_item.sync_to_model()
+
+    # =====================================================
+
+    def update_speaker_active(self):
+
+        if self.current_item is None or self.current_item.model is None:
+            return
+
+        self.current_item.model.active = self.speaker_active.isChecked()
+        self.current_item.refresh_geometry()
+
+    # =====================================================
+
+    def update_speaker_health(self, index):
+
+        if self.current_item is None or self.current_item.model is None:
+            return
+
+        self.current_item.model.health_status = self.speaker_health.itemText(index)
+
+    # =====================================================
+
+    def update_speaker_mode(self, index):
+
+        if self.current_item is None or self.current_item.model is None:
+            return
+
+        self.current_item.model.mode = self.speaker_mode.itemText(index)
+
+    # =====================================================
+
+    def update_speaker_type(self, index):
+
+        if self.current_item is None or self.current_item.model is None:
+            return
+
+        self.current_item.model.speaker_type = self.speaker_type.itemText(index)
+
+    # =====================================================
+
+    def update_speaker_volume(self):
+
+        if self.current_item is None or self.current_item.model is None:
+            return
+
+        try:
+            volume = float(self.speaker_volume.text())
+        except ValueError:
+            return
+
+        self.current_item.model.volume_level = volume
+
+    # =====================================================
+
+    def update_speaker_installation_date(self):
+
+        if self.current_item is None or self.current_item.model is None:
+            return
+
+        self.current_item.model.installation_date = self.speaker_installation_date.text()
+
+    # =====================================================
     # Assembly Point
     # =====================================================
 
@@ -1286,6 +2096,9 @@ class PropertyPanel(QWidget):
         self._set_fields_visible(self.stair_fields, False)
         self._set_fields_visible(self.camera_fields, False)
         self._set_fields_visible(self.detector_fields, False)
+        self._set_fields_visible(self.smoke_detector_fields, False)
+        self._set_fields_visible(self.heat_detector_fields, False)
+        self._set_fields_visible(self.speaker_fields, False)
         self._set_fields_visible(self.assembly_fields, True)
         self._set_fields_visible(self.obstacle_fields, False)
         self._set_fields_visible(self.door_fields, False)
@@ -1357,6 +2170,9 @@ class PropertyPanel(QWidget):
         self._set_fields_visible(self.stair_fields, False)
         self._set_fields_visible(self.camera_fields, False)
         self._set_fields_visible(self.detector_fields, False)
+        self._set_fields_visible(self.smoke_detector_fields, False)
+        self._set_fields_visible(self.heat_detector_fields, False)
+        self._set_fields_visible(self.speaker_fields, False)
         self._set_fields_visible(self.assembly_fields, False)
         self._set_fields_visible(self.obstacle_fields, True)
         self._set_fields_visible(self.door_fields, False)
@@ -1433,6 +2249,9 @@ class PropertyPanel(QWidget):
         self._set_fields_visible(self.stair_fields, False)
         self._set_fields_visible(self.camera_fields, False)
         self._set_fields_visible(self.detector_fields, False)
+        self._set_fields_visible(self.smoke_detector_fields, False)
+        self._set_fields_visible(self.heat_detector_fields, False)
+        self._set_fields_visible(self.speaker_fields, False)
         self._set_fields_visible(self.assembly_fields, False)
         self._set_fields_visible(self.obstacle_fields, False)
         self._set_fields_visible(self.door_fields, True)
@@ -1532,6 +2351,9 @@ class PropertyPanel(QWidget):
         self._set_fields_visible(self.stair_fields, False)
         self._set_fields_visible(self.camera_fields, False)
         self._set_fields_visible(self.detector_fields, False)
+        self._set_fields_visible(self.smoke_detector_fields, False)
+        self._set_fields_visible(self.heat_detector_fields, False)
+        self._set_fields_visible(self.speaker_fields, False)
         self._set_fields_visible(self.assembly_fields, False)
         self._set_fields_visible(self.obstacle_fields, False)
         self._set_fields_visible(self.door_fields, False)
@@ -1672,6 +2494,9 @@ class PropertyPanel(QWidget):
         self._set_fields_visible(self.stair_fields, False)
         self._set_fields_visible(self.camera_fields, False)
         self._set_fields_visible(self.detector_fields, False)
+        self._set_fields_visible(self.smoke_detector_fields, False)
+        self._set_fields_visible(self.heat_detector_fields, False)
+        self._set_fields_visible(self.speaker_fields, False)
         self._set_fields_visible(self.assembly_fields, False)
         self._set_fields_visible(self.obstacle_fields, False)
         self._set_fields_visible(self.door_fields, False)
@@ -1719,6 +2544,9 @@ class PropertyPanel(QWidget):
         self._set_fields_visible(self.stair_fields, False)
         self._set_fields_visible(self.camera_fields, False)
         self._set_fields_visible(self.detector_fields, False)
+        self._set_fields_visible(self.smoke_detector_fields, False)
+        self._set_fields_visible(self.heat_detector_fields, False)
+        self._set_fields_visible(self.speaker_fields, False)
         self._set_fields_visible(self.assembly_fields, False)
         self._set_fields_visible(self.obstacle_fields, False)
         self._set_fields_visible(self.door_fields, False)
@@ -1807,6 +2635,27 @@ class PropertyPanel(QWidget):
         self.camera_active.setChecked(False)
         self.camera_active.blockSignals(False)
 
+        self.camera_zone.blockSignals(True)
+        self.camera_zone.clear()
+        self.camera_zone.blockSignals(False)
+
+        self.camera_resolution.clear()
+        self.camera_fps.clear()
+
+        self.camera_mode.blockSignals(True)
+        self.camera_mode.setCurrentIndex(0)
+        self.camera_mode.blockSignals(False)
+
+        self.camera_rtsp.clear()
+        self.camera_ip.clear()
+        self.camera_username.clear()
+        self.camera_password.clear()
+
+        self.camera_visible_zones.setText("-")
+        self.camera_partial_zones.setText("-")
+        self.camera_hidden_zones.setText("-")
+        self.camera_max_visible_distance.setText("-")
+
         self.detector_x.clear()
         self.detector_y.clear()
 
@@ -1821,6 +2670,68 @@ class PropertyPanel(QWidget):
         self.detector_active.blockSignals(True)
         self.detector_active.setChecked(False)
         self.detector_active.blockSignals(False)
+
+        self.smoke_detector_x.clear()
+        self.smoke_detector_y.clear()
+
+        self.smoke_detector_active.blockSignals(True)
+        self.smoke_detector_active.setChecked(False)
+        self.smoke_detector_active.blockSignals(False)
+
+        self.smoke_detector_health.blockSignals(True)
+        self.smoke_detector_health.setCurrentIndex(0)
+        self.smoke_detector_health.blockSignals(False)
+
+        self.smoke_detector_mode.blockSignals(True)
+        self.smoke_detector_mode.setCurrentIndex(0)
+        self.smoke_detector_mode.blockSignals(False)
+
+        self.smoke_detector_threshold.clear()
+        self.smoke_detector_installation_date.clear()
+        self.smoke_detector_test_level.clear()
+        self.smoke_detector_state.setText("-")
+
+        self.heat_detector_x.clear()
+        self.heat_detector_y.clear()
+
+        self.heat_detector_active.blockSignals(True)
+        self.heat_detector_active.setChecked(False)
+        self.heat_detector_active.blockSignals(False)
+
+        self.heat_detector_health.blockSignals(True)
+        self.heat_detector_health.setCurrentIndex(0)
+        self.heat_detector_health.blockSignals(False)
+
+        self.heat_detector_mode.blockSignals(True)
+        self.heat_detector_mode.setCurrentIndex(0)
+        self.heat_detector_mode.blockSignals(False)
+
+        self.heat_detector_threshold.clear()
+        self.heat_detector_installation_date.clear()
+        self.heat_detector_test_temperature.clear()
+        self.heat_detector_state.setText("-")
+
+        self.speaker_x.clear()
+        self.speaker_y.clear()
+
+        self.speaker_active.blockSignals(True)
+        self.speaker_active.setChecked(False)
+        self.speaker_active.blockSignals(False)
+
+        self.speaker_health.blockSignals(True)
+        self.speaker_health.setCurrentIndex(0)
+        self.speaker_health.blockSignals(False)
+
+        self.speaker_mode.blockSignals(True)
+        self.speaker_mode.setCurrentIndex(0)
+        self.speaker_mode.blockSignals(False)
+
+        self.speaker_type.blockSignals(True)
+        self.speaker_type.setCurrentIndex(0)
+        self.speaker_type.blockSignals(False)
+
+        self.speaker_volume.clear()
+        self.speaker_installation_date.clear()
 
         self.assembly_x.clear()
         self.assembly_y.clear()
@@ -2350,6 +3261,9 @@ class PropertyPanel(QWidget):
 
         self.refresh()
 
+        if self.on_visual_change:
+            self.on_visual_change()
+
     # =====================================================
 
     def update_camera_active(self):
@@ -2364,6 +3278,80 @@ class PropertyPanel(QWidget):
             )
 
         self.current_item.refresh_geometry()
+
+        if self.on_visual_change:
+            self.on_visual_change()
+
+    # =====================================================
+
+    def update_camera_zone(self, index):
+
+        if self.current_item is None:
+            return
+
+        if self.current_item.model is None:
+            return
+
+        zone_id = self.camera_zone.itemData(index)
+
+        self.current_item.model.zone_ids = (
+            (zone_id,) if zone_id else ()
+        )
+
+    # =====================================================
+
+    def update_camera_metadata(self):
+
+        if self.current_item is None:
+            return
+
+        if self.current_item.model is None:
+            return
+
+        self.current_item.model.resolution = (
+            self.camera_resolution.text()
+        )
+
+        try:
+
+            self.current_item.model.fps = int(
+                self.camera_fps.text()
+            )
+
+        except ValueError:
+
+            self.refresh()
+
+    # =====================================================
+
+    def update_camera_mode(self, index):
+
+        if self.current_item is None:
+            return
+
+        if self.current_item.model is None:
+            return
+
+        self.current_item.model.mode = (
+            self.camera_mode.itemText(index)
+        )
+
+    # =====================================================
+
+    def update_camera_connection(self):
+
+        if self.current_item is None:
+            return
+
+        if self.current_item.model is None:
+            return
+
+        connection = self.current_item.model.connection
+
+        connection.rtsp_address = self.camera_rtsp.text()
+        connection.ip_address = self.camera_ip.text()
+        connection.username = self.camera_username.text()
+        connection.password = self.camera_password.text()
 
     # =====================================================
 
@@ -2435,6 +3423,248 @@ class PropertyPanel(QWidget):
             )
 
         self.current_item.refresh_geometry()
+
+    # =====================================================
+    # Smoke Detector (Building Sensor Network Framework)
+    # =====================================================
+
+    def update_smoke_detector_geometry(self):
+
+        if self.current_item is None:
+            return
+
+        try:
+
+            x = float(self.smoke_detector_x.text())
+            y = float(self.smoke_detector_y.text())
+
+        except ValueError:
+
+            self.refresh()
+
+            return
+
+        self.current_item.setPos(
+            x * self.GRID_SIZE,
+            y * self.GRID_SIZE,
+        )
+
+        self.current_item.refresh_geometry()
+
+        self.refresh()
+
+    # =====================================================
+
+    def update_smoke_detector_active(self):
+
+        if self.current_item is None:
+            return
+
+        if self.current_item.model is not None:
+
+            self.current_item.model.active = (
+                self.smoke_detector_active.isChecked()
+            )
+
+        self._refresh_smoke_detector_state(self.current_item)
+
+    # =====================================================
+
+    def update_smoke_detector_health(self, index):
+
+        if self.current_item is None:
+            return
+
+        if self.current_item.model is None:
+            return
+
+        self.current_item.model.health_status = (
+            self.smoke_detector_health.itemText(index)
+        )
+
+        self._refresh_smoke_detector_state(self.current_item)
+
+    # =====================================================
+
+    def update_smoke_detector_mode(self, index):
+
+        if self.current_item is None:
+            return
+
+        if self.current_item.model is None:
+            return
+
+        self.current_item.model.mode = (
+            self.smoke_detector_mode.itemText(index)
+        )
+
+    # =====================================================
+
+    def update_smoke_detector_threshold(self):
+
+        if self.current_item is None:
+            return
+
+        if self.current_item.model is None:
+            return
+
+        try:
+
+            threshold = float(self.smoke_detector_threshold.text())
+
+        except ValueError:
+
+            self.refresh()
+
+            return
+
+        self.current_item.model.activation_threshold = threshold
+
+        self._refresh_smoke_detector_state(self.current_item)
+
+    # =====================================================
+
+    def update_smoke_detector_installation_date(self):
+
+        if self.current_item is None:
+            return
+
+        if self.current_item.model is None:
+            return
+
+        self.current_item.model.installation_date = (
+            self.smoke_detector_installation_date.text()
+        )
+
+    # =====================================================
+
+    def update_smoke_detector_test_reading(self):
+
+        if self.current_item is None:
+            return
+
+        self._refresh_smoke_detector_state(self.current_item)
+
+    # =====================================================
+    # Heat Detector (Building Sensor Network Framework)
+    # =====================================================
+
+    def update_heat_detector_geometry(self):
+
+        if self.current_item is None:
+            return
+
+        try:
+
+            x = float(self.heat_detector_x.text())
+            y = float(self.heat_detector_y.text())
+
+        except ValueError:
+
+            self.refresh()
+
+            return
+
+        self.current_item.setPos(
+            x * self.GRID_SIZE,
+            y * self.GRID_SIZE,
+        )
+
+        self.current_item.refresh_geometry()
+
+        self.refresh()
+
+    # =====================================================
+
+    def update_heat_detector_active(self):
+
+        if self.current_item is None:
+            return
+
+        if self.current_item.model is not None:
+
+            self.current_item.model.active = (
+                self.heat_detector_active.isChecked()
+            )
+
+        self._refresh_heat_detector_state(self.current_item)
+
+    # =====================================================
+
+    def update_heat_detector_health(self, index):
+
+        if self.current_item is None:
+            return
+
+        if self.current_item.model is None:
+            return
+
+        self.current_item.model.health_status = (
+            self.heat_detector_health.itemText(index)
+        )
+
+        self._refresh_heat_detector_state(self.current_item)
+
+    # =====================================================
+
+    def update_heat_detector_mode(self, index):
+
+        if self.current_item is None:
+            return
+
+        if self.current_item.model is None:
+            return
+
+        self.current_item.model.mode = (
+            self.heat_detector_mode.itemText(index)
+        )
+
+    # =====================================================
+
+    def update_heat_detector_threshold(self):
+
+        if self.current_item is None:
+            return
+
+        if self.current_item.model is None:
+            return
+
+        try:
+
+            threshold = float(self.heat_detector_threshold.text())
+
+        except ValueError:
+
+            self.refresh()
+
+            return
+
+        self.current_item.model.activation_threshold = threshold
+
+        self._refresh_heat_detector_state(self.current_item)
+
+    # =====================================================
+
+    def update_heat_detector_installation_date(self):
+
+        if self.current_item is None:
+            return
+
+        if self.current_item.model is None:
+            return
+
+        self.current_item.model.installation_date = (
+            self.heat_detector_installation_date.text()
+        )
+
+    # =====================================================
+
+    def update_heat_detector_test_reading(self):
+
+        if self.current_item is None:
+            return
+
+        self._refresh_heat_detector_state(self.current_item)
 
     # =====================================================
 

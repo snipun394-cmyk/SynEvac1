@@ -2,25 +2,30 @@ import math
 
 from dataclasses import dataclass
 
-from models.base_object import BaseObject
+from models.engineering_asset import EngineeringAsset
 
 
 @dataclass
-class Camera(BaseObject):
-
-    position: tuple = (0.0, 0.0)
-
-    floor_id: str = ""
+class Camera(EngineeringAsset):
 
     rotation: float = 0.0
 
     horizontal_fov: float = 90.0
 
+    # Doubles as both "how far the coverage sector is drawn" and
+    # "detection range" -- there is only one distance an engineering
+    # camera asset needs, and giving it a second name/field here
+    # would just be two words for the same number. Reused as-is by
+    # GroundTruthCameraProvider (see perception/providers/
+    # ground_truth_camera_provider.py) as the camera's effective
+    # detection range.
     max_range: float = 25.0
 
-    mount_height: float = 3.0
-
-    active: bool = True
+    # Logical-only until a real Live Mode integration exists (see
+    # EngineeringAsset.mode / ConnectionInfo) -- never parsed,
+    # validated, or used to configure an actual video pipeline.
+    resolution: str = "1920x1080"
+    fps: int = 15
 
     # =====================================================
 
@@ -83,13 +88,9 @@ class Camera(BaseObject):
 
     def to_dict(self):
 
-        data = super().to_dict()
+        data = self._asset_dict()
 
         data.update({
-
-            "position": self.position,
-
-            "floor_id": self.floor_id,
 
             "rotation": self.rotation,
 
@@ -97,9 +98,9 @@ class Camera(BaseObject):
 
             "max_range": self.max_range,
 
-            "mount_height": self.mount_height,
+            "resolution": self.resolution,
 
-            "active": self.active,
+            "fps": self.fps,
 
         })
 
@@ -110,41 +111,9 @@ class Camera(BaseObject):
     @classmethod
     def from_dict(cls, data):
 
-        return cls(
+        kwargs = cls._asset_kwargs(data)
 
-            id=data["id"],
-
-            name=data.get(
-                "name",
-                "",
-            ),
-
-            properties=data.get(
-                "properties",
-                {},
-            ),
-
-            created_at=data.get(
-                "created_at",
-                "",
-            ),
-
-            modified_at=data.get(
-                "modified_at",
-                "",
-            ),
-
-            position=tuple(
-                data.get(
-                    "position",
-                    (0.0, 0.0),
-                )
-            ),
-
-            floor_id=data.get(
-                "floor_id",
-                "",
-            ),
+        kwargs.update(
 
             rotation=data.get(
                 "rotation",
@@ -161,13 +130,15 @@ class Camera(BaseObject):
                 25.0,
             ),
 
-            mount_height=data.get(
-                "mount_height",
-                3.0,
+            resolution=data.get(
+                "resolution",
+                "1920x1080",
             ),
 
-            active=data.get(
-                "active",
-                True,
+            fps=data.get(
+                "fps",
+                15,
             ),
         )
+
+        return cls(**kwargs)

@@ -1,0 +1,97 @@
+[
+  {
+    "check": "very_small_building_single_zone_single_exit",
+    "status": "PASS",
+    "details": {
+      "elapsed": 0.0023006999981589615,
+      "building_cleared": true,
+      "people_evacuated": 1
+    }
+  },
+  {
+    "check": "very_large_building_many_zones_and_floors",
+    "status": "PASS",
+    "details": {
+      "elapsed": 4.544930599993677,
+      "total_occupants": 50,
+      "reachable": 50,
+      "unreachable": 0
+    }
+  },
+  {
+    "check": "single_exit_funnels_all_zones",
+    "status": "PASS",
+    "details": {
+      "reachable": 20,
+      "evacuated": 20
+    }
+  },
+  {
+    "check": "multiple_exits_load_distribution",
+    "status": "PASS",
+    "details": {
+      "building_cleared": true
+    }
+  },
+  {
+    "check": "heavy_occupancy_200_occupants",
+    "status": "PASS",
+    "details": {
+      "elapsed": 0.08253030000196304,
+      "reachable": 200,
+      "evacuated": 200,
+      "total_evacuation_time": 4469.692802557593
+    }
+  },
+  {
+    "check": "detector_failure_does_not_crash_pipeline",
+    "status": "PASS",
+    "details": {
+      "detector_active": false
+    }
+  },
+  {
+    "check": "camera_failure_does_not_crash_pipeline",
+    "status": "PASS",
+    "details": {
+      "camera_active": false
+    }
+  },
+  {
+    "check": "blocked_exit_forces_alternate_route_or_unreachable",
+    "status": "PASS",
+    "details": {
+      "building_cleared": true,
+      "reachable": 3
+    }
+  },
+  {
+    "check": "locked_door_blocks_route_no_crash",
+    "status": "PASS",
+    "details": {
+      "unreachable_per_ground_truth": 3,
+      "reachable_per_ground_truth": 0,
+      "actual_occupant_states": {
+        "o0": "UNREACHABLE",
+        "o1": "UNREACHABLE",
+        "o2": "UNREACHABLE"
+      },
+      "building_cleared": false,
+      "finding": "no-route occupants are correctly classified UNREACHABLE (fixed)"
+    }
+  },
+  {
+    "check": "stair_failure_blocks_route_no_crash",
+    "status": "PASS",
+    "details": {
+      "unreachable_per_ground_truth": 2,
+      "reachable_per_ground_truth": 0,
+      "actual_occupant_states": {
+        "o0": "UNREACHABLE",
+        "o1": "UNREACHABLE"
+      },
+      "building_cleared": false,
+      "finding": "no-route occupants are correctly classified UNREACHABLE (fixed)"
+    }
+  }
+]
