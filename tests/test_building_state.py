@@ -241,5 +241,84 @@ class BuildingStateEstimatorTests(unittest.TestCase):
         ))
 
 
+# =====================================================
+# Canonical Live BuildingState Runtime Assembly milestone -- Phase 10
+# architecture guards.
+# =====================================================
+
+
+class BuildingStatePackageDependencyDirectionTests(unittest.TestCase):
+
+    # Same regex-scan-the-source-files convention every other package
+    # boundary in this codebase enforces. building_state must never
+    # depend on live_system (the dependency runs the other direction --
+    # see live_system/building_state_gateway.py) or on any AI/Advisory/
+    # Command Center package: BuildingStateEstimator "performs no AI
+    # reasoning, no reinforcement learning, and no decision-making of
+    # any kind" (its own docstring) and must stay that way regardless
+    # of what live_system now composes it into.
+    #
+    # Separately, BuildingState "is observational. It does not
+    # acknowledge, silence, reset, or control the panel" (Phase 5 of
+    # the Canonical Live BuildingState Runtime Assembly milestone) --
+    # enforced here by forbidding the CONTROL-CAPABLE facp/building_control
+    # submodules (facp.engine's SimulatedFACP, facp.provider's
+    # FACPEventProvider, building_control.controller's
+    # BuildingControlController, building_control.providers) while still
+    # allowing the read-only value types this package already legitimately
+    # imports and passes through unchanged (facp.models.FACPSnapshot,
+    # building_control.snapshot.ControlStateSnapshot -- see
+    # building_state/models.py's own facp_status/control_status fields).
+
+    def test_never_imports_live_system_ai_advisory_or_command_center(self):
+
+        import pathlib
+        import re
+
+        package_dir = pathlib.Path(__file__).resolve().parent.parent / "building_state"
+
+        forbidden = (
+            r"^\s*(from|import)\s+"
+            r"(live_system|ai_inference|ai_decision|advisory_system|command_center|"
+            r"decision_policy|rl_training)\b"
+        )
+
+        for path in package_dir.glob("*.py"):
+
+            text = path.read_text()
+
+            self.assertIsNone(
+                re.search(forbidden, text, re.MULTILINE),
+                f"building_state/{path.name} imports a live-runtime, AI, decision-policy, "
+                f"or advisory/command-center module directly -- BuildingState must remain "
+                f"a pure observational fusion of already-computed values",
+            )
+
+    def test_never_imports_control_capable_facp_or_building_control_internals(self):
+
+        import pathlib
+        import re
+
+        package_dir = pathlib.Path(__file__).resolve().parent.parent / "building_state"
+
+        forbidden = (
+            r"^\s*(from|import)\s+"
+            r"(facp\.engine|facp\.provider|building_control\.controller|"
+            r"building_control\.providers)\b"
+        )
+
+        for path in package_dir.glob("*.py"):
+
+            text = path.read_text()
+
+            self.assertIsNone(
+                re.search(forbidden, text, re.MULTILINE),
+                f"building_state/{path.name} imports a control-capable FACP/Building "
+                f"Control class directly -- BuildingState is observational and must never "
+                f"acknowledge, silence, reset, or control anything itself; only the "
+                f"read-only facp.models/building_control.snapshot value types are allowed",
+            )
+
+
 if __name__ == "__main__":
     unittest.main()

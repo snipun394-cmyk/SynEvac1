@@ -233,3 +233,79 @@ Once Milestone 5 lands, swap `SimulationVoiceOutputProvider`/`SimulationControlP
 ## 12. Validation
 
 No production code was modified during this audit. Repository consistency verified after adding this document (see final git status below). Since only documentation was added, the full test suite was not re-run — no source file changed.
+
+## 13. Milestone 1 — Canonical Live BuildingState Runtime Assembly (COMPLETED)
+
+Status: **implemented and test-proven.** `building_state.models.BuildingState` is now the canonical integrated state snapshot the live runtime assembles each cycle. `live_system` was extended, not redesigned — `LiveOrchestrator` keeps owning lifecycle/start-stop/timing/incident-lifecycle exactly as before; it now additionally coordinates one new optional stage.
+
+### 13.1 What was built
+
+- **`live_system/building_state_gateway.py`** (new file) — `BuildingStateGateway` (a `Protocol`, one method: `collect(time) -> BuildingState`, mirroring `PerceptionGateway`/`AIInferenceGateway`'s own established shape) and `EstimatorBuildingStateGateway`, a real adapter composing `building_state.estimator.BuildingStateEstimator` (reused verbatim — zero aggregation logic duplicated) from eleven independently-optional provider callables, one per `BuildingStateEstimator.estimate()` keyword argument (`hazard_snapshot_provider`, `occupancy_snapshot_provider`, `camera_status_provider`, `camera_observation_provider`, `fusion_result_provider`, `smoke_detector_status_provider`, `smoke_detector_reading_provider`, `heat_detector_status_provider`, `heat_detector_reading_provider`, `facp_snapshot_provider`, `control_snapshot_provider`). Every provider left `None` resolves to the same honest empty default `BuildingStateEstimator.estimate()` itself already accepts — a gateway with zero providers configured still returns a valid, non-crashing `BuildingState`.
+- **`live_system/state_manager.py`** — `LiveBuildingSnapshot` gained one new field, `building_state: Optional[BuildingState] = None` — the canonical state field. `StateManager.update_building_state(building_state, time)` (mirrors `update_perception()` exactly) and `StateManager.latest_building_state()` (a thin accessor, the "existing appropriate accessor" this milestone's own Phase 2 asked to determine) were added. The pre-existing `building_observation`/`ai_predictions`/`decision_policy`/`recommendations` fields and their own `update_*()` methods are untouched — proven by `StateManagerBuildingStateTests.test_existing_perception_based_consumers_are_unaffected` and `.test_no_parallel_independently_computed_state_exists` (`tests/test_live_building_state_integration.py`).
+- **`live_system/orchestrator.py`** — `LiveOrchestrator` gained one new optional constructor parameter, `building_state_gateway`, and one new `latest_building_state` property (a thin forward onto `state_manager.latest_building_state()`). `run_cycle()` gained exactly one new conditional stage, inserted after Live Perception and before AI Inference — the existing stage order is otherwise byte-for-byte unchanged. `LiveOrchestrator` still does not import or construct `CameraManager`, `SensorManager`, `MultiCameraFusionEngine`, `SimulatedFACP`, `ReplayFrameSource`, or any future `RTSPFrameSource` anywhere — enforced by a new `LiveSystemPackageDependencyDirectionTests` guard.
+- **`live_system/event_bus.py`** — added `EventType.BUILDING_STATE_UPDATED`, published (payload = the `BuildingState`) exactly when `building_state_gateway` is configured, on every cycle, mirroring `OCCUPANCY_UPDATED`/`HAZARD_UPDATED`'s own unconditional-when-configured publication style. This is the seam Phase 8 of the prior milestone named as future work for AI Inference/Advisory System/Command Center — added, not yet subscribed to by anything.
+- **Two new architecture guards** (Phase 10): `tests/test_live_system.py::LiveSystemPackageDependencyDirectionTests` (forbids `live_system` from importing `camera_manager.manager`/`sensor_manager.manager`/`multi_camera_fusion.engine`/`facp.engine`/`facp.provider`/`building_control.controller`/`building_control.providers`/`live_camera_pipeline.replay_frame_source`/`live_camera_pipeline.frame_source`/`cv2`/`torch`/`ultralytics`/`onvif` — while still permitting the read-only `.status`/`.track`/`.models`/`.snapshot` value-type submodules `building_state_gateway.py` legitimately imports) and `tests/test_building_state.py::BuildingStatePackageDependencyDirectionTests` (forbids `building_state` from importing `live_system`/`ai_inference`/`ai_decision`/`advisory_system`/`command_center`/`decision_policy`/`rl_training`, and separately forbids it from importing the control-capable `facp.engine`/`facp.provider`/`building_control.controller`/`building_control.providers` — `building_state` stays observational, never acknowledging/silencing/resetting/controlling anything). `tests/test_no_cv_dependencies.py`'s existing `TARGETS` tuple was extended to include `live_system` and `building_state`.
+
+### 13.2 Before/after runtime graph
+
+Before (§1 of this document):
+
+```
+Graph A (offline CCTV): Camera -> ... -> MultiCameraFusionEngine -> BuildingState -> [nothing downstream]
+Graph B (live_system):  SensorRegistry -> SensorFusion -> BuildingObservation -> LiveBuildingSnapshot -> [never constructed in production]
+```
+
+After this milestone:
+
+```
+Live Inputs (CameraManager.all_statuses() / MultiCameraFusionEngine.fuse() / SensorManager.all_statuses() /
+             SimulatedFACP.current_snapshot() / BuildingControlController.snapshot() -- each supplied by a
+             caller-composed provider, never owned by live_system itself)
+    ↓  [NEW, ✅ wired]
+EstimatorBuildingStateGateway.collect(time)
+    ↓  [✅ reused verbatim, zero duplication]
+BuildingStateEstimator.estimate(...)
+    ↓  [✅ wired]
+BuildingState
+    ↓  [NEW, ✅ wired]
+StateManager.update_building_state() -> LiveBuildingSnapshot.building_state
+    ↓  [✅ wired]
+LiveOrchestrator.run_cycle() / LiveOrchestrator.latest_building_state
+    ↓  [NEW event seam, ✅ published; ❌ not yet subscribed to by anything]
+EventType.BUILDING_STATE_UPDATED
+    ↓  [❌ still not built -- next milestones]
+AI Inference / Decision Policy / Advisory System / Live Command Center / Voice Evacuation / Building Control dispatch
+```
+
+The `live_system` → `building_state` dependency this graph now has is exactly the one direction §10 of this document's canonical-pipeline analysis called for; `building_state` → `live_system` remains, and is now mechanically enforced to remain, absent.
+
+### 13.3 Exact treatment of `LiveBuildingSnapshot`
+
+Not deleted, not turned into a compatibility view over `BuildingState` — kept as-is, plus one additive field. `LiveBuildingSnapshot.building_observation`/`ai_predictions`/`decision_policy`/`recommendations`/`engineering_state` remain exactly what they were; `SensorFusionPerceptionGateway`, `PredictorAIInferenceGateway`, `GeneratePolicyDecisionPolicyGateway`, and every existing test using them are untouched (2577/2577 pre-existing tests still pass unmodified). This shape was chosen over "`LiveBuildingSnapshot` becomes a view over `BuildingState`" because `BuildingState`'s own docstring is explicit that it "deliberately carries no AI/RL/decision-policy field of any kind" — collapsing the two would have required either violating that contract or discarding fields real, passing tests already depend on. `building_state` is documented as the field new work should read; `building_observation` remains for existing callers only.
+
+### 13.4 Exact treatment of `StateManager`
+
+`StateManager` now maintains exactly one additional field, `building_state`, alongside its pre-existing `LiveBuildingSnapshot`. There are not two independently-mutated "current state" objects: `update_building_state()` only ever touches the `building_state` field (via `replace()`'s "carry every field forward except the one just changed" discipline, proved by `test_no_parallel_independently_computed_state_exists`), and nothing recomputes a second, competing `BuildingState` anywhere.
+
+### 13.5 Input seams now supported
+
+Camera/fusion (§ Phase 4): `camera_status_provider`/`camera_observation_provider`/`fusion_result_provider` accept already-produced values — `live_system` never imports `CameraManager`, `MultiCameraFusionEngine`, `ReplayFrameSource`, or any future `RTSPFrameSource`. Sensor/FACP (§ Phase 5): `smoke_detector_status_provider`/`smoke_detector_reading_provider`/`heat_detector_status_provider`/`heat_detector_reading_provider`/`facp_snapshot_provider` accept already-produced values; `facp_snapshot_provider`'s only allowed shape is a read-only `current_snapshot()`-returning callable — `BuildingStateEstimator`/the gateway never call `acknowledge()`/`silence()`/`reset()`/`evaluate()` themselves. Building Control (§ Phase 3): `control_snapshot_provider` accepts an already-computed `ControlStateSnapshot`, proven against a real `BuildingControlController`.
+
+### 13.6 Integration smoke-test results
+
+`tests/test_live_building_state_integration.py::LiveBuildingStateSmokeTest` (Phase 12): a real `Building` (2 cameras, 1 smoke detector, 1 zone) → real `CameraManager` discovery → the offline-proven `ReplayFrameSource`/`LiveCameraPipeline`/`MappingIdentityResolver` chain → real `MultiCameraFusionEngine` → real `SimulatedFACP` → `EstimatorBuildingStateGateway` → a real, started `LiveOrchestrator`, run for 3 cycles. Result: **4 raw detections fuse to exactly 3 `BuildingState.occupant_tracks` every cycle** (the same "2 cameras, 3 physical people" scenario the CCTV milestone proved, now reached through `LiveOrchestrator` instead of a direct `BuildingStateEstimator.estimate()` call), camera asset status for both cameras reaches `BuildingState.camera_observations`, `FACPSnapshot.panel_state == ALARM` with `SMOKE-1` in `active_alarm_source_ids` reaches `BuildingState.facp_status`, and `stop()` cleanly halts the orchestrator (`run_cycle()` raises `LiveSystemNotRunningError` afterward, exactly as before this milestone). Zero network access, zero real CCTV, zero AI inference, zero advisory generation anywhere in the test.
+
+### 13.7 Full test-suite result
+
+**2606/2606 passing** (2577 pre-existing + 26 new tests in `tests/test_live_building_state_integration.py` + 1 new `LiveSystemPackageDependencyDirectionTests` + 2 new `BuildingStatePackageDependencyDirectionTests`), `python -m unittest discover -s tests`. No pre-existing test was modified.
+
+### 13.8 Still NOT connected (unchanged from this document's earlier sections — do not overclaim)
+
+- `BuildingState` → AI Inference (§5 of this document's findings stand unchanged — `feature_row_builder` remains unimplemented, and the feature-schema incompatibility remains structural, not merely unwired)
+- `BuildingState` → Decision Policy (`decision_inputs_builder` remains unimplemented)
+- `BuildingState` → Advisory System (`live_system` still does not import `advisory_system`)
+- `BuildingState`/`EventType.BUILDING_STATE_UPDATED` → Live Command Center (`DashboardCommandCenterGateway` still only ever notified from `LiveBuildingSnapshot`'s pre-existing `building_observation`-derived path in tests; nothing yet builds an `IncidentFrame` from `building_state`)
+- Advisory → Live Voice Evacuation (still only replay-reconstructed, per §7A)
+- Advisory → Live Building Controls (still only replay-reconstructed with `SimulationControlProvider`, per §7B — though this milestone's own smoke test proves a real `BuildingControlController`/`SimulationControlProvider` pairing composes cleanly into the new gateway, which the *next* milestone touching this seam can build on)
+
+Milestone 2 onward (§11 of this document) remain exactly as previously planned and are explicitly out of scope for this milestone.

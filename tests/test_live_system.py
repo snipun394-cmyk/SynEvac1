@@ -1197,5 +1197,62 @@ class LiveOrchestratorContinuousUpdateLoopTests(unittest.TestCase):
         )
 
 
+# =====================================================
+# Canonical Live BuildingState Runtime Assembly milestone -- Phase 10
+# architecture guards.
+# =====================================================
+
+
+class LiveSystemPackageDependencyDirectionTests(unittest.TestCase):
+
+    # Same regex-scan-the-source-files convention every other package
+    # boundary in this codebase enforces (see e.g.
+    # tests.test_sensor_manager.SensorManagerPackageDependencyDirectionTests,
+    # tests.test_no_cv_dependencies). live_system MAY depend on
+    # building_state (that dependency is this milestone's own point --
+    # see live_system/building_state_gateway.py) -- what stays forbidden
+    # is live_system reaching past building_state's already-computed
+    # BuildingState/CameraStatus/SensorStatus/FusionResult/FACPSnapshot/
+    # ControlStateSnapshot value types into the manager/engine/controller
+    # classes that OWN or CONTROL a real or replayed device
+    # (CameraManager, SensorManager, MultiCameraFusionEngine,
+    # SimulatedFACP, FACPEventProvider, BuildingControlController, any
+    # BuildingControlProvider), or into any concrete frame-source
+    # implementation (ReplayFrameSource today; a future RTSPFrameSource)
+    # or computer-vision/streaming library -- Phase 7's own explicit
+    # "the orchestrator coordinates already-produced data; it must not
+    # directly construct or own CameraManager/SensorManager/
+    # MultiCameraFusionEngine/FACP internals" requirement, made
+    # mechanical.
+
+    def test_never_imports_device_managers_control_internals_or_frame_sources(self):
+
+        import pathlib
+        import re
+
+        package_dir = pathlib.Path(__file__).resolve().parent.parent / "live_system"
+
+        forbidden = (
+            r"^\s*(from|import)\s+"
+            r"(camera_manager\.manager|sensor_manager\.manager|"
+            r"multi_camera_fusion\.engine|facp\.engine|facp\.provider|"
+            r"building_control\.controller|building_control\.providers|"
+            r"live_camera_pipeline\.replay_frame_source|live_camera_pipeline\.frame_source|"
+            r"cv2|torch|ultralytics|onvif)\b"
+        )
+
+        for path in package_dir.glob("*.py"):
+
+            text = path.read_text()
+
+            self.assertIsNone(
+                re.search(forbidden, text, re.MULTILINE),
+                f"live_system/{path.name} imports a device-manager, panel/control-engine, "
+                f"frame-source, or computer-vision/streaming module directly -- "
+                f"live_system must only coordinate already-produced values via an injected "
+                f"Gateway/provider, never construct or own a real device manager itself",
+            )
+
+
 if __name__ == "__main__":
     unittest.main()

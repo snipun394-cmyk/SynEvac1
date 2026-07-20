@@ -3,6 +3,9 @@ from typing import Optional
 
 from perception.models.building_observation import ObservationState
 
+from building_state.models import BuildingState
+
+from live_system.building_state_gateway import BuildingStateGateway
 from live_system.event_bus import EventBus, EventType
 from live_system.incident_manager import IncidentManager, IncidentState
 from live_system.integration import (
@@ -39,14 +42,20 @@ class LiveOrchestrator:
 
     # Phase 1's central runtime controller -- the one object a real
     # deployment (or a test) constructs and owns. Coordinates Live
-    # Perception, AI Inference, Decision Policy, and Command Center
-    # (this class's own required scope) by calling each one's
-    # live_system.integration Gateway, never the underlying package
+    # Perception, canonical BuildingState assembly (Canonical Live
+    # BuildingState Runtime Assembly milestone), AI Inference, Decision
+    # Policy, and Command Center (this class's own required scope) by
+    # calling each one's live_system.integration/live_system.
+    # building_state_gateway Gateway, never the underlying package
     # directly -- swapping a gateway (or leaving it None, meaning
     # "this stage isn't wired up yet in this deployment/test") is the
     # only way this class's behavior changes; it has no package-
     # specific logic of its own beyond sequencing and event
-    # publication.
+    # publication. It never constructs or owns a CameraManager,
+    # SensorManager, MultiCameraFusionEngine, or SimulatedFACP itself --
+    # a building_state_gateway's own providers are where a real
+    # deployment composes those (see live_system.building_state_gateway's
+    # own module docstring).
     #
     # sensor_registry/event_bus/state_manager/incident_manager and
     # every gateway are constructor-injected, defaulting to a fresh
@@ -73,6 +82,7 @@ class LiveOrchestrator:
         state_manager: Optional[StateManager] = None,
         incident_manager: Optional[IncidentManager] = None,
         perception_gateway: Optional[PerceptionGateway] = None,
+        building_state_gateway: Optional[BuildingStateGateway] = None,
         ai_inference_gateway: Optional[AIInferenceGateway] = None,
         decision_policy_gateway: Optional[DecisionPolicyGateway] = None,
         command_center_gateway: Optional[CommandCenterGateway] = None,
@@ -86,6 +96,7 @@ class LiveOrchestrator:
         self.incident_manager = incident_manager if incident_manager is not None else IncidentManager()
 
         self.perception_gateway = perception_gateway
+        self.building_state_gateway = building_state_gateway
         self.ai_inference_gateway = ai_inference_gateway
         self.decision_policy_gateway = decision_policy_gateway
         self.command_center_gateway = command_center_gateway
@@ -104,6 +115,20 @@ class LiveOrchestrator:
     def is_running(self) -> bool:
 
         return self._is_running
+
+    # =====================================================
+
+    @property
+    def latest_building_state(self) -> Optional[BuildingState]:
+
+        # The canonical-state convenience accessor Phase 2 asks this
+        # class to expose -- a thin forward onto state_manager's own
+        # latest_building_state(), so a caller does not need to know
+        # StateManager/LiveBuildingSnapshot's own shape just to read
+        # "what is BuildingState right now" (mirrors is_running's own
+        # forwarding-property style, one level up).
+
+        return self.state_manager.latest_building_state()
 
     # =====================================================
 
@@ -127,13 +152,27 @@ class LiveOrchestrator:
 
     def run_cycle(self, time: float) -> LiveBuildingSnapshot:
 
-        # Phase 4's exact cycle, in exact order: read sensors -> update
-        # snapshot -> AI inference -> decision policy -> publish
+        # Phase 4's exact cycle, extended (Canonical Live BuildingState
+        # Runtime Assembly milestone) by exactly one new optional stage,
+        # inserted after Live Perception and before AI Inference: read
+        # sensors -> update snapshot -> [NEW] assemble canonical
+        # BuildingState -> AI inference -> decision policy -> publish
         # recommendations -> notify command center. Each stage after
         # sensor reading only runs if its gateway is configured --
         # every stage's absence is a valid, working configuration (e.g.
         # a deployment with Live Perception wired up but no trained AI
-        # model yet), never an error.
+        # model yet, or a BuildingState assembled with no cameras/
+        # sensors/FACP/control provider configured yet), never an error.
+        #
+        # The new building_state_gateway stage is deliberately
+        # independent of perception_gateway -- either, both, or neither
+        # may be configured in a given deployment/test; BuildingState.
+        # building_alarm_status is NOT (yet) wired into
+        # _maybe_activate_alarm() below, which remains keyed on Live
+        # Perception's own observation exactly as before this milestone
+        # (BuildingState -> AI/Advisory/Command Center wiring, and any
+        # change to incident-activation triggering, is explicitly a
+        # later milestone's scope, not this one's).
 
         if not self._is_running:
 
@@ -155,6 +194,13 @@ class LiveOrchestrator:
             self.event_bus.emit(EventType.HAZARD_UPDATED, observation, time)
 
             self._maybe_activate_alarm(observation, time)
+
+        if self.building_state_gateway is not None:
+
+            building_state = self.building_state_gateway.collect(time)
+            snapshot = self.state_manager.update_building_state(building_state, time)
+
+            self.event_bus.emit(EventType.BUILDING_STATE_UPDATED, building_state, time)
 
         if self.ai_inference_gateway is not None:
 

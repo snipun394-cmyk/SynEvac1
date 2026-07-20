@@ -18,6 +18,7 @@ class EventType(Enum):
     ALARM_ACTIVATED = auto()
     HAZARD_UPDATED = auto()
     OCCUPANCY_UPDATED = auto()
+    BUILDING_STATE_UPDATED = auto()
     RECOMMENDATION_UPDATED = auto()
     OPERATOR_ACKNOWLEDGEMENT = auto()
 

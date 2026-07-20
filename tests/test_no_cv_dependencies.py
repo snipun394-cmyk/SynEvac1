@@ -29,6 +29,8 @@ TARGETS = (
     REPO_ROOT / "command_center",
     REPO_ROOT / "live_camera_pipeline",
     REPO_ROOT / "credential_store",
+    REPO_ROOT / "live_system",
+    REPO_ROOT / "building_state",
 )
 
 

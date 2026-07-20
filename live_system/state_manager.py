@@ -15,6 +15,8 @@ from ai_inference.recommendation import Recommendation
 
 from decision_policy.policy import DecisionPolicy
 
+from building_state.models import BuildingState
+
 
 @dataclass(frozen=True)
 class LiveBuildingSnapshot:
@@ -31,27 +33,45 @@ class LiveBuildingSnapshot:
     # follows -- StateManager below never edits a field in place, only
     # ever constructs a new LiveBuildingSnapshot from the previous one.
     #
-    # occupancy/hazard both live inside building_observation (Live
-    # Perception's own already-fused, already-canonical shape) rather
-    # than being restated as separate fields here -- there is exactly
-    # one honest source for "what does Live Perception currently
-    # believe," and duplicating it into parallel occupancy_state/
-    # hazard_state fields would only invite the two to drift out of
-    # sync. occupancy_for()/hazard_for()/edge_for() below are this
-    # type's own total-accessor convenience over that one field,
-    # mirroring BuildingObservation's own node_observation()/
-    # occupancy_observation()/edge_observation() total accessors.
+    # building_state (Canonical Live BuildingState Runtime Assembly
+    # milestone) is the CANONICAL current-state field going forward --
+    # see building_state.models.BuildingState's own docstring: the
+    # single authoritative snapshot of "what is true right now",
+    # assembled each cycle by whatever BuildingStateGateway this
+    # orchestrator was configured with (live_system.building_state_
+    # gateway.EstimatorBuildingStateGateway composes it from
+    # BuildingStateEstimator, exactly as designer/building_state_debug_
+    # runner.py already does for the Designer). None until a
+    # building_state_gateway is configured and has run at least once --
+    # never a fabricated empty-but-present BuildingState.
+    #
+    # building_observation (Live Perception's own already-fused shape,
+    # via SensorFusionPerceptionGateway) is kept, unchanged, as a
+    # SEPARATE, pre-existing compatibility field -- it predates this
+    # milestone, existing callers/tests still populate and read it, and
+    # it is deliberately NOT folded into or replaced by building_state:
+    # BuildingState's own docstring is explicit that it never carries
+    # an AI/decision-policy field, whereas ai_predictions/decision_
+    # policy/recommendations below remain this snapshot's own,
+    # unconnected to BuildingState by this milestone's own explicit
+    # scope. occupancy_for()/hazard_for()/edge_for() below stay total
+    # accessors over building_observation specifically, exactly as
+    # before -- they are not redefined against building_state.
     #
     # engineering_state has no live source composed into this phase
     # yet (Phase 2 explicitly scopes CCTV/Smoke/Heat/FACP only, not a
     # door/exit/stair control integration) -- it defaults to empty
     # rather than a fabricated "all normal" reading, and is populated
     # only if/when a caller's own integration supplies one via
-    # StateManager.update_engineering_state().
+    # StateManager.update_engineering_state(). (BuildingState.control_
+    # status, reachable through building_state above once a control_
+    # snapshot_provider is configured, is the richer, typed equivalent
+    # for whatever a caller no longer needs this untyped mapping for.)
 
     timestamp: float = 0.0
 
     building_observation: Optional[BuildingObservation] = None
+    building_state: Optional[BuildingState] = None
     engineering_state: Mapping[str, Any] = field(default_factory=dict)
 
     ai_predictions: Mapping[str, Prediction] = field(default_factory=dict)
@@ -155,6 +175,7 @@ class LiveBuildingSnapshot:
         current = {
             "timestamp": self.timestamp,
             "building_observation": self.building_observation,
+            "building_state": self.building_state,
             "engineering_state": self.engineering_state,
             "ai_predictions": self.ai_predictions,
             "decision_policy": self.decision_policy,
@@ -189,6 +210,32 @@ class StateManager:
     def current(self) -> LiveBuildingSnapshot:
 
         return self._snapshot
+
+    # =====================================================
+
+    def latest_building_state(self) -> Optional[BuildingState]:
+
+        # The canonical-state accessor this milestone adds -- a thin
+        # convenience over current().building_state, mirroring current()
+        # itself rather than replacing it (current() remains the "full
+        # LiveBuildingSnapshot, including whatever compatibility/AI/
+        # decision-policy fields are also populated" accessor; this one
+        # is for a caller that only ever wants the canonical BuildingState
+        # and should not need to know LiveBuildingSnapshot's own shape).
+
+        return self._snapshot.building_state
+
+    # =====================================================
+
+    def update_building_state(
+        self, building_state: BuildingState, time: float,
+    ) -> LiveBuildingSnapshot:
+
+        return self._replace(
+            timestamp=time,
+            building_state=building_state,
+            component_timestamps=self._stamp("building_state", time),
+        )
 
     # =====================================================
 
