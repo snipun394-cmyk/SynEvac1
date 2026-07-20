@@ -301,6 +301,46 @@ class VoiceEvacuationPanel(QWidget):
         layout.addWidget(self.history_table, 1)
 
     # =====================================================
+    # Live Command Center Integration milestone -- Phase 11's display-
+    # only live rendering path. Deliberately never touches
+    # VoiceEvacuationController/SpeakerManager/SimulationVoiceOutputProvider
+    # at all -- every row rendered is directly off AdvisoryReport.
+    # civilian_announcements, labeled RECOMMENDED, never routed through
+    # any broadcast machinery. No live speaker/hardware output exists in
+    # this milestone; "Broadcast Status: NOT SENT" is not a placeholder
+    # for a future confirmation this code could produce -- it is the
+    # only honest value until a real output provider is wired in a later
+    # milestone.
+
+    def set_live_mode(self) -> None:
+
+        # One-time header relabel (never called per-tick) -- the active
+        # table's own five columns are reused for live rendering, but
+        # "Priority"/"Message Type" would mislabel what show_live()
+        # actually puts in them.
+        self.active_table.setHorizontalHeaderLabels(
+            ["Zone", "Recommended Message", "Confidence", "Message Status", "Broadcast Status"],
+        )
+
+    # =====================================================
+
+    def show_live(self, report) -> None:
+
+        self.active_table.setRowCount(0)
+        self.history_table.setRowCount(0)
+
+        announcements = report.civilian_announcements if report is not None else ()
+
+        self.active_table.setRowCount(len(announcements))
+        for row_index, entry in enumerate(announcements):
+
+            self.active_table.setItem(row_index, 0, QTableWidgetItem(entry.zone_name))
+            self.active_table.setItem(row_index, 1, QTableWidgetItem(entry.announcement))
+            self.active_table.setItem(row_index, 2, QTableWidgetItem(_format_percent(entry.confidence)))
+            self.active_table.setItem(row_index, 3, QTableWidgetItem("RECOMMENDED MESSAGE"))
+            self.active_table.setItem(row_index, 4, QTableWidgetItem("Broadcast Status: NOT SENT"))
+
+    # =====================================================
 
     def set_incident(self, incident_data):
 
@@ -885,3 +925,27 @@ class RecommendationCenter(QTabWidget):
         self.commander_panel.show_frame(frame, report)
         self.voice_evacuation_panel.show_frame(frame, report)
         self.building_controls_panel.show_frame(frame, report)
+
+    # =====================================================
+    # Live Command Center Integration milestone -- Phase 10/11/12's live
+    # rendering path. civilian/firefighter/building/commander panels are
+    # reused completely unchanged (their own show_frame(_frame, report)
+    # already reads only `report`, never `self._incident` -- see each
+    # panel's own show_frame() above); only voice_evacuation_panel/
+    # building_controls_panel need a distinct, display-only live path
+    # (Phase 11/12's own explicit non-execution requirement).
+
+    def set_live_mode(self) -> None:
+
+        self.voice_evacuation_panel.set_live_mode()
+
+    # =====================================================
+
+    def show_live(self, report) -> None:
+
+        self.civilian_panel.show_frame(None, report)
+        self.firefighter_panel.show_frame(None, report)
+        self.building_panel.show_frame(None, report)
+        self.commander_panel.show_frame(None, report)
+        self.voice_evacuation_panel.show_live(report)
+        self.building_controls_panel.show_live(report)

@@ -71,10 +71,21 @@ class IncidentStatusBar(QWidget):
         self.priority_zone_value, priority_zone_tile = self._tile("Highest Priority Zone")
         self.fire_floor_value, fire_floor_tile = self._tile("Current Fire Floor")
 
+        # Live Command Center Integration milestone -- additive tiles.
+        # Mode is always shown (REPLAY today, LIVE once a live data
+        # source is attached); AI Bottleneck Probability is kept
+        # structurally separate from Recommendation Confidence and
+        # Occupancy Confidence above -- three genuinely different
+        # quantities (see docs/architecture/ai_augmented_advisory_
+        # integration.md §10), never conflated into one tile.
+        self.mode_value, mode_tile = self._tile("Mode")
+        self.mode_value.setText("REPLAY")
+        self.ai_probability_value, ai_probability_tile = self._tile("AI Bottleneck Probability")
+
         self._tiles = (
-            building_name_tile, incident_status_tile, incident_severity_tile, rset_tile,
+            mode_tile, building_name_tile, incident_status_tile, incident_severity_tile, rset_tile,
             remaining_tile, evacuated_tile, occupancy_confidence_tile, recommendation_confidence_tile,
-            time_since_alarm_tile, priority_zone_tile, fire_floor_tile,
+            ai_probability_tile, time_since_alarm_tile, priority_zone_tile, fire_floor_tile,
         )
 
         for index, tile in enumerate(self._tiles):
@@ -139,7 +150,35 @@ class IncidentStatusBar(QWidget):
 
     # =====================================================
 
-    def show_frame(self, frame, report):
+    def set_mode(self, mode_label: str) -> None:
+
+        # Live Command Center Integration milestone -- Phase 5's "Mode:
+        # [Replay | Live]" requirement, applied to the one status-bar
+        # tile that always shows it. Additive -- set_incident() above is
+        # unmodified and continues to reset this tile to "REPLAY" for
+        # every existing Replay caller.
+
+        self.mode_value.setText(mode_label)
+
+    # =====================================================
+
+    def set_live_building(self, building_name) -> None:
+
+        # Live Command Center Integration milestone -- the Live-mode
+        # equivalent of set_incident()'s one-time building-name setup,
+        # for a caller with no IncidentData to hand this widget.
+
+        self.building_name_value.setText(building_name if building_name else "-")
+
+    # =====================================================
+
+    def show_frame(self, frame, report, *, live=False, ai_prediction_snapshot=None):
+
+        # live/ai_prediction_snapshot are additive, defaulted kwargs --
+        # every existing Replay caller (Dashboard.show_frame()) keeps
+        # calling this positionally with exactly (frame, report), so
+        # this signature change is backward compatible (Phase 3's own
+        # "existing tests pass unmodified" requirement).
 
         commander_dashboard = report.commander_dashboard if report is not None else None
 
@@ -153,6 +192,14 @@ class IncidentStatusBar(QWidget):
             self.evacuated_value.setText(_format_number(frame.people_evacuated))
             self.time_since_alarm_value.setText(_format_seconds(frame.time))
             self.fire_floor_value.setText(self._current_fire_floors(frame))
+
+        # Live-only AI Bottleneck Probability -- kept structurally
+        # separate from occupancy_confidence/recommendation_confidence
+        # below (Phase 10's own confidence-separation requirement,
+        # restated for this tile). "-" (never a fabricated 0%) whenever
+        # no AI evidence is available this cycle.
+        bottleneck = getattr(ai_prediction_snapshot, "bottleneck", None) if ai_prediction_snapshot is not None else None
+        self.ai_probability_value.setText(_format_percent(bottleneck.probability if bottleneck is not None else None))
 
         if commander_dashboard is None:
 
@@ -170,7 +217,18 @@ class IncidentStatusBar(QWidget):
         self.incident_severity_value.setText(severity or "-")
         self.incident_severity_value.setStyleSheet(_SEVERITY_STYLES.get(severity, ""))
 
-        self.rset_value.setText(_format_seconds(commander_dashboard.predicted_rset_seconds))
+        # Predicted RSET is deliberately blanked in Live mode -- the
+        # value behind commander_dashboard.predicted_rset_seconds comes
+        # from GroundTruth.total_evacuation_time (see AdvisoryInputs),
+        # which a live deployment can only supply via a caller-provided,
+        # non-live GroundTruth artifact (ReplayCompatibleAdvisoryGateway
+        # -- see docs/architecture/ai_augmented_advisory_integration.md
+        # §12). Presenting it as a live estimate here would overclaim
+        # exactly what Phase 6 forbids. The Live AI panel shows the
+        # genuinely-live (but EXPERIMENTAL, separately labeled) evacuation-
+        # time estimate instead, never this tile.
+        self.rset_value.setText("-" if live else _format_seconds(commander_dashboard.predicted_rset_seconds))
+
         self.occupancy_confidence_value.setText(_format_percent(commander_dashboard.occupancy_confidence))
         self.recommendation_confidence_value.setText(
             _format_percent(commander_dashboard.recommendation_confidence),

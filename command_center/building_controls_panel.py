@@ -94,6 +94,40 @@ class BuildingControlsPanel(QWidget):
         layout.addWidget(self.history_table, 2)
 
     # =====================================================
+    # Live Command Center Integration milestone -- Phase 12's display-
+    # only live rendering path. Deliberately does NOT touch
+    # self._incident/BuildingControlController/SimulationControlProvider
+    # at all -- there is no live BuildingControlProvider in this
+    # milestone (Phase 12's own "there currently should not be one"),
+    # so nothing here can execute, confirm, or even PENDING_APPROVAL-
+    # queue a control action. Every row rendered is directly off
+    # AdvisoryReport.building_recommendations -- inert data, never
+    # submitted anywhere -- with no Approve/Reject affordance at all
+    # (a disabled button would still imply an execution path exists;
+    # omitting it entirely is the honest choice Phase 12 asks for).
+    # =====================================================
+
+    def show_live(self, report) -> None:
+
+        self.pending_table.setRowCount(0)
+        self.active_table.setRowCount(0)
+        self.history_table.setRowCount(0)
+
+        recommendations = report.building_recommendations if report is not None else ()
+
+        self.pending_table.setRowCount(len(recommendations))
+
+        for row_index, entry in enumerate(recommendations):
+
+            self.pending_table.setItem(row_index, 0, QTableWidgetItem(entry.target_type))
+            self.pending_table.setItem(row_index, 1, QTableWidgetItem(entry.target_id or "-"))
+            self.pending_table.setItem(row_index, 2, QTableWidgetItem(entry.action))
+            self.pending_table.setItem(row_index, 3, QTableWidgetItem(_format_percent(entry.confidence)))
+            self.pending_table.setItem(row_index, 4, QTableWidgetItem(entry.reason))
+            self.pending_table.setItem(row_index, 5, QTableWidgetItem("RECOMMENDED (not submitted)"))
+            self.pending_table.setItem(row_index, 6, QTableWidgetItem("Execution Provider: Not Connected"))
+
+    # =====================================================
 
     def set_incident(self, incident_data):
 

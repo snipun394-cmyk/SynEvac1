@@ -4,8 +4,11 @@ from PyQt6.QtWidgets import QFileDialog, QInputDialog, QMainWindow, QMessageBox
 
 from command_center.building_view import OVERLAY_MODES
 from command_center.dashboard import Dashboard
+from command_center.data_source import CommandCenterMode
 from command_center.incident_data import load_incident
 from command_center.theme import COMMAND_CENTER_STYLESHEET
+
+LIVE_REFRESH_INTERVAL_MS = 1000
 
 
 # =====================================================
@@ -42,6 +45,20 @@ class MainWindow(QMainWindow):
         self.playback_timer.setInterval(200)
         self.playback_timer.timeout.connect(self._on_playback_tick)
 
+        # Live Command Center Integration milestone -- a SECOND,
+        # independent QTimer, mutually exclusive with playback_timer
+        # (Phase 13's own explicit "approximately 1 Hz" target,
+        # matching LiveOrchestrator's own default cycle interval --
+        # see live_system.orchestrator.LiveOrchestrator's own
+        # interval_seconds=1.0 default). Only ever reads an already-
+        # computed CommandCenterSnapshot (self.live_data_source.
+        # current_snapshot()) -- never runs perception/fusion/AI
+        # inference/advisory generation on the GUI thread.
+        self.live_data_source = None
+        self.live_refresh_timer = QTimer(self)
+        self.live_refresh_timer.setInterval(LIVE_REFRESH_INTERVAL_MS)
+        self.live_refresh_timer.timeout.connect(self._on_live_refresh_tick)
+
         self._create_actions()
         self._create_menu()
         self._connect_signals()
@@ -67,6 +84,26 @@ class MainWindow(QMainWindow):
 
         self.overlay_actions[OVERLAY_MODES[0]].setChecked(True)
 
+        # Live Command Center Integration milestone -- Phase 5's mode
+        # toggle, same QActionGroup/checkable-action convention the
+        # Overlay submenu above already establishes. Switching mode
+        # never constructs a second application/window -- both actions
+        # target this same MainWindow/Dashboard instance.
+        self.mode_action_group = QActionGroup(self)
+        self.mode_action_group.setExclusive(True)
+
+        self.replay_mode_action = QAction("Replay", self)
+        self.replay_mode_action.setCheckable(True)
+        self.replay_mode_action.setChecked(True)
+        self.replay_mode_action.triggered.connect(self.switch_to_replay_mode)
+        self.mode_action_group.addAction(self.replay_mode_action)
+
+        self.live_mode_action = QAction("Live", self)
+        self.live_mode_action.setCheckable(True)
+        self.live_mode_action.setEnabled(False)
+        self.live_mode_action.triggered.connect(self._on_live_mode_action_triggered)
+        self.mode_action_group.addAction(self.live_mode_action)
+
     # =====================================================
 
     def _create_menu(self):
@@ -80,6 +117,10 @@ class MainWindow(QMainWindow):
         overlay_menu = view_menu.addMenu("Overlay")
         for action in self.overlay_actions.values():
             overlay_menu.addAction(action)
+
+        mode_menu = view_menu.addMenu("Mode")
+        mode_menu.addAction(self.replay_mode_action)
+        mode_menu.addAction(self.live_mode_action)
 
     # =====================================================
 
@@ -201,8 +242,92 @@ class MainWindow(QMainWindow):
             self.dashboard.set_frame_index(next_index)
 
     # =====================================================
+    # Live Command Center Integration milestone -- Phase 5/13. Mutually
+    # exclusive with playback: entering Live mode pauses (never
+    # destroys) the Replay QTimer/state, so switching back to Replay
+    # (Phase 17's "Replay mode after Live mode" / "Live mode after
+    # Replay mode" scenarios) always resumes exactly where the operator
+    # left off, never re-loading or losing the loaded IncidentData.
+    # =====================================================
+
+    def enable_live_mode(self, data_source) -> None:
+
+        # The one call a caller that has already constructed and
+        # started a LiveOrchestrator (with its own StateManager) makes
+        # to hand this MainWindow a live_system.live_command_center_
+        # gateway.LiveCommandCenterDataSource. MainWindow never
+        # constructs one itself -- it has no knowledge of
+        # LiveOrchestrator/StateManager/BuildingStateGateway at all
+        # (mechanically enforced -- see
+        # tests/test_live_command_center.py::CommandCenterLiveIntegrationGuardTests).
+
+        self.live_data_source = data_source
+        self.live_mode_action.setEnabled(True)
+
+        data_source.start()
+
+        self.live_mode_action.setChecked(True)
+        self._activate_live_mode()
+
+    # =====================================================
+
+    def _on_live_mode_action_triggered(self) -> None:
+
+        if self.live_data_source is None:
+
+            # No live data source has been supplied yet (enable_live_mode()
+            # was never called) -- honestly refuse rather than switch to
+            # a mode with nothing to show, and keep the action group's
+            # own checked state consistent with what actually happened.
+            self.live_mode_action.setChecked(False)
+            self.replay_mode_action.setChecked(True)
+            QMessageBox.information(
+                self, "Live Mode", "No live data source is configured for this Command Center session.",
+            )
+            return
+
+        self._activate_live_mode()
+
+    # =====================================================
+
+    def _activate_live_mode(self) -> None:
+
+        self.pause_playback()
+        self.dashboard.set_mode(CommandCenterMode.LIVE)
+
+        self._on_live_refresh_tick()
+        self.live_refresh_timer.start()
+
+    # =====================================================
+
+    def switch_to_replay_mode(self) -> None:
+
+        self.live_refresh_timer.stop()
+
+        if self.live_data_source is not None:
+            self.live_data_source.stop()
+
+        self.dashboard.set_mode(CommandCenterMode.REPLAY)
+        self.replay_mode_action.setChecked(True)
+
+    # =====================================================
+
+    def _on_live_refresh_tick(self) -> None:
+
+        if self.live_data_source is None:
+            return
+
+        snapshot = self.live_data_source.current_snapshot()
+        self.dashboard.apply_snapshot(snapshot)
+
+    # =====================================================
 
     def closeEvent(self, event):
 
         self.pause_playback()
+        self.live_refresh_timer.stop()
+
+        if self.live_data_source is not None:
+            self.live_data_source.stop()
+
         event.accept()
