@@ -161,6 +161,31 @@ class LiveOperatorActionGateway:
         self._rejected_control_recommendation_ids: set = set()
 
     # =====================================================
+    # Shared-instance identity (Production Live Runtime Composition
+    # Root milestone, Phase 4) -- read-only, so a composition root/test
+    # can prove the SAME VoiceEvacuationController/BuildingControlController
+    # instance a live session's other components (e.g. a future
+    # BuildingControlsPanel Replay-style direct read, or an identity
+    # assertion in a test) reference is exactly the one this gateway
+    # routes operator actions through -- never a silently-duplicated
+    # second controller. Mirrors VoiceEvacuationController.provider/
+    # BuildingControlController.provider's own identical "expose what is
+    # already stored, add no new logic" precedent.
+    # =====================================================
+
+    @property
+    def voice_controller(self) -> Optional[VoiceEvacuationController]:
+
+        return self._voice_controller
+
+    # =====================================================
+
+    @property
+    def control_controller(self) -> Optional[BuildingControlController]:
+
+        return self._control_controller
+
+    # =====================================================
     # Provider capability (Phase 5)
     # =====================================================
 
