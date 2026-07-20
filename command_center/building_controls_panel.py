@@ -12,6 +12,8 @@ from PyQt6.QtWidgets import (
 
 from building_control.types import RequestStatus
 
+from command_center.live_operator_action_gateway import PROVIDER_CAPABILITY_NO_PROVIDER
+
 
 # =====================================================
 # Building Control & Safety Systems Integration -- Command Center panel.
@@ -58,6 +60,11 @@ class BuildingControlsPanel(QWidget):
 
         self._incident = None
 
+        # Live Operator Action Routing milestone -- additive, mirrors
+        # VoiceEvacuationPanel's own identical fields.
+        self._live_report = None
+        self._live_gateway = None
+
         layout = QVBoxLayout(self)
 
         mode_label = QLabel(
@@ -94,38 +101,153 @@ class BuildingControlsPanel(QWidget):
         layout.addWidget(self.history_table, 2)
 
     # =====================================================
-    # Live Command Center Integration milestone -- Phase 12's display-
-    # only live rendering path. Deliberately does NOT touch
-    # self._incident/BuildingControlController/SimulationControlProvider
-    # at all -- there is no live BuildingControlProvider in this
-    # milestone (Phase 12's own "there currently should not be one"),
-    # so nothing here can execute, confirm, or even PENDING_APPROVAL-
-    # queue a control action. Every row rendered is directly off
-    # AdvisoryReport.building_recommendations -- inert data, never
-    # submitted anywhere -- with no Approve/Reject affordance at all
-    # (a disabled button would still imply an execution path exists;
-    # omitting it entirely is the honest choice Phase 12 asks for).
+    # Live Operator Action Routing milestone -- Phase 4's human-in-the-
+    # loop live rendering path, superseding the prior milestone's
+    # display-only "Execution Provider: Not Connected" placeholder for
+    # every case EXCEPT genuinely NO_PROVIDER, which still renders
+    # exactly that way (never submitted anywhere, no Approve/Reject
+    # affordance -- a disabled button would still imply an execution
+    # path exists where none does). When a real (Simulation, today;
+    # LIVE_HARDWARE, architecturally, never actually reached without a
+    # real provider) provider IS configured on the injected gateway,
+    # recommendations are submitted through it exactly the way Replay's
+    # own _refresh_pending()/_on_approve()/_on_reject() below already
+    # do against self._incident.control_controller -- reusing
+    # BuildingControlController's own validation/dedup/approval/
+    # rejection/history unchanged, never bypassed. This file never
+    # imports building_control.controller/building_control.providers
+    # itself (tests/test_live_command_center.py::
+    # CommandCenterLiveIntegrationGuardTests still enforces this) --
+    # every action here routes through the injected
+    # command_center.live_operator_action_gateway.LiveOperatorActionGateway.
     # =====================================================
 
-    def show_live(self, report) -> None:
+    def show_live(self, report, gateway=None) -> None:
 
         self.pending_table.setRowCount(0)
         self.active_table.setRowCount(0)
         self.history_table.setRowCount(0)
 
-        recommendations = report.building_recommendations if report is not None else ()
+        self._live_report = report
+        self._live_gateway = gateway
 
-        self.pending_table.setRowCount(len(recommendations))
+        capability = gateway.control_capability if gateway is not None else PROVIDER_CAPABILITY_NO_PROVIDER
 
-        for row_index, entry in enumerate(recommendations):
+        if capability == PROVIDER_CAPABILITY_NO_PROVIDER:
 
-            self.pending_table.setItem(row_index, 0, QTableWidgetItem(entry.target_type))
-            self.pending_table.setItem(row_index, 1, QTableWidgetItem(entry.target_id or "-"))
-            self.pending_table.setItem(row_index, 2, QTableWidgetItem(entry.action))
-            self.pending_table.setItem(row_index, 3, QTableWidgetItem(_format_percent(entry.confidence)))
-            self.pending_table.setItem(row_index, 4, QTableWidgetItem(entry.reason))
-            self.pending_table.setItem(row_index, 5, QTableWidgetItem("RECOMMENDED (not submitted)"))
-            self.pending_table.setItem(row_index, 6, QTableWidgetItem("Execution Provider: Not Connected"))
+            # Honest fallback -- no controller exists to submit a
+            # ControlRequest to at all, so nothing is submitted; the
+            # operator can still review the raw recommendation, exactly
+            # as before this milestone.
+            recommendations = report.building_recommendations if report is not None else ()
+
+            self.pending_table.setRowCount(len(recommendations))
+
+            for row_index, entry in enumerate(recommendations):
+
+                self.pending_table.setItem(row_index, 0, QTableWidgetItem(entry.target_type))
+                self.pending_table.setItem(row_index, 1, QTableWidgetItem(entry.target_id or "-"))
+                self.pending_table.setItem(row_index, 2, QTableWidgetItem(entry.action))
+                self.pending_table.setItem(row_index, 3, QTableWidgetItem(_format_percent(entry.confidence)))
+                self.pending_table.setItem(row_index, 4, QTableWidgetItem(entry.reason))
+                self.pending_table.setItem(row_index, 5, QTableWidgetItem("RECOMMENDED (not submitted)"))
+                self.pending_table.setItem(row_index, 6, QTableWidgetItem("Execution Provider: Not Connected"))
+
+            return
+
+        gateway.ingest_control_recommendations(report)
+
+        self._refresh_pending_live(gateway)
+        self._refresh_active_live(gateway)
+        self._refresh_history_live(gateway)
+
+    # =====================================================
+
+    def _refresh_pending_live(self, gateway) -> None:
+
+        pending = gateway.pending_control_requests()
+        self.pending_table.setRowCount(len(pending))
+
+        for row_index, request in enumerate(pending):
+
+            self.pending_table.setItem(row_index, 0, QTableWidgetItem(request.system_type.name))
+            self.pending_table.setItem(row_index, 1, QTableWidgetItem(request.target_id or "-"))
+            self.pending_table.setItem(row_index, 2, QTableWidgetItem(request.requested_action.name))
+            self.pending_table.setItem(row_index, 3, QTableWidgetItem(_format_percent(request.confidence)))
+            self.pending_table.setItem(row_index, 4, QTableWidgetItem(request.reason))
+            self.pending_table.setItem(row_index, 5, QTableWidgetItem("AWAITING APPROVAL"))
+
+            decision_widget = QWidget()
+            decision_layout = QHBoxLayout(decision_widget)
+            decision_layout.setContentsMargins(0, 0, 0, 0)
+
+            approve_button = QPushButton("Approve")
+            approve_button.clicked.connect(partial(self._on_approve_live, request.request_id))
+            decision_layout.addWidget(approve_button)
+
+            reject_button = QPushButton("Reject")
+            reject_button.clicked.connect(partial(self._on_reject_live, request.request_id))
+            decision_layout.addWidget(reject_button)
+
+            self.pending_table.setCellWidget(row_index, 6, decision_widget)
+
+    # =====================================================
+
+    def _refresh_active_live(self, gateway) -> None:
+
+        entries = gateway.confirmed_control_entries()
+        self.active_table.setRowCount(len(entries))
+
+        for row_index, entry in enumerate(entries):
+
+            self.active_table.setItem(row_index, 0, QTableWidgetItem(entry.system_type.name))
+            self.active_table.setItem(row_index, 1, QTableWidgetItem(entry.target_id or "-"))
+            self.active_table.setItem(row_index, 2, QTableWidgetItem(entry.action.name))
+            self.active_table.setItem(row_index, 3, QTableWidgetItem(_format_seconds(entry.confirmed_at)))
+
+    # =====================================================
+
+    def _refresh_history_live(self, gateway) -> None:
+
+        events = gateway.control_history()
+        requests_by_id = {request.request_id: request for request in gateway.all_control_requests()}
+
+        self.history_table.setRowCount(len(events))
+
+        for row_index, event in enumerate(events):
+
+            request = requests_by_id.get(event.request_id)
+            target_label = (request.target_id or "-") if request is not None else event.request_id
+            system_label = request.system_type.name if request is not None else "-"
+
+            from_label = event.from_status.name if event.from_status is not None else "(new)"
+            transition = f"{system_label} {target_label}: {from_label} -> {event.to_status.name}"
+
+            self.history_table.setItem(row_index, 0, QTableWidgetItem(_format_seconds(event.timestamp)))
+            self.history_table.setItem(row_index, 1, QTableWidgetItem(event.request_id[:8]))
+            self.history_table.setItem(row_index, 2, QTableWidgetItem(transition))
+            self.history_table.setItem(row_index, 3, QTableWidgetItem(event.actor))
+            self.history_table.setItem(row_index, 4, QTableWidgetItem(event.note))
+
+    # =====================================================
+
+    def _on_approve_live(self, request_id) -> None:
+
+        if self._live_gateway is None:
+            return
+
+        self._live_gateway.approve_control_request(request_id)
+        self.show_live(self._live_report, self._live_gateway)
+
+    # =====================================================
+
+    def _on_reject_live(self, request_id) -> None:
+
+        if self._live_gateway is None:
+            return
+
+        self._live_gateway.reject_control_request(request_id)
+        self.show_live(self._live_report, self._live_gateway)
 
     # =====================================================
 

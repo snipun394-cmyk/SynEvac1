@@ -306,12 +306,16 @@ class EndToEndOfflineLiveCommandCenterTests(unittest.TestCase):
             f"{snapshot.ai_prediction_snapshot.bottleneck.probability:.0%}",
         )
 
-        # 14. No voice message sent.
+        # 14. No voice message sent -- this test never calls
+        # dashboard.set_operator_action_gateway(), so every announcement
+        # renders through VoiceEvacuationPanel's honest NO_PROVIDER
+        # fallback (Live Operator Action Routing milestone): a bare
+        # RECOMMENDED status, never a fabricated broadcast confirmation.
         voice_panel = dashboard.recommendation_center.voice_evacuation_panel
         self.assertEqual(voice_panel.history_table.rowCount(), 0)
         for row in range(voice_panel.active_table.rowCount()):
-            status_item = voice_panel.active_table.item(row, 4)
-            self.assertEqual(status_item.text(), "Broadcast Status: NOT SENT")
+            status_item = voice_panel.active_table.item(row, 5)
+            self.assertEqual(status_item.text(), "RECOMMENDED")
 
         # 15. No building control executed.
         controls_panel = dashboard.recommendation_center.building_controls_panel

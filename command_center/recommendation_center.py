@@ -1,8 +1,11 @@
+from functools import partial
+
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
     QGroupBox,
     QHBoxLayout,
     QLabel,
+    QPushButton,
     QTableWidget,
     QTableWidgetItem,
     QTabWidget,
@@ -15,6 +18,12 @@ from advisory_system.confidence_engine import DETERMINISTIC_RULE_BASE_CONFIDENCE
 from voice_evacuation.models import BroadcastStatus
 
 from command_center.building_controls_panel import BuildingControlsPanel
+from command_center.live_operator_action_gateway import (
+    PROVIDER_CAPABILITY_NO_PROVIDER,
+    VOICE_STATUS_RECOMMENDED,
+    VOICE_STATUS_REJECTED,
+    VOICE_STATUS_SUPERSEDED,
+)
 
 
 # =====================================================
@@ -272,6 +281,15 @@ class VoiceEvacuationPanel(QWidget):
 
         self._incident = None
 
+        # Live Operator Action Routing milestone -- additive. Kept only
+        # so an operator's Approve/Reject click (routed through
+        # _on_approve_live/_on_reject_live) can re-render with the exact
+        # same (report, gateway) pair show_live() was last called with,
+        # the same "edit, then re-render in full" convention
+        # BuildingControlsPanel's own Replay-path buttons already use.
+        self._live_report = None
+        self._live_gateway = None
+
         layout = QVBoxLayout(self)
 
         mode_label = QLabel(
@@ -301,44 +319,129 @@ class VoiceEvacuationPanel(QWidget):
         layout.addWidget(self.history_table, 1)
 
     # =====================================================
-    # Live Command Center Integration milestone -- Phase 11's display-
-    # only live rendering path. Deliberately never touches
-    # VoiceEvacuationController/SpeakerManager/SimulationVoiceOutputProvider
-    # at all -- every row rendered is directly off AdvisoryReport.
-    # civilian_announcements, labeled RECOMMENDED, never routed through
-    # any broadcast machinery. No live speaker/hardware output exists in
-    # this milestone; "Broadcast Status: NOT SENT" is not a placeholder
-    # for a future confirmation this code could produce -- it is the
-    # only honest value until a real output provider is wired in a later
-    # milestone.
+    # Live Operator Action Routing milestone -- Phase 3's human-in-the-
+    # loop live rendering path, superseding the prior milestone's
+    # display-only "Broadcast Status: NOT SENT" placeholder. Still never
+    # constructs or imports VoiceEvacuationController/SpeakerManager/
+    # SimulationVoiceOutputProvider itself (this file never imports
+    # voice_evacuation.controller/voice_evacuation.provider/
+    # speaker_manager at all -- tests/test_live_command_center.py::
+    # CommandCenterLiveIntegrationGuardTests still enforces this) --
+    # every row still starts as inert AdvisoryReport.civilian_
+    # announcements data; the only thing new is an operator-facing
+    # Approve/Reject affordance that routes through an injected
+    # command_center.live_operator_action_gateway.LiveOperatorActionGateway,
+    # never anything this panel imports or owns directly.
 
     def set_live_mode(self) -> None:
 
-        # One-time header relabel (never called per-tick) -- the active
-        # table's own five columns are reused for live rendering, but
-        # "Priority"/"Message Type" would mislabel what show_live()
-        # actually puts in them.
+        # One-time header relabel/resize (never called per-tick) -- the
+        # active table grows from 5 columns (Replay's own Priority/
+        # Message Type shape) to 7 (Zone/Message/Confidence/Confidence
+        # Source/Reason/Status/Decision) for the richer live workflow.
+        self.active_table.setColumnCount(7)
         self.active_table.setHorizontalHeaderLabels(
-            ["Zone", "Recommended Message", "Confidence", "Message Status", "Broadcast Status"],
+            ["Zone", "Message", "Confidence", "Confidence Source", "Reason", "Status", "Decision"],
         )
 
     # =====================================================
 
-    def show_live(self, report) -> None:
+    def show_live(self, report, gateway=None) -> None:
 
         self.active_table.setRowCount(0)
         self.history_table.setRowCount(0)
+
+        self._live_report = report
+        self._live_gateway = gateway
 
         announcements = report.civilian_announcements if report is not None else ()
 
         self.active_table.setRowCount(len(announcements))
         for row_index, entry in enumerate(announcements):
 
+            status = (
+                gateway.voice_recommendation_status(entry) if gateway is not None
+                else VOICE_STATUS_RECOMMENDED
+            )
+            capability = gateway.voice_capability if gateway is not None else PROVIDER_CAPABILITY_NO_PROVIDER
+
             self.active_table.setItem(row_index, 0, QTableWidgetItem(entry.zone_name))
             self.active_table.setItem(row_index, 1, QTableWidgetItem(entry.announcement))
             self.active_table.setItem(row_index, 2, QTableWidgetItem(_format_percent(entry.confidence)))
-            self.active_table.setItem(row_index, 3, QTableWidgetItem("RECOMMENDED MESSAGE"))
-            self.active_table.setItem(row_index, 4, QTableWidgetItem("Broadcast Status: NOT SENT"))
+            self.active_table.setItem(
+                row_index, 3, QTableWidgetItem(", ".join(entry.confidence_source) or "-"),
+            )
+            self.active_table.setItem(row_index, 4, QTableWidgetItem(entry.reason))
+            self.active_table.setItem(row_index, 5, QTableWidgetItem(status))
+            self._set_voice_decision_cell(row_index, entry, status, capability, gateway)
+
+        history = gateway.voice_broadcast_history() if gateway is not None else ()
+        self.history_table.setRowCount(len(history))
+
+        for row_index, instruction in enumerate(history):
+
+            speakers = ", ".join(instruction.speaker_ids) or "(none)"
+            message_text = instruction.message.message_text if instruction.message else "-"
+
+            self.history_table.setItem(row_index, 0, QTableWidgetItem(_format_seconds(instruction.timestamp)))
+            self.history_table.setItem(row_index, 1, QTableWidgetItem(instruction.target_zone_id))
+            self.history_table.setItem(row_index, 2, QTableWidgetItem(speakers))
+            self.history_table.setItem(row_index, 3, QTableWidgetItem(_status_label(instruction.status)))
+            self.history_table.setItem(row_index, 4, QTableWidgetItem(message_text))
+
+    # =====================================================
+
+    def _set_voice_decision_cell(self, row_index, entry, status, capability, gateway) -> None:
+
+        if status != VOICE_STATUS_RECOMMENDED:
+
+            label = {
+                VOICE_STATUS_REJECTED: "Rejected by operator",
+                VOICE_STATUS_SUPERSEDED: "Superseded",
+            }.get(status, f"Provider: {capability}")
+
+            self.active_table.setItem(row_index, 6, QTableWidgetItem(label))
+            return
+
+        widget = QWidget()
+        decision_layout = QHBoxLayout(widget)
+        decision_layout.setContentsMargins(0, 0, 0, 0)
+
+        approve_button = QPushButton("Approve / Send")
+        approve_button.setEnabled(gateway is not None and capability != PROVIDER_CAPABILITY_NO_PROVIDER)
+        approve_button.clicked.connect(partial(self._on_approve_live, entry))
+        decision_layout.addWidget(approve_button)
+
+        reject_button = QPushButton("Reject")
+        reject_button.setEnabled(gateway is not None)
+        reject_button.clicked.connect(partial(self._on_reject_live, entry))
+        decision_layout.addWidget(reject_button)
+
+        self.active_table.setCellWidget(row_index, 6, widget)
+
+    # =====================================================
+
+    def _on_approve_live(self, announcement) -> None:
+
+        if self._live_gateway is None:
+            return
+
+        time = self._live_report.simulation_time if self._live_report is not None else 0.0
+        self._live_gateway.approve_voice_message(announcement, time)
+
+        self.show_live(self._live_report, self._live_gateway)
+
+    # =====================================================
+
+    def _on_reject_live(self, announcement) -> None:
+
+        if self._live_gateway is None:
+            return
+
+        time = self._live_report.simulation_time if self._live_report is not None else 0.0
+        self._live_gateway.reject_voice_message(announcement, time)
+
+        self.show_live(self._live_report, self._live_gateway)
 
     # =====================================================
 
@@ -941,11 +1044,11 @@ class RecommendationCenter(QTabWidget):
 
     # =====================================================
 
-    def show_live(self, report) -> None:
+    def show_live(self, report, gateway=None) -> None:
 
         self.civilian_panel.show_frame(None, report)
         self.firefighter_panel.show_frame(None, report)
         self.building_panel.show_frame(None, report)
         self.commander_panel.show_frame(None, report)
-        self.voice_evacuation_panel.show_live(report)
-        self.building_controls_panel.show_live(report)
+        self.voice_evacuation_panel.show_live(report, gateway)
+        self.building_controls_panel.show_live(report, gateway)

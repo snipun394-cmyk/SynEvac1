@@ -272,6 +272,18 @@ class BuildingControlController(object):
     # Read-only views
     # =====================================================
 
+    @property
+    def provider(self) -> BuildingControlProvider:
+
+        # Read-only visibility onto the injected provider -- added so a
+        # caller (command_center.live_operator_action_gateway.
+        # LiveOperatorActionGateway) can honestly report provider
+        # capability (is_simulation_only) without this controller
+        # needing to expose that judgement itself.
+        return self._provider
+
+    # =====================================================
+
     def status_of(self, request_id: str) -> RequestStatus:
 
         return self._status[self._require_request(request_id).request_id]

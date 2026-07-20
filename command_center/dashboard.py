@@ -51,6 +51,19 @@ class Dashboard(QWidget):
         self.mode = CommandCenterMode.REPLAY
         self._live_building = None
 
+        # Live Operator Action Routing milestone -- additive. An opaque
+        # (never imported/typed here) command_center.live_operator_
+        # action_gateway.LiveOperatorActionGateway a caller may supply
+        # via set_operator_action_gateway(); None (the default) means
+        # every Live panel renders its own honest NO_PROVIDER fallback
+        # (see VoiceEvacuationPanel.show_live()/BuildingControlsPanel.
+        # show_live()). Dashboard itself never calls a method on it --
+        # it only ever forwards the same reference into apply_snapshot()'s
+        # existing recommendation_center.show_live() call, exactly the
+        # same "hold an opaque reference, forward it, never inspect it"
+        # discipline this class already applies to `decision_policy`.
+        self._operator_action_gateway = None
+
         self.status_bar = IncidentStatusBar()
 
         self.building_view = BuildingView()
@@ -192,6 +205,12 @@ class Dashboard(QWidget):
     # abstraction," not two applications).
     # =====================================================
 
+    def set_operator_action_gateway(self, gateway) -> None:
+
+        self._operator_action_gateway = gateway
+
+    # =====================================================
+
     def set_mode(self, mode: CommandCenterMode) -> None:
 
         self.mode = mode
@@ -254,7 +273,7 @@ class Dashboard(QWidget):
         self.status_bar.show_frame(
             frame, advisory_for_display, live=True, ai_prediction_snapshot=snapshot.ai_prediction_snapshot,
         )
-        self.recommendation_center.show_live(advisory_for_display)
+        self.recommendation_center.show_live(advisory_for_display, self._operator_action_gateway)
 
         self.live_status_panel.show_building_state(snapshot.building_state)
         self.live_ai_panel.show_prediction(snapshot.ai_prediction_snapshot, stale=is_stale)

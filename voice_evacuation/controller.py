@@ -65,6 +65,18 @@ class VoiceEvacuationController:
 
     # =====================================================
 
+    @property
+    def provider(self) -> VoiceOutputProvider:
+
+        # Read-only visibility onto the injected output provider --
+        # added so a caller (command_center.live_operator_action_
+        # gateway.LiveOperatorActionGateway) can honestly report
+        # provider capability (is_simulation_only) without this
+        # controller needing to expose that judgement itself.
+        return self._output_provider
+
+    # =====================================================
+
     def active_message_for_zone(self, zone_id: str) -> Optional[VoiceMessage]:
 
         return self._active_message_by_zone.get(zone_id)

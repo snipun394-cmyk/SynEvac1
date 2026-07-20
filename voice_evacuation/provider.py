@@ -30,6 +30,16 @@ class VoiceOutputProvider:
     # was given; VoiceEvacuationController must never assume "sent" means
     # "successfully played" (Phase 11's own explicit Command Center
     # requirement, applying equally here).
+    #
+    # is_simulation_only mirrors building_control.providers.
+    # BuildingControlProvider's own established flag exactly -- False
+    # for every provider except an explicitly simulation-only one, so a
+    # Live Operator Action Gateway (command_center/live_operator_action_
+    # gateway.py) can honestly report NO_PROVIDER/SIMULATION/
+    # LIVE_HARDWARE capability without importing, inspecting, or
+    # guessing anything about a specific provider implementation.
+
+    is_simulation_only: bool = False
 
     def send(self, instruction: BroadcastInstruction) -> BroadcastInstruction:
 
@@ -45,6 +55,8 @@ class SimulationVoiceOutputProvider(VoiceOutputProvider):
     # to which zone(s), through which speakers, when, with what status"
     # -- exactly Phase 8's own required example shape -- for validation,
     # research, and Command Center playback.
+
+    is_simulation_only = True
 
     def __init__(self):
 

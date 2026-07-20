@@ -250,7 +250,7 @@ class MainWindow(QMainWindow):
     # left off, never re-loading or losing the loaded IncidentData.
     # =====================================================
 
-    def enable_live_mode(self, data_source) -> None:
+    def enable_live_mode(self, data_source, operator_action_gateway=None) -> None:
 
         # The one call a caller that has already constructed and
         # started a LiveOrchestrator (with its own StateManager) makes
@@ -260,9 +260,20 @@ class MainWindow(QMainWindow):
         # LiveOrchestrator/StateManager/BuildingStateGateway at all
         # (mechanically enforced -- see
         # tests/test_live_command_center.py::CommandCenterLiveIntegrationGuardTests).
+        #
+        # operator_action_gateway (Live Operator Action Routing milestone)
+        # is the same kind of opaque, caller-constructed object --
+        # MainWindow never constructs or imports a
+        # command_center.live_operator_action_gateway.LiveOperatorActionGateway
+        # itself, only forwards whatever it was handed straight into
+        # Dashboard.set_operator_action_gateway(). None (the default)
+        # keeps every Live panel's honest NO_PROVIDER fallback, the same
+        # as never calling this at all.
 
         self.live_data_source = data_source
         self.live_mode_action.setEnabled(True)
+
+        self.dashboard.set_operator_action_gateway(operator_action_gateway)
 
         data_source.start()
 
