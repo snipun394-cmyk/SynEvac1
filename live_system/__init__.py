@@ -14,6 +14,13 @@ from live_system.building_state_gateway import (
     SmokeDetectorStatusProvider,
 )
 from live_system.event_bus import Event, EventBus, EventType, Handler
+from live_system.live_ai_gateway import (
+    AISystemStatus,
+    LiveAIInferenceGateway,
+    LiveAIPredictionSnapshot,
+    RegistryLiveAIInferenceGateway,
+    ThrottledLiveAIInferenceGateway,
+)
 from live_system.incident_manager import (
     IncidentManager,
     IncidentState,
@@ -69,6 +76,12 @@ __all__ = [
     "HeatDetectorReadingProvider",
     "FACPSnapshotProvider",
     "ControlSnapshotProvider",
+    # live_ai_gateway
+    "AISystemStatus",
+    "LiveAIInferenceGateway",
+    "LiveAIPredictionSnapshot",
+    "RegistryLiveAIInferenceGateway",
+    "ThrottledLiveAIInferenceGateway",
     # event_bus
     "Event",
     "EventBus",

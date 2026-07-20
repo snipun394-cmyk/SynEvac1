@@ -17,6 +17,8 @@ from decision_policy.policy import DecisionPolicy
 
 from building_state.models import BuildingState
 
+from live_system.live_ai_gateway import LiveAIPredictionSnapshot
+
 
 @dataclass(frozen=True)
 class LiveBuildingSnapshot:
@@ -75,6 +77,18 @@ class LiveBuildingSnapshot:
     engineering_state: Mapping[str, Any] = field(default_factory=dict)
 
     ai_predictions: Mapping[str, Prediction] = field(default_factory=dict)
+
+    # Live AI Inference Runtime Integration milestone -- the canonical
+    # live_system.live_ai_gateway.LiveAIPredictionSnapshot field, kept
+    # deliberately distinct from ai_predictions above (that field
+    # belongs to the original, pre-existing, still-unimplemented-in-
+    # production AIInferenceGateway/feature_row_builder seam operating
+    # on this whole LiveBuildingSnapshot -- see live_system.integration
+    # -- and is untouched by this milestone). None until a live_ai_
+    # gateway is configured and has produced at least one snapshot --
+    # never a fabricated "AVAILABLE" placeholder.
+    ai_prediction_snapshot: Optional[LiveAIPredictionSnapshot] = None
+
     decision_policy: Optional[DecisionPolicy] = None
     recommendations: Tuple[Recommendation, ...] = field(default_factory=tuple)
 
@@ -178,6 +192,7 @@ class LiveBuildingSnapshot:
             "building_state": self.building_state,
             "engineering_state": self.engineering_state,
             "ai_predictions": self.ai_predictions,
+            "ai_prediction_snapshot": self.ai_prediction_snapshot,
             "decision_policy": self.decision_policy,
             "recommendations": self.recommendations,
             "component_timestamps": self.component_timestamps,
@@ -235,6 +250,27 @@ class StateManager:
             timestamp=time,
             building_state=building_state,
             component_timestamps=self._stamp("building_state", time),
+        )
+
+    # =====================================================
+
+    def latest_ai_prediction(self) -> Optional[LiveAIPredictionSnapshot]:
+
+        # Mirrors latest_building_state()'s own convenience-accessor
+        # role, one field over.
+
+        return self._snapshot.ai_prediction_snapshot
+
+    # =====================================================
+
+    def update_ai_prediction(
+        self, ai_prediction_snapshot: LiveAIPredictionSnapshot, time: float,
+    ) -> LiveBuildingSnapshot:
+
+        return self._replace(
+            timestamp=time,
+            ai_prediction_snapshot=ai_prediction_snapshot,
+            component_timestamps=self._stamp("ai_prediction_snapshot", time),
         )
 
     # =====================================================

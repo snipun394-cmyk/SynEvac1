@@ -1253,6 +1253,43 @@ class LiveSystemPackageDependencyDirectionTests(unittest.TestCase):
                 f"Gateway/provider, never construct or own a real device manager itself",
             )
 
+    # =====================================================
+    # Live AI Inference Runtime Integration milestone -- the AI boundary
+    # must stay BuildingState -> AI, never CameraFrame -> AI and never
+    # Scenario -> AI (Phase 11's own explicit requirement), and AI must
+    # never be able to reach control/broadcast authority (Phase 26/27).
+
+    def test_never_imports_scenario_ground_truth_control_or_voice_modules(self):
+
+        import pathlib
+        import re
+
+        package_dir = pathlib.Path(__file__).resolve().parent.parent / "live_system"
+
+        # building_control.snapshot (the read-only ControlStateSnapshot
+        # value type) is a pre-existing, already-narrowly-guarded
+        # exception -- see test_never_imports_device_managers_control_
+        # internals_or_frame_sources above, which forbids specifically
+        # building_control.controller/.providers (the control-CAPABLE
+        # modules). This guard does not re-forbid building_control
+        # itself to avoid conflicting with that already-correct rule.
+        forbidden = (
+            r"^\s*(from|import)\s+"
+            r"(scenario_definition|scenario_generator|scenario_runner|ground_truth|"
+            r"voice_evacuation|speaker_manager)\b"
+        )
+
+        for path in package_dir.glob("*.py"):
+
+            text = path.read_text()
+
+            self.assertIsNone(
+                re.search(forbidden, text, re.MULTILINE),
+                f"live_system/{path.name} imports {forbidden!r} -- the AI boundary must stay "
+                f"BuildingState -> AI only (never Scenario/GroundTruth -> AI), and AI must never "
+                f"reach voice-broadcast authority directly.",
+            )
+
 
 if __name__ == "__main__":
     unittest.main()

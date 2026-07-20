@@ -15,6 +15,7 @@ from live_system.integration import (
     PerceptionGateway,
     RecommendationBuilder,
 )
+from live_system.live_ai_gateway import LiveAIInferenceGateway
 from live_system.sensor_registry import SensorRegistry
 from live_system.state_manager import LiveBuildingSnapshot, StateManager
 from live_system.update_loop import UpdateLoop
@@ -83,6 +84,7 @@ class LiveOrchestrator:
         incident_manager: Optional[IncidentManager] = None,
         perception_gateway: Optional[PerceptionGateway] = None,
         building_state_gateway: Optional[BuildingStateGateway] = None,
+        live_ai_gateway: Optional[LiveAIInferenceGateway] = None,
         ai_inference_gateway: Optional[AIInferenceGateway] = None,
         decision_policy_gateway: Optional[DecisionPolicyGateway] = None,
         command_center_gateway: Optional[CommandCenterGateway] = None,
@@ -97,6 +99,7 @@ class LiveOrchestrator:
 
         self.perception_gateway = perception_gateway
         self.building_state_gateway = building_state_gateway
+        self.live_ai_gateway = live_ai_gateway
         self.ai_inference_gateway = ai_inference_gateway
         self.decision_policy_gateway = decision_policy_gateway
         self.command_center_gateway = command_center_gateway
@@ -132,6 +135,15 @@ class LiveOrchestrator:
 
     # =====================================================
 
+    @property
+    def latest_ai_prediction(self):
+
+        # Mirrors latest_building_state's own forwarding-property style.
+
+        return self.state_manager.latest_ai_prediction()
+
+    # =====================================================
+
     def start(self) -> None:
 
         if self._is_running:
@@ -152,27 +164,38 @@ class LiveOrchestrator:
 
     def run_cycle(self, time: float) -> LiveBuildingSnapshot:
 
-        # Phase 4's exact cycle, extended (Canonical Live BuildingState
-        # Runtime Assembly milestone) by exactly one new optional stage,
-        # inserted after Live Perception and before AI Inference: read
-        # sensors -> update snapshot -> [NEW] assemble canonical
-        # BuildingState -> AI inference -> decision policy -> publish
-        # recommendations -> notify command center. Each stage after
-        # sensor reading only runs if its gateway is configured --
-        # every stage's absence is a valid, working configuration (e.g.
-        # a deployment with Live Perception wired up but no trained AI
-        # model yet, or a BuildingState assembled with no cameras/
-        # sensors/FACP/control provider configured yet), never an error.
+        # Phase 4's exact cycle, extended twice since: the Canonical
+        # Live BuildingState Runtime Assembly milestone inserted
+        # BuildingState assembly after Live Perception, and the Live AI
+        # Inference Runtime Integration milestone inserts exactly one
+        # more optional stage right after that: read sensors -> update
+        # snapshot -> assemble canonical BuildingState -> [NEW] live AI
+        # inference (BuildingState -> LiveAIPredictionSnapshot) -> the
+        # OLD, still-unimplemented-in-production ai_inference_gateway
+        # stage (LiveBuildingSnapshot -> ai_predictions, untouched) ->
+        # decision policy -> publish recommendations -> notify command
+        # center. Each stage after sensor reading only runs if its
+        # gateway is configured -- every stage's absence is a valid,
+        # working configuration, never an error.
         #
-        # The new building_state_gateway stage is deliberately
+        # live_ai_gateway is deliberately independent of building_state_
+        # gateway's own success -- it is always CALLED when configured
+        # (passing None if no BuildingState exists yet this cycle), so a
+        # deployment with live AI wired up but no BuildingState source
+        # yet still gets an honest UNAVAILABLE LiveAIPredictionSnapshot
+        # every cycle rather than silently producing nothing. Its own
+        # output never reaches _maybe_activate_alarm()/decision_policy_
+        # gateway/recommendation_builder/command_center_gateway below --
+        # AI -> Decision Policy/Advisory System/Command Center wiring is
+        # explicitly a later milestone's scope, not this one's (see
+        # docs/architecture/live_ai_runtime_integration.md).
+        #
+        # The building_state_gateway stage itself is deliberately
         # independent of perception_gateway -- either, both, or neither
         # may be configured in a given deployment/test; BuildingState.
         # building_alarm_status is NOT (yet) wired into
         # _maybe_activate_alarm() below, which remains keyed on Live
-        # Perception's own observation exactly as before this milestone
-        # (BuildingState -> AI/Advisory/Command Center wiring, and any
-        # change to incident-activation triggering, is explicitly a
-        # later milestone's scope, not this one's).
+        # Perception's own observation exactly as before.
 
         if not self._is_running:
 
@@ -201,6 +224,21 @@ class LiveOrchestrator:
             snapshot = self.state_manager.update_building_state(building_state, time)
 
             self.event_bus.emit(EventType.BUILDING_STATE_UPDATED, building_state, time)
+
+        if self.live_ai_gateway is not None:
+
+            ai_prediction_snapshot = self.live_ai_gateway.predict(snapshot.building_state, time)
+
+            # None is this gateway Protocol's own documented "skip this
+            # cycle" signal (live_system.live_ai_gateway.
+            # ThrottledLiveAIInferenceGateway's own throttling seam) --
+            # never treated as an error, and deliberately never used to
+            # overwrite an already-stored, still-honestly-timestamped
+            # prediction with nothing.
+            if ai_prediction_snapshot is not None:
+
+                snapshot = self.state_manager.update_ai_prediction(ai_prediction_snapshot, time)
+                self.event_bus.emit(EventType.AI_PREDICTION_UPDATED, ai_prediction_snapshot, time)
 
         if self.ai_inference_gateway is not None:
 

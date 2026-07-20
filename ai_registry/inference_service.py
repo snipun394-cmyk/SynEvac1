@@ -78,6 +78,21 @@ class LiveAIInferenceService:
 
     # =====================================================
 
+    @property
+    def registry(self) -> ModelRegistry:
+
+        # Public on purpose (Live AI Inference Runtime Integration
+        # milestone) -- a caller composing a live_system.live_ai_gateway
+        # adapter around this service needs to distinguish "no model of
+        # this type exists at all" (UNAVAILABLE) from "a model exists
+        # but failed its own compatibility check" (INCOMPATIBLE), which
+        # requires querying the registry directly rather than only
+        # observing whatever predict_*() itself raises.
+
+        return self._registry
+
+    # =====================================================
+
     def predict_evacuation_time(self, state: BuildingState, *, timestamp: float) -> EvacuationTimePrediction:
 
         row = extract_canonical_features(state)

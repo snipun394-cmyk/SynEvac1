@@ -552,7 +552,17 @@ class ExistingResearchWorkflowTests(_SharedCampaignTestCase):
 
 class NoLiveWiringGuardTests(unittest.TestCase):
 
-    def test_live_system_never_imports_ai_registry(self):
+    def test_only_the_live_ai_gateway_module_imports_ai_registry(self):
+
+        # As of the Live AI Inference Runtime Integration milestone,
+        # live_system.live_ai_gateway is INTENTIONALLY the one place
+        # live_system depends on ai_registry (that dependency is that
+        # milestone's own point -- see live_system/live_ai_gateway.py).
+        # This test's own invariant as of THIS (AI Model Training &
+        # Registry) milestone was "live_system never imports ai_registry
+        # at all" -- now narrowed to its still-true core: no OTHER
+        # live_system module reaches into ai_registry directly, only the
+        # one dedicated gateway module does.
 
         import pathlib
         import re
@@ -562,10 +572,13 @@ class NoLiveWiringGuardTests(unittest.TestCase):
 
         for path in package_dir.glob("*.py"):
 
+            if path.name == "live_ai_gateway.py":
+                continue
+
             self.assertIsNone(
                 re.search(forbidden, path.read_text(), re.MULTILINE),
-                f"live_system/{path.name} imports ai_registry -- AI must not be wired into "
-                f"LiveOrchestrator by this milestone.",
+                f"live_system/{path.name} imports ai_registry directly -- only live_ai_gateway.py "
+                f"may compose ai_registry; every other live_system module must go through it.",
             )
 
     def test_advisory_system_never_imports_ai_registry(self):
