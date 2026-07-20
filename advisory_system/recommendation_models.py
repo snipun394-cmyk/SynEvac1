@@ -6,6 +6,8 @@ from scenario.scenario import Scenario
 
 from perception.models.human_observation import HumanObservation
 
+from advisory_system.ai_evidence import AIDecisionEvidence
+
 
 # =====================================================
 # Advisory System -- data model. Every dataclass below is a plain,
@@ -94,6 +96,13 @@ class AdvisoryInputs:
     # to -- used only for RecommendationHistory timestamps.
     simulation_time: float = 0.0
 
+    # AI-Augmented Decision Policy & Advisory Integration milestone --
+    # additive. None means "no AI evidence this cycle" (the honest
+    # default every existing caller keeps producing unchanged); see
+    # advisory_system.ai_evidence's own module docstring for exactly
+    # why this attaches here rather than to decision_policy.
+    ai_decision_evidence: Optional[AIDecisionEvidence] = None
+
     # =====================================================
 
     @property
@@ -177,6 +186,22 @@ class FirefighterIntelligenceReport:
     rescue_priority_areas: Tuple[Dict[str, Any], ...]
     suggested_access_routes: Tuple[Dict[str, Any], ...]
 
+    # AI-Augmented Decision Policy & Advisory Integration milestone --
+    # additive. The raw, unblended AI Bottleneck Occurrence probability
+    # (kept structurally separate from `confidence` above, which may
+    # ALSO have this value blended into it -- see advisory_engine.
+    # build_firefighter_intelligence()). None when no AI evidence was
+    # available this cycle. Building-wide only -- never claims a
+    # specific stair/door/exit/zone (see ai_evidence.py's own docstring
+    # for why no such field exists anywhere in this package).
+    ai_bottleneck_probability: Optional[float] = None
+    ai_bottleneck_model_id: Optional[str] = None
+
+    # Mirrors CivilianAnnouncement.confidence_source exactly -- "ai"
+    # appears only when a genuine, non-None AI signal actually
+    # contributed to `confidence` above.
+    confidence_source: Tuple[str, ...] = ()
+
     def to_dict(self) -> Dict[str, Any]:
 
         return {
@@ -197,6 +222,9 @@ class FirefighterIntelligenceReport:
             "confidence": self.confidence,
             "rescue_priority_areas": [dict(entry) for entry in self.rescue_priority_areas],
             "suggested_access_routes": [dict(entry) for entry in self.suggested_access_routes],
+            "ai_bottleneck_probability": self.ai_bottleneck_probability,
+            "ai_bottleneck_model_id": self.ai_bottleneck_model_id,
+            "confidence_source": list(self.confidence_source),
         }
 
 
@@ -217,6 +245,10 @@ class BuildingRecommendation:
     confidence: Optional[float]
     expected_engineering_benefit: str
 
+    # AI-Augmented Decision Policy & Advisory Integration milestone --
+    # additive, mirrors CivilianAnnouncement.confidence_source exactly.
+    confidence_source: Tuple[str, ...] = ()
+
     def to_dict(self) -> Dict[str, Any]:
 
         return {
@@ -226,6 +258,7 @@ class BuildingRecommendation:
             "reason": self.reason,
             "confidence": self.confidence,
             "expected_engineering_benefit": self.expected_engineering_benefit,
+            "confidence_source": list(self.confidence_source),
         }
 
 
@@ -258,6 +291,18 @@ class IncidentCommanderDashboard:
 
     overall_incident_severity: str
 
+    # AI-Augmented Decision Policy & Advisory Integration milestone --
+    # additive. Raw building-wide AI Bottleneck Occurrence probability,
+    # kept structurally separate from BOTH occupancy_confidence AND
+    # recommendation_confidence above -- three genuinely different
+    # quantities, never conflated (Phase 10's own explicit requirement).
+    # `predicted_bottlenecks` above remains exclusively GroundTruth-
+    # sourced (doors_that_became_bottlenecks/worst_exit/worst_stair) --
+    # this milestone never appends a location string derived from this
+    # building-wide-only probability to that tuple.
+    ai_bottleneck_probability: Optional[float] = None
+    ai_bottleneck_model_id: Optional[str] = None
+
     def to_dict(self) -> Dict[str, Any]:
 
         return {
@@ -275,6 +320,8 @@ class IncidentCommanderDashboard:
             "occupancy_confidence": self.occupancy_confidence,
             "recommendation_confidence": self.recommendation_confidence,
             "overall_incident_severity": self.overall_incident_severity,
+            "ai_bottleneck_probability": self.ai_bottleneck_probability,
+            "ai_bottleneck_model_id": self.ai_bottleneck_model_id,
         }
 
 

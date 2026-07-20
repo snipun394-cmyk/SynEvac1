@@ -20,6 +20,7 @@ class EventType(Enum):
     OCCUPANCY_UPDATED = auto()
     BUILDING_STATE_UPDATED = auto()
     AI_PREDICTION_UPDATED = auto()
+    ADVISORY_REPORT_UPDATED = auto()
     RECOMMENDATION_UPDATED = auto()
     OPERATOR_ACKNOWLEDGEMENT = auto()
 

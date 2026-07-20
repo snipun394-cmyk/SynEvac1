@@ -16,6 +16,10 @@ from live_system.integration import (
     RecommendationBuilder,
 )
 from live_system.live_ai_gateway import LiveAIInferenceGateway
+from live_system.live_advisory_gateway import (
+    LiveAdvisoryGateway,
+    ai_decision_evidence_from_prediction_snapshot,
+)
 from live_system.sensor_registry import SensorRegistry
 from live_system.state_manager import LiveBuildingSnapshot, StateManager
 from live_system.update_loop import UpdateLoop
@@ -85,6 +89,7 @@ class LiveOrchestrator:
         perception_gateway: Optional[PerceptionGateway] = None,
         building_state_gateway: Optional[BuildingStateGateway] = None,
         live_ai_gateway: Optional[LiveAIInferenceGateway] = None,
+        live_advisory_gateway: Optional[LiveAdvisoryGateway] = None,
         ai_inference_gateway: Optional[AIInferenceGateway] = None,
         decision_policy_gateway: Optional[DecisionPolicyGateway] = None,
         command_center_gateway: Optional[CommandCenterGateway] = None,
@@ -100,6 +105,7 @@ class LiveOrchestrator:
         self.perception_gateway = perception_gateway
         self.building_state_gateway = building_state_gateway
         self.live_ai_gateway = live_ai_gateway
+        self.live_advisory_gateway = live_advisory_gateway
         self.ai_inference_gateway = ai_inference_gateway
         self.decision_policy_gateway = decision_policy_gateway
         self.command_center_gateway = command_center_gateway
@@ -144,6 +150,15 @@ class LiveOrchestrator:
 
     # =====================================================
 
+    @property
+    def latest_advisory_report(self):
+
+        # Mirrors latest_building_state's own forwarding-property style.
+
+        return self.state_manager.latest_advisory_report()
+
+    # =====================================================
+
     def start(self) -> None:
 
         if self._is_running:
@@ -164,31 +179,50 @@ class LiveOrchestrator:
 
     def run_cycle(self, time: float) -> LiveBuildingSnapshot:
 
-        # Phase 4's exact cycle, extended twice since: the Canonical
-        # Live BuildingState Runtime Assembly milestone inserted
-        # BuildingState assembly after Live Perception, and the Live AI
-        # Inference Runtime Integration milestone inserts exactly one
-        # more optional stage right after that: read sensors -> update
-        # snapshot -> assemble canonical BuildingState -> [NEW] live AI
-        # inference (BuildingState -> LiveAIPredictionSnapshot) -> the
-        # OLD, still-unimplemented-in-production ai_inference_gateway
-        # stage (LiveBuildingSnapshot -> ai_predictions, untouched) ->
-        # decision policy -> publish recommendations -> notify command
-        # center. Each stage after sensor reading only runs if its
-        # gateway is configured -- every stage's absence is a valid,
-        # working configuration, never an error.
+        # Phase 4's exact cycle, extended three times since: Canonical
+        # Live BuildingState Runtime Assembly inserted BuildingState
+        # assembly after Live Perception; Live AI Inference Runtime
+        # Integration inserted live AI inference right after that; and
+        # AI-Augmented Decision Policy & Advisory Integration inserts one
+        # more optional stage right after THAT: read sensors -> update
+        # snapshot -> assemble canonical BuildingState -> live AI
+        # inference (BuildingState -> LiveAIPredictionSnapshot) -> [NEW]
+        # live advisory generation (LiveAIPredictionSnapshot -> AI
+        # Decision Evidence -> AdvisoryReport, via live_advisory_gateway)
+        # -> the OLD, still-unimplemented-in-production ai_inference_
+        # gateway/decision_policy_gateway/recommendation_builder stages
+        # (LiveBuildingSnapshot -> ai_predictions/decision_policy/
+        # recommendations, all untouched) -> notify command center. Each
+        # stage after sensor reading only runs if its gateway is
+        # configured -- every stage's absence is a valid, working
+        # configuration, never an error.
+        #
+        # live_advisory_gateway does NOT build an AdvisoryReport from
+        # BuildingState alone -- decision_policy.generate_policy()
+        # cannot run from BuildingState alone at all (confirmed by this
+        # milestone's own investigation: every decision_policy rule
+        # module reads exclusively from GroundTruth's post-hoc analytics
+        # with no BuildingState equivalent -- see live_advisory_gateway's
+        # own module docstring and docs/architecture/ai_augmented_
+        # advisory_integration.md §1). A configured live_advisory_gateway
+        # must itself already know how to supply a real Building/
+        # Scenario/GroundTruth (e.g. a Replay/completed-campaign
+        # session); this orchestrator only ever hands it a fresh
+        # AIDecisionEvidence each cycle, never fabricates the rest.
         #
         # live_ai_gateway is deliberately independent of building_state_
         # gateway's own success -- it is always CALLED when configured
         # (passing None if no BuildingState exists yet this cycle), so a
         # deployment with live AI wired up but no BuildingState source
         # yet still gets an honest UNAVAILABLE LiveAIPredictionSnapshot
-        # every cycle rather than silently producing nothing. Its own
-        # output never reaches _maybe_activate_alarm()/decision_policy_
-        # gateway/recommendation_builder/command_center_gateway below --
-        # AI -> Decision Policy/Advisory System/Command Center wiring is
-        # explicitly a later milestone's scope, not this one's (see
-        # docs/architecture/live_ai_runtime_integration.md).
+        # every cycle rather than silently producing nothing. Neither its
+        # output nor live_advisory_gateway's own output ever reaches
+        # _maybe_activate_alarm()/the OLD decision_policy_gateway/
+        # recommendation_builder/command_center_gateway below -- AI ->
+        # Decision Policy behavior change, Advisory -> Voice/Building
+        # Control execution, and Advisory -> live Command Center display
+        # all remain explicitly later milestones' scope (see docs/
+        # architecture/ai_augmented_advisory_integration.md).
         #
         # The building_state_gateway stage itself is deliberately
         # independent of perception_gateway -- either, both, or neither
@@ -239,6 +273,25 @@ class LiveOrchestrator:
 
                 snapshot = self.state_manager.update_ai_prediction(ai_prediction_snapshot, time)
                 self.event_bus.emit(EventType.AI_PREDICTION_UPDATED, ai_prediction_snapshot, time)
+
+        if self.live_advisory_gateway is not None:
+
+            ai_evidence = ai_decision_evidence_from_prediction_snapshot(snapshot.ai_prediction_snapshot)
+            advisory_report = self.live_advisory_gateway.generate(ai_evidence, time)
+
+            # None means "no update this cycle" -- covers BOTH "not
+            # enough information yet" and any caught internal failure
+            # (see ReplayCompatibleAdvisoryGateway.generate()'s own
+            # try/except) uniformly; the PREVIOUS advisory_report (if
+            # any) is left in place under its own, honest, non-bumped
+            # component_timestamps["advisory_report"] entry -- the
+            # identical staleness-detection mechanism live_ai_gateway
+            # already established for ai_prediction_snapshot, never a
+            # value silently re-stamped as though it were fresh.
+            if advisory_report is not None:
+
+                snapshot = self.state_manager.update_advisory_report(advisory_report, time)
+                self.event_bus.emit(EventType.ADVISORY_REPORT_UPDATED, advisory_report, time)
 
         if self.ai_inference_gateway is not None:
 

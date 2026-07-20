@@ -21,6 +21,12 @@ from live_system.live_ai_gateway import (
     RegistryLiveAIInferenceGateway,
     ThrottledLiveAIInferenceGateway,
 )
+from live_system.live_advisory_gateway import (
+    DecisionPolicyProvider,
+    LiveAdvisoryGateway,
+    ReplayCompatibleAdvisoryGateway,
+    ai_decision_evidence_from_prediction_snapshot,
+)
 from live_system.incident_manager import (
     IncidentManager,
     IncidentState,
@@ -82,6 +88,11 @@ __all__ = [
     "LiveAIPredictionSnapshot",
     "RegistryLiveAIInferenceGateway",
     "ThrottledLiveAIInferenceGateway",
+    # live_advisory_gateway
+    "LiveAdvisoryGateway",
+    "ReplayCompatibleAdvisoryGateway",
+    "ai_decision_evidence_from_prediction_snapshot",
+    "DecisionPolicyProvider",
     # event_bus
     "Event",
     "EventBus",

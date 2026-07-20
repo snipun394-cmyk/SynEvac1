@@ -15,6 +15,8 @@ from ai_inference.recommendation import Recommendation
 
 from decision_policy.policy import DecisionPolicy
 
+from advisory_system.recommendation_models import AdvisoryReport
+
 from building_state.models import BuildingState
 
 from live_system.live_ai_gateway import LiveAIPredictionSnapshot
@@ -88,6 +90,16 @@ class LiveBuildingSnapshot:
     # gateway is configured and has produced at least one snapshot --
     # never a fabricated "AVAILABLE" placeholder.
     ai_prediction_snapshot: Optional[LiveAIPredictionSnapshot] = None
+
+    # AI-Augmented Decision Policy & Advisory Integration milestone --
+    # the canonical live_system.live_advisory_gateway output. Kept
+    # deliberately distinct from decision_policy/recommendations below
+    # (the original, pre-existing, still-unimplemented-in-production
+    # decision_policy_gateway/recommendation_builder seam -- see
+    # live_system.integration -- untouched by this milestone). None
+    # until a live_advisory_gateway is configured and has produced at
+    # least one report -- never a fabricated placeholder.
+    advisory_report: Optional[AdvisoryReport] = None
 
     decision_policy: Optional[DecisionPolicy] = None
     recommendations: Tuple[Recommendation, ...] = field(default_factory=tuple)
@@ -193,6 +205,7 @@ class LiveBuildingSnapshot:
             "engineering_state": self.engineering_state,
             "ai_predictions": self.ai_predictions,
             "ai_prediction_snapshot": self.ai_prediction_snapshot,
+            "advisory_report": self.advisory_report,
             "decision_policy": self.decision_policy,
             "recommendations": self.recommendations,
             "component_timestamps": self.component_timestamps,
@@ -271,6 +284,27 @@ class StateManager:
             timestamp=time,
             ai_prediction_snapshot=ai_prediction_snapshot,
             component_timestamps=self._stamp("ai_prediction_snapshot", time),
+        )
+
+    # =====================================================
+
+    def latest_advisory_report(self) -> Optional[AdvisoryReport]:
+
+        # Mirrors latest_building_state()/latest_ai_prediction()'s own
+        # convenience-accessor role, one field over.
+
+        return self._snapshot.advisory_report
+
+    # =====================================================
+
+    def update_advisory_report(
+        self, advisory_report: AdvisoryReport, time: float,
+    ) -> LiveBuildingSnapshot:
+
+        return self._replace(
+            timestamp=time,
+            advisory_report=advisory_report,
+            component_timestamps=self._stamp("advisory_report", time),
         )
 
     # =====================================================

@@ -166,6 +166,29 @@ def _confidence_source(ai_confidence: Optional[float], rl_confidence: Optional[f
     return tuple(sources)
 
 
+def _ai_bottleneck_confidence_for_wait_zone(action: str, evidence) -> Optional[float]:
+
+    # AI-Augmented Decision Policy & Advisory Integration milestone --
+    # the ONE place AI Decision Evidence is allowed to touch a Civilian
+    # Announcement's confidence, and only for a zone Decision Policy's
+    # own zone_policy already, independently, marked WAIT (i.e. its
+    # recommended_exit is already in ground_truth.exits_exceeding_
+    # capacity -- a deterministic, GroundTruth-derived congestion
+    # signal, computed with zero knowledge of this AI model). AI never
+    # creates a WAIT status here, never changes which exit/stair is
+    # recommended, and never touches SHELTER_IN_PLACE/EVACUATE_
+    # IMMEDIATELY zones (the two life-safety-critical actions) at all --
+    # it may only strengthen the confidence behind a congestion warning
+    # Decision Policy already, independently decided to issue (Phase 6's
+    # own explicit example: "AI may strengthen an existing deterministic
+    # congestion warning").
+
+    if action != WAIT or evidence is None or not evidence.available:
+        return None
+
+    return evidence.bottleneck_occurrence_probability
+
+
 # =====================================================
 # Phase 2 -- Civilian Advisory. Zone-based announcements ONLY: every
 # CivilianAnnouncement below is addressed to "occupants in <zone>," and
@@ -226,14 +249,16 @@ def build_civilian_announcements(inputs: AdvisoryInputs) -> Tuple[CivilianAnnoun
         )
 
         ai_confidence, ai_agrees = _ai_signal_for(inputs, recommended_exit or zone_id)
+        wait_zone_ai_confidence = _ai_bottleneck_confidence_for_wait_zone(action, inputs.ai_decision_evidence)
+        combined_ai_confidence = combine_confidence(ai_confidence, wait_zone_ai_confidence)
 
         threshold = CRITICAL_RISK_THRESHOLD if action == SHELTER_IN_PLACE else ELEVATED_RISK_THRESHOLD
         confidence = recommendation_confidence(
             risk_score=risk_by_zone.get(zone_id), risk_threshold=threshold,
-            ai_confidence=ai_confidence, rl_confidence=inputs.rl_confidence,
+            ai_confidence=combined_ai_confidence, rl_confidence=inputs.rl_confidence,
             agreement_signals=[ai_agrees] if ai_agrees is not None else [],
         )
-        confidence_source = _confidence_source(ai_confidence, inputs.rl_confidence)
+        confidence_source = _confidence_source(combined_ai_confidence, inputs.rl_confidence)
 
         explanation = explain_zone_recommendation(
             zone_id=zone_id, action=action, recommended_exit=recommended_exit,
@@ -381,11 +406,16 @@ def build_firefighter_intelligence(inputs: AdvisoryInputs) -> FirefighterIntelli
     max_risk = max((score for score in risk_by_zone.values() if score is not None), default=None)
     ai_confidence, ai_agrees = _ai_signal_for(inputs, ground_truth.maximum_hazard_zone)
 
+    evidence = inputs.ai_decision_evidence
+    evidence_confidence = evidence.bottleneck_occurrence_probability if evidence is not None and evidence.available else None
+    combined_ai_confidence = combine_confidence(ai_confidence, evidence_confidence)
+
     confidence = recommendation_confidence(
         risk_score=max_risk, risk_threshold=MODERATE_THRESHOLD,
-        ai_confidence=ai_confidence, rl_confidence=inputs.rl_confidence,
+        ai_confidence=combined_ai_confidence, rl_confidence=inputs.rl_confidence,
         agreement_signals=[ai_agrees] if ai_agrees is not None else [],
     )
+    confidence_source = _confidence_source(combined_ai_confidence, inputs.rl_confidence)
 
     building_status = (
         "Building cleared" if ground_truth.building_cleared
@@ -422,6 +452,9 @@ def build_firefighter_intelligence(inputs: AdvisoryInputs) -> FirefighterIntelli
         confidence=confidence,
         rescue_priority_areas=decision_policy.rescue_priorities,
         suggested_access_routes=suggested_access_routes,
+        ai_bottleneck_probability=evidence_confidence,
+        ai_bottleneck_model_id=evidence.model_id if evidence is not None and evidence.available else None,
+        confidence_source=confidence_source,
     )
 
 
@@ -617,6 +650,40 @@ def build_building_recommendations(inputs: AdvisoryInputs) -> Tuple[BuildingReco
             )
         )
 
+    # ---- Monitor for Building-Wide Congestion -- AI-Augmented Decision
+    # Policy & Advisory Integration milestone. The ONE new recommendation
+    # AI Decision Evidence alone can add -- deliberately a "monitor"
+    # action, never a control action (no door/deluge/smoke-exhaust/
+    # stair-pressurization/voice-broadcast/exit-closure recommendation is
+    # ever generated from this signal, per Phase 8's own explicit list),
+    # deliberately building-wide/target_type="building" (never a
+    # fabricated zone/stair/exit target -- see ai_evidence.py's own
+    # docstring for why no localization exists to target), and
+    # deliberately additive -- appended only, never replacing or
+    # suppressing any deterministic recommendation above. ----
+
+    if inputs.ai_decision_evidence is not None and inputs.ai_decision_evidence.bottleneck_predicted:
+
+        evidence = inputs.ai_decision_evidence
+
+        recommendations.append(
+            BuildingRecommendation(
+                action="Monitor for Building-Wide Congestion",
+                target_type="building", target_id=None,
+                reason=(
+                    f"Bottleneck Occurrence Model predicts elevated building-wide bottleneck "
+                    f"probability ({evidence.bottleneck_occurrence_probability:.2f})."
+                ),
+                confidence=recommendation_confidence(
+                    risk_score=None, ai_confidence=evidence.bottleneck_occurrence_probability,
+                ),
+                expected_engineering_benefit=(
+                    "Prompts proactive monitoring/staffing attention before congestion is directly observed."
+                ),
+                confidence_source=("ai",),
+            )
+        )
+
     return tuple(recommendations)
 
 
@@ -682,9 +749,13 @@ def build_commander_dashboard(
         + ([f"Stair {ground_truth.worst_stair}"] if ground_truth.worst_stair else [])
     )
 
+    evidence = inputs.ai_decision_evidence
+    evidence_confidence = evidence.bottleneck_occurrence_probability if evidence is not None and evidence.available else None
+
     rec_confidence = combine_confidence(
         *[entry.confidence for entry in civilian_announcements],
         *[entry.confidence for entry in building_recommendations],
+        evidence_confidence,
     )
 
     overall_severity = _overall_incident_severity(
@@ -709,6 +780,8 @@ def build_commander_dashboard(
         occupancy_confidence=occupancy_confidence(inputs.human_observations),
         recommendation_confidence=rec_confidence,
         overall_incident_severity=overall_severity,
+        ai_bottleneck_probability=evidence_confidence,
+        ai_bottleneck_model_id=evidence.model_id if evidence is not None and evidence.available else None,
     )
 
 
