@@ -52,4 +52,20 @@ Practical, fill-in-the-blanks checklist for the day physical college CCTV/NVR ac
 
 ## Handoff to SynEvac integration (after the above is filled in)
 
-Once every box above is checked for one camera, proceed per `docs/architecture/cctv_integration_readiness.md` §13 (steps 1-7) and §18.2 (Milestone A): match this camera to its Digital Twin `Camera` asset, configure `ConnectionInfo` in the Property Panel, save the password once (captured into `credential_store`), and only then begin writing `RTSPFrameSource` against the confirmed RTSP URL/codec/transport recorded here.
+Once every box above is checked for one camera, proceed per `docs/architecture/cctv_integration_readiness.md` §13 (steps 1-7) and §18.2 (Milestone A): match this camera to its Digital Twin `Camera` asset, configure `ConnectionInfo` in the Property Panel, save the password once (captured into `credential_store`), and only then write the one remaining piece — a real `FrameDecoderBackend` implementation behind the already-built, already-offline-tested `RTSPFrameSource` (`live_camera_pipeline/rtsp_frame_source.py`, see readiness doc §19) — against the confirmed RTSP URL/codec/transport recorded here.
+
+## First physical test procedure (Milestone A only — stop here)
+
+`RTSPFrameSource` itself is implemented and fully offline-tested (readiness doc §19); the only missing piece is a real `FrameDecoderBackend`. Once that backend exists and every box above is filled in for one test camera, run exactly this sequence and no further:
+
+1. Camera Asset `CAM-001` already exists in the Digital Twin (or create it).
+2. Configure the real endpoint (`ConnectionInfo.rtsp_address`/`ip_address`/`username`) in the Property Panel.
+3. Configure the credential reference (save the password once — captured into `credential_store`, never written to the project file).
+4. Construct `RTSPFrameSource(camera_id="CAM-001", endpoint=..., decoder_backend=<the new real backend>, credential_ref=..., credential_store=...)` and call `start()`.
+5. Confirm the source reaches status `Online` (directly, or via a wired `status_callback` reporting `CameraManager.connection_status("CAM-001") == CameraConnectionState.ONLINE`).
+6. Call `read_frame()` once.
+7. Confirm `CameraFrame.camera_id == "CAM-001"` — the one non-negotiable check (readiness doc §19.6).
+8. Confirm whatever resolution/frame metadata (`width`/`height`/`codec`) the real backend reports, if any — `None` for anything it genuinely cannot report, never a fabricated value.
+9. Call `stop()`.
+
+**STOP THERE.** Do not, in this same test, wire a real `HumanDetector` (YOLO or equivalent — Milestone B, per readiness doc §18.2) or attempt cross-camera identity resolution (Milestone C). This first test proves exactly one claim: *SynEvac can receive and identify frames from one physical CCTV camera while preserving the Digital Twin Camera Asset identity* — nothing more.

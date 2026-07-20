@@ -333,3 +333,83 @@ It should be implementable **today**, entirely against `CameraFrameSource` (i.e.
 **One-sentence answer to "what's missing to display/read frames from one real camera tomorrow":** everything below `RTSPFrameSource` in the chain already works and needs no changes; the only missing code is the `RTSPFrameSource` implementation itself (plus, optionally, wiring `set_connection_status()` calls into it) — nothing else in this codebase blocks that.
 
 See `docs/architecture/physical_cctv_access_checklist.md` for the practical per-camera information checklist to fill out the moment physical access arrives.
+
+## 19. RTSP Frame Source — offline-testable production implementation
+
+Status as of this milestone: still **no physical CCTV/NVR access.** This milestone builds the one piece of code §18.4 named as genuinely missing: a real `RTSPFrameSource`. It remains fully offline-testable — no network I/O, no real decode library, no real RTSP server — by introducing one new seam (`FrameDecoderBackend`) that the real network/decode work plugs into later, exactly the way `CameraFrameSource` itself let `RTSPFrameSource` be built without a real camera.
+
+### 19.1 What was added
+
+- **`live_camera_pipeline/rtsp_backend.py`** — `FrameDecoderBackend` (ABC: `open(endpoint, username, password)`, `read() -> Optional[DecodedFrame]`, `close()`, `is_open`), `DecodedFrame` (`payload_ref`, `width`, `height`, `codec` — the same "opaque payload plus honestly-optional metadata" shape as `CameraFrame` itself), and `FrameDecoderError` (used for `RTSPFrameSource`'s own non-backend failures, e.g. an unresolved credential).
+- **`live_camera_pipeline/rtsp_frame_source.py`** — `RTSPFrameSource`, a concrete `CameraFrameSource`, plus `redact_endpoint()`. Always driven by an injected `FrameDecoderBackend` — no production backend implementation exists yet (writing one needs a real decode library, out of scope here), so `decoder_backend` is a required constructor argument, not optional.
+- **`live_camera_pipeline/frame_source.py`** — `CameraFrame` gained three additive, backward-compatible fields: `width`, `height`, `codec` (all `Optional`, default `None`). `ReplayFrameSource` and every existing test constructing `CameraFrame` are unaffected.
+- **`tests/live_camera_pipeline_fixtures.py`** — `FakeRTSPBackend`, a deterministic offline `FrameDecoderBackend` (configurable `open()`/`read()` failures, an in-memory frame queue), reused across every new RTSP test the same way `MockHumanDetector` already is.
+- **New tests:** `tests/test_rtsp_frame_source.py` (construction/lifecycle/redaction/identity), `tests/test_rtsp_failure_modes.py` (Phase 7 reconnect scenarios + Phase 12's 15 failure scenarios), `tests/test_rtsp_camera_manager_status_integration.py` (Phase 8 status wiring), `tests/test_rtsp_offline_e2e.py` (Phase 10/11 full chain + camera-replacement proof).
+- **New script:** `scripts/benchmark_rtsp_frame_source.py` (Phase 13 — routing/construction/status overhead only; see §19.5).
+
+### 19.2 Constructor performs zero network I/O
+
+`RTSPFrameSource(camera_id=..., endpoint=..., decoder_backend=..., ...)` never calls `decoder_backend.open()`. Every constructor argument is a plain assignment — proven directly in `tests/test_rtsp_frame_source.py::NoNetworkIOOnConstructionTests`. A Digital Twin Camera Asset can be fully configured for Live mode (endpoint, username, `credential_ref`) with zero risk of ever touching the physical network until `start()` is explicitly called.
+
+### 19.3 Status vocabulary — reused, not duplicated, without an import
+
+`RTSPFrameSource.status` is one of five plain strings: `"Configured"`, `"Connecting"`, `"Online"`, `"Degraded"`, `"Stream Unavailable"` — chosen to match `camera_manager.connection_status.CameraConnectionState`'s own `.value` strings exactly. This is deliberate, not a competing enum: `live_camera_pipeline/` is forbidden from importing `camera_manager` at all (the existing `LiveCameraPipelineDependencyDirectionTests` guard, re-asserted for the two new RTSP files in `tests/test_rtsp_frame_source.py::DependencyDirectionTests`), so it cannot import `CameraConnectionState` directly. A composition root converts with one line: `CameraConnectionState(status)`.
+
+Mapping from the milestone's conceptual states: `STOPPED → Configured`, `CONNECTING → Connecting`, `CONNECTED → Online`, `RECONNECTING → Degraded` (a source that was previously online and is now retrying after a drop is exactly what `CameraConnectionState.DEGRADED`'s own docstring already means), `FAILED → Stream Unavailable` (retries exhausted, not permanent — calling `start()` again retries). `OFFLINE` is deliberately never produced by `RTSPFrameSource` itself.
+
+### 19.4 CameraManager status integration (Phase 8's named gap, now closed for RTSP)
+
+`RTSPFrameSource` accepts an optional `status_callback: Callable[[camera_id, status, detail], None]`, invoked on every status transition. It never imports `CameraManager` itself (Phase 8's own requirement) — a composition root wires it:
+
+```python
+def on_status_changed(camera_id, status, detail):
+    camera_manager.set_connection_status(camera_id, CameraConnectionState(status))
+
+source = RTSPFrameSource(..., status_callback=on_status_changed)
+```
+
+Proven end-to-end in `tests/test_rtsp_camera_manager_status_integration.py`: successful connect → `ONLINE`, exhausted retries → `STREAM_UNAVAILABLE`, `stop()` → `CONFIGURED`, a mid-stream drop transitions through `DEGRADED` and back to `ONLINE` on successful reconnect. `CameraManager` and `designer/widgets/camera_manager_panel.py` still import nothing from `live_camera_pipeline` — Command Center and the Camera Manager Panel remain transport-agnostic, structurally proven by that same test file.
+
+A callback that itself raises can never crash a connect/read cycle — `RTSPFrameSource` swallows exceptions from `status_callback` (it is UI/logging code, not this class's own correctness boundary).
+
+### 19.5 Reconnection strategy — bounded, synchronous, injectable timing
+
+`max_retries` / `retry_delay` / `backoff_factor` control a bounded exponential-backoff loop (`retry_delay * backoff_factor ** attempt`), used identically for the very first connection attempt (`start()`) and for recovering from a mid-stream drop detected inside `read_frame()` — there is exactly one retry mechanism, not two. Never an infinite loop: once `max_retries` is exhausted, the source reports `Stream Unavailable` and stops attempting until `start()` is called again.
+
+This is synchronous and inline — consistent with `live_camera_pipeline.pipeline.LiveCameraPipeline.run_cycle()`'s own pre-existing, undocumented-as-a-problem "no concurrency in the orchestrator" design (§18.1). A slow reconnect on one camera still blocks that cycle, same pre-existing limit as any slow `read_frame()`.
+
+`sleep_fn` (replacing `time.sleep`) and `clock_fn` (replacing `time.time`) are both injectable, defaulting to the real functions in production but overridden with zero-delay stand-ins in every test — no test in this milestone sleeps for a real duration. `stop()` called concurrently mid-retry (or a supervisor translating "camera disabled" into `stop()`) is proven deterministically by having a test's injected `sleep_fn` call `source.stop()` as a side effect at the exact point a real concurrent stop would land — the retry loop checks `is_running` immediately after every sleep and aborts rather than fighting a deliberate stop with one more attempt.
+
+### 19.6 Camera identity guarantee (Phase 4/11 — re-proven for RTSP specifically)
+
+`DecodedFrame` (what a `FrameDecoderBackend` returns) has no `camera_id` field at all — structurally, nothing a decoder backend produces can influence `CameraFrame.camera_id`; `RTSPFrameSource.read_frame()` always constructs `CameraFrame(camera_id=self.camera_id, ...)` from the value it was given at construction. Proven directly, including an explicit "malicious/misconfigured backend tries to smuggle a different id through `payload_ref`" case, in `tests/test_rtsp_frame_source.py::CameraIdGuaranteeTests`.
+
+The camera-replacement scenario (`tests/test_rtsp_offline_e2e.py::CameraReplacementPreservesIdentityTests`) proves the full claim end-to-end: a `Camera(id="CAM-001")` Digital Twin asset, an `RTSPFrameSource` pointed at `rtsp://old-camera/stream` producing detections that reach `BuildingState.occupant_tracks[...].source_camera_ids`, then — simulating the physical camera being swapped — a **new** `RTSPFrameSource` instance pointed at `rtsp://new-camera/stream` but constructed with the identical `camera_id="CAM-001"`. `Camera.id`, the registered `Camera` object identity in `CameraManager`, its `floor_id`/`zone_ids`/mode registration, and every downstream `Detection`/`FusedTrack`/`BuildingState` key all stay `"CAM-001"` — no downstream configuration changes.
+
+### 19.7 Credential handling
+
+`_resolve_password()` resolves at connect time only, every time — through `CredentialStore.get_credential(credential_ref)` if both `credential_ref` and `credential_store` are supplied (the same "never read `Camera.connection.password` directly" discipline §7 already establishes), or a directly-supplied `password` otherwise. Never cached onto `self` beyond the single connect attempt that needed it.
+
+Every failure path — no store configured, no credential saved under the reference, the store itself raising (Phase 12 items 11/12) — is caught by the same generic `except Exception` the connect/reconnect loop already uses, converted into an honest `Stream Unavailable` status with a sanitized detail message, never a crash.
+
+`redact_endpoint()` strips any `user:pass@` embedded directly in an endpoint string (`rtsp://***:***@host`), applied to `repr()` and to any exception text a backend might echo the endpoint back through. `_sanitize_error()` additionally scrubs the literal resolved password value (whether directly supplied or freshly resolved from the store) out of any exception message before it ever becomes `last_error`/a status detail/a log line — proven with a password that deliberately appears inside a fake backend's own exception text (`tests/test_rtsp_frame_source.py::CredentialSafetyTests`). `__repr__` never prints the password even redacted-inline, only `<redacted>`/`<unset>`, matching `ConnectionInfo.__repr__`'s own convention exactly.
+
+### 19.8 Offline RTSP end-to-end result
+
+`tests/test_rtsp_offline_e2e.py::RTSPOfflineEndToEndTests` reruns §16.1's exact multi-camera-deduplication proof (two cameras, three physical people, one seen by both) through **real `RTSPFrameSource` instances** (only the decoder backend is fake) instead of `ReplayFrameSource` — four raw detections fuse to exactly three `BuildingState.occupant_tracks`, never four, with correct multi-camera provenance on the shared occupant. This is the proof that the production RTSP source architecture works end-to-end without ever touching a network.
+
+### 19.9 Performance
+
+`scripts/benchmark_rtsp_frame_source.py` measures `RTSPFrameSource`'s own overhead against `FakeRTSPBackend`-supplied fake decoded frames: frame-routing/`CameraFrame`-construction overhead (~1-2 µs/frame on a development machine) and status-callback dispatch overhead (a fraction of a µs/call). **Not measured, and not claimable, until physical CCTV access exists:** real decode latency, real network latency, real frame-drop rate, real stream stability — every one of those requires an actual RTSP stream to measure honestly.
+
+### 19.10 Answers to the milestone's own explicit questions
+
+- **Is `RTSPFrameSource` implemented?** Yes — `live_camera_pipeline/rtsp_frame_source.py`, a concrete `CameraFrameSource`.
+- **Has it been tested against a real physical CCTV stream?** No.
+- **Can `RTSPFrameSource` be tested without network access?** Yes — every test in `tests/test_rtsp_frame_source.py`, `tests/test_rtsp_failure_modes.py`, `tests/test_rtsp_camera_manager_status_integration.py`, and `tests/test_rtsp_offline_e2e.py` runs against `FakeRTSPBackend`, zero sockets, zero real decode library.
+- **If a physical camera is replaced but the Digital Twin Camera ID stays `CAM-001`, does downstream SynEvac continue using `CAM-001`?** Yes — §19.6.
+- **Does configuring a Live camera automatically attempt a network connection?** No — §19.2; re-confirmed by `tests/test_cctv_offline_pipeline_validation.py::ModeIndependenceTests::test_configuring_live_mode_performs_no_automatic_connection`, unaffected by this milestone.
+
+### 19.11 What still remains once real camera access exists
+
+Only what §15/§18.4 already named: a real `FrameDecoderBackend` implementation (needs a real decode/transport library — the one thing this milestone deliberately does not add), a real `HumanDetector` (YOLO/tracking), and eventually a real `LiveReIDIdentityResolver`. Nothing about `RTSPFrameSource` itself, `CameraManager`, `MultiCameraFusionEngine`, or `BuildingState` should need to change — the real backend plugs into exactly the `FrameDecoderBackend` seam `FakeRTSPBackend` already proves out. See `docs/architecture/physical_cctv_access_checklist.md` for the scoped first-physical-test procedure.

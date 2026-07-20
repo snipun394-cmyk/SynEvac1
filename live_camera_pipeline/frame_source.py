@@ -20,6 +20,19 @@ class CameraFrame:
     frame_sequence: int
     payload_ref: Optional[Any] = None
 
+    # RTSP Frame Source milestone, Phase 5: additive, backward-compatible
+    # metadata a real stream can honestly report and a synthetic/replayed
+    # one (ReplayFrameSource, every existing test's FakeFrameSource)
+    # simply never sets -- defaulting to None rather than a fabricated
+    # value. HumanDetector must never depend on these (see
+    # live_camera_pipeline/human_detector.py); they exist purely for a
+    # diagnostic/debug view (docs/architecture/cctv_integration_readiness.
+    # md Sec 18.3) to have something honest to report once a real source
+    # exists to populate them.
+    width: Optional[int] = None
+    height: Optional[int] = None
+    codec: Optional[str] = None
+
 
 class CameraFrameSource(ABC):
 
