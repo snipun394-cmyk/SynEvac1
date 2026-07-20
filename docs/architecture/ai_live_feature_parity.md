@@ -2,6 +2,8 @@
 
 Status: **feature-parity framework established; zero trained models newly deployed.** This document is the record of the audit and the architecture it produced. It does not connect AI inference to `LiveOrchestrator` or `advisory_system` — that remains a later, explicitly deferred milestone (see `docs/architecture/live_system_integration_audit.md` §13.8).
 
+**Update — Live-Compatible AI Model Training & Model Registry milestone:** the two `RETRAIN_REQUIRED` models named below (`EvacuationTimeModel`, `BottleneckModel`-occurrence) have since been properly trained at production scale (5000 scenarios), versioned, metadata-tagged, and registry-served — see `docs/architecture/live_ai_model_training.md` for the full result. **Still not wired into `LiveOrchestrator`/`advisory_system`.** `EvacuationTimeModel_LiveCompatible` remains `EXPERIMENTAL` (R² 0.088, does not beat its own MAE baseline); `BottleneckOccurrenceModel_LiveCompatible` is now a genuine `PRODUCTION_CANDIDATE` (F1/ROC-AUC clearly beat baseline at scale, despite severe class imbalance).
+
 ## 1. Current AI models
 
 Four trained models exist (`ai_training/experiment.py:25-30`'s `MODEL_REGISTRY` — confirmed exhaustive by grepping every `class \w+\(BaseModel\)` in the repo):

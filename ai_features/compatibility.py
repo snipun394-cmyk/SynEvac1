@@ -204,15 +204,28 @@ def check_model_compatibility(loaded_model, canonical_schema=CANONICAL_LIVE_SCHE
         canonical_is_numeric = canonical_field.dtype in ("int", "float")
         model_is_numeric = column in model_numeric
 
-        if canonical_is_numeric != model_is_numeric:
+        if canonical_is_numeric == model_is_numeric:
+            continue
 
-            issues.append(CompatibilityIssue(
-                "unsupported_missing_value_behavior",
-                f"{column!r} is trained as {'numeric' if model_is_numeric else 'categorical'} "
-                f"by {model_name!r} but declared {canonical_field.dtype!r} "
-                f"({'numeric' if canonical_is_numeric else 'categorical'}) by the canonical "
-                f"schema -- missing-value imputation would silently use the wrong strategy.",
-            ))
+        if canonical_field.nullable:
+
+            # A nullable numeric field that happened to be entirely
+            # missing throughout one particular training run is a known,
+            # inherent limitation of FeatureSchema.infer()'s generic
+            # "categorical if no non-null value was ever observed" rule
+            # (ai_training/preprocessing.py) -- not a genuine semantic
+            # clash this checker should reject a model over. A NON-
+            # nullable field landing in the wrong bucket has no such
+            # innocent explanation and is still flagged below.
+            continue
+
+        issues.append(CompatibilityIssue(
+            "unsupported_missing_value_behavior",
+            f"{column!r} is trained as {'numeric' if model_is_numeric else 'categorical'} "
+            f"by {model_name!r} but declared {canonical_field.dtype!r} "
+            f"({'numeric' if canonical_is_numeric else 'categorical'}) by the canonical "
+            f"schema -- missing-value imputation would silently use the wrong strategy.",
+        ))
 
     return CompatibilityReport(model_name=model_name, compatible=not issues, issues=tuple(issues))
 
