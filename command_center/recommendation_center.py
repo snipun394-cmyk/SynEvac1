@@ -175,6 +175,7 @@ def _explain_civilian(incident_data, entry):
         "Similarity to previous simulations: Not available in this build.",
         _prediction_source_line(confidence_source),
         _rl_influence_line(confidence_source),
+        _crowd_influence_line(confidence_source),
         f"Decision Policy influence: {_decision_policy_influence(incident_data, entry.zone_id)}",
     ]
 
@@ -203,19 +204,24 @@ def _confidence_label(confidence_source):
     if "ai" in confidence_source:
         return "AI-augmented confidence (blended)"
 
+    if "crowd" in confidence_source:
+        return "Crowd-intelligence-augmented confidence (blended, deterministic)"
+
     return "Recommendation confidence (blended, rule-based)"
 
 
 def _prediction_source_line(confidence_source):
 
     if not confidence_source:
-        return "Prediction source: Deterministic Decision Policy (no AI/RL signal supplied for this recommendation)."
+        return "Prediction source: Deterministic Decision Policy (no AI/RL/crowd signal supplied for this recommendation)."
 
     contributors = []
     if "ai" in confidence_source:
         contributors.append("an AI prediction")
     if "rl" in confidence_source:
         contributors.append("an RL policy")
+    if "crowd" in confidence_source:
+        contributors.append("live crowd intelligence (deterministic analytics, not AI)")
 
     return (
         f"Prediction source: Deterministic Decision Policy, augmented by "
@@ -229,6 +235,22 @@ def _rl_influence_line(confidence_source):
         return "RL influence: Contributed to this recommendation's confidence."
 
     return "RL influence: Not deployed."
+
+
+def _crowd_influence_line(confidence_source):
+
+    # Mirrors _rl_influence_line's own shape -- "crowd" appears in
+    # confidence_source only when advisory_engine.py found a genuine,
+    # non-None crowd congestion/density signal for THIS exact
+    # recommendation (never a blanket claim -- see CivilianAnnouncement.
+    # confidence_source's own docstring). Deliberately never called
+    # "AI" anywhere in this label -- crowd intelligence is deterministic
+    # analytics (crowd_intelligence/), never a trained model.
+
+    if "crowd" in confidence_source:
+        return "Crowd Intelligence influence: Contributed to this recommendation's confidence (deterministic analytics, not AI)."
+
+    return "Crowd Intelligence influence: Not observed for this recommendation."
 
 
 def _decision_policy_influence(incident_data, zone_id):

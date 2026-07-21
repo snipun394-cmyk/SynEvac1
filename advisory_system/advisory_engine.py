@@ -145,15 +145,21 @@ def _ai_signal_for(inputs: AdvisoryInputs, location_id: Optional[str]) -> Tuple[
     return None, None
 
 
-def _confidence_source(ai_confidence: Optional[float], rl_confidence: Optional[float]) -> Tuple[str, ...]:
+def _confidence_source(
+    ai_confidence: Optional[float], rl_confidence: Optional[float], crowd_confidence: Optional[float] = None,
+) -> Tuple[str, ...]:
 
     # What confidence_engine.recommendation_confidence() actually blended
     # in for THIS recommendation, beyond the deterministic rule-based
-    # floor every recommendation always carries -- "ai"/"rl" appear only
-    # when a genuine, non-None signal was supplied, never guessed. This
-    # is the one place command_center.recommendation_center is allowed
-    # to trust for whether it may say "AI confidence"/"RL influence" --
-    # see CivilianAnnouncement.confidence_source's own docstring.
+    # floor every recommendation always carries -- "ai"/"rl"/"crowd"
+    # appear only when a genuine, non-None signal was supplied, never
+    # guessed. This is the one place command_center.recommendation_center
+    # is allowed to trust for whether it may say "AI confidence"/"RL
+    # influence"/"Crowd Intelligence" -- see CivilianAnnouncement.
+    # confidence_source's own docstring. "crowd" is deterministic
+    # analytics, never AI -- see docs/architecture/
+    # crowd_aware_advisory_integration.md's own Safety Precedence section
+    # for why the two are never conflated under the same label.
 
     sources = []
 
@@ -162,6 +168,9 @@ def _confidence_source(ai_confidence: Optional[float], rl_confidence: Optional[f
 
     if rl_confidence is not None:
         sources.append("rl")
+
+    if crowd_confidence is not None:
+        sources.append("crowd")
 
     return tuple(sources)
 
@@ -187,6 +196,115 @@ def _ai_bottleneck_confidence_for_wait_zone(action: str, evidence) -> Optional[f
         return None
 
     return evidence.bottleneck_occurrence_probability
+
+
+# =====================================================
+# Live Crowd Intelligence -> Operational Advisory Integration milestone
+# -- SAFETY PRECEDENCE (Phase 4, the most important requirement in this
+# module): crowd congestion is SECONDARY, SUPPORTING evidence. Every
+# function below reads decision_policy's own exit_decisions/
+# stair_decisions/zone_decisions status FIRST and unconditionally
+# defers to it -- none of them can create, remove, or change a CLOSE/
+# AVOID/EVACUATE_IMMEDIATELY/SHELTER_IN_PLACE decision. Crowd evidence
+# may only ever: (a) strengthen/note confidence on a WAIT zone
+# announcement decision_policy ITSELF already produced (the identical
+# restriction _ai_bottleneck_confidence_for_wait_zone already applies to
+# AI, one line above), or (b) add a wholly NEW, separate
+# BuildingRecommendation (never replacing or suppressing an existing
+# one -- see build_building_recommendations() below).
+
+# A documented, deterministic, configurable-in-spirit mapping from a
+# crowd_intelligence.models.IntensityLevel name (as a plain string --
+# advisory_system never imports crowd_intelligence itself, see
+# advisory_system.crowd_evidence's own docstring) to a confidence
+# contribution -- the same "disclosed policy threshold, not a fabricated
+# data value" convention DETERMINISTIC_RULE_BASE_CONFIDENCE/
+# risk_based_confidence already establish. LOW/MODERATE are not
+# operationally noteworthy enough to contribute (None); only HIGH and
+# above ever raise a recommendation's confidence.
+_CROWD_LEVEL_CONFIDENCE = {
+    "HIGH": 0.60,
+    "VERY_HIGH": 0.75,
+    "CRITICAL": 0.90,
+}
+
+
+def _crowd_confidence_for_level(level: Optional[str]) -> Optional[float]:
+
+    if level is None:
+        return None
+
+    return _CROWD_LEVEL_CONFIDENCE.get(level)
+
+
+def _crowd_congestion_confidence_for_wait_zone(
+    action: str, recommended_exit: Optional[str], recommended_stair: Optional[str], evidence,
+) -> Optional[float]:
+
+    # The ONE place Crowd Decision Evidence is allowed to touch a
+    # Civilian Announcement's confidence -- mirrors
+    # _ai_bottleneck_confidence_for_wait_zone exactly, restricted to a
+    # zone Decision Policy's own zone_policy already, independently,
+    # marked WAIT. Crowd evidence never creates a WAIT status here,
+    # never changes which exit/stair is recommended, and never touches
+    # SHELTER_IN_PLACE/EVACUATE_IMMEDIATELY zones at all -- it may only
+    # strengthen the confidence behind a congestion warning Decision
+    # Policy already, independently decided to issue, and only when THIS
+    # exact zone's own recommended exit/stair is one crowd intelligence
+    # has independently, live-observed to be congested (never a
+    # building-wide signal applied indiscriminately to every WAIT zone,
+    # unlike the AI signal above, which crowd intelligence's own
+    # per-asset localization makes possible to avoid).
+
+    if action != WAIT or evidence is None or not evidence.available:
+        return None
+
+    for asset_type, asset_id in (("Exit", recommended_exit), ("Stair", recommended_stair)):
+
+        if asset_id is None or not evidence.is_congested(asset_type, asset_id):
+            continue
+
+        detail = evidence.asset_details.get(asset_id)
+        level = detail.congestion_level if detail is not None else None
+
+        # A congestion level should always be present once is_congested()
+        # is True (see the adapter's own contract -- congested asset ids
+        # always get a matching asset_details entry); "HIGH" is a
+        # defensive, disclosed floor only, never silently assumed CRITICAL.
+        return _crowd_confidence_for_level(level) if level is not None else _CROWD_LEVEL_CONFIDENCE["HIGH"]
+
+    return None
+
+
+def _crowd_wait_zone_reason_note(
+    action: str, recommended_exit: Optional[str], recommended_stair: Optional[str], evidence,
+) -> Optional[str]:
+
+    # Phase 5/12's own explainability requirement -- a plain, structured-
+    # evidence-derived sentence, appended to CivilianAnnouncement.reason
+    # ONLY (never to the broadcast announcement text itself -- see
+    # _format_announcement(), untouched by this milestone). Crowd
+    # evidence explains WHY a WAIT recommendation is additionally
+    # supported; it never rewrites WHAT occupants are told to do.
+
+    if action != WAIT or evidence is None or not evidence.available:
+        return None
+
+    for asset_type, asset_id, noun in (("Exit", recommended_exit, "Exit"), ("Stair", recommended_stair, "Stair")):
+
+        if asset_id is None or not evidence.is_congested(asset_type, asset_id):
+            continue
+
+        detail = evidence.asset_details.get(asset_id)
+        level = detail.congestion_level if detail is not None else None
+        trend = detail.trend if detail is not None else None
+
+        level_text = level or "elevated"
+        trend_text = f" and a {trend} trend" if trend else ""
+
+        return f"Live crowd intelligence observes {level_text} congestion{trend_text} at {noun} {asset_id}."
+
+    return None
 
 
 # =====================================================
@@ -252,25 +370,42 @@ def build_civilian_announcements(inputs: AdvisoryInputs) -> Tuple[CivilianAnnoun
         wait_zone_ai_confidence = _ai_bottleneck_confidence_for_wait_zone(action, inputs.ai_decision_evidence)
         combined_ai_confidence = combine_confidence(ai_confidence, wait_zone_ai_confidence)
 
+        # Live Crowd Intelligence -> Operational Advisory Integration
+        # milestone -- kept as its OWN, separate confidence contribution
+        # (never folded into combined_ai_confidence above), so
+        # _confidence_source()/CivilianAnnouncement.confidence_source can
+        # honestly distinguish "ai" from "crowd" (Phase 11's own "keep
+        # provenance separate" requirement).
+        crowd_wait_confidence = _crowd_congestion_confidence_for_wait_zone(
+            action, recommended_exit, recommended_stair, inputs.crowd_decision_evidence,
+        )
+
         threshold = CRITICAL_RISK_THRESHOLD if action == SHELTER_IN_PLACE else ELEVATED_RISK_THRESHOLD
         confidence = recommendation_confidence(
             risk_score=risk_by_zone.get(zone_id), risk_threshold=threshold,
             ai_confidence=combined_ai_confidence, rl_confidence=inputs.rl_confidence,
+            crowd_confidence=crowd_wait_confidence,
             agreement_signals=[ai_agrees] if ai_agrees is not None else [],
         )
-        confidence_source = _confidence_source(combined_ai_confidence, inputs.rl_confidence)
+        confidence_source = _confidence_source(combined_ai_confidence, inputs.rl_confidence, crowd_wait_confidence)
 
         explanation = explain_zone_recommendation(
             zone_id=zone_id, action=action, recommended_exit=recommended_exit,
             ground_truth=ground_truth, confidence=confidence, rset_improvement=rset_improvement,
         )
 
+        reason_parts = list(explanation.reasons)
+
+        crowd_note = _crowd_wait_zone_reason_note(action, recommended_exit, recommended_stair, inputs.crowd_decision_evidence)
+        if crowd_note is not None:
+            reason_parts.append(crowd_note)
+
         announcements.append(
             CivilianAnnouncement(
                 zone_id=zone_id,
                 zone_name=zone_names.get(zone_id, zone_id),
                 announcement=announcement_text,
-                reason=" ".join(explanation.reasons),
+                reason=" ".join(reason_parts),
                 confidence=confidence,
                 predicted_rset_improvement_seconds=rset_improvement,
                 confidence_source=confidence_source,
@@ -410,12 +545,22 @@ def build_firefighter_intelligence(inputs: AdvisoryInputs) -> FirefighterIntelli
     evidence_confidence = evidence.bottleneck_occurrence_probability if evidence is not None and evidence.available else None
     combined_ai_confidence = combine_confidence(ai_confidence, evidence_confidence)
 
+    # Live Crowd Intelligence -> Operational Advisory Integration
+    # milestone -- Phase 8's "firefighter awareness" of high zone
+    # density/congestion, contributed as its own, separately-tracked
+    # confidence signal (never merged into combined_ai_confidence).
+    crowd_confidence = _crowd_confidence_for_level(
+        inputs.crowd_decision_evidence.most_congested_level
+        if inputs.crowd_decision_evidence is not None and inputs.crowd_decision_evidence.available else None
+    )
+
     confidence = recommendation_confidence(
         risk_score=max_risk, risk_threshold=MODERATE_THRESHOLD,
         ai_confidence=combined_ai_confidence, rl_confidence=inputs.rl_confidence,
+        crowd_confidence=crowd_confidence,
         agreement_signals=[ai_agrees] if ai_agrees is not None else [],
     )
-    confidence_source = _confidence_source(combined_ai_confidence, inputs.rl_confidence)
+    confidence_source = _confidence_source(combined_ai_confidence, inputs.rl_confidence, crowd_confidence)
 
     building_status = (
         "Building cleared" if ground_truth.building_cleared
@@ -684,7 +829,200 @@ def build_building_recommendations(inputs: AdvisoryInputs) -> Tuple[BuildingReco
             )
         )
 
+    # =====================================================
+    # Live Crowd Intelligence -> Operational Advisory Integration
+    # milestone. SAFETY PRECEDENCE (Phase 4): every recommendation below
+    # is either (a) purely informational (a "Monitor" note -- valid
+    # regardless of an asset's own safety status; Phase 8's own "do NOT
+    # modify emergency evacuation priority purely because a zone is
+    # crowded"), or (b) an alternate-route SUPPORT recommendation
+    # restricted to assets decision_policy ITSELF already marks usable
+    # (status != CLOSE for exits, != AVOID for stairs) -- crowd
+    # intelligence never determines route safety on its own (Phase 5/6),
+    # only ever chooses among options Decision Policy already considers
+    # safe. All of these are additive-only -- appended, never replacing
+    # or suppressing any recommendation above (including the "ai"-sourced
+    # one immediately above, which coexists independently -- Phase 11).
+    # =====================================================
+
+    crowd_evidence = inputs.crowd_decision_evidence
+
+    if crowd_evidence is not None and crowd_evidence.available:
+
+        stair_status = _stair_status_by_id(decision_policy)
+        coverage_caveat = _crowd_coverage_caveat(crowd_evidence)
+
+        # ---- Monitor congestion -- one per congested Door/Exit/Stair,
+        # informational only, valid regardless of decision_policy status
+        # (a firefighter/commander benefits from knowing a CLOSED exit is
+        # also crowding up against it). ----
+
+        for asset_type_label, congested_ids, target_type in (
+            ("Door", crowd_evidence.congested_door_ids, "door"),
+            ("Exit", crowd_evidence.congested_exit_ids, "exit"),
+            ("Stair", crowd_evidence.congested_stair_ids, "stair"),
+        ):
+
+            for asset_id in sorted(congested_ids):
+
+                recommendations.append(
+                    _crowd_monitor_asset_recommendation(asset_type_label, asset_id, target_type, crowd_evidence, coverage_caveat)
+                )
+
+        # ---- Monitor high crowd density -- one per zone above the
+        # configured density threshold, informational only. ----
+
+        for zone_id in sorted(crowd_evidence.zones_above_density_threshold):
+
+            recommendations.append(_crowd_monitor_zone_recommendation(zone_id, crowd_evidence, coverage_caveat))
+
+        # ---- Prefer an alternate SAFE exit/stair -- ONLY ever among
+        # assets decision_policy itself already marks usable. Never
+        # invented when no safe, uncongested alternative genuinely
+        # exists. ----
+
+        exit_status = _exit_status_by_id(decision_policy)
+
+        for status_by_id, congested_ids, unsafe_value, asset_type in (
+            (exit_status, crowd_evidence.congested_exit_ids, CLOSE, "exit"),
+            (stair_status, crowd_evidence.congested_stair_ids, AVOID, "stair"),
+        ):
+
+            recommendations.extend(
+                _crowd_prefer_alternative_recommendations(status_by_id, congested_ids, unsafe_value, asset_type, crowd_evidence, coverage_caveat)
+            )
+
     return tuple(recommendations)
+
+
+def _crowd_coverage_caveat(evidence) -> str:
+
+    # Phase 10's own explicit honesty requirement: never let an absence
+    # of observed congestion read as a confirmed "clear" when position/
+    # calibration coverage is incomplete. None (full or unknown coverage)
+    # adds no caveat; anything below 100% gets an explicit, disclosed
+    # note -- this is the ONE sentence every crowd-sourced recommendation
+    # below shares, so a caller can never see one without the other.
+
+    if evidence.position_coverage_fraction is None:
+        return ""
+
+    if evidence.position_coverage_fraction >= 1.0:
+        return " Position coverage: 100%."
+
+    return (
+        f" Position coverage: {evidence.position_coverage_fraction:.0%} -- absence of observed "
+        f"congestion elsewhere does not confirm those routes are clear."
+    )
+
+
+def _crowd_monitor_asset_recommendation(asset_type_label, asset_id, target_type, evidence, coverage_caveat) -> BuildingRecommendation:
+
+    detail = evidence.asset_details.get(asset_id)
+    level = detail.congestion_level if detail is not None else None
+    trend = detail.trend if detail is not None else None
+
+    reason = f"Live crowd intelligence reports {level or 'elevated'} congestion at {asset_type_label} {asset_id}"
+    if trend:
+        reason += f" with a {trend} trend"
+    reason += "."
+    if detail is not None:
+        reason += (
+            f" {detail.approaching_count} occupant(s) approaching, "
+            f"{detail.queue_candidate_count} in an estimated queue."
+        )
+    reason += coverage_caveat
+
+    return BuildingRecommendation(
+        action=f"Monitor Congestion at {asset_type_label} {asset_id}",
+        target_type=target_type, target_id=asset_id,
+        reason=reason,
+        confidence=recommendation_confidence(risk_score=None, crowd_confidence=_crowd_confidence_for_level(level)),
+        expected_engineering_benefit="Prompts proactive crowd management attention at a live-observed congestion point.",
+        confidence_source=("crowd",),
+    )
+
+
+def _crowd_monitor_zone_recommendation(zone_id, evidence, coverage_caveat) -> BuildingRecommendation:
+
+    detail = evidence.zone_details.get(zone_id)
+    level = detail.density_classification if detail is not None else None
+    trend = detail.trend if detail is not None else None
+
+    reason = f"Live crowd intelligence reports {level or 'elevated'} occupant density in Zone {zone_id}"
+    if trend:
+        reason += f" with a {trend} trend"
+    reason += "."
+    reason += coverage_caveat
+
+    return BuildingRecommendation(
+        action=f"Monitor High Crowd Density in Zone {zone_id}",
+        target_type="zone", target_id=zone_id,
+        reason=reason,
+        confidence=recommendation_confidence(risk_score=None, crowd_confidence=_crowd_confidence_for_level(level)),
+        expected_engineering_benefit="Prompts proactive crowd management attention in a densely occupied zone.",
+        confidence_source=("crowd",),
+    )
+
+
+def _crowd_prefer_alternative_recommendations(
+    status_by_id, congested_ids, unsafe_value, asset_type, evidence, coverage_caveat,
+) -> List[BuildingRecommendation]:
+
+    # SAFETY GATE: `usable_ids` excludes anything decision_policy itself
+    # marked unsafe (CLOSE for exits, AVOID for stairs) BEFORE congestion
+    # is even considered -- an unsafe asset can never appear as either
+    # the "congested" side or the "alternative" side below, satisfying
+    # Phase 16 test #3 ("unsafe exit + alternative safe congested exit ->
+    # unsafe exit still never selected") structurally, not by a
+    # special-cased check.
+
+    usable_ids = sorted(asset_id for asset_id, status in status_by_id.items() if status != unsafe_value)
+    congested_usable = [asset_id for asset_id in usable_ids if asset_id in congested_ids]
+
+    # CONFIRMED clear only -- an asset absent from congested_ids is
+    # honestly "clear" ONLY when it also has real position coverage
+    # (Phase 10/13: "no position coverage" and "confirmed uncongested"
+    # are never the same thing). An asset with zero coverage is neither
+    # recommended as an alternative nor implied to be safe from a
+    # congestion standpoint -- it is simply not evidence either way.
+    clear_usable = [
+        asset_id for asset_id in usable_ids
+        if asset_id not in congested_ids and asset_id not in evidence.position_unavailable_asset_ids
+    ]
+
+    if not congested_usable or not clear_usable:
+        return []
+
+    alternative = clear_usable[0]
+    recommendations = []
+
+    for congested_id in congested_usable:
+
+        detail = evidence.asset_details.get(congested_id)
+        level = detail.congestion_level if detail is not None else None
+
+        reason = (
+            f"{asset_type.title()} {congested_id} is currently congested; {asset_type.title()} {alternative} "
+            f"is an equally Decision-Policy-usable route with no congestion currently observed."
+        )
+        reason += coverage_caveat
+
+        recommendations.append(
+            BuildingRecommendation(
+                action=f"Prefer {asset_type.title()} {alternative} over {asset_type.title()} {congested_id}",
+                target_type=asset_type, target_id=alternative,
+                reason=reason,
+                confidence=recommendation_confidence(risk_score=None, crowd_confidence=_crowd_confidence_for_level(level)),
+                expected_engineering_benefit=(
+                    f"Balances occupant load away from a congested {asset_type} toward an uncongested, "
+                    f"equally safe alternative."
+                ),
+                confidence_source=("crowd",),
+            )
+        )
+
+    return recommendations
 
 
 def _benefit_for(action: str) -> str:
@@ -752,10 +1090,15 @@ def build_commander_dashboard(
     evidence = inputs.ai_decision_evidence
     evidence_confidence = evidence.bottleneck_occurrence_probability if evidence is not None and evidence.available else None
 
+    crowd_evidence = inputs.crowd_decision_evidence
+    crowd_available = crowd_evidence is not None and crowd_evidence.available
+    crowd_confidence = _crowd_confidence_for_level(crowd_evidence.most_congested_level) if crowd_available else None
+
     rec_confidence = combine_confidence(
         *[entry.confidence for entry in civilian_announcements],
         *[entry.confidence for entry in building_recommendations],
         evidence_confidence,
+        crowd_confidence,
     )
 
     overall_severity = _overall_incident_severity(
@@ -782,6 +1125,9 @@ def build_commander_dashboard(
         overall_incident_severity=overall_severity,
         ai_bottleneck_probability=evidence_confidence,
         ai_bottleneck_model_id=evidence.model_id if evidence is not None and evidence.available else None,
+        crowd_highest_density_zone_id=crowd_evidence.highest_density_zone_id if crowd_available else None,
+        crowd_most_congested_asset_id=crowd_evidence.most_congested_asset_id if crowd_available else None,
+        crowd_most_congested_level=crowd_evidence.most_congested_level if crowd_available else None,
     )
 
 

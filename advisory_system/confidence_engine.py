@@ -98,14 +98,25 @@ def recommendation_confidence(
     risk_threshold: float = 0.5,
     ai_confidence: Optional[float] = None,
     rl_confidence: Optional[float] = None,
+    crowd_confidence: Optional[float] = None,
     agreement_signals: Sequence[Optional[bool]] = (),
 ) -> float:
 
     # Always returns a real number (never None): a deterministic
     # Decision Policy rule underlies every Advisory recommendation, so
     # DETERMINISTIC_RULE_BASE_CONFIDENCE is always available as a floor
-    # even when no AI/RL/agreement signal was ever supplied for this
-    # particular recommendation.
+    # even when no AI/RL/crowd/agreement signal was ever supplied for
+    # this particular recommendation.
+    #
+    # Live Crowd Intelligence -> Operational Advisory Integration
+    # milestone -- crowd_confidence blends in exactly like ai_confidence/
+    # rl_confidence always have (this function already averages whatever
+    # real signals are supplied; that was never "one opaque score" any
+    # more than ai_confidence blending already was). Phase 11's own
+    # "keep provenance separate" requirement is satisfied one layer up,
+    # by advisory_engine.py's own confidence_source tuple recording
+    # WHICH sources contributed to this exact blended number -- never by
+    # withholding crowd_confidence from the blend itself.
 
     signals = [DETERMINISTIC_RULE_BASE_CONFIDENCE]
 
@@ -118,6 +129,9 @@ def recommendation_confidence(
 
     if rl_confidence is not None:
         signals.append(rl_confidence)
+
+    if crowd_confidence is not None:
+        signals.append(crowd_confidence)
 
     agreement = agreement_confidence(agreement_signals)
     if agreement is not None:

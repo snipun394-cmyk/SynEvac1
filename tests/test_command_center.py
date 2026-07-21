@@ -861,7 +861,7 @@ class ConfidenceLabelTests(unittest.TestCase):
         text = panel.detail_label.text()
         self.assertNotIn("AI confidence", text)
         self.assertIn("Recommendation confidence (blended, rule-based)", text)
-        self.assertIn("no AI/RL signal supplied for this recommendation", text)
+        self.assertIn("no AI/RL/crowd signal supplied for this recommendation", text)
 
     def test_building_panel_never_claims_ai_confidence(self):
 
@@ -883,9 +883,10 @@ class ConfidenceLabelTests(unittest.TestCase):
         self.assertEqual(_confidence_label(()), "Recommendation confidence (blended, rule-based)")
         self.assertEqual(_confidence_label(("ai",)), "AI-augmented confidence (blended)")
 
-        self.assertIn("no AI/RL signal supplied", _prediction_source_line(()))
+        self.assertIn("no AI/RL/crowd signal supplied", _prediction_source_line(()))
         self.assertIn("an AI prediction", _prediction_source_line(("ai",)))
         self.assertIn("an RL policy", _prediction_source_line(("rl",)))
+        self.assertIn("live crowd intelligence", _prediction_source_line(("crowd",)))
 
         self.assertEqual(_rl_influence_line(()), "RL influence: Not deployed.")
         self.assertEqual(

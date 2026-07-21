@@ -7,6 +7,7 @@ from scenario.scenario import Scenario
 from perception.models.human_observation import HumanObservation
 
 from advisory_system.ai_evidence import AIDecisionEvidence
+from advisory_system.crowd_evidence import CrowdDecisionEvidence
 
 
 # =====================================================
@@ -102,6 +103,14 @@ class AdvisoryInputs:
     # advisory_system.ai_evidence's own module docstring for exactly
     # why this attaches here rather than to decision_policy.
     ai_decision_evidence: Optional[AIDecisionEvidence] = None
+
+    # Live Crowd Intelligence -> Operational Advisory Integration
+    # milestone -- additive, mirrors ai_decision_evidence exactly. None
+    # means "no crowd evidence this cycle" (the honest default every
+    # existing caller keeps producing unchanged); see
+    # advisory_system.crowd_evidence's own module docstring for why
+    # this attaches here rather than to decision_policy.
+    crowd_decision_evidence: Optional[CrowdDecisionEvidence] = None
 
     # =====================================================
 
@@ -303,6 +312,20 @@ class IncidentCommanderDashboard:
     ai_bottleneck_probability: Optional[float] = None
     ai_bottleneck_model_id: Optional[str] = None
 
+    # Live Crowd Intelligence -> Operational Advisory Integration
+    # milestone -- additive, mirrors ai_bottleneck_probability/
+    # ai_bottleneck_model_id's own structurally-separate placement.
+    # Unlike the AI fields (building-wide only), crowd intelligence CAN
+    # honestly name a specific zone/asset (see advisory_system.
+    # crowd_evidence's own docstring) -- these three fields are commander
+    # AWARENESS only, never folded into predicted_bottlenecks/
+    # available_exits/blocked_routes above, which remain exclusively
+    # GroundTruth/DecisionPolicy-sourced (Phase 11's own "keep provenance
+    # separate" requirement).
+    crowd_highest_density_zone_id: Optional[str] = None
+    crowd_most_congested_asset_id: Optional[str] = None
+    crowd_most_congested_level: Optional[str] = None
+
     def to_dict(self) -> Dict[str, Any]:
 
         return {
@@ -322,6 +345,9 @@ class IncidentCommanderDashboard:
             "overall_incident_severity": self.overall_incident_severity,
             "ai_bottleneck_probability": self.ai_bottleneck_probability,
             "ai_bottleneck_model_id": self.ai_bottleneck_model_id,
+            "crowd_highest_density_zone_id": self.crowd_highest_density_zone_id,
+            "crowd_most_congested_asset_id": self.crowd_most_congested_asset_id,
+            "crowd_most_congested_level": self.crowd_most_congested_level,
         }
 
 

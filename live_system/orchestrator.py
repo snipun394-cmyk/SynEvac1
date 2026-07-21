@@ -20,6 +20,7 @@ from live_system.live_ai_gateway import LiveAIInferenceGateway
 from live_system.live_advisory_gateway import (
     LiveAdvisoryGateway,
     ai_decision_evidence_from_prediction_snapshot,
+    crowd_decision_evidence_from_snapshot,
 )
 from live_system.sensor_registry import SensorRegistry
 from live_system.state_manager import LiveBuildingSnapshot, StateManager
@@ -315,7 +316,18 @@ class LiveOrchestrator:
         if self.live_advisory_gateway is not None:
 
             ai_evidence = ai_decision_evidence_from_prediction_snapshot(snapshot.ai_prediction_snapshot)
-            advisory_report = self.live_advisory_gateway.generate(ai_evidence, time)
+
+            # Live Crowd Intelligence -> Operational Advisory Integration
+            # milestone -- crowd_intelligence_gateway (above) already ran
+            # this cycle (or a previous one, if this cycle's own
+            # computation failed/was unconfigured) and its result is
+            # already on snapshot.crowd_intelligence; reduced to plain-
+            # value evidence here, the identical pattern
+            # ai_decision_evidence_from_prediction_snapshot already
+            # establishes one line above.
+            crowd_evidence = crowd_decision_evidence_from_snapshot(snapshot.crowd_intelligence)
+
+            advisory_report = self.live_advisory_gateway.generate(ai_evidence, time, crowd_evidence)
 
             # None means "no update this cycle" -- covers BOTH "not
             # enough information yet" and any caught internal failure
