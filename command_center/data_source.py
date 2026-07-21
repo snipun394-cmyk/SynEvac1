@@ -101,6 +101,11 @@ class CommandCenterSnapshot:
     # Replay mode" convention exactly.
     evacuation_progress: Optional[Any] = None
 
+    # Live Emergency Response & Rescue Priority Intelligence milestone --
+    # emergency_response.models.EmergencyResponseSnapshot, mirroring
+    # evacuation_progress's own convention exactly.
+    emergency_response: Optional[Any] = None
+
     # Phase 14 -- per-component as-of timestamps, honestly reported.
     # None means that component has never been populated at all (not
     # "populated at time 0.0"). Always None/CURRENT in Replay mode,
@@ -110,6 +115,7 @@ class CommandCenterSnapshot:
     ai_prediction_timestamp: Optional[float] = None
     advisory_timestamp: Optional[float] = None
     evacuation_progress_timestamp: Optional[float] = None
+    emergency_response_timestamp: Optional[float] = None
     consistency: SnapshotConsistency = SnapshotConsistency.CURRENT
 
     # Phase 15 -- a bounded, most-recent-last list of human-readable

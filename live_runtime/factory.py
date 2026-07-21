@@ -40,8 +40,11 @@ from crowd_intelligence.engine import CrowdIntelligenceEngine
 
 from evacuation_progress.engine import EvacuationProgressEngine
 
+from emergency_response.engine import EmergencyResponseIntelligenceEngine
+
 from live_system.crowd_intelligence_gateway import EngineCrowdIntelligenceGateway
 from live_system.evacuation_progress_gateway import EngineEvacuationProgressGateway
+from live_system.emergency_response_gateway import EngineEmergencyResponseGateway
 
 from live_runtime.runtime import LiveRuntime
 
@@ -76,6 +79,7 @@ def build_live_runtime(
     sensor_fusion_engine: Optional[SensorFusionEngine] = None,
     crowd_intelligence_engine: Optional[CrowdIntelligenceEngine] = None,
     evacuation_progress_engine: Optional[EvacuationProgressEngine] = None,
+    emergency_response_engine: Optional[EmergencyResponseIntelligenceEngine] = None,
     smoke_detector_reading_provider: Optional[Callable[[float], object]] = None,
     heat_detector_reading_provider: Optional[Callable[[float], object]] = None,
     camera_manager: Optional[CameraManager] = None,
@@ -162,6 +166,15 @@ def build_live_runtime(
     evacuation_progress_engine = (
         evacuation_progress_engine if evacuation_progress_engine is not None
         else EvacuationProgressEngine(building, live_occupant_manager, event_bus)
+    )
+
+    # Live Emergency Response & Rescue Priority Intelligence milestone --
+    # exactly ONE EmergencyResponseIntelligenceEngine for this live
+    # session, reading the SAME shared live_occupant_manager/Building
+    # every other stage above reads.
+    emergency_response_engine = (
+        emergency_response_engine if emergency_response_engine is not None
+        else EmergencyResponseIntelligenceEngine(building, live_occupant_manager)
     )
 
     # =====================================================
@@ -353,6 +366,7 @@ def build_live_runtime(
         building_state_gateway=building_state_gateway,
         crowd_intelligence_gateway=EngineCrowdIntelligenceGateway(crowd_intelligence_engine),
         evacuation_progress_gateway=EngineEvacuationProgressGateway(evacuation_progress_engine),
+        emergency_response_gateway=EngineEmergencyResponseGateway(emergency_response_engine),
         live_ai_gateway=live_ai_gateway,
         live_advisory_gateway=live_advisory_gateway,
         interval_seconds=interval_seconds,
@@ -391,6 +405,7 @@ def build_live_runtime(
         perception_fusion_coordinator=perception_fusion_coordinator,
         crowd_intelligence_engine=crowd_intelligence_engine,
         evacuation_progress_engine=evacuation_progress_engine,
+        emergency_response_engine=emergency_response_engine,
     )
 
 

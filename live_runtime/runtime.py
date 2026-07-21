@@ -50,6 +50,7 @@ class LiveRuntime:
         perception_fusion_coordinator=None,
         crowd_intelligence_engine=None,
         evacuation_progress_engine=None,
+        emergency_response_engine=None,
     ):
 
         # Digital Twin / asset-management layer -- Phase 4's shared-
@@ -113,6 +114,12 @@ class LiveRuntime:
         # requirement), same untyped-attribute discipline as every
         # other collaborator on this class.
         self.evacuation_progress_engine = evacuation_progress_engine
+
+        # Live Emergency Response & Rescue Priority Intelligence
+        # milestone -- exactly ONE EmergencyResponseIntelligenceEngine
+        # for this live session, same untyped-attribute discipline as
+        # every other collaborator on this class.
+        self.emergency_response_engine = emergency_response_engine
 
         self._running = False
 

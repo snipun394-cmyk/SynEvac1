@@ -9,6 +9,7 @@ from perception.models.human_observation import HumanObservation
 from advisory_system.ai_evidence import AIDecisionEvidence
 from advisory_system.crowd_evidence import CrowdDecisionEvidence
 from advisory_system.evacuation_progress_evidence import EvacuationProgressEvidence
+from advisory_system.emergency_response_evidence import EmergencyResponseEvidence
 
 
 # =====================================================
@@ -118,6 +119,10 @@ class AdvisoryInputs:
     # evacuation-progress evidence this cycle."
     evacuation_progress_evidence: Optional[EvacuationProgressEvidence] = None
 
+    # Live Emergency Response & Rescue Priority Intelligence milestone --
+    # additive, mirrors evacuation_progress_evidence exactly.
+    emergency_response_evidence: Optional[EmergencyResponseEvidence] = None
+
     # =====================================================
 
     @property
@@ -217,6 +222,16 @@ class FirefighterIntelligenceReport:
     # contributed to `confidence` above.
     confidence_source: Tuple[str, ...] = ()
 
+    # Live Emergency Response & Rescue Priority Intelligence milestone --
+    # additive, deliberately "live_"-prefixed and kept structurally
+    # SEPARATE from rescue_priority_areas above (that field remains
+    # exclusively decision_policy.rescue_policy-sourced -- a completed
+    # simulation's own GroundTruth-derived ranking -- never replaced or
+    # merged; this pair is emergency_response/'s own, independently-
+    # provenanced, genuinely live ranking).
+    live_priority_zone_ids: Tuple[str, ...] = ()
+    live_possible_assistance_zone_ids: Tuple[str, ...] = ()
+
     def to_dict(self) -> Dict[str, Any]:
 
         return {
@@ -240,6 +255,8 @@ class FirefighterIntelligenceReport:
             "ai_bottleneck_probability": self.ai_bottleneck_probability,
             "ai_bottleneck_model_id": self.ai_bottleneck_model_id,
             "confidence_source": list(self.confidence_source),
+            "live_priority_zone_ids": list(self.live_priority_zone_ids),
+            "live_possible_assistance_zone_ids": list(self.live_possible_assistance_zone_ids),
         }
 
 
@@ -340,6 +357,14 @@ class IncidentCommanderDashboard:
     evacuation_stalled_zone_ids: Tuple[str, ...] = field(default_factory=tuple)
     evacuation_clearance_unknown_zone_ids: Tuple[str, ...] = field(default_factory=tuple)
 
+    # Live Emergency Response & Rescue Priority Intelligence milestone --
+    # additive, mirrors the evacuation_*/crowd_* fields immediately
+    # above exactly. Phase 18's own "highest-priority zones, known
+    # occupants remaining, possible assistance cases" commander summary.
+    response_highest_priority_zone_id: Optional[str] = None
+    response_critical_zone_ids: Tuple[str, ...] = field(default_factory=tuple)
+    response_possible_assistance_zone_ids: Tuple[str, ...] = field(default_factory=tuple)
+
     def to_dict(self) -> Dict[str, Any]:
 
         return {
@@ -365,6 +390,9 @@ class IncidentCommanderDashboard:
             "evacuation_progress_fraction": self.evacuation_progress_fraction,
             "evacuation_stalled_zone_ids": list(self.evacuation_stalled_zone_ids),
             "evacuation_clearance_unknown_zone_ids": list(self.evacuation_clearance_unknown_zone_ids),
+            "response_highest_priority_zone_id": self.response_highest_priority_zone_id,
+            "response_critical_zone_ids": list(self.response_critical_zone_ids),
+            "response_possible_assistance_zone_ids": list(self.response_possible_assistance_zone_ids),
         }
 
 

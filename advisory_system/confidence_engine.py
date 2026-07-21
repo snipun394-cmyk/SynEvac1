@@ -100,6 +100,7 @@ def recommendation_confidence(
     rl_confidence: Optional[float] = None,
     crowd_confidence: Optional[float] = None,
     progress_confidence: Optional[float] = None,
+    response_confidence: Optional[float] = None,
     agreement_signals: Sequence[Optional[bool]] = (),
 ) -> float:
 
@@ -136,6 +137,9 @@ def recommendation_confidence(
 
     if progress_confidence is not None:
         signals.append(progress_confidence)
+
+    if response_confidence is not None:
+        signals.append(response_confidence)
 
     agreement = agreement_confidence(agreement_signals)
     if agreement is not None:

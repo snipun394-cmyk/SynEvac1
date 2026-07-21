@@ -275,7 +275,19 @@ class EvacuationProgressEngine:
         if clearance_fraction is not None and clearance_fraction >= self.config.nearly_clear_fraction:
             return ZoneClearanceStatus.NEARLY_CLEAR
 
-        if trend == EvacuationProgressTrend.STABLE:
+        if trend == EvacuationProgressTrend.STALLED:
+            # `trend` here is already the MAPPED EvacuationProgressTrend
+            # value (see _map_zone_trend()) -- a "no change" zone-
+            # clearance reading (occupants remaining, TrendTracker's own
+            # STABLE classification) is mapped to STALLED specifically
+            # because "unchanging while people remain" is the zone-
+            # clearance concept this status name describes. This bug
+            # (comparing against the pre-mapping EvacuationProgressTrend.
+            # STABLE, which this field can never equal once mapped) was
+            # found and fixed during the Live Emergency Response & Rescue
+            # Priority Intelligence milestone's own end-to-end testing --
+            # no prior test exercised the real trend -> status pipeline
+            # for a genuinely stalled zone with live-computed trend data.
             return ZoneClearanceStatus.STALLED
 
         if trend == EvacuationProgressTrend.IMPROVING:

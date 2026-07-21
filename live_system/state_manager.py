@@ -23,6 +23,8 @@ from crowd_intelligence.models import CrowdIntelligenceSnapshot
 
 from evacuation_progress.models import EvacuationProgressSnapshot
 
+from emergency_response.models import EmergencyResponseSnapshot
+
 from live_system.live_ai_gateway import LiveAIPredictionSnapshot
 
 
@@ -125,6 +127,11 @@ class LiveBuildingSnapshot:
     # evacuation_progress_gateway is configured and has produced at
     # least one snapshot -- never a fabricated empty-but-present snapshot.
     evacuation_progress: Optional[EvacuationProgressSnapshot] = None
+
+    # Live Emergency Response & Rescue Priority Intelligence milestone --
+    # the canonical live_system.emergency_response_gateway output,
+    # mirroring crowd_intelligence/evacuation_progress above exactly.
+    emergency_response: Optional[EmergencyResponseSnapshot] = None
 
     # component -> the timestamp its own field was last actually
     # updated -- distinct from `timestamp` (this snapshot's own
@@ -232,6 +239,7 @@ class LiveBuildingSnapshot:
             "recommendations": self.recommendations,
             "crowd_intelligence": self.crowd_intelligence,
             "evacuation_progress": self.evacuation_progress,
+            "emergency_response": self.emergency_response,
             "component_timestamps": self.component_timestamps,
         }
         current.update(changes)
@@ -432,6 +440,24 @@ class StateManager:
             timestamp=time,
             evacuation_progress=evacuation_progress,
             component_timestamps=self._stamp("evacuation_progress", time),
+        )
+
+    # =====================================================
+
+    def latest_emergency_response(self) -> Optional[EmergencyResponseSnapshot]:
+
+        return self._snapshot.emergency_response
+
+    # =====================================================
+
+    def update_emergency_response(
+        self, emergency_response: EmergencyResponseSnapshot, time: float,
+    ) -> LiveBuildingSnapshot:
+
+        return self._replace(
+            timestamp=time,
+            emergency_response=emergency_response,
+            component_timestamps=self._stamp("emergency_response", time),
         )
 
     # =====================================================

@@ -8,9 +8,11 @@ from building_state.models import BuildingState
 from live_system.building_state_gateway import BuildingStateGateway
 from live_system.crowd_intelligence_gateway import CrowdIntelligenceGateway
 from live_system.evacuation_progress_gateway import EvacuationProgressGateway
+from live_system.emergency_response_gateway import EmergencyResponseGateway
 from live_system.event_bus import EventBus, EventType
 
 from evacuation_progress.models import EvacuationProgressTrend, ZoneClearanceStatus
+from emergency_response.models import ResponsePriorityLevel
 from live_system.incident_manager import IncidentManager, IncidentState
 from live_system.integration import (
     AIInferenceGateway,
@@ -24,6 +26,7 @@ from live_system.live_advisory_gateway import (
     LiveAdvisoryGateway,
     ai_decision_evidence_from_prediction_snapshot,
     crowd_decision_evidence_from_snapshot,
+    emergency_response_evidence_from_snapshot,
     evacuation_progress_evidence_from_snapshot,
 )
 from live_system.sensor_registry import SensorRegistry
@@ -98,6 +101,7 @@ class LiveOrchestrator:
         live_advisory_gateway: Optional[LiveAdvisoryGateway] = None,
         crowd_intelligence_gateway: Optional[CrowdIntelligenceGateway] = None,
         evacuation_progress_gateway: Optional[EvacuationProgressGateway] = None,
+        emergency_response_gateway: Optional[EmergencyResponseGateway] = None,
         ai_inference_gateway: Optional[AIInferenceGateway] = None,
         decision_policy_gateway: Optional[DecisionPolicyGateway] = None,
         command_center_gateway: Optional[CommandCenterGateway] = None,
@@ -116,6 +120,7 @@ class LiveOrchestrator:
         self.live_advisory_gateway = live_advisory_gateway
         self.crowd_intelligence_gateway = crowd_intelligence_gateway
         self.evacuation_progress_gateway = evacuation_progress_gateway
+        self.emergency_response_gateway = emergency_response_gateway
         self.ai_inference_gateway = ai_inference_gateway
         self.decision_policy_gateway = decision_policy_gateway
         self.command_center_gateway = command_center_gateway
@@ -184,6 +189,15 @@ class LiveOrchestrator:
         # Mirrors latest_building_state's own forwarding-property style.
 
         return self.state_manager.latest_evacuation_progress()
+
+    # =====================================================
+
+    @property
+    def latest_emergency_response(self):
+
+        # Mirrors latest_building_state's own forwarding-property style.
+
+        return self.state_manager.latest_emergency_response()
 
     # =====================================================
 
@@ -340,6 +354,29 @@ class LiveOrchestrator:
                 snapshot = self.state_manager.update_evacuation_progress(evacuation_progress_snapshot, time)
                 self.event_bus.emit(EventType.EVACUATION_PROGRESS_UPDATED, evacuation_progress_snapshot, time)
 
+        if self.emergency_response_gateway is not None:
+
+            # Live Emergency Response & Rescue Priority Intelligence
+            # milestone -- runs AFTER evacuation_progress_gateway (reads
+            # snapshot.crowd_intelligence/snapshot.evacuation_progress,
+            # this cycle's fresh values or the previous cycle's) and
+            # BEFORE live_ai_gateway/live_advisory_gateway. Neither
+            # existing stage is reordered.
+            previous_emergency_response = self.state_manager.latest_emergency_response()
+
+            emergency_response_snapshot = self.emergency_response_gateway.compute(
+                time, snapshot.building_state, snapshot.crowd_intelligence, snapshot.evacuation_progress,
+            )
+
+            if emergency_response_snapshot is not None:
+
+                self._emit_emergency_response_transition_events(
+                    previous_emergency_response, emergency_response_snapshot, time,
+                )
+
+                snapshot = self.state_manager.update_emergency_response(emergency_response_snapshot, time)
+                self.event_bus.emit(EventType.RESPONSE_PRIORITY_UPDATED, emergency_response_snapshot, time)
+
         if self.live_ai_gateway is not None:
 
             ai_prediction_snapshot = self.live_ai_gateway.predict(snapshot.building_state, time)
@@ -373,8 +410,12 @@ class LiveOrchestrator:
             # milestone -- the SAME pattern, one field over.
             evacuation_progress_evidence = evacuation_progress_evidence_from_snapshot(snapshot.evacuation_progress)
 
+            # Live Emergency Response & Rescue Priority Intelligence
+            # milestone -- the SAME pattern, one field over.
+            emergency_response_evidence = emergency_response_evidence_from_snapshot(snapshot.emergency_response)
+
             advisory_report = self.live_advisory_gateway.generate(
-                ai_evidence, time, crowd_evidence, evacuation_progress_evidence,
+                ai_evidence, time, crowd_evidence, evacuation_progress_evidence, emergency_response_evidence,
             )
 
             # None means "no update this cycle" -- covers BOTH "not
@@ -520,3 +561,57 @@ class LiveOrchestrator:
 
             if flow.trend == EvacuationProgressTrend.STALLED and previous_exit_trend.get(exit_id) != EvacuationProgressTrend.STALLED:
                 self.event_bus.emit(EventType.EXIT_FLOW_STALLED, flow, time)
+
+    # =====================================================
+
+    _RESPONSE_PRIORITY_ORDINAL = {
+        ResponsePriorityLevel.LOW: 0,
+        ResponsePriorityLevel.MODERATE: 1,
+        ResponsePriorityLevel.HIGH: 2,
+        ResponsePriorityLevel.CRITICAL: 3,
+    }
+
+    def _emit_emergency_response_transition_events(self, previous, current, time: float) -> None:
+
+        # Live Emergency Response & Rescue Priority Intelligence
+        # milestone, Phase 13/12 -- "do not emit repeated identical
+        # priority-change events every cycle ... transition/change-based
+        # events only." ZONE_RESPONSE_ESCALATED/DEESCALATED fire ONLY
+        # when a zone's own priority_level ordinal genuinely changed
+        # since the previous cycle (UNKNOWN is not comparable -- an
+        # escalation/de-escalation is only meaningful between two
+        # concrete levels). POSSIBLE_ASSISTANCE_DETECTED fires ONLY the
+        # cycle a zone's own assistance count goes from zero to nonzero
+        # (never re-fired every cycle the same person stays flagged).
+        # RESPONSE_PRIORITY_UPDATED (emitted unconditionally by the
+        # caller) remains the general-purpose "a fresh snapshot exists"
+        # signal, mirroring EVACUATION_PROGRESS_UPDATED's own role.
+
+        previous_zones = previous.zones if previous is not None else {}
+
+        for zone_id, priority in current.zones.items():
+
+            previous_priority = previous_zones.get(zone_id)
+
+            current_ordinal = self._RESPONSE_PRIORITY_ORDINAL.get(priority.priority_level)
+            previous_ordinal = (
+                self._RESPONSE_PRIORITY_ORDINAL.get(previous_priority.priority_level)
+                if previous_priority is not None else None
+            )
+
+            if current_ordinal is not None and previous_ordinal is not None and current_ordinal != previous_ordinal:
+
+                event_type = (
+                    EventType.ZONE_RESPONSE_ESCALATED if current_ordinal > previous_ordinal
+                    else EventType.ZONE_RESPONSE_DEESCALATED
+                )
+                self.event_bus.emit(event_type, priority, time)
+
+            previous_assistance = (
+                (previous_priority.possible_assistance_count + previous_priority.confirmed_assistance_count)
+                if previous_priority is not None else 0
+            )
+            current_assistance = priority.possible_assistance_count + priority.confirmed_assistance_count
+
+            if current_assistance > 0 and previous_assistance == 0:
+                self.event_bus.emit(EventType.POSSIBLE_ASSISTANCE_DETECTED, priority, time)

@@ -147,7 +147,7 @@ def _ai_signal_for(inputs: AdvisoryInputs, location_id: Optional[str]) -> Tuple[
 
 def _confidence_source(
     ai_confidence: Optional[float], rl_confidence: Optional[float], crowd_confidence: Optional[float] = None,
-    progress_confidence: Optional[float] = None,
+    progress_confidence: Optional[float] = None, response_confidence: Optional[float] = None,
 ) -> Tuple[str, ...]:
 
     # What confidence_engine.recommendation_confidence() actually blended
@@ -175,6 +175,9 @@ def _confidence_source(
 
     if progress_confidence is not None:
         sources.append("progress")
+
+    if response_confidence is not None:
+        sources.append("response")
 
     return tuple(sources)
 
@@ -378,6 +381,56 @@ def _progress_wait_zone_reason_note(
 
 
 # =====================================================
+# Live Emergency Response & Rescue Priority Intelligence milestone --
+# SAFETY PRECEDENCE (Phase 19), mirroring the crowd/progress functions
+# immediately above EXACTLY: emergency response priority is SECONDARY,
+# SUPPORTING evidence. It may only ever (a) strengthen/note confidence
+# on a WAIT-zone announcement decision_policy itself already produced,
+# or (b) add wholly NEW, separate BuildingRecommendations. It never
+# creates, removes, or changes a CLOSE/AVOID/EVACUATE_IMMEDIATELY/
+# SHELTER_IN_PLACE decision, and it is deterministic analytics, never AI
+# (Phase 20 -- confidence_source below tags it "response", never "ai").
+
+_RESPONSE_FINDING_CONFIDENCE = 0.80  # same "above the 0.70 floor, strengthens rather than weakens" reasoning as _PROGRESS_FINDING_CONFIDENCE
+
+
+def _response_confidence_for_wait_zone(action: str, zone_id: str, evidence) -> Optional[float]:
+
+    # Mirrors _progress_confidence_for_wait_zone exactly, restricted to
+    # a zone Decision Policy's own zone_policy already, independently,
+    # marked WAIT, and only when THIS exact zone is one emergency
+    # response intelligence has independently flagged CRITICAL/HIGH
+    # priority (never a building-wide generalization).
+
+    if action != WAIT or evidence is None or not evidence.available:
+        return None
+
+    if zone_id in evidence.critical_zone_ids or zone_id in evidence.high_priority_zone_ids:
+        return _RESPONSE_FINDING_CONFIDENCE
+
+    return None
+
+
+def _response_wait_zone_reason_note(action: str, zone_id: str, evidence) -> Optional[str]:
+
+    # Mirrors _progress_wait_zone_reason_note exactly -- appended to
+    # CivilianAnnouncement.reason ONLY, never to the broadcast
+    # announcement text itself.
+
+    if action != WAIT or evidence is None or not evidence.available:
+        return None
+
+    detail = evidence.zone_details.get(zone_id)
+
+    if detail is None or detail.priority_level not in ("CRITICAL", "HIGH"):
+        return None
+
+    reason_text = ", ".join(code.replace("_", " ").title() for code in detail.reason_codes) or "elevated response priority"
+
+    return f"Live emergency response intelligence flags Zone {zone_id} as {detail.priority_level} priority ({reason_text})."
+
+
+# =====================================================
 # Phase 2 -- Civilian Advisory. Zone-based announcements ONLY: every
 # CivilianAnnouncement below is addressed to "occupants in <zone>," and
 # no field anywhere on it references an individual occupant_id. The
@@ -457,15 +510,24 @@ def build_civilian_announcements(inputs: AdvisoryInputs) -> Tuple[CivilianAnnoun
             action, recommended_exit, recommended_stair, inputs.evacuation_progress_evidence,
         )
 
+        # Live Emergency Response & Rescue Priority Intelligence
+        # milestone -- a FOURTH, independently-tracked confidence
+        # contribution, keyed on the ZONE itself (never an asset).
+        response_wait_confidence = _response_confidence_for_wait_zone(
+            action, zone_id, inputs.emergency_response_evidence,
+        )
+
         threshold = CRITICAL_RISK_THRESHOLD if action == SHELTER_IN_PLACE else ELEVATED_RISK_THRESHOLD
         confidence = recommendation_confidence(
             risk_score=risk_by_zone.get(zone_id), risk_threshold=threshold,
             ai_confidence=combined_ai_confidence, rl_confidence=inputs.rl_confidence,
             crowd_confidence=crowd_wait_confidence, progress_confidence=progress_wait_confidence,
+            response_confidence=response_wait_confidence,
             agreement_signals=[ai_agrees] if ai_agrees is not None else [],
         )
         confidence_source = _confidence_source(
             combined_ai_confidence, inputs.rl_confidence, crowd_wait_confidence, progress_wait_confidence,
+            response_wait_confidence,
         )
 
         explanation = explain_zone_recommendation(
@@ -484,6 +546,10 @@ def build_civilian_announcements(inputs: AdvisoryInputs) -> Tuple[CivilianAnnoun
         )
         if progress_note is not None:
             reason_parts.append(progress_note)
+
+        response_note = _response_wait_zone_reason_note(action, zone_id, inputs.emergency_response_evidence)
+        if response_note is not None:
+            reason_parts.append(response_note)
 
         announcements.append(
             CivilianAnnouncement(
@@ -639,13 +705,26 @@ def build_firefighter_intelligence(inputs: AdvisoryInputs) -> FirefighterIntelli
         if inputs.crowd_decision_evidence is not None and inputs.crowd_decision_evidence.available else None
     )
 
+    # Live Emergency Response & Rescue Priority Intelligence milestone --
+    # a further, separately-tracked confidence signal (Phase 17's own
+    # "particularly useful to firefighter recommendations").
+    response_evidence = inputs.emergency_response_evidence
+    response_confidence = (
+        _RESPONSE_FINDING_CONFIDENCE
+        if response_evidence is not None and response_evidence.available
+        and (response_evidence.critical_zone_ids or response_evidence.high_priority_zone_ids)
+        else None
+    )
+
     confidence = recommendation_confidence(
         risk_score=max_risk, risk_threshold=MODERATE_THRESHOLD,
         ai_confidence=combined_ai_confidence, rl_confidence=inputs.rl_confidence,
-        crowd_confidence=crowd_confidence,
+        crowd_confidence=crowd_confidence, response_confidence=response_confidence,
         agreement_signals=[ai_agrees] if ai_agrees is not None else [],
     )
-    confidence_source = _confidence_source(combined_ai_confidence, inputs.rl_confidence, crowd_confidence)
+    confidence_source = _confidence_source(
+        combined_ai_confidence, inputs.rl_confidence, crowd_confidence, response_confidence=response_confidence,
+    )
 
     building_status = (
         "Building cleared" if ground_truth.building_cleared
@@ -685,6 +764,14 @@ def build_firefighter_intelligence(inputs: AdvisoryInputs) -> FirefighterIntelli
         ai_bottleneck_probability=evidence_confidence,
         ai_bottleneck_model_id=evidence.model_id if evidence is not None and evidence.available else None,
         confidence_source=confidence_source,
+        live_priority_zone_ids=(
+            tuple(sorted(set(response_evidence.critical_zone_ids) | set(response_evidence.high_priority_zone_ids)))
+            if response_evidence is not None and response_evidence.available else ()
+        ),
+        live_possible_assistance_zone_ids=(
+            response_evidence.possible_assistance_zone_ids
+            if response_evidence is not None and response_evidence.available else ()
+        ),
     )
 
 
@@ -1050,6 +1137,67 @@ def build_building_recommendations(inputs: AdvisoryInputs) -> Tuple[BuildingReco
                 )
             )
 
+    # =====================================================
+    # Live Emergency Response & Rescue Priority Intelligence milestone.
+    # SAFETY PRECEDENCE (Phase 19): every recommendation below is purely
+    # informational -- a priority-search/assistance/uncertainty/clear
+    # note, never a route/safety decision. None of these ever touch
+    # decision_policy's own CLOSE/AVOID/action fields.
+    # =====================================================
+
+    if inputs.emergency_response_evidence is not None and inputs.emergency_response_evidence.available:
+
+        response_evidence = inputs.emergency_response_evidence
+
+        for zone_id in sorted(set(response_evidence.critical_zone_ids) | set(response_evidence.high_priority_zone_ids)):
+
+            detail = response_evidence.zone_details.get(zone_id)
+            level = detail.priority_level if detail is not None else None
+            reason_codes = detail.reason_codes if detail is not None else ()
+            reason_text = ", ".join(code.replace("_", " ").title() for code in reason_codes) or "elevated response priority"
+
+            recommendations.append(
+                BuildingRecommendation(
+                    action=f"Priority Search: Zone {zone_id}",
+                    target_type="zone", target_id=zone_id,
+                    reason=f"Zone {zone_id} is {level or 'elevated'} response priority. Evidence: {reason_text}.",
+                    confidence=recommendation_confidence(risk_score=None, response_confidence=_RESPONSE_FINDING_CONFIDENCE),
+                    expected_engineering_benefit="Directs incident command attention to the zone with the strongest combined evidence of remaining risk.",
+                    confidence_source=("response",),
+                )
+            )
+
+        for zone_id in sorted(response_evidence.possible_assistance_zone_ids):
+
+            detail = response_evidence.zone_details.get(zone_id)
+            possible = detail.possible_assistance_count if detail is not None else 0
+            confirmed = detail.confirmed_assistance_count if detail is not None else 0
+            certainty = "Confirmed" if confirmed > 0 else "Possible"
+
+            recommendations.append(
+                BuildingRecommendation(
+                    action=f"Possible Assistance Required in Zone {zone_id}",
+                    target_type="zone", target_id=zone_id,
+                    reason=f"{certainty} assistance required in Zone {zone_id} ({possible} possible, {confirmed} confirmed signal(s)).",
+                    confidence=recommendation_confidence(risk_score=None, response_confidence=_RESPONSE_FINDING_CONFIDENCE),
+                    expected_engineering_benefit="Flags occupants who may be unable to self-evacuate without ever asserting a medical diagnosis.",
+                    confidence_source=("response",),
+                )
+            )
+
+        for zone_id in sorted(response_evidence.uncertain_search_zone_ids):
+
+            recommendations.append(
+                BuildingRecommendation(
+                    action=f"Verify Occupancy in Zone {zone_id}",
+                    target_type="zone", target_id=zone_id,
+                    reason=f"Clearance of Zone {zone_id} is uncertain due to unavailable camera coverage.",
+                    confidence=recommendation_confidence(risk_score=None, response_confidence=_RESPONSE_FINDING_CONFIDENCE),
+                    expected_engineering_benefit="Flags a zone that may still require a physical search, never assumed safely clear.",
+                    confidence_source=("response",),
+                )
+            )
+
     return tuple(recommendations)
 
 
@@ -1260,12 +1408,21 @@ def build_commander_dashboard(
         else None
     )
 
+    response_evidence = inputs.emergency_response_evidence
+    response_available = response_evidence is not None and response_evidence.available
+    response_confidence = (
+        _RESPONSE_FINDING_CONFIDENCE
+        if response_available and (response_evidence.critical_zone_ids or response_evidence.high_priority_zone_ids)
+        else None
+    )
+
     rec_confidence = combine_confidence(
         *[entry.confidence for entry in civilian_announcements],
         *[entry.confidence for entry in building_recommendations],
         evidence_confidence,
         crowd_confidence,
         progress_confidence,
+        response_confidence,
     )
 
     overall_severity = _overall_incident_severity(
@@ -1298,6 +1455,9 @@ def build_commander_dashboard(
         evacuation_progress_fraction=progress_evidence.overall_progress_fraction if progress_available else None,
         evacuation_stalled_zone_ids=progress_evidence.stalled_zone_ids if progress_available else (),
         evacuation_clearance_unknown_zone_ids=progress_evidence.zones_clearance_unknown if progress_available else (),
+        response_highest_priority_zone_id=response_evidence.highest_priority_zone_id if response_available else None,
+        response_critical_zone_ids=response_evidence.critical_zone_ids if response_available else (),
+        response_possible_assistance_zone_ids=response_evidence.possible_assistance_zone_ids if response_available else (),
     )
 
 

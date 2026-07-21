@@ -8,12 +8,17 @@ from advisory_system.evacuation_progress_evidence import (
     EvacuationExitDetail, EvacuationProgressEvidence, EvacuationZoneDetail,
     UNAVAILABLE_EVACUATION_PROGRESS_EVIDENCE,
 )
+from advisory_system.emergency_response_evidence import (
+    EmergencyResponseEvidence, UNAVAILABLE_EMERGENCY_RESPONSE_EVIDENCE, ZoneResponseDetail,
+)
 from advisory_system.orchestrator import AdvisoryOrchestrator
 from advisory_system.recommendation_models import AdvisoryInputs, AdvisoryReport
 
 from crowd_intelligence.models import CrowdIntelligenceSnapshot, TrendDirection
 
 from evacuation_progress.models import EvacuationProgressSnapshot, ZoneClearanceStatus
+
+from emergency_response.models import EmergencyResponseSnapshot, ResponsePriorityLevel
 
 from live_system.live_ai_gateway import LiveAIPredictionSnapshot
 
@@ -272,6 +277,74 @@ def evacuation_progress_evidence_from_snapshot(
 
 
 # =====================================================
+# Live Emergency Response & Rescue Priority Intelligence milestone --
+# the emergency-response counterpart to the two adapters immediately
+# above, same placement/role.
+# =====================================================
+
+
+def emergency_response_evidence_from_snapshot(
+    snapshot: Optional[EmergencyResponseSnapshot],
+) -> EmergencyResponseEvidence:
+
+    if snapshot is None:
+        return UNAVAILABLE_EMERGENCY_RESPONSE_EVIDENCE
+
+    critical_ids = tuple(sorted(
+        zone_id for zone_id, priority in snapshot.zones.items() if priority.priority_level == ResponsePriorityLevel.CRITICAL
+    ))
+    high_ids = tuple(sorted(
+        zone_id for zone_id, priority in snapshot.zones.items() if priority.priority_level == ResponsePriorityLevel.HIGH
+    ))
+    possible_assistance_ids = tuple(sorted(
+        zone_id for zone_id, priority in snapshot.zones.items()
+        if priority.possible_assistance_count > 0 or priority.confirmed_assistance_count > 0
+    ))
+    uncertain_ids = tuple(sorted(
+        zone_id for zone_id, priority in snapshot.zones.items()
+        if "UNCERTAIN_OCCUPANCY" in priority.reason_codes
+    ))
+    observed_clear_ids = tuple(sorted(
+        zone_id for zone_id, priority in snapshot.zones.items()
+        if "OBSERVED_CLEAR" in priority.reason_codes
+    ))
+
+    flagged_zone_ids = set(critical_ids) | set(high_ids) | set(possible_assistance_ids) | set(uncertain_ids)
+    zone_details = {
+        zone_id: ZoneResponseDetail(
+            priority_level=priority.priority_level, priority_score=priority.priority_score,
+            known_occupant_count=priority.known_occupant_count,
+            possible_assistance_count=priority.possible_assistance_count,
+            confirmed_assistance_count=priority.confirmed_assistance_count,
+            reason_codes=priority.reason_codes,
+        )
+        for zone_id, priority in snapshot.zones.items()
+        if zone_id in flagged_zone_ids
+    }
+
+    highest_priority_zone_id = snapshot.highest_priority_zone_id()
+    highest_priority_reason_codes = ()
+    if highest_priority_zone_id is not None:
+
+        highest_priority = snapshot.zone(highest_priority_zone_id)
+        if highest_priority is not None:
+            highest_priority_reason_codes = highest_priority.reason_codes
+
+    return EmergencyResponseEvidence(
+        available=True,
+        timestamp=snapshot.timestamp,
+        critical_zone_ids=critical_ids,
+        high_priority_zone_ids=high_ids,
+        possible_assistance_zone_ids=possible_assistance_ids,
+        uncertain_search_zone_ids=uncertain_ids,
+        observed_clear_zone_ids=observed_clear_ids,
+        highest_priority_zone_id=highest_priority_zone_id,
+        highest_priority_reason_codes=highest_priority_reason_codes,
+        zone_details=zone_details,
+    )
+
+
+# =====================================================
 
 
 class LiveAdvisoryGateway(Protocol):
@@ -286,15 +359,17 @@ class LiveAdvisoryGateway(Protocol):
     # entry, the identical staleness-detection mechanism live_ai_gateway
     # already established.
     #
-    # crowd_evidence/evacuation_progress_evidence both default to None --
-    # additive across two separate milestones. A caller that never
-    # supplies either (every existing test/deployment) keeps working
-    # unchanged; LiveOrchestrator.run_cycle() always passes both.
+    # crowd_evidence/evacuation_progress_evidence/emergency_response_
+    # evidence all default to None -- additive across three separate
+    # milestones. A caller that never supplies any (every existing
+    # test/deployment) keeps working unchanged; LiveOrchestrator.
+    # run_cycle() always passes all three.
 
     def generate(
         self, ai_evidence: Optional[AIDecisionEvidence], time: float,
         crowd_evidence: Optional[CrowdDecisionEvidence] = None,
         evacuation_progress_evidence: Optional[EvacuationProgressEvidence] = None,
+        emergency_response_evidence: Optional[EmergencyResponseEvidence] = None,
     ) -> Optional[AdvisoryReport]: ...
 
 
@@ -345,6 +420,7 @@ class ReplayCompatibleAdvisoryGateway:
         self, ai_evidence: Optional[AIDecisionEvidence], time: float,
         crowd_evidence: Optional[CrowdDecisionEvidence] = None,
         evacuation_progress_evidence: Optional[EvacuationProgressEvidence] = None,
+        emergency_response_evidence: Optional[EmergencyResponseEvidence] = None,
     ) -> Optional[AdvisoryReport]:
 
         try:
@@ -373,6 +449,7 @@ class ReplayCompatibleAdvisoryGateway:
                 ai_decision_evidence=ai_evidence,
                 crowd_decision_evidence=crowd_evidence,
                 evacuation_progress_evidence=evacuation_progress_evidence,
+                emergency_response_evidence=emergency_response_evidence,
             )
 
             return self._orchestrator.generate_report(inputs)
