@@ -13,6 +13,8 @@ from tracking.tracker import SingleCameraTracker
 from behavior_recognition.observation import RecognizedBehavior
 from behavior_recognition.recognizer import BehaviorRecognizer
 
+from cross_camera_identity.resolver import CrossCameraIdentityResolver
+
 
 def _map_behavior_to_human_state(behavior: RecognizedBehavior) -> Optional[HumanState]:
 
@@ -105,6 +107,27 @@ class LiveCameraPipeline:
     # completely untouched (Phase 8's own "without changing global
     # identity responsibilities" requirement).
 
+    # Cross-Camera Identity Resolution (ReID Framework) milestone,
+    # Phase 7: `cross_camera_identity_resolver` is a further OPTIONAL,
+    # additive seam, only ever consulted when `tracker` is also
+    # supplied (cross-camera resolution inherently needs tracking
+    # output -- supplying it without a tracker is simply a no-op, same
+    # constraint as behavior_recognizer). When supplied, each cycle's
+    # FULL tracker output is handed to cross_camera_identity_resolver.
+    # resolve() (cross_camera_identity.resolver.
+    # CrossCameraIdentityResolver's own NEW/TRACKED-prefix contract),
+    # and the resulting GLOBAL occupant id REPLACES the tracker's own
+    # local_track_id in the RawHumanDetection handed to
+    # IdentityResolver.resolve() -- IdentityResolver itself is never
+    # modified. IMPORTANT: pair this with an identity_resolver that
+    # treats local_track_id as an already-resolved identity (e.g.
+    # live_camera_pipeline.identity_resolver.SimulationIdentityResolver,
+    # whose own docstring already documents exactly this "local_track_id
+    # IS already the global identity" strategy) -- NOT
+    # MappingIdentityResolver, which would re-namespace an already-
+    # global id by camera_id and defeat cross-camera unification (see
+    # docs/architecture/cross_camera_identity.md Sec 5).
+
     def __init__(
         self,
         frame_sources: Mapping[str, CameraFrameSource],
@@ -113,6 +136,7 @@ class LiveCameraPipeline:
         detection_provider: LiveCameraPipelineDetectionProvider,
         tracker: Optional[SingleCameraTracker] = None,
         behavior_recognizer: Optional[BehaviorRecognizer] = None,
+        cross_camera_identity_resolver: Optional[CrossCameraIdentityResolver] = None,
     ):
 
         self.frame_sources = dict(frame_sources)
@@ -121,6 +145,7 @@ class LiveCameraPipeline:
         self.detection_provider = detection_provider
         self.tracker = tracker
         self.behavior_recognizer = behavior_recognizer
+        self.cross_camera_identity_resolver = cross_camera_identity_resolver
 
     # =====================================================
 
@@ -153,20 +178,38 @@ class LiveCameraPipeline:
         tracked = self.tracker.update(camera_id, timestamp, raw)
         matched = tracked[:len(raw)]
 
-        if self.behavior_recognizer is None:
+        observations = ()
+        if self.behavior_recognizer is not None:
+            observations = self.behavior_recognizer.recognize(camera_id, timestamp, tracked)
 
-            return tuple(
-                dataclasses.replace(detection, local_track_id=tracked_human.track_id)
-                for detection, tracked_human in zip(raw, matched)
+        behaviors_by_track_id = {observation.track_id: observation for observation in observations}
+
+        global_id_by_track_id = None
+        if self.cross_camera_identity_resolver is not None:
+
+            resolved_identities = self.cross_camera_identity_resolver.resolve(
+                camera_id, timestamp, tracked, behaviors_by_track_id,
+            )
+            global_id_by_track_id = {
+                identity.track_id: identity.global_id for identity in resolved_identities
+            }
+
+        results = []
+
+        for detection, tracked_human in zip(raw, matched):
+
+            local_track_id = tracked_human.track_id
+            if global_id_by_track_id is not None:
+                local_track_id = global_id_by_track_id.get(tracked_human.track_id, tracked_human.track_id)
+
+            behavior_observation = behaviors_by_track_id.get(tracked_human.track_id)
+            state_evidence = (
+                _map_behavior_to_human_state(behavior_observation.recognized_behavior)
+                if behavior_observation is not None else None
             )
 
-        observations = self.behavior_recognizer.recognize(camera_id, timestamp, tracked)
-
-        return tuple(
-            dataclasses.replace(
-                detection,
-                local_track_id=tracked_human.track_id,
-                state_evidence=_map_behavior_to_human_state(observation.recognized_behavior),
+            results.append(
+                dataclasses.replace(detection, local_track_id=local_track_id, state_evidence=state_evidence)
             )
-            for detection, tracked_human, observation in zip(raw, matched, observations)
-        )
+
+        return tuple(results)
