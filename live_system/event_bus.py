@@ -24,6 +24,19 @@ class EventType(Enum):
     RECOMMENDATION_UPDATED = auto()
     OPERATOR_ACKNOWLEDGEMENT = auto()
 
+    # Live Occupant Digital Twin milestone -- published by
+    # live_occupants.manager.LiveOccupantManager, payloads defined in
+    # live_occupants.events (this module deliberately never imports
+    # live_occupants itself, keeping payload shapes typed Any at this
+    # level, same as every other event above).
+    OCCUPANT_CREATED = auto()
+    OCCUPANT_UPDATED = auto()
+    OCCUPANT_BEHAVIOR_CHANGED = auto()
+    OCCUPANT_ZONE_CHANGED = auto()
+    OCCUPANT_CAMERA_CHANGED = auto()
+    OCCUPANT_EXITED = auto()
+    OCCUPANT_EXPIRED = auto()
+
 
 @dataclass(frozen=True)
 class Event:

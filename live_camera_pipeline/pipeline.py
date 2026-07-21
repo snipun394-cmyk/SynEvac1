@@ -17,6 +17,8 @@ from cross_camera_identity.resolver import CrossCameraIdentityResolver
 
 from camera_calibration.projection import WorldProjector
 
+from live_occupants.manager import LiveOccupantManager
+
 
 def _map_behavior_to_human_state(behavior: RecognizedBehavior) -> Optional[HumanState]:
 
@@ -156,6 +158,27 @@ class LiveCameraPipeline:
     # Detection through live_camera_pipeline.identity_resolver.
     # _to_detection(), never by modifying IdentityResolver itself).
 
+    # Live Occupant Digital Twin milestone, Phase 7: `live_occupant_manager`
+    # is a further OPTIONAL, additive seam, only ever consulted when
+    # `tracker` is also supplied. Unlike every seam before it, this one
+    # is a pure OBSERVER of the same per-cycle data already flowing
+    # through this method -- it never changes what RawHumanDetection/
+    # Detection/BuildingState themselves contain (Phase 7's own "Detection
+    # remains immutable... do not redesign downstream systems").
+    # live_occupants.manager.LiveOccupantManager.update() is called once
+    # per currently-matched TrackedHuman, keyed by whatever occupant_id
+    # is already in hand this cycle (the cross-camera GLOBAL id if
+    # cross_camera_identity_resolver is configured, else the tracker's
+    # own per-camera-local id -- LiveOccupantManager works either way,
+    # just without cross-camera unification in the latter case).
+    # run_cycle() calls LiveOccupantManager.sweep_missing() exactly ONCE
+    # per overall cycle, after every camera's own per-camera loop
+    # iteration has already reported who it actually saw -- this is what
+    # lets the manager detect "missing" without needing to know anything
+    # about tracking's own MISSING/EXPIRED states or cross_camera_
+    # identity's own registry internals directly (see docs/architecture/
+    # live_occupants.md Sec 5 for the full reasoning).
+
     def __init__(
         self,
         frame_sources: Mapping[str, CameraFrameSource],
@@ -166,6 +189,7 @@ class LiveCameraPipeline:
         behavior_recognizer: Optional[BehaviorRecognizer] = None,
         cross_camera_identity_resolver: Optional[CrossCameraIdentityResolver] = None,
         world_projector: Optional[WorldProjector] = None,
+        live_occupant_manager: Optional[LiveOccupantManager] = None,
     ):
 
         self.frame_sources = dict(frame_sources)
@@ -176,12 +200,14 @@ class LiveCameraPipeline:
         self.behavior_recognizer = behavior_recognizer
         self.cross_camera_identity_resolver = cross_camera_identity_resolver
         self.world_projector = world_projector
+        self.live_occupant_manager = live_occupant_manager
 
     # =====================================================
 
     def run_cycle(self, time: float) -> None:
 
         raw_detections = []
+        seen_occupant_ids = set()
 
         for camera_id, frame_source in self.frame_sources.items():
 
@@ -193,9 +219,13 @@ class LiveCameraPipeline:
             raw = self.human_detector.detect(frame)
 
             if self.tracker is not None:
-                raw = self._process_camera_cycle(camera_id, frame.timestamp, raw)
+                raw, camera_occupant_ids = self._process_camera_cycle(camera_id, frame.timestamp, raw)
+                seen_occupant_ids.update(camera_occupant_ids)
 
             raw_detections.extend(raw)
+
+        if self.live_occupant_manager is not None:
+            self.live_occupant_manager.sweep_missing(time, seen_occupant_ids)
 
         resolved = self.identity_resolver.resolve(raw_detections, time)
 
@@ -241,6 +271,7 @@ class LiveCameraPipeline:
             }
 
         results = []
+        occupant_ids_seen = set()
 
         for detection, tracked_human in zip(raw, matched):
 
@@ -249,9 +280,9 @@ class LiveCameraPipeline:
                 local_track_id = global_id_by_track_id.get(tracked_human.track_id, tracked_human.track_id)
 
             behavior_observation = behaviors_by_track_id.get(tracked_human.track_id)
+            recognized_behavior = behavior_observation.recognized_behavior if behavior_observation is not None else None
             state_evidence = (
-                _map_behavior_to_human_state(behavior_observation.recognized_behavior)
-                if behavior_observation is not None else None
+                _map_behavior_to_human_state(recognized_behavior) if recognized_behavior is not None else None
             )
             world_velocity = (
                 behavior_observation.world_metrics.world_velocity
@@ -260,18 +291,32 @@ class LiveCameraPipeline:
             )
 
             projection = projections_by_track_id.get(tracked_human.track_id)
+            floor_id = projection.floor_id if projection is not None else detection.floor_id
+            zone_id = projection.zone_id if projection is not None else detection.zone_id
+            world_position = projection.world_position if projection is not None else None
+            projection_confidence = projection.projection_confidence if projection is not None else None
 
             results.append(
                 dataclasses.replace(
                     detection,
                     local_track_id=local_track_id,
                     state_evidence=state_evidence,
-                    floor_id=projection.floor_id if projection is not None else detection.floor_id,
-                    zone_id=projection.zone_id if projection is not None else detection.zone_id,
-                    world_position=projection.world_position if projection is not None else None,
+                    floor_id=floor_id,
+                    zone_id=zone_id,
+                    world_position=world_position,
                     world_velocity=world_velocity,
-                    projection_confidence=projection.projection_confidence if projection is not None else None,
+                    projection_confidence=projection_confidence,
                 )
             )
 
-        return tuple(results)
+            if self.live_occupant_manager is not None:
+
+                occupant_id = local_track_id  # the global id when cross_camera_identity_resolver is configured, else the per-camera-local id
+
+                self.live_occupant_manager.update(
+                    occupant_id, camera_id, tracked_human.track_id, zone_id, floor_id,
+                    world_position, world_velocity, recognized_behavior, tracked_human.confidence, timestamp,
+                )
+                occupant_ids_seen.add(occupant_id)
+
+        return tuple(results), occupant_ids_seen
