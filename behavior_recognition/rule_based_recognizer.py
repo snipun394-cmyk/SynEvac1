@@ -1,10 +1,10 @@
-from typing import Optional, Sequence, Tuple
+from typing import Mapping, Optional, Sequence, Tuple
 
 from tracking.track_state import TrackState
 from tracking.tracked_human import TrackedHuman
 
 from behavior_recognition.behavior_history import BehaviorHistory, DEFAULT_MAX_HISTORY_LENGTH
-from behavior_recognition.metrics import BoundingBox, TemporalMetrics, compute_metrics
+from behavior_recognition.metrics import BoundingBox, TemporalMetrics, WorldTemporalMetrics, compute_metrics, compute_world_metrics
 from behavior_recognition.observation import BehaviorObservation, RecognizedBehavior
 from behavior_recognition.recognizer import BehaviorRecognizer
 
@@ -21,6 +21,15 @@ DEFAULT_CONFIDENCE_SATURATION_SAMPLES = 10
 DEFAULT_POSSIBLY_FALLEN_ASPECT_RATIO_THRESHOLD = 0.6
 DEFAULT_POSSIBLY_FALLEN_MIN_STATIONARY_DURATION = 2.0
 DEFAULT_POSSIBLY_FALLEN_CONFIDENCE_FACTOR = 0.5
+
+# Camera Calibration & World Coordinate Projection milestone, Phase 6 --
+# the WORLD-space (meters/second) counterpart to the pixel thresholds
+# above, used in PREFERENCE to them whenever a world position is
+# available for a track. 0.3 m/s is a typical "shifting weight/fidgeting
+# while standing" upper bound for genuinely stationary; 2.5 m/s is a
+# typical human running threshold (a brisk walk tops out around 2 m/s).
+DEFAULT_WORLD_STATIONARY_VELOCITY_THRESHOLD = 0.3
+DEFAULT_WORLD_RUNNING_VELOCITY_THRESHOLD = 2.5
 
 
 class RuleBasedBehaviorRecognizer(BehaviorRecognizer):
@@ -74,6 +83,8 @@ class RuleBasedBehaviorRecognizer(BehaviorRecognizer):
         possibly_fallen_aspect_ratio_threshold: float = DEFAULT_POSSIBLY_FALLEN_ASPECT_RATIO_THRESHOLD,
         possibly_fallen_min_stationary_duration: float = DEFAULT_POSSIBLY_FALLEN_MIN_STATIONARY_DURATION,
         possibly_fallen_confidence_factor: float = DEFAULT_POSSIBLY_FALLEN_CONFIDENCE_FACTOR,
+        world_stationary_velocity_threshold: float = DEFAULT_WORLD_STATIONARY_VELOCITY_THRESHOLD,
+        world_running_velocity_threshold: float = DEFAULT_WORLD_RUNNING_VELOCITY_THRESHOLD,
     ):
 
         self.stationary_velocity_threshold = stationary_velocity_threshold
@@ -85,6 +96,9 @@ class RuleBasedBehaviorRecognizer(BehaviorRecognizer):
         self.possibly_fallen_min_stationary_duration = possibly_fallen_min_stationary_duration
         self.possibly_fallen_confidence_factor = possibly_fallen_confidence_factor
 
+        self.world_stationary_velocity_threshold = world_stationary_velocity_threshold
+        self.world_running_velocity_threshold = world_running_velocity_threshold
+
         self.history = BehaviorHistory(max_length=history_length)
 
     # =====================================================
@@ -94,7 +108,10 @@ class RuleBasedBehaviorRecognizer(BehaviorRecognizer):
         camera_id: str,
         timestamp: float,
         tracked_humans: Sequence[TrackedHuman],
+        world_positions_by_track_id: Optional[Mapping[str, Tuple[float, float]]] = None,
     ) -> Tuple[BehaviorObservation, ...]:
+
+        world_positions_by_track_id = world_positions_by_track_id or {}
 
         observations = []
 
@@ -113,11 +130,20 @@ class RuleBasedBehaviorRecognizer(BehaviorRecognizer):
                 # whatever was last actually seen).
                 continue
 
-            self.history.append(camera_id, tracked.track_id, timestamp, tracked.bounding_box)
+            world_position = world_positions_by_track_id.get(tracked.track_id)
+
+            self.history.append(camera_id, tracked.track_id, timestamp, tracked.bounding_box, world_position=world_position)
             samples = self.history.recent(camera_id, tracked.track_id)
 
             metrics = compute_metrics(samples, tracked.age, self.stationary_velocity_threshold)
-            behavior, confidence = self._classify(metrics, tracked, sample_count=len(samples))
+
+            world_samples = self.history.recent_world(camera_id, tracked.track_id)
+            world_metrics = (
+                compute_world_metrics(world_samples, self.world_stationary_velocity_threshold)
+                if world_samples else None
+            )
+
+            behavior, confidence = self._classify(metrics, world_metrics, tracked, sample_count=len(samples))
 
             observations.append(
                 BehaviorObservation(
@@ -127,6 +153,7 @@ class RuleBasedBehaviorRecognizer(BehaviorRecognizer):
                     recognized_behavior=behavior,
                     confidence=confidence,
                     supporting_metrics=metrics,
+                    world_metrics=world_metrics,
                 )
             )
 
@@ -137,27 +164,43 @@ class RuleBasedBehaviorRecognizer(BehaviorRecognizer):
     def _classify(
         self,
         metrics: TemporalMetrics,
+        world_metrics: Optional[WorldTemporalMetrics],
         tracked: TrackedHuman,
         sample_count: int,
     ) -> Tuple[RecognizedBehavior, float]:
 
-        if metrics.velocity is None:
+        # Camera Calibration & World Coordinate Projection milestone,
+        # Phase 6 -- "operate using world-space motion instead of
+        # pixel-space whenever calibration is available, gracefully
+        # fall back to image-space if calibration is unavailable":
+        # world_metrics.world_velocity (meters/second, against the
+        # world-space thresholds) is used whenever it is honestly
+        # computable; pixel-space metrics.velocity (against the
+        # pixel-space thresholds) is used only when it is not.
+        use_world = world_metrics is not None and world_metrics.world_velocity is not None
+
+        velocity = world_metrics.world_velocity if use_world else metrics.velocity
+        stationary_duration = world_metrics.world_stationary_duration if use_world else metrics.stationary_duration
+        stationary_threshold = self.world_stationary_velocity_threshold if use_world else self.stationary_velocity_threshold
+        running_threshold = self.world_running_velocity_threshold if use_world else self.running_velocity_threshold
+
+        if velocity is None:
             return RecognizedBehavior.UNKNOWN, 0.0
 
         base_confidence = min(1.0, sample_count / self.confidence_saturation_samples)
 
         if (
             self.enable_possibly_fallen_heuristic
-            and metrics.velocity <= self.stationary_velocity_threshold
-            and metrics.stationary_duration >= self.possibly_fallen_min_stationary_duration
+            and velocity <= stationary_threshold
+            and stationary_duration >= self.possibly_fallen_min_stationary_duration
             and self._looks_fallen(tracked.bounding_box)
         ):
             return RecognizedBehavior.POSSIBLY_FALLEN, base_confidence * self.possibly_fallen_confidence_factor
 
-        if metrics.velocity <= self.stationary_velocity_threshold:
+        if velocity <= stationary_threshold:
             return RecognizedBehavior.STATIONARY, base_confidence
 
-        if metrics.velocity < self.running_velocity_threshold:
+        if velocity < running_threshold:
             return RecognizedBehavior.WALKING, base_confidence
 
         return RecognizedBehavior.RUNNING, base_confidence

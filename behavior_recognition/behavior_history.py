@@ -1,7 +1,7 @@
 from collections import deque
 from typing import Deque, Dict, Optional, Tuple
 
-from behavior_recognition.metrics import BoundingBox, Sample
+from behavior_recognition.metrics import BoundingBox, Point, Sample, WorldSample
 
 
 DEFAULT_MAX_HISTORY_LENGTH = 30
@@ -32,23 +32,43 @@ class BehaviorHistory:
         self.max_length = max_length
         self._samples: Dict[Tuple[str, str], Deque[Sample]] = {}
 
+        # Camera Calibration & World Coordinate Projection milestone,
+        # Phase 6 -- a SEPARATE, parallel store for world-space
+        # (meters) positions, kept alongside (never merged into) the
+        # pixel-space `_samples` above: a track may have pixel samples
+        # with no world samples at all (no calibration configured for
+        # that camera), and the two are measured in different units, so
+        # conflating them into one deque would be dishonest. clear()
+        # below drops both together -- there is exactly one lifecycle
+        # per track, regardless of how many kinds of samples it has.
+        self._world_samples: Dict[Tuple[str, str], Deque[WorldSample]] = {}
+
     # =====================================================
 
-    def append(self, camera_id: str, track_id: str, timestamp: float, bounding_box: Optional[BoundingBox]) -> None:
-
-        if bounding_box is None:
-            # No geometry to remember this cycle -- honestly nothing to
-            # append (never fabricate a position), same "Optional means
-            # genuinely absent" convention every geometry field in this
-            # codebase already follows.
-            return
+    def append(
+        self,
+        camera_id: str,
+        track_id: str,
+        timestamp: float,
+        bounding_box: Optional[BoundingBox],
+        world_position: Optional[Point] = None,
+    ) -> None:
 
         key = (camera_id, track_id)
 
-        if key not in self._samples:
-            self._samples[key] = deque(maxlen=self.max_length)
+        if bounding_box is not None:
 
-        self._samples[key].append((timestamp, bounding_box))
+            if key not in self._samples:
+                self._samples[key] = deque(maxlen=self.max_length)
+
+            self._samples[key].append((timestamp, bounding_box))
+
+        if world_position is not None:
+
+            if key not in self._world_samples:
+                self._world_samples[key] = deque(maxlen=self.max_length)
+
+            self._world_samples[key].append((timestamp, world_position))
 
     # =====================================================
 
@@ -65,13 +85,13 @@ class BehaviorHistory:
         key = (camera_id, track_id)
         existing = self._samples.get(key)
 
-        if existing is None:
-            return
+        if existing is not None and existing.maxlen != self.max_length:
+            self._samples[key] = deque(existing, maxlen=self.max_length)
 
-        if existing.maxlen == self.max_length:
-            return
+        existing_world = self._world_samples.get(key)
 
-        self._samples[key] = deque(existing, maxlen=self.max_length)
+        if existing_world is not None and existing_world.maxlen != self.max_length:
+            self._world_samples[key] = deque(existing_world, maxlen=self.max_length)
 
     # =====================================================
 
@@ -84,20 +104,30 @@ class BehaviorHistory:
 
         if camera_id is None:
             self._samples.clear()
+            self._world_samples.clear()
             return
 
         if track_id is None:
             for key in [key for key in self._samples if key[0] == camera_id]:
                 del self._samples[key]
+            for key in [key for key in self._world_samples if key[0] == camera_id]:
+                del self._world_samples[key]
             return
 
         self._samples.pop((camera_id, track_id), None)
+        self._world_samples.pop((camera_id, track_id), None)
 
     # =====================================================
 
     def recent(self, camera_id: str, track_id: str) -> Tuple[Sample, ...]:
 
         return tuple(self._samples.get((camera_id, track_id), ()))
+
+    # =====================================================
+
+    def recent_world(self, camera_id: str, track_id: str) -> Tuple[WorldSample, ...]:
+
+        return tuple(self._world_samples.get((camera_id, track_id), ()))
 
     # =====================================================
 

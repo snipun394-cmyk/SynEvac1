@@ -319,6 +319,87 @@ class PossiblyFallenHeuristicTests(unittest.TestCase):
         self.assertEqual(result[0].recognized_behavior, RecognizedBehavior.STATIONARY)
 
 
+class WorldSpaceClassificationTests(unittest.TestCase):
+
+    # Camera Calibration & World Coordinate Projection milestone, Phase
+    # 6 -- proves the "operate using world-space motion instead of
+    # pixel-space whenever calibration is available, gracefully fall
+    # back to image-space if calibration is unavailable" contract
+    # directly against RuleBasedBehaviorRecognizer.recognize()'s new
+    # optional `world_positions_by_track_id` parameter.
+
+    def test_world_position_available_classifies_by_world_velocity_not_pixel(self):
+
+        recognizer = RuleBasedBehaviorRecognizer()
+
+        # Pixel motion alone would read as RUNNING (huge px/s), but the
+        # supplied world positions move at a genuinely stationary pace
+        # (0.05 m/s) -- world-space must win.
+        result = None
+        for i in range(5):
+            x = i * 500.0  # huge pixel jump -- would be RUNNING in pixel-space
+            world_xy = (i * 0.05, 0.0)  # tiny, genuinely-stationary world motion
+            result = recognizer.recognize(
+                "CAM-1", float(i), [th(box=(x, 0.0, x + 10.0, 20.0), last_timestamp=float(i))],
+                world_positions_by_track_id={"T1": world_xy},
+            )
+
+        self.assertEqual(result[0].recognized_behavior, RecognizedBehavior.STATIONARY)
+        self.assertIsNotNone(result[0].world_metrics)
+        self.assertIsNotNone(result[0].world_metrics.world_velocity)
+
+    def test_no_world_position_falls_back_to_pixel_space(self):
+
+        recognizer = RuleBasedBehaviorRecognizer()
+
+        result = None
+        for i in range(5):
+            x = i * 20.0  # WALKING in pixel-space
+            result = recognizer.recognize(
+                "CAM-1", float(i), [th(box=(x, 0.0, x + 10.0, 20.0), last_timestamp=float(i))],
+                world_positions_by_track_id=None,
+            )
+
+        self.assertEqual(result[0].recognized_behavior, RecognizedBehavior.WALKING)
+        self.assertIsNone(result[0].world_metrics)
+
+    def test_world_position_present_for_some_tracks_but_not_others(self):
+
+        recognizer = RuleBasedBehaviorRecognizer()
+
+        result = None
+        for i in range(5):
+
+            with_world = th(track_id="T-WORLD", box=(0.0, 0.0, 10.0, 20.0), last_timestamp=float(i))
+            without_world = th(track_id="T-PIXEL", box=(i * 500.0, 0.0, i * 500.0 + 10.0, 20.0), last_timestamp=float(i))
+
+            result = recognizer.recognize(
+                "CAM-1", float(i), [with_world, without_world],
+                world_positions_by_track_id={"T-WORLD": (i * 0.05, 0.0)},
+            )
+
+        by_track = {obs.track_id: obs for obs in result}
+
+        self.assertIsNotNone(by_track["T-WORLD"].world_metrics)
+        self.assertIsNone(by_track["T-PIXEL"].world_metrics)
+        self.assertEqual(by_track["T-WORLD"].recognized_behavior, RecognizedBehavior.STATIONARY)
+        self.assertEqual(by_track["T-PIXEL"].recognized_behavior, RecognizedBehavior.RUNNING)
+
+    def test_world_running_threshold_recognizes_running_in_world_space(self):
+
+        recognizer = RuleBasedBehaviorRecognizer()
+
+        result = None
+        for i in range(5):
+            world_xy = (i * 3.0, 0.0)  # 3.0 m/s -- above the 2.5 m/s default world running threshold
+            result = recognizer.recognize(
+                "CAM-1", float(i), [th(box=(0.0, 0.0, 10.0, 20.0), last_timestamp=float(i))],
+                world_positions_by_track_id={"T1": world_xy},
+            )
+
+        self.assertEqual(result[0].recognized_behavior, RecognizedBehavior.RUNNING)
+
+
 class MetricsPurityTests(unittest.TestCase):
 
     def test_compute_metrics_is_a_pure_function_of_samples_and_thresholds(self):

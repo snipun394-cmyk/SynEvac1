@@ -15,6 +15,8 @@ from behavior_recognition.recognizer import BehaviorRecognizer
 
 from cross_camera_identity.resolver import CrossCameraIdentityResolver
 
+from camera_calibration.projection import WorldProjector
+
 
 def _map_behavior_to_human_state(behavior: RecognizedBehavior) -> Optional[HumanState]:
 
@@ -128,6 +130,32 @@ class LiveCameraPipeline:
     # global id by camera_id and defeat cross-camera unification (see
     # docs/architecture/cross_camera_identity.md Sec 5).
 
+    # Camera Calibration & World Coordinate Projection milestone, Phase
+    # 6/7: `world_projector` is a further OPTIONAL, additive seam, only
+    # ever consulted when `tracker` is also supplied (world projection
+    # needs a TrackedHuman's own bounding_box). Desired order per this
+    # milestone: Tracker -> WorldProjection -> BehaviorRecognizer ->
+    # CrossCameraIdentity -- each matched TrackedHuman's bounding_box is
+    # projected FIRST (camera_calibration.projection.WorldProjector.
+    # project()), and only successfully-projected world positions (a
+    # camera with no calibration, or a geometrically undefined
+    # projection, contributes nothing) are passed into behavior_
+    # recognizer.recognize()'s own world_positions_by_track_id
+    # parameter -- "operate using world-space motion instead of
+    # pixel-space whenever calibration is available, gracefully fall
+    # back to image-space if calibration is unavailable" (Phase 6) is
+    # therefore satisfied automatically by BehaviorRecognizer's own
+    # documented fallback, not by any special-casing here.
+    #
+    # The projection's floor_id/zone_id/world_position/
+    # projection_confidence, and (once behavior recognition has run)
+    # world_velocity, are all set on the final RawHumanDetection via
+    # dataclasses.replace() -- IdentityResolver.resolve() still only
+    # ever receives plain RawHumanDetection objects (Phase 7's "augment
+    # Detection with optional world-space information" reaches
+    # Detection through live_camera_pipeline.identity_resolver.
+    # _to_detection(), never by modifying IdentityResolver itself).
+
     def __init__(
         self,
         frame_sources: Mapping[str, CameraFrameSource],
@@ -137,6 +165,7 @@ class LiveCameraPipeline:
         tracker: Optional[SingleCameraTracker] = None,
         behavior_recognizer: Optional[BehaviorRecognizer] = None,
         cross_camera_identity_resolver: Optional[CrossCameraIdentityResolver] = None,
+        world_projector: Optional[WorldProjector] = None,
     ):
 
         self.frame_sources = dict(frame_sources)
@@ -146,6 +175,7 @@ class LiveCameraPipeline:
         self.tracker = tracker
         self.behavior_recognizer = behavior_recognizer
         self.cross_camera_identity_resolver = cross_camera_identity_resolver
+        self.world_projector = world_projector
 
     # =====================================================
 
@@ -163,7 +193,7 @@ class LiveCameraPipeline:
             raw = self.human_detector.detect(frame)
 
             if self.tracker is not None:
-                raw = self._track_and_recognize(camera_id, frame.timestamp, raw)
+                raw = self._process_camera_cycle(camera_id, frame.timestamp, raw)
 
             raw_detections.extend(raw)
 
@@ -173,14 +203,30 @@ class LiveCameraPipeline:
 
     # =====================================================
 
-    def _track_and_recognize(self, camera_id, timestamp, raw):
+    def _process_camera_cycle(self, camera_id, timestamp, raw):
 
         tracked = self.tracker.update(camera_id, timestamp, raw)
         matched = tracked[:len(raw)]
 
+        projections_by_track_id = {}
+        if self.world_projector is not None:
+
+            for tracked_human in matched:
+                projections_by_track_id[tracked_human.track_id] = self.world_projector.project(
+                    camera_id, tracked_human.bounding_box, tracked_human.confidence,
+                )
+
+        world_positions_by_track_id = {
+            track_id: projection.world_position
+            for track_id, projection in projections_by_track_id.items()
+            if projection.world_position is not None
+        }
+
         observations = ()
         if self.behavior_recognizer is not None:
-            observations = self.behavior_recognizer.recognize(camera_id, timestamp, tracked)
+            observations = self.behavior_recognizer.recognize(
+                camera_id, timestamp, tracked, world_positions_by_track_id or None,
+            )
 
         behaviors_by_track_id = {observation.track_id: observation for observation in observations}
 
@@ -207,9 +253,25 @@ class LiveCameraPipeline:
                 _map_behavior_to_human_state(behavior_observation.recognized_behavior)
                 if behavior_observation is not None else None
             )
+            world_velocity = (
+                behavior_observation.world_metrics.world_velocity
+                if behavior_observation is not None and behavior_observation.world_metrics is not None
+                else None
+            )
+
+            projection = projections_by_track_id.get(tracked_human.track_id)
 
             results.append(
-                dataclasses.replace(detection, local_track_id=local_track_id, state_evidence=state_evidence)
+                dataclasses.replace(
+                    detection,
+                    local_track_id=local_track_id,
+                    state_evidence=state_evidence,
+                    floor_id=projection.floor_id if projection is not None else detection.floor_id,
+                    zone_id=projection.zone_id if projection is not None else detection.zone_id,
+                    world_position=projection.world_position if projection is not None else None,
+                    world_velocity=world_velocity,
+                    projection_confidence=projection.projection_confidence if projection is not None else None,
+                )
             )
 
         return tuple(results)

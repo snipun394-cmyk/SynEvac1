@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from enum import Enum, auto
 from typing import Optional
 
-from behavior_recognition.metrics import TemporalMetrics
+from behavior_recognition.metrics import TemporalMetrics, WorldTemporalMetrics
 
 
 class RecognizedBehavior(Enum):
@@ -82,6 +82,17 @@ class BehaviorObservation:
     confidence: float
 
     supporting_metrics: TemporalMetrics
+
+    # Camera Calibration & World Coordinate Projection milestone, Phase
+    # 6 -- None whenever no world position was supplied for this track
+    # this cycle (no calibration configured for its camera -- an honest
+    # "not available", never a fabricated stand-in). When present,
+    # RuleBasedBehaviorRecognizer classifies using THIS metrics' own
+    # world_velocity in preference to supporting_metrics.velocity
+    # (pixel-space) -- see rule_based_recognizer.py's own docstring on
+    # "operate using world-space motion instead of pixel-space whenever
+    # calibration is available."
+    world_metrics: Optional[WorldTemporalMetrics] = None
 
     def __post_init__(self):
 

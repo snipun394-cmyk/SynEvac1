@@ -124,11 +124,19 @@ def _to_detection(raw: RawHumanDetection, occupant_id: str) -> Detection:
         occupant_id=occupant_id,
         floor_id=raw.floor_id,
         zone_id=raw.zone_id,
-        # No world-coordinate calibration exists yet (Phase 6) -- never
-        # fabricate a position a real detector could not honestly give.
-        position=None,
+        # Camera Calibration & World Coordinate Projection milestone:
+        # world-coordinate calibration now exists (camera_calibration.
+        # projection.WorldProjector) -- raw.world_position/world_velocity/
+        # projection_confidence are None exactly when no calibration/
+        # behavior-recognition world data was available upstream for
+        # this detection (live_camera_pipeline.pipeline.LiveCameraPipeline's
+        # own glue populates them otherwise), so this remains an honest
+        # pass-through, never a fabrication, in either case.
+        position=raw.world_position,
         confidence=raw.confidence,
         classification=raw.classification_evidence or HumanClassification.UNKNOWN,
         human_state=raw.state_evidence,
         is_false_positive=raw.is_false_positive,
+        world_velocity=raw.world_velocity,
+        projection_confidence=raw.projection_confidence,
     )

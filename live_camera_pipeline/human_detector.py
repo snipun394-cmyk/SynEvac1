@@ -41,11 +41,35 @@ class RawHumanDetection:
     state_evidence: Optional[HumanState] = None
 
     floor_id: Optional[str] = None
-    # Zone localization is honestly uncertain at this stage (Phase 6)
-    # -- a camera assigned to more than one zone cannot know which one
-    # a raw bounding box falls into without calibration this milestone
-    # does not build. None here is the honest answer, not a bug.
+    # Zone localization was honestly uncertain before the Camera
+    # Calibration & World Coordinate Projection milestone -- a camera
+    # assigned to more than one zone could not know which one a raw
+    # bounding box fell into without a real calibrated projection. Now
+    # that camera_calibration.projection.WorldProjector exists,
+    # live_camera_pipeline.pipeline.LiveCameraPipeline's own glue
+    # populates this field (and world_position/projection_confidence
+    # below) whenever a WorldProjector is configured for this camera --
+    # None remains the honest answer whenever it is not (uncalibrated
+    # camera, or a geometrically undefined projection).
     zone_id: Optional[str] = None
+
+    # Camera Calibration & World Coordinate Projection milestone, Phase
+    # 7 -- world_position is the SAME (x, y) floor-plan meter
+    # convention models.zone.Zone/models.camera.Camera already use
+    # (never a separately-invented coordinate system), set only when a
+    # camera_calibration.projection.WorldProjector actually produced
+    # one for this detection this cycle. world_velocity is NOT
+    # something a single RawHumanDetection can compute in isolation (it
+    # is a TEMPORAL quantity) -- it is set by the pipeline glue from
+    # behavior_recognition.observation.BehaviorObservation.world_metrics.
+    # world_velocity, the exact same "set downstream of detection,
+    # never by the detector itself" pattern state_evidence already
+    # follows for behavior. All three are None whenever the
+    # corresponding upstream stage (calibration/behavior recognition)
+    # is not configured -- never fabricated.
+    world_position: Optional[Tuple[float, float]] = None
+    world_velocity: Optional[float] = None
+    projection_confidence: Optional[float] = None
 
     is_false_positive: bool = False
 

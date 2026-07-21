@@ -38,12 +38,13 @@ class Detection:
     # (x, y) in the same meter-space coordinate convention
     # models.camera.Camera/models.zone.Zone already use. None only
     # when zone_id is also None (location genuinely unresolvable --
-    # see virtual_camera/camera.py). At zone granularity today (the
-    # occupant's own zone's center) -- the same "no per-occupant
-    # exact position feed exists yet" limitation
-    # perception.providers.ground_truth_camera_provider.
-    # GroundTruthCameraProvider's own V1 docstring already discloses,
-    # not a new one introduced here.
+    # see virtual_camera/camera.py). At zone granularity for Simulation
+    # (the occupant's own zone's center, set by virtual_camera/camera.py)
+    # -- the Camera Calibration & World Coordinate Projection milestone
+    # is what finally gives the LIVE/YOLO pipeline (live_camera_pipeline.
+    # identity_resolver's own _to_detection()) a genuinely per-occupant
+    # value here too, via camera_calibration.projection.WorldProjector,
+    # rather than the coarser zone-center Simulation itself still uses.
     position: Optional[Tuple[float, float]]
 
     confidence: float
@@ -59,6 +60,22 @@ class Detection:
     # always UNKNOWN/None (a false positive has no real person to
     # honestly classify).
     is_false_positive: bool = False
+
+    # Camera Calibration & World Coordinate Projection milestone, Phase
+    # 7 -- both None whenever no calibration/behavior-recognition
+    # world-space data is available (Simulation's own Detection
+    # construction in virtual_camera/camera.py never sets either --
+    # world_velocity and projection_confidence are LIVE/YOLO-pipeline-
+    # only concepts; Simulation's `position` is already an exact
+    # ground-truth value with no "projection" step to have a confidence
+    # about). world_velocity: meters/second, from behavior_recognition.
+    # observation.BehaviorObservation.world_metrics.world_velocity.
+    # projection_confidence: camera_calibration.projection.
+    # WorldProjection.projection_confidence, distinct from `confidence`
+    # above (which is the DETECTOR's own confidence that a person is
+    # there at all, not this projection's own geometric reliability).
+    world_velocity: Optional[float] = None
+    projection_confidence: Optional[float] = None
 
     # =====================================================
 

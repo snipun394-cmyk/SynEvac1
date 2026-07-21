@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Sequence, Tuple
+from typing import Mapping, Optional, Sequence, Tuple
 
 from tracking.tracked_human import TrackedHuman
 
@@ -26,8 +26,32 @@ class BehaviorRecognizer(ABC):
         camera_id: str,
         timestamp: float,
         tracked_humans: Sequence[TrackedHuman],
+        world_positions_by_track_id: Optional[Mapping[str, Tuple[float, float]]] = None,
     ) -> Tuple[BehaviorObservation, ...]:
 
+        # Camera Calibration & World Coordinate Projection milestone,
+        # Phase 6 -- `world_positions_by_track_id` is an OPTIONAL,
+        # additive parameter (default None -- every pre-existing caller
+        # continues to work unmodified): a plain {local track_id ->
+        # (x, y) world-space meters} mapping for whichever tracks a
+        # camera_calibration.projection.WorldProjector successfully
+        # projected this cycle (a track absent from this mapping simply
+        # has no world position yet -- no calibration configured for
+        # its camera, or the projection was geometrically undefined).
+        # This package never imports camera_calibration itself (Phase
+        # 12's own guard for THAT package forbids the reverse
+        # direction, but this package stays independent either way) --
+        # a plain tuple is all that crosses the seam, exactly the same
+        # "smallest shared shape, no upstream package's own types"
+        # discipline every other cross-package boundary in this
+        # pipeline already follows.
+        #
+        # A conforming implementation should classify using world-space
+        # motion (meters/second thresholds) in PREFERENCE to pixel-space
+        # motion whenever a world position is available for a given
+        # track, falling back to pixel-space classification otherwise
+        # (see RuleBasedBehaviorRecognizer's own docstring).
+        #
         # `tracked_humans` is the FULL per-cycle output of one
         # SingleCameraTracker.update() call for one camera (every
         # NEW/TRACKED/MISSING/EXPIRED entry) -- not just the
