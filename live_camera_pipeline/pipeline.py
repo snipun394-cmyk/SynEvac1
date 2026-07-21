@@ -1,7 +1,7 @@
 import dataclasses
 from typing import Mapping, Optional
 
-from perception.models.human_observation import HumanState
+from perception.models.human_observation import HumanClassification, HumanState
 
 from live_camera_pipeline.detection_provider import LiveCameraPipelineDetectionProvider
 from live_camera_pipeline.frame_source import CameraFrameSource
@@ -274,6 +274,10 @@ class LiveCameraPipeline:
                     detection.occupant_id, pending["camera_id"], pending["track_id"],
                     detection.zone_id, detection.floor_id, detection.position, detection.world_velocity,
                     pending["behavior"], pending["confidence"], time,
+                    classification_evidence=pending["classification_evidence"],
+                    classification_confidence=pending["classification_confidence"],
+                    state_evidence=pending["state_evidence"],
+                    state_confidence=pending["state_confidence"],
                 )
                 seen_occupant_ids.add(detection.occupant_id)
 
@@ -331,9 +335,22 @@ class LiveCameraPipeline:
 
             behavior_observation = behaviors_by_track_id.get(tracked_human.track_id)
             recognized_behavior = behavior_observation.recognized_behavior if behavior_observation is not None else None
-            state_evidence = (
-                _map_behavior_to_human_state(recognized_behavior) if recognized_behavior is not None else None
-            )
+
+            # Live Human State & Assistance Perception Bridge milestone,
+            # Phase 1/15 -- a genuine bug fix: `detection.state_evidence`
+            # (whatever the DETECTOR itself already supplied -- e.g. a
+            # future fall-detection-capable HumanDetector genuinely
+            # reporting FALLEN/CRAWLING) is AUTHORITATIVE and must never
+            # be silently discarded. Previously this method unconditionally
+            # overwrote it with the behavior recognizer's own coarse
+            # WALKING/RUNNING-or-None mapping below, discarding any
+            # richer evidence a real detector might already have
+            # supplied -- the behavior-derived value now only fills in
+            # when the detector itself reported no state evidence at all.
+            state_evidence = detection.state_evidence
+            if state_evidence is None and recognized_behavior is not None:
+                state_evidence = _map_behavior_to_human_state(recognized_behavior)
+
             world_velocity = (
                 behavior_observation.world_metrics.world_velocity
                 if behavior_observation is not None and behavior_observation.world_metrics is not None
@@ -366,6 +383,18 @@ class LiveCameraPipeline:
                     "track_id": tracked_human.track_id,
                     "behavior": recognized_behavior,
                     "confidence": tracked_human.confidence,
+                    # Live Human State & Assistance Perception Bridge
+                    # milestone -- reuses the SAME "detector's own
+                    # presence confidence" value _to_detection() already
+                    # falls back to for classification (Detection has no
+                    # separate classification-specific/state-specific
+                    # confidence signal anywhere in this codebase, see
+                    # human_evidence.models.HumanEvidence's own
+                    # docstring), never a fabricated new number.
+                    "classification_evidence": detection.classification_evidence or HumanClassification.UNKNOWN,
+                    "classification_confidence": detection.confidence,
+                    "state_evidence": state_evidence,
+                    "state_confidence": detection.confidence,
                 })
 
             else:

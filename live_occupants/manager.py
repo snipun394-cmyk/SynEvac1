@@ -3,12 +3,21 @@ from typing import Dict, Optional, Sequence, Set, Tuple
 
 from behavior_recognition.observation import RecognizedBehavior
 
+from perception.models.human_observation import HumanClassification, HumanState
+
+from human_evidence.reconciliation import (
+    HumanEvidenceConfig, apply_classification_staleness, apply_state_staleness,
+    reconcile_classification, reconcile_state,
+)
+
 from live_system.event_bus import EventBus, EventType
 
 from live_occupants import events
 from live_occupants.events import (
-    BehaviorChangedPayload, CameraChangedPayload, OccupantCreatedPayload,
-    OccupantExitedPayload, OccupantExpiredPayload, OccupantUpdatedPayload, ZoneChangedPayload,
+    BehaviorChangedPayload, CameraChangedPayload, ClassificationUpdatedPayload,
+    ConfirmedAssistanceRequiredPayload, OccupantCreatedPayload,
+    OccupantExitedPayload, OccupantExpiredPayload, OccupantUpdatedPayload,
+    PossibleAssistanceRequiredPayload, StateChangedPayload, ZoneChangedPayload,
 )
 from live_occupants.history import OccupantHistory
 from live_occupants.lifecycle import (
@@ -17,6 +26,18 @@ from live_occupants.lifecycle import (
 )
 from live_occupants.occupant import LiveOccupant
 from live_occupants.state import OccupantStatus
+
+
+# Live Human State & Assistance Perception Bridge milestone, Phase 6 --
+# the ONE hard safety boundary this manager enforces mechanically:
+# RecognizedBehavior.POSSIBLY_FALLEN (a hedged geometric heuristic) must
+# NEVER be treated as, or silently promoted into, HumanState.FALLEN (a
+# stronger, unhedged evidence claim) anywhere in this class. `behavior`
+# and `human_state` remain two entirely separate fields/parameters,
+# reconciled independently, with no code path here that ever reads one
+# to set the other (see tests/test_human_evidence.py::
+# PossiblyFallenSeparationTests).
+_CONFIRMED_ASSISTANCE_STATES = frozenset({HumanState.FALLEN, HumanState.CRAWLING, HumanState.BEING_ASSISTED})
 
 
 class LiveOccupantManager:
@@ -43,6 +64,7 @@ class LiveOccupantManager:
         exit_proximity_threshold: float = DEFAULT_EXIT_PROXIMITY_THRESHOLD,
         expire_after_seconds: float = DEFAULT_EXPIRE_AFTER_SECONDS,
         exits: Sequence[object] = (),
+        human_evidence_config: Optional[HumanEvidenceConfig] = None,
     ):
 
         self.event_bus = event_bus
@@ -50,6 +72,7 @@ class LiveOccupantManager:
         self.exit_proximity_threshold = exit_proximity_threshold
         self.expire_after_seconds = expire_after_seconds
         self.exits = tuple(exits)
+        self.human_evidence_config = human_evidence_config if human_evidence_config is not None else HumanEvidenceConfig()
 
         self._occupants: Dict[str, LiveOccupant] = {}
         self._near_exit: Dict[str, bool] = {}
@@ -75,6 +98,11 @@ class LiveOccupantManager:
         behavior: Optional[RecognizedBehavior],
         confidence: float,
         timestamp: float,
+        *,
+        classification_evidence: HumanClassification = HumanClassification.UNKNOWN,
+        classification_confidence: Optional[float] = None,
+        state_evidence: Optional[HumanState] = None,
+        state_confidence: Optional[float] = None,
     ) -> LiveOccupant:
 
         existing = self._occupants.get(occupant_id)
@@ -96,15 +124,49 @@ class LiveOccupantManager:
             if world_velocity is not None:
                 history = history.with_velocity_sample(timestamp, world_velocity)
 
+            classification, classification_conf, classification_source, classification_seen_at = reconcile_classification(
+                existing_classification=HumanClassification.UNKNOWN, existing_confidence=None,
+                existing_source=None, existing_last_observed_at=None,
+                new_classification=classification_evidence, new_confidence=classification_confidence,
+                new_source=camera_id, timestamp=timestamp,
+            )
+            human_state, state_conf, state_source, state_seen_at = reconcile_state(
+                existing_state=None, existing_confidence=None, existing_source=None, existing_last_observed_at=None,
+                new_state=state_evidence, new_confidence=state_confidence, new_source=camera_id, timestamp=timestamp,
+            )
+
+            if classification != HumanClassification.UNKNOWN:
+                history = history.with_classification_change(timestamp, HumanClassification.UNKNOWN, classification)
+
+            if human_state is not None:
+                history = history.with_state_change(timestamp, None, human_state)
+
             occupant = LiveOccupant(
                 occupant_id=occupant_id, current_camera_id=camera_id, current_track_id=track_id,
                 current_zone_id=zone_id, current_floor_id=floor_id, world_position=world_position,
                 world_velocity=world_velocity, behavior=behavior, confidence=confidence,
                 first_seen=timestamp, last_seen=timestamp, status=OccupantStatus.NEW, history=history,
+                human_classification=classification, human_classification_confidence=classification_conf,
+                human_classification_source=classification_source,
+                human_classification_last_observed_at=classification_seen_at,
+                human_state=human_state, human_state_confidence=state_conf,
+                human_state_source=state_source, human_state_last_observed_at=state_seen_at,
             )
 
             self._store(occupant, near_exit)
             events.publish(self.event_bus, EventType.OCCUPANT_CREATED, OccupantCreatedPayload(occupant), timestamp)
+
+            if behavior == RecognizedBehavior.POSSIBLY_FALLEN:
+                events.publish(
+                    self.event_bus, EventType.POSSIBLE_ASSISTANCE_REQUIRED,
+                    PossibleAssistanceRequiredPayload(occupant_id, zone_id), timestamp,
+                )
+
+            if human_state in _CONFIRMED_ASSISTANCE_STATES:
+                events.publish(
+                    self.event_bus, EventType.CONFIRMED_ASSISTANCE_REQUIRED,
+                    ConfirmedAssistanceRequiredPayload(occupant_id, zone_id, human_state), timestamp,
+                )
 
             return occupant
 
@@ -125,12 +187,54 @@ class LiveOccupantManager:
         if world_velocity is not None:
             history = history.with_velocity_sample(timestamp, world_velocity)
 
+        # Live Human State & Assistance Perception Bridge milestone --
+        # staleness is applied to the EXISTING, stored evidence first
+        # (decaying it back to UNKNOWN/None if it has genuinely gone too
+        # long without reconfirmation, Phase 8), and only THEN is this
+        # cycle's new reading reconciled against whatever remains --
+        # never the other way around (which would let a stale value
+        # outrank fresh evidence).
+        decayed_classification, decayed_classification_conf, decayed_classification_source, decayed_classification_seen_at = (
+            apply_classification_staleness(
+                existing.human_classification, existing.human_classification_confidence,
+                existing.human_classification_source, existing.human_classification_last_observed_at,
+                now=timestamp, config=self.human_evidence_config,
+            )
+        )
+        decayed_state, decayed_state_conf, decayed_state_source, decayed_state_seen_at = apply_state_staleness(
+            existing.human_state, existing.human_state_confidence, existing.human_state_source,
+            existing.human_state_last_observed_at, now=timestamp, config=self.human_evidence_config,
+        )
+
+        classification, classification_conf, classification_source, classification_seen_at = reconcile_classification(
+            existing_classification=decayed_classification, existing_confidence=decayed_classification_conf,
+            existing_source=decayed_classification_source, existing_last_observed_at=decayed_classification_seen_at,
+            new_classification=classification_evidence, new_confidence=classification_confidence,
+            new_source=camera_id, timestamp=timestamp,
+        )
+        human_state, state_conf, state_source, state_seen_at = reconcile_state(
+            existing_state=decayed_state, existing_confidence=decayed_state_conf,
+            existing_source=decayed_state_source, existing_last_observed_at=decayed_state_seen_at,
+            new_state=state_evidence, new_confidence=state_confidence, new_source=camera_id, timestamp=timestamp,
+        )
+
+        if classification != existing.human_classification:
+            history = history.with_classification_change(timestamp, existing.human_classification, classification)
+
+        if human_state != existing.human_state:
+            history = history.with_state_change(timestamp, existing.human_state, human_state)
+
         updated = dataclasses.replace(
             existing,
             current_camera_id=camera_id, current_track_id=track_id, current_zone_id=zone_id,
             current_floor_id=floor_id, world_position=world_position, world_velocity=world_velocity,
             behavior=behavior, confidence=confidence, last_seen=timestamp,
             status=next_status_on_update(existing.status), history=history,
+            human_classification=classification, human_classification_confidence=classification_conf,
+            human_classification_source=classification_source,
+            human_classification_last_observed_at=classification_seen_at,
+            human_state=human_state, human_state_confidence=state_conf,
+            human_state_source=state_source, human_state_last_observed_at=state_seen_at,
         )
 
         self._store(updated, near_exit)
@@ -159,6 +263,35 @@ class LiveOccupantManager:
             events.publish(
                 self.event_bus, EventType.OCCUPANT_BEHAVIOR_CHANGED,
                 BehaviorChangedPayload(occupant_id, existing.behavior, behavior), timestamp,
+            )
+
+        # Live Human State & Assistance Perception Bridge milestone --
+        # Phase 11's own "only add events justified by actual
+        # transitions... no repeated event spam every cycle": every
+        # event below fires on a GENUINE change only (never every cycle
+        # the same reconciled value happens to still hold).
+        if classification != existing.human_classification:
+            events.publish(
+                self.event_bus, EventType.OCCUPANT_CLASSIFICATION_UPDATED,
+                ClassificationUpdatedPayload(occupant_id, existing.human_classification, classification), timestamp,
+            )
+
+        if human_state != existing.human_state:
+            events.publish(
+                self.event_bus, EventType.OCCUPANT_STATE_CHANGED,
+                StateChangedPayload(occupant_id, existing.human_state, human_state), timestamp,
+            )
+
+        if behavior == RecognizedBehavior.POSSIBLY_FALLEN and existing.behavior != RecognizedBehavior.POSSIBLY_FALLEN:
+            events.publish(
+                self.event_bus, EventType.POSSIBLE_ASSISTANCE_REQUIRED,
+                PossibleAssistanceRequiredPayload(occupant_id, zone_id), timestamp,
+            )
+
+        if human_state in _CONFIRMED_ASSISTANCE_STATES and existing.human_state not in _CONFIRMED_ASSISTANCE_STATES:
+            events.publish(
+                self.event_bus, EventType.CONFIRMED_ASSISTANCE_REQUIRED,
+                ConfirmedAssistanceRequiredPayload(occupant_id, zone_id, human_state), timestamp,
             )
 
         return updated
@@ -190,14 +323,63 @@ class LiveOccupantManager:
             near_exit = self._near_exit.get(occupant_id, False)
             new_status = next_status_on_missing(occupant.status, near_exit)
 
-            if new_status == occupant.status:
+            # Live Human State & Assistance Perception Bridge milestone,
+            # Phase 8 -- staleness is checked EVERY cycle an occupant is
+            # missing, not only on their next actual sighting: real wall-
+            # clock time keeps passing for someone not currently
+            # observed by any camera, and stale evidence must still
+            # honestly expire rather than being frozen at whatever it
+            # last read.
+            classification, classification_conf, classification_source, classification_seen_at = (
+                apply_classification_staleness(
+                    occupant.human_classification, occupant.human_classification_confidence,
+                    occupant.human_classification_source, occupant.human_classification_last_observed_at,
+                    now=timestamp, config=self.human_evidence_config,
+                )
+            )
+            human_state, state_conf, state_source, state_seen_at = apply_state_staleness(
+                occupant.human_state, occupant.human_state_confidence, occupant.human_state_source,
+                occupant.human_state_last_observed_at, now=timestamp, config=self.human_evidence_config,
+            )
+
+            classification_changed = classification != occupant.human_classification
+            state_changed = human_state != occupant.human_state
+
+            if new_status == occupant.status and not classification_changed and not state_changed:
                 continue
 
-            updated = dataclasses.replace(occupant, status=new_status)
+            history = occupant.history
+
+            if classification_changed:
+                history = history.with_classification_change(timestamp, occupant.human_classification, classification)
+
+            if state_changed:
+                history = history.with_state_change(timestamp, occupant.human_state, human_state)
+
+            updated = dataclasses.replace(
+                occupant, status=new_status, history=history,
+                human_classification=classification, human_classification_confidence=classification_conf,
+                human_classification_source=classification_source,
+                human_classification_last_observed_at=classification_seen_at,
+                human_state=human_state, human_state_confidence=state_conf,
+                human_state_source=state_source, human_state_last_observed_at=state_seen_at,
+            )
             self._store(updated, near_exit)
 
             if new_status == OccupantStatus.EXITED:
                 events.publish(self.event_bus, EventType.OCCUPANT_EXITED, OccupantExitedPayload(updated), timestamp)
+
+            if classification_changed:
+                events.publish(
+                    self.event_bus, EventType.OCCUPANT_CLASSIFICATION_UPDATED,
+                    ClassificationUpdatedPayload(occupant_id, occupant.human_classification, classification), timestamp,
+                )
+
+            if state_changed:
+                events.publish(
+                    self.event_bus, EventType.OCCUPANT_STATE_CHANGED,
+                    StateChangedPayload(occupant_id, occupant.human_state, human_state), timestamp,
+                )
 
     # =====================================================
 

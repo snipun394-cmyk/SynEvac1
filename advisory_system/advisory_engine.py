@@ -1458,6 +1458,7 @@ def build_commander_dashboard(
         response_highest_priority_zone_id=response_evidence.highest_priority_zone_id if response_available else None,
         response_critical_zone_ids=response_evidence.critical_zone_ids if response_available else (),
         response_possible_assistance_zone_ids=response_evidence.possible_assistance_zone_ids if response_available else (),
+        response_being_assisted_zone_ids=response_evidence.being_assisted_zone_ids if response_available else (),
     )
 
 

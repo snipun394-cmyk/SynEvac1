@@ -46,6 +46,15 @@ class EventType(Enum):
     OCCUPANT_EXITED = auto()
     OCCUPANT_EXPIRED = auto()
 
+    # Live Human State & Assistance Perception Bridge milestone --
+    # published by live_occupants.manager.LiveOccupantManager, payloads
+    # defined in live_occupants.events (same "this module never imports
+    # live_occupants itself" convention as the seven members above).
+    OCCUPANT_CLASSIFICATION_UPDATED = auto()
+    OCCUPANT_STATE_CHANGED = auto()
+    POSSIBLE_ASSISTANCE_REQUIRED = auto()
+    CONFIRMED_ASSISTANCE_REQUIRED = auto()
+
 
 @dataclass(frozen=True)
 class Event:

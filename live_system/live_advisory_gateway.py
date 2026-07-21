@@ -308,14 +308,24 @@ def emergency_response_evidence_from_snapshot(
         zone_id for zone_id, priority in snapshot.zones.items()
         if "OBSERVED_CLEAR" in priority.reason_codes
     ))
+    being_assisted_ids = tuple(sorted(
+        zone_id for zone_id, priority in snapshot.zones.items() if priority.being_assisted_count > 0
+    ))
+    vulnerable_person_observed_ids = tuple(sorted(
+        zone_id for zone_id, priority in snapshot.zones.items() if priority.vulnerable_person_observed
+    ))
 
-    flagged_zone_ids = set(critical_ids) | set(high_ids) | set(possible_assistance_ids) | set(uncertain_ids)
+    flagged_zone_ids = (
+        set(critical_ids) | set(high_ids) | set(possible_assistance_ids) | set(uncertain_ids)
+        | set(being_assisted_ids) | set(vulnerable_person_observed_ids)
+    )
     zone_details = {
         zone_id: ZoneResponseDetail(
             priority_level=priority.priority_level, priority_score=priority.priority_score,
             known_occupant_count=priority.known_occupant_count,
             possible_assistance_count=priority.possible_assistance_count,
             confirmed_assistance_count=priority.confirmed_assistance_count,
+            being_assisted_count=priority.being_assisted_count,
             reason_codes=priority.reason_codes,
         )
         for zone_id, priority in snapshot.zones.items()
@@ -338,6 +348,8 @@ def emergency_response_evidence_from_snapshot(
         possible_assistance_zone_ids=possible_assistance_ids,
         uncertain_search_zone_ids=uncertain_ids,
         observed_clear_zone_ids=observed_clear_ids,
+        being_assisted_zone_ids=being_assisted_ids,
+        vulnerable_person_observed_zone_ids=vulnerable_person_observed_ids,
         highest_priority_zone_id=highest_priority_zone_id,
         highest_priority_reason_codes=highest_priority_reason_codes,
         zone_details=zone_details,

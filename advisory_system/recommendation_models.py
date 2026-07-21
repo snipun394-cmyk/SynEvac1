@@ -365,6 +365,10 @@ class IncidentCommanderDashboard:
     response_critical_zone_ids: Tuple[str, ...] = field(default_factory=tuple)
     response_possible_assistance_zone_ids: Tuple[str, ...] = field(default_factory=tuple)
 
+    # Live Human State & Assistance Perception Bridge milestone --
+    # additive, mirrors the fields immediately above exactly (Phase 20).
+    response_being_assisted_zone_ids: Tuple[str, ...] = field(default_factory=tuple)
+
     def to_dict(self) -> Dict[str, Any]:
 
         return {
@@ -393,6 +397,7 @@ class IncidentCommanderDashboard:
             "response_highest_priority_zone_id": self.response_highest_priority_zone_id,
             "response_critical_zone_ids": list(self.response_critical_zone_ids),
             "response_possible_assistance_zone_ids": list(self.response_possible_assistance_zone_ids),
+            "response_being_assisted_zone_ids": list(self.response_being_assisted_zone_ids),
         }
 
 

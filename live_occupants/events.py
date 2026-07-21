@@ -3,6 +3,8 @@ from typing import Optional
 
 from behavior_recognition.observation import RecognizedBehavior
 
+from perception.models.human_observation import HumanClassification, HumanState
+
 from live_system.event_bus import Event, EventBus, EventType
 
 from live_occupants.occupant import LiveOccupant
@@ -61,6 +63,39 @@ class OccupantExitedPayload:
 @dataclass(frozen=True)
 class OccupantExpiredPayload:
     occupant: LiveOccupant
+
+
+# Live Human State & Assistance Perception Bridge milestone, Phase 11 --
+# mirrors BehaviorChangedPayload exactly. `to_classification`/`to_state`
+# are the value AFTER reconciliation (human_evidence.reconciliation),
+# never a raw, unreconciled per-camera reading.
+
+
+@dataclass(frozen=True)
+class ClassificationUpdatedPayload:
+    occupant_id: str
+    from_classification: HumanClassification
+    to_classification: HumanClassification
+
+
+@dataclass(frozen=True)
+class StateChangedPayload:
+    occupant_id: str
+    from_state: Optional[HumanState]
+    to_state: Optional[HumanState]
+
+
+@dataclass(frozen=True)
+class PossibleAssistanceRequiredPayload:
+    occupant_id: str
+    zone_id: Optional[str]
+
+
+@dataclass(frozen=True)
+class ConfirmedAssistanceRequiredPayload:
+    occupant_id: str
+    zone_id: Optional[str]
+    human_state: HumanState
 
 
 def publish(event_bus: Optional[EventBus], event_type: EventType, payload, timestamp: float) -> Optional[Event]:

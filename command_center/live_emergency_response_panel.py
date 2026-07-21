@@ -116,4 +116,42 @@ class LiveEmergencyResponsePanel(QWidget):
             self.detail_label.setText("-")
             return
 
-        self.detail_label.setText(priority.explanation)
+        self.detail_label.setText(f"{priority.explanation}\n\n{_format_occupant_evidence(priority.occupant_evidence)}")
+
+
+# =====================================================
+# Live Human State & Assistance Perception Bridge milestone, Phase
+# 18/19 -- "Human evidence:" lines matching the milestone's own worked
+# examples exactly (e.g. "OCC-12 -- FALLEN", "OCC-18 -- classification
+# unknown"). Never displays UNKNOWN as though it were a known category
+# -- explicit wording only ("classification unknown", never "UNKNOWN"
+# printed bare as if it were a real classification).
+# =====================================================
+
+
+def _format_occupant_evidence(occupant_evidence) -> str:
+
+    if not occupant_evidence:
+        return "Human evidence: none currently observed."
+
+    lines = ["Human evidence:"]
+
+    for entry in occupant_evidence:
+
+        parts = []
+
+        if entry.human_state is not None:
+            parts.append(entry.human_state)
+
+        if entry.classification is not None:
+            parts.append(entry.classification)
+
+        if entry.possible_assistance:
+            parts.append("possible assistance (heuristic)")
+
+        if not parts:
+            parts.append("classification unknown")
+
+        lines.append(f"  - {entry.occupant_id} -- {', '.join(parts)}")
+
+    return "\n".join(lines)

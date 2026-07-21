@@ -34,6 +34,9 @@ class ZoneResponseDetail:
     known_occupant_count: int = 0
     possible_assistance_count: int = 0
     confirmed_assistance_count: int = 0
+    # Live Human State & Assistance Perception Bridge milestone --
+    # distinct from confirmed_assistance_count (help already underway).
+    being_assisted_count: int = 0
     reason_codes: Tuple[str, ...] = field(default_factory=tuple)
 
     def to_dict(self) -> Dict[str, Any]:
@@ -43,6 +46,7 @@ class ZoneResponseDetail:
             "known_occupant_count": self.known_occupant_count,
             "possible_assistance_count": self.possible_assistance_count,
             "confirmed_assistance_count": self.confirmed_assistance_count,
+            "being_assisted_count": self.being_assisted_count,
             "reason_codes": list(self.reason_codes),
         }
 
@@ -63,6 +67,12 @@ class EmergencyResponseEvidence:
     possible_assistance_zone_ids: Tuple[str, ...] = field(default_factory=tuple)
     uncertain_search_zone_ids: Tuple[str, ...] = field(default_factory=tuple)
     observed_clear_zone_ids: Tuple[str, ...] = field(default_factory=tuple)
+
+    # Live Human State & Assistance Perception Bridge milestone, Phase
+    # 20 -- both purely additive, informational id sets, mirroring the
+    # existing five above exactly.
+    being_assisted_zone_ids: Tuple[str, ...] = field(default_factory=tuple)
+    vulnerable_person_observed_zone_ids: Tuple[str, ...] = field(default_factory=tuple)
 
     highest_priority_zone_id: Optional[str] = None
     highest_priority_reason_codes: Tuple[str, ...] = field(default_factory=tuple)
@@ -85,6 +95,8 @@ class EmergencyResponseEvidence:
             "possible_assistance_zone_ids": list(self.possible_assistance_zone_ids),
             "uncertain_search_zone_ids": list(self.uncertain_search_zone_ids),
             "observed_clear_zone_ids": list(self.observed_clear_zone_ids),
+            "being_assisted_zone_ids": list(self.being_assisted_zone_ids),
+            "vulnerable_person_observed_zone_ids": list(self.vulnerable_person_observed_zone_ids),
             "highest_priority_zone_id": self.highest_priority_zone_id,
             "highest_priority_reason_codes": list(self.highest_priority_reason_codes),
             "zone_details": {k: v.to_dict() for k, v in self.zone_details.items()},

@@ -2,7 +2,7 @@ from typing import Dict, List, Mapping, Optional
 
 from behavior_recognition.observation import RecognizedBehavior
 
-from perception.models.human_observation import HumanState
+from perception.models.human_observation import HumanClassification, HumanState
 
 from hazard.severity import HazardSeverity
 
@@ -11,8 +11,8 @@ from crowd_intelligence.models import IntensityLevel
 from evacuation_progress.models import ZoneClearanceStatus
 
 from emergency_response.models import (
-    EmergencyResponseSnapshot, FloorResponseSummary, OccupantAssistanceSignal, ResponsePriorityLevel,
-    ResponsePriorityThresholds, ResponseReason, ResponseWeights, ZoneResponsePriority,
+    EmergencyResponseSnapshot, FloorResponseSummary, OccupantAssistanceSignal, OccupantEvidenceSummary,
+    ResponsePriorityLevel, ResponsePriorityThresholds, ResponseReason, ResponseWeights, ZoneResponsePriority,
 )
 
 
@@ -36,16 +36,19 @@ from emergency_response.models import (
 # never imported here (mechanically enforced -- see
 # tests/test_emergency_response_architecture_guards.py).
 #
-# human_state_by_occupant_id is the ONE deliberately narrow exception:
-# perception.models.human_observation.HumanState (FALLEN/CRAWLING/
-# BEING_ASSISTED) does NOT reach live_occupants.occupant.LiveOccupant at
-# all (investigated directly -- that type carries no HumanClassification/
-# HumanState field, only RecognizedBehavior) -- so this parameter is
-# OPTIONAL and the CALLER'S OWN responsibility to populate correctly
-# (i.e. only if the caller's own perception source assigns
-# HumanObservation.person_id using the SAME identity scheme as
-# LiveOccupant.occupant_id.) Never assumed to exist, never silently
-# reinterpreted from a mismatched identity space.
+# human_state_by_occupant_id was, before the Live Human State &
+# Assistance Perception Bridge milestone, the ONE way any HumanState
+# evidence could ever reach this engine (live_occupants.occupant.
+# LiveOccupant carried no HumanClassification/HumanState field at all,
+# only RecognizedBehavior) -- it remains supported, and remains the
+# CALLER'S OWN responsibility to populate correctly (i.e. only if the
+# caller's own perception source assigns HumanObservation.person_id
+# using the SAME identity scheme as LiveOccupant.occupant_id), but is
+# now consulted ONLY as a fallback: LiveOccupant.human_state (populated
+# by human_evidence.reconciliation via live_occupants.manager.
+# LiveOccupantManager, see that package's own docstring) is the
+# PRIMARY, canonical live-sourced signal whenever it is genuinely known
+# -- see _assistance_signal() below for the exact precedence.
 #
 # Never makes an evacuation decision, never broadcasts, never executes
 # a control, never dispatches personnel -- purely a deterministic
@@ -68,14 +71,34 @@ _HAZARD_SEVERITY_SCORE = {
 # signal here, never CONFIRMED.
 _POSSIBLE_ASSISTANCE_BEHAVIORS = frozenset({RecognizedBehavior.POSSIBLY_FALLEN})
 
-# The ONLY HumanState values treated as CONFIRMED assistance evidence --
+# The HumanState values treated as CONFIRMED assistance evidence --
 # mirrors perception.human_inference._POSSIBLE_INJURY_STATES' own
-# selection exactly (FALLEN/CRAWLING/BEING_ASSISTED), reused as the same
-# disclosed judgment, one layer over -- but reported here as CONFIRMED
-# (never merely "possible") since, unlike POSSIBLY_FALLEN, these
-# HumanState values are not hedged heuristics; they are already the
-# perception source's own asserted observation.
-_CONFIRMED_ASSISTANCE_STATES = frozenset({HumanState.FALLEN, HumanState.CRAWLING, HumanState.BEING_ASSISTED})
+# selection (FALLEN/CRAWLING/BEING_ASSISTED), but reported here as
+# CONFIRMED (never merely "possible") since, unlike POSSIBLY_FALLEN,
+# these HumanState values are not hedged heuristics; they are already
+# the perception source's own asserted observation.
+#
+# Live Human State & Assistance Perception Bridge milestone -- split
+# into two DISTINCT tiers (Phase 12/23 test 33's own "BEING_ASSISTED
+# distinguishable from unassisted FALLEN" requirement): FALLEN/CRAWLING
+# describe someone who needs help and has NOT yet received it;
+# BEING_ASSISTED describes someone already being helped -- still
+# genuinely elevated priority, but a materially different operational
+# picture, never conflated into one undifferentiated count.
+_CONFIRMED_ASSISTANCE_STATES = frozenset({HumanState.FALLEN, HumanState.CRAWLING})
+_BEING_ASSISTED_STATES = frozenset({HumanState.BEING_ASSISTED})
+
+# Phase 12's own explicit, conservative "assistance-awareness, not
+# fabricated incapacity" boundary -- these classifications contribute
+# only the small, disclosed ResponseWeights.vulnerable_classification_
+# weight (Sec models.py), never treated as, or conflated with, an
+# assistance/incapacity claim. FIREFIGHTER/FIRE_WARDEN are deliberately
+# excluded (they denote response PERSONNEL already on scene, not
+# occupants needing rescue) and ADULT/UNKNOWN carry no such connotation
+# either.
+_VULNERABLE_CLASSIFICATIONS = frozenset(
+    {HumanClassification.CHILD, HumanClassification.ELDERLY, HumanClassification.WHEELCHAIR_USER}
+)
 
 
 class EmergencyResponseIntelligenceEngine:
@@ -169,8 +192,31 @@ class EmergencyResponseIntelligenceEngine:
             self._assistance_signal(occupant, human_state_by_occupant_id.get(occupant.occupant_id))
             for occupant in occupants
         ]
-        possible_count = sum(1 for signal in assistance_signals if signal.possible and not signal.confirmed)
+        possible_count = sum(1 for signal in assistance_signals if signal.possible and not signal.confirmed and not signal.being_assisted)
         confirmed_count = sum(1 for signal in assistance_signals if signal.confirmed)
+        being_assisted_count = sum(1 for signal in assistance_signals if signal.being_assisted)
+
+        vulnerable_person_observed = any(
+            occupant.human_classification in _VULNERABLE_CLASSIFICATIONS for occupant in occupants
+        )
+
+        occupant_evidence = tuple(
+            OccupantEvidenceSummary(
+                occupant_id=occupant.occupant_id,
+                human_state=occupant.human_state.name if occupant.human_state is not None else None,
+                classification=(
+                    occupant.human_classification.name
+                    if occupant.human_classification != HumanClassification.UNKNOWN else None
+                ),
+                possible_assistance=occupant.behavior in _POSSIBLE_ASSISTANCE_BEHAVIORS,
+            )
+            for occupant in occupants
+            if (
+                occupant.human_state is not None
+                or occupant.human_classification != HumanClassification.UNKNOWN
+                or occupant.behavior in _POSSIBLE_ASSISTANCE_BEHAVIORS
+            )
+        )
 
         clearance_status = None
         evacuation_stalled = False
@@ -202,6 +248,7 @@ class EmergencyResponseIntelligenceEngine:
 
         score, reason_codes = self._score_zone(
             known_occupant_count=known_occupant_count, possible_count=possible_count, confirmed_count=confirmed_count,
+            being_assisted_count=being_assisted_count, vulnerable_person_observed=vulnerable_person_observed,
             evacuation_stalled=evacuation_stalled, hazard_severity=hazard_severity,
             congestion_restricting=congestion_restricting, clearance_status=clearance_status, alarm_active=alarm_active,
         )
@@ -214,32 +261,47 @@ class EmergencyResponseIntelligenceEngine:
             priority_level=priority_level, priority_score=score,
             known_occupant_count=known_occupant_count,
             possible_assistance_count=possible_count, confirmed_assistance_count=confirmed_count,
+            being_assisted_count=being_assisted_count, vulnerable_person_observed=vulnerable_person_observed,
             evacuation_stalled=evacuation_stalled,
             hazard_severity=hazard_severity.name if hazard_severity is not None else None,
             clearance_status=clearance_status,
             observability_fraction=observability_fraction,
             reason_codes=reason_codes,
+            occupant_evidence=occupant_evidence,
             explanation=explanation,
             timestamp=time,
         )
 
     # =====================================================
 
-    def _assistance_signal(self, occupant, human_state) -> OccupantAssistanceSignal:
+    def _assistance_signal(self, occupant, human_state_override) -> OccupantAssistanceSignal:
+
+        # Live Human State & Assistance Perception Bridge milestone --
+        # LiveOccupant.human_state (the reconciled, live-pipeline-
+        # sourced field) is now PRIMARY: it is consulted whenever
+        # genuinely known. The caller-supplied human_state_by_occupant_id
+        # override remains available and is consulted ONLY when the
+        # occupant itself carries no live-sourced state -- e.g. a
+        # deployment with an external correlation source but no live
+        # HumanDetector state evidence configured yet. Never merged or
+        # allowed to silently overrule a genuine live reading.
+        human_state = occupant.human_state if occupant.human_state is not None else human_state_override
 
         possible = occupant.behavior in _POSSIBLE_ASSISTANCE_BEHAVIORS
         confirmed = human_state in _CONFIRMED_ASSISTANCE_STATES
+        being_assisted = human_state in _BEING_ASSISTED_STATES
 
         return OccupantAssistanceSignal(
             occupant_id=occupant.occupant_id, zone_id=occupant.current_zone_id,
-            possible=possible, confirmed=confirmed,
+            possible=possible, confirmed=confirmed, being_assisted=being_assisted,
         )
 
     # =====================================================
 
     def _score_zone(
-        self, *, known_occupant_count, possible_count, confirmed_count, evacuation_stalled,
-        hazard_severity, congestion_restricting, clearance_status, alarm_active,
+        self, *, known_occupant_count, possible_count, confirmed_count, being_assisted_count,
+        vulnerable_person_observed, evacuation_stalled, hazard_severity, congestion_restricting,
+        clearance_status, alarm_active,
     ):
 
         # Phase 7's own explicit transparency requirement -- every
@@ -261,7 +323,8 @@ class EmergencyResponseIntelligenceEngine:
         reasons = []
 
         has_any_evidence = (
-            known_occupant_count > 0 or possible_count > 0 or confirmed_count > 0 or evacuation_stalled
+            known_occupant_count > 0 or possible_count > 0 or confirmed_count > 0 or being_assisted_count > 0
+            or vulnerable_person_observed or evacuation_stalled
             or hazard_severity is not None or clearance_status is not None or alarm_active
         )
 
@@ -273,6 +336,12 @@ class EmergencyResponseIntelligenceEngine:
             score += w.occupants_weight * min(known_occupant_count / w.occupants_normalization_count, 1.0)
             reasons.append(ResponseReason.KNOWN_OCCUPANTS_PRESENT)
 
+        # Live Human State & Assistance Perception Bridge milestone --
+        # confirmed (FALLEN/CRAWLING) and being_assisted (BEING_ASSISTED)
+        # are mutually exclusive per-occupant tiers (Sec models.py), but
+        # a single zone can genuinely hold BOTH kinds of occupant at
+        # once -- both contributions apply independently, never one
+        # replacing the other at the zone level.
         if confirmed_count > 0:
 
             score += w.confirmed_assistance_weight
@@ -282,6 +351,16 @@ class EmergencyResponseIntelligenceEngine:
 
             score += w.possible_assistance_weight
             reasons.append(ResponseReason.POSSIBLE_ASSISTANCE_REQUIRED)
+
+        if being_assisted_count > 0:
+
+            score += w.being_assisted_weight
+            reasons.append(ResponseReason.ASSISTANCE_IN_PROGRESS)
+
+        if vulnerable_person_observed:
+
+            score += w.vulnerable_classification_weight
+            reasons.append(ResponseReason.VULNERABLE_PERSON_OBSERVED)
 
         if evacuation_stalled:
 
@@ -348,6 +427,7 @@ class EmergencyResponseIntelligenceEngine:
                 moderate_zone_count=sum(1 for p in priorities if p.priority_level == ResponsePriorityLevel.MODERATE),
                 known_occupants_remaining=sum(p.known_occupant_count for p in priorities),
                 possible_assistance_count=sum(p.possible_assistance_count + p.confirmed_assistance_count for p in priorities),
+                being_assisted_count=sum(p.being_assisted_count for p in priorities),
             )
 
         return summaries
