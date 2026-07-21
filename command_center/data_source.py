@@ -95,6 +95,12 @@ class CommandCenterSnapshot:
     building_state: Optional[Any] = None
     ai_prediction_snapshot: Optional[Any] = None
 
+    # Live Evacuation Progress, Flow & Clearance Intelligence milestone --
+    # evacuation_progress.models.EvacuationProgressSnapshot, mirroring
+    # ai_prediction_snapshot's own "typed Any, never fabricated in
+    # Replay mode" convention exactly.
+    evacuation_progress: Optional[Any] = None
+
     # Phase 14 -- per-component as-of timestamps, honestly reported.
     # None means that component has never been populated at all (not
     # "populated at time 0.0"). Always None/CURRENT in Replay mode,
@@ -103,6 +109,7 @@ class CommandCenterSnapshot:
     building_state_timestamp: Optional[float] = None
     ai_prediction_timestamp: Optional[float] = None
     advisory_timestamp: Optional[float] = None
+    evacuation_progress_timestamp: Optional[float] = None
     consistency: SnapshotConsistency = SnapshotConsistency.CURRENT
 
     # Phase 15 -- a bounded, most-recent-last list of human-readable

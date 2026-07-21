@@ -147,6 +147,7 @@ def _ai_signal_for(inputs: AdvisoryInputs, location_id: Optional[str]) -> Tuple[
 
 def _confidence_source(
     ai_confidence: Optional[float], rl_confidence: Optional[float], crowd_confidence: Optional[float] = None,
+    progress_confidence: Optional[float] = None,
 ) -> Tuple[str, ...]:
 
     # What confidence_engine.recommendation_confidence() actually blended
@@ -171,6 +172,9 @@ def _confidence_source(
 
     if crowd_confidence is not None:
         sources.append("crowd")
+
+    if progress_confidence is not None:
+        sources.append("progress")
 
     return tuple(sources)
 
@@ -308,6 +312,72 @@ def _crowd_wait_zone_reason_note(
 
 
 # =====================================================
+# Live Evacuation Progress, Flow & Clearance Intelligence milestone --
+# SAFETY PRECEDENCE (Phase 14), mirroring the crowd-congestion functions
+# immediately above EXACTLY: evacuation progress is SECONDARY,
+# SUPPORTING evidence. It may only ever (a) strengthen/note confidence
+# on a WAIT-zone announcement decision_policy itself already produced,
+# or (b) add wholly NEW, separate BuildingRecommendations. It never
+# creates, removes, or changes a CLOSE/AVOID/EVACUATE_IMMEDIATELY/
+# SHELTER_IN_PLACE decision.
+
+# A documented, deterministic, single flat confidence contribution for
+# any progress-sourced finding -- deliberately simpler than crowd's own
+# three-tier _CROWD_LEVEL_CONFIDENCE, since evacuation-progress findings
+# (stalled zone, high-queue-low-flow exit) are themselves already
+# binary (either flagged or not -- there is no HIGH/CRITICAL gradient
+# analogous to crowd density/congestion levels). Set above
+# DETERMINISTIC_RULE_BASE_CONFIDENCE (0.70) deliberately -- a genuine,
+# independently-observed operational finding is corroborating evidence
+# that should STRENGTHEN a recommendation's confidence once blended in
+# (matching _CROWD_LEVEL_CONFIDENCE's own HIGH tier), never weaken it by
+# averaging in a below-floor number.
+_PROGRESS_FINDING_CONFIDENCE = 0.80
+
+
+def _progress_confidence_for_wait_zone(
+    action: str, recommended_exit: Optional[str], recommended_stair: Optional[str], evidence,
+) -> Optional[float]:
+
+    # Mirrors _crowd_congestion_confidence_for_wait_zone exactly,
+    # restricted to a zone Decision Policy's own zone_policy already,
+    # independently, marked WAIT, and only when THIS exact zone's own
+    # recommended exit is one evacuation progress has independently
+    # flagged as high-queue-low-flow (a genuine bottleneck signal, not a
+    # building-wide generalization).
+
+    if action != WAIT or evidence is None or not evidence.available:
+        return None
+
+    if recommended_exit is not None and recommended_exit in evidence.high_queue_low_flow_exit_ids:
+        return _PROGRESS_FINDING_CONFIDENCE
+
+    return None
+
+
+def _progress_wait_zone_reason_note(
+    action: str, recommended_exit: Optional[str], recommended_stair: Optional[str], evidence,
+) -> Optional[str]:
+
+    # Mirrors _crowd_wait_zone_reason_note exactly -- appended to
+    # CivilianAnnouncement.reason ONLY, never to the broadcast
+    # announcement text itself.
+
+    if action != WAIT or evidence is None or not evidence.available:
+        return None
+
+    if recommended_exit is not None and recommended_exit in evidence.high_queue_low_flow_exit_ids:
+
+        detail = evidence.exit_details.get(recommended_exit)
+        queue = detail.queue_candidate_count if detail is not None else None
+        queue_text = f" ({queue} occupant(s) queueing, low observed throughput)" if queue is not None else ""
+
+        return f"Observed evacuation progress shows Exit {recommended_exit} has a high queue with low throughput{queue_text}."
+
+    return None
+
+
+# =====================================================
 # Phase 2 -- Civilian Advisory. Zone-based announcements ONLY: every
 # CivilianAnnouncement below is addressed to "occupants in <zone>," and
 # no field anywhere on it references an individual occupant_id. The
@@ -380,14 +450,23 @@ def build_civilian_announcements(inputs: AdvisoryInputs) -> Tuple[CivilianAnnoun
             action, recommended_exit, recommended_stair, inputs.crowd_decision_evidence,
         )
 
+        # Live Evacuation Progress, Flow & Clearance Intelligence
+        # milestone -- a THIRD, independently-tracked confidence
+        # contribution, alongside ai/crowd, never merged with either.
+        progress_wait_confidence = _progress_confidence_for_wait_zone(
+            action, recommended_exit, recommended_stair, inputs.evacuation_progress_evidence,
+        )
+
         threshold = CRITICAL_RISK_THRESHOLD if action == SHELTER_IN_PLACE else ELEVATED_RISK_THRESHOLD
         confidence = recommendation_confidence(
             risk_score=risk_by_zone.get(zone_id), risk_threshold=threshold,
             ai_confidence=combined_ai_confidence, rl_confidence=inputs.rl_confidence,
-            crowd_confidence=crowd_wait_confidence,
+            crowd_confidence=crowd_wait_confidence, progress_confidence=progress_wait_confidence,
             agreement_signals=[ai_agrees] if ai_agrees is not None else [],
         )
-        confidence_source = _confidence_source(combined_ai_confidence, inputs.rl_confidence, crowd_wait_confidence)
+        confidence_source = _confidence_source(
+            combined_ai_confidence, inputs.rl_confidence, crowd_wait_confidence, progress_wait_confidence,
+        )
 
         explanation = explain_zone_recommendation(
             zone_id=zone_id, action=action, recommended_exit=recommended_exit,
@@ -399,6 +478,12 @@ def build_civilian_announcements(inputs: AdvisoryInputs) -> Tuple[CivilianAnnoun
         crowd_note = _crowd_wait_zone_reason_note(action, recommended_exit, recommended_stair, inputs.crowd_decision_evidence)
         if crowd_note is not None:
             reason_parts.append(crowd_note)
+
+        progress_note = _progress_wait_zone_reason_note(
+            action, recommended_exit, recommended_stair, inputs.evacuation_progress_evidence,
+        )
+        if progress_note is not None:
+            reason_parts.append(progress_note)
 
         announcements.append(
             CivilianAnnouncement(
@@ -892,6 +977,79 @@ def build_building_recommendations(inputs: AdvisoryInputs) -> Tuple[BuildingReco
                 _crowd_prefer_alternative_recommendations(status_by_id, congested_ids, unsafe_value, asset_type, crowd_evidence, coverage_caveat)
             )
 
+    # =====================================================
+    # Live Evacuation Progress, Flow & Clearance Intelligence milestone.
+    # SAFETY PRECEDENCE (Phase 14): every recommendation below is purely
+    # informational -- a "stalled"/"uncertain"/"slow flow" note, never a
+    # route/safety decision. None of these ever touch decision_policy's
+    # own CLOSE/AVOID/action fields; they are appended only.
+    # =====================================================
+
+    progress_evidence = inputs.evacuation_progress_evidence
+
+    if progress_evidence is not None and progress_evidence.available:
+
+        for zone_id in sorted(progress_evidence.stalled_zone_ids):
+
+            detail = progress_evidence.zone_details.get(zone_id)
+            fraction_text = (
+                f" ({detail.clearance_fraction:.0%} of observed occupants cleared so far)"
+                if detail is not None and detail.clearance_fraction is not None else ""
+            )
+
+            recommendations.append(
+                BuildingRecommendation(
+                    action=f"Review Stalled Evacuation Progress in Zone {zone_id}",
+                    target_type="zone", target_id=zone_id,
+                    reason=f"Observed evacuation progress in Zone {zone_id} appears stalled{fraction_text}.",
+                    confidence=recommendation_confidence(risk_score=None, progress_confidence=_PROGRESS_FINDING_CONFIDENCE),
+                    expected_engineering_benefit="Prompts operator attention to a zone that has stopped clearing despite known remaining occupants.",
+                    confidence_source=("progress",),
+                )
+            )
+
+        for exit_id in sorted(progress_evidence.high_queue_low_flow_exit_ids):
+
+            detail = progress_evidence.exit_details.get(exit_id)
+            queue_text = f" ({detail.queue_candidate_count} occupant(s) queueing)" if detail is not None else ""
+
+            recommendations.append(
+                BuildingRecommendation(
+                    action=f"Review Exit {exit_id} Throughput",
+                    target_type="exit", target_id=exit_id,
+                    reason=f"Exit {exit_id} has high queue demand but low observed throughput{queue_text}.",
+                    confidence=recommendation_confidence(risk_score=None, progress_confidence=_PROGRESS_FINDING_CONFIDENCE),
+                    expected_engineering_benefit="Distinguishes a genuinely bottlenecked exit from one that is heavily used but functioning.",
+                    confidence_source=("progress",),
+                )
+            )
+
+        for zone_id in sorted(progress_evidence.zones_clearance_unknown):
+
+            recommendations.append(
+                BuildingRecommendation(
+                    action=f"Confirm Clearance Status for Zone {zone_id}",
+                    target_type="zone", target_id=zone_id,
+                    reason=f"Clearance status for Zone {zone_id} is uncertain due to insufficient camera coverage.",
+                    confidence=recommendation_confidence(risk_score=None, progress_confidence=_PROGRESS_FINDING_CONFIDENCE),
+                    expected_engineering_benefit="Flags a zone whose true occupancy cannot currently be confirmed, never assumed clear.",
+                    confidence_source=("progress",),
+                )
+            )
+
+        if progress_evidence.overall_progress_trend in ("SLOWING", "STALLED"):
+
+            recommendations.append(
+                BuildingRecommendation(
+                    action="Monitor Slowing Building-Wide Evacuation Progress",
+                    target_type="building", target_id=None,
+                    reason=f"Observed evacuation progress has a {progress_evidence.overall_progress_trend.lower()} trend.",
+                    confidence=recommendation_confidence(risk_score=None, progress_confidence=_PROGRESS_FINDING_CONFIDENCE),
+                    expected_engineering_benefit="Prompts proactive monitoring before evacuation progress deteriorates further.",
+                    confidence_source=("progress",),
+                )
+            )
+
     return tuple(recommendations)
 
 
@@ -1094,11 +1252,20 @@ def build_commander_dashboard(
     crowd_available = crowd_evidence is not None and crowd_evidence.available
     crowd_confidence = _crowd_confidence_for_level(crowd_evidence.most_congested_level) if crowd_available else None
 
+    progress_evidence = inputs.evacuation_progress_evidence
+    progress_available = progress_evidence is not None and progress_evidence.available
+    progress_confidence = (
+        _PROGRESS_FINDING_CONFIDENCE
+        if progress_available and (progress_evidence.stalled_zone_ids or progress_evidence.high_queue_low_flow_exit_ids)
+        else None
+    )
+
     rec_confidence = combine_confidence(
         *[entry.confidence for entry in civilian_announcements],
         *[entry.confidence for entry in building_recommendations],
         evidence_confidence,
         crowd_confidence,
+        progress_confidence,
     )
 
     overall_severity = _overall_incident_severity(
@@ -1128,6 +1295,9 @@ def build_commander_dashboard(
         crowd_highest_density_zone_id=crowd_evidence.highest_density_zone_id if crowd_available else None,
         crowd_most_congested_asset_id=crowd_evidence.most_congested_asset_id if crowd_available else None,
         crowd_most_congested_level=crowd_evidence.most_congested_level if crowd_available else None,
+        evacuation_progress_fraction=progress_evidence.overall_progress_fraction if progress_available else None,
+        evacuation_stalled_zone_ids=progress_evidence.stalled_zone_ids if progress_available else (),
+        evacuation_clearance_unknown_zone_ids=progress_evidence.zones_clearance_unknown if progress_available else (),
     )
 
 

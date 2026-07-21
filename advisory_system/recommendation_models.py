@@ -8,6 +8,7 @@ from perception.models.human_observation import HumanObservation
 
 from advisory_system.ai_evidence import AIDecisionEvidence
 from advisory_system.crowd_evidence import CrowdDecisionEvidence
+from advisory_system.evacuation_progress_evidence import EvacuationProgressEvidence
 
 
 # =====================================================
@@ -111,6 +112,11 @@ class AdvisoryInputs:
     # advisory_system.crowd_evidence's own module docstring for why
     # this attaches here rather than to decision_policy.
     crowd_decision_evidence: Optional[CrowdDecisionEvidence] = None
+
+    # Live Evacuation Progress, Flow & Clearance Intelligence milestone --
+    # additive, mirrors crowd_decision_evidence exactly. None means "no
+    # evacuation-progress evidence this cycle."
+    evacuation_progress_evidence: Optional[EvacuationProgressEvidence] = None
 
     # =====================================================
 
@@ -326,6 +332,14 @@ class IncidentCommanderDashboard:
     crowd_most_congested_asset_id: Optional[str] = None
     crowd_most_congested_level: Optional[str] = None
 
+    # Live Evacuation Progress, Flow & Clearance Intelligence milestone --
+    # additive, mirrors the crowd_* fields immediately above exactly.
+    # Phase 16's own "zones still containing known occupants, stalled
+    # zones, uncertain-clearance zones" commander awareness.
+    evacuation_progress_fraction: Optional[float] = None
+    evacuation_stalled_zone_ids: Tuple[str, ...] = field(default_factory=tuple)
+    evacuation_clearance_unknown_zone_ids: Tuple[str, ...] = field(default_factory=tuple)
+
     def to_dict(self) -> Dict[str, Any]:
 
         return {
@@ -348,6 +362,9 @@ class IncidentCommanderDashboard:
             "crowd_highest_density_zone_id": self.crowd_highest_density_zone_id,
             "crowd_most_congested_asset_id": self.crowd_most_congested_asset_id,
             "crowd_most_congested_level": self.crowd_most_congested_level,
+            "evacuation_progress_fraction": self.evacuation_progress_fraction,
+            "evacuation_stalled_zone_ids": list(self.evacuation_stalled_zone_ids),
+            "evacuation_clearance_unknown_zone_ids": list(self.evacuation_clearance_unknown_zone_ids),
         }
 
 

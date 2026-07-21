@@ -7,7 +7,10 @@ from building_state.models import BuildingState
 
 from live_system.building_state_gateway import BuildingStateGateway
 from live_system.crowd_intelligence_gateway import CrowdIntelligenceGateway
+from live_system.evacuation_progress_gateway import EvacuationProgressGateway
 from live_system.event_bus import EventBus, EventType
+
+from evacuation_progress.models import EvacuationProgressTrend, ZoneClearanceStatus
 from live_system.incident_manager import IncidentManager, IncidentState
 from live_system.integration import (
     AIInferenceGateway,
@@ -21,6 +24,7 @@ from live_system.live_advisory_gateway import (
     LiveAdvisoryGateway,
     ai_decision_evidence_from_prediction_snapshot,
     crowd_decision_evidence_from_snapshot,
+    evacuation_progress_evidence_from_snapshot,
 )
 from live_system.sensor_registry import SensorRegistry
 from live_system.state_manager import LiveBuildingSnapshot, StateManager
@@ -93,6 +97,7 @@ class LiveOrchestrator:
         live_ai_gateway: Optional[LiveAIInferenceGateway] = None,
         live_advisory_gateway: Optional[LiveAdvisoryGateway] = None,
         crowd_intelligence_gateway: Optional[CrowdIntelligenceGateway] = None,
+        evacuation_progress_gateway: Optional[EvacuationProgressGateway] = None,
         ai_inference_gateway: Optional[AIInferenceGateway] = None,
         decision_policy_gateway: Optional[DecisionPolicyGateway] = None,
         command_center_gateway: Optional[CommandCenterGateway] = None,
@@ -110,6 +115,7 @@ class LiveOrchestrator:
         self.live_ai_gateway = live_ai_gateway
         self.live_advisory_gateway = live_advisory_gateway
         self.crowd_intelligence_gateway = crowd_intelligence_gateway
+        self.evacuation_progress_gateway = evacuation_progress_gateway
         self.ai_inference_gateway = ai_inference_gateway
         self.decision_policy_gateway = decision_policy_gateway
         self.command_center_gateway = command_center_gateway
@@ -169,6 +175,15 @@ class LiveOrchestrator:
         # Mirrors latest_building_state's own forwarding-property style.
 
         return self.state_manager.latest_crowd_intelligence()
+
+    # =====================================================
+
+    @property
+    def latest_evacuation_progress(self):
+
+        # Mirrors latest_building_state's own forwarding-property style.
+
+        return self.state_manager.latest_evacuation_progress()
 
     # =====================================================
 
@@ -298,6 +313,33 @@ class LiveOrchestrator:
                 snapshot = self.state_manager.update_crowd_intelligence(crowd_intelligence_snapshot, time)
                 self.event_bus.emit(EventType.CROWD_INTELLIGENCE_UPDATED, crowd_intelligence_snapshot, time)
 
+        if self.evacuation_progress_gateway is not None:
+
+            # Live Evacuation Progress, Flow & Clearance Intelligence
+            # milestone -- runs AFTER crowd_intelligence_gateway (reads
+            # snapshot.crowd_intelligence, this cycle's fresh value if
+            # computation just succeeded above, or the previous cycle's
+            # otherwise -- exactly the same "read the state manager's own
+            # current field" pattern the AI/Advisory stages below already
+            # use for ai_prediction_snapshot) and BEFORE live_ai_gateway/
+            # live_advisory_gateway, so a future Advisory consumer can
+            # read this cycle's evacuation_progress the same cycle it was
+            # computed. Neither existing stage is reordered.
+            previous_evacuation_progress = self.state_manager.latest_evacuation_progress()
+
+            evacuation_progress_snapshot = self.evacuation_progress_gateway.compute(
+                time, snapshot.building_state, snapshot.crowd_intelligence,
+            )
+
+            if evacuation_progress_snapshot is not None:
+
+                self._emit_evacuation_progress_transition_events(
+                    previous_evacuation_progress, evacuation_progress_snapshot, time,
+                )
+
+                snapshot = self.state_manager.update_evacuation_progress(evacuation_progress_snapshot, time)
+                self.event_bus.emit(EventType.EVACUATION_PROGRESS_UPDATED, evacuation_progress_snapshot, time)
+
         if self.live_ai_gateway is not None:
 
             ai_prediction_snapshot = self.live_ai_gateway.predict(snapshot.building_state, time)
@@ -327,7 +369,13 @@ class LiveOrchestrator:
             # establishes one line above.
             crowd_evidence = crowd_decision_evidence_from_snapshot(snapshot.crowd_intelligence)
 
-            advisory_report = self.live_advisory_gateway.generate(ai_evidence, time, crowd_evidence)
+            # Live Evacuation Progress, Flow & Clearance Intelligence
+            # milestone -- the SAME pattern, one field over.
+            evacuation_progress_evidence = evacuation_progress_evidence_from_snapshot(snapshot.evacuation_progress)
+
+            advisory_report = self.live_advisory_gateway.generate(
+                ai_evidence, time, crowd_evidence, evacuation_progress_evidence,
+            )
 
             # None means "no update this cycle" -- covers BOTH "not
             # enough information yet" and any caught internal failure
@@ -433,3 +481,42 @@ class LiveOrchestrator:
             IncidentState.ALARM, time, reason="Live Perception reported an active alarm",
         )
         self.event_bus.emit(EventType.ALARM_ACTIVATED, transition, time)
+
+    # =====================================================
+
+    def _emit_evacuation_progress_transition_events(self, previous, current, time: float) -> None:
+
+        # Live Evacuation Progress, Flow & Clearance Intelligence
+        # milestone, Phase 18 -- "add events only if operationally
+        # useful ... do not spam identical events every cycle ... use
+        # state-transition/change detection." ZONE_CLEARANCE_STALLED/
+        # EXIT_FLOW_STALLED/ZONE_OBSERVED_CLEAR fire ONLY the cycle a
+        # zone/exit NEWLY enters that status -- comparing this cycle's
+        # snapshot against the previous one (captured before this
+        # cycle's update_evacuation_progress() call) rather than firing
+        # on every cycle the status happens to still hold.
+        # EVACUATION_PROGRESS_UPDATED (emitted unconditionally by the
+        # caller, once per successful computation) remains the general-
+        # purpose "a fresh snapshot exists" signal any subscriber can
+        # already use instead, if it does not care about transitions
+        # specifically.
+
+        previous_zone_status = {
+            zone_id: clearance.status for zone_id, clearance in (previous.zones if previous is not None else {}).items()
+        }
+        previous_exit_trend = {
+            exit_id: flow.trend for exit_id, flow in (previous.exits if previous is not None else {}).items()
+        }
+
+        for zone_id, clearance in current.zones.items():
+
+            if clearance.status == ZoneClearanceStatus.STALLED and previous_zone_status.get(zone_id) != ZoneClearanceStatus.STALLED:
+                self.event_bus.emit(EventType.ZONE_CLEARANCE_STALLED, clearance, time)
+
+            if clearance.status == ZoneClearanceStatus.OBSERVED_CLEAR and previous_zone_status.get(zone_id) != ZoneClearanceStatus.OBSERVED_CLEAR:
+                self.event_bus.emit(EventType.ZONE_OBSERVED_CLEAR, clearance, time)
+
+        for exit_id, flow in current.exits.items():
+
+            if flow.trend == EvacuationProgressTrend.STALLED and previous_exit_trend.get(exit_id) != EvacuationProgressTrend.STALLED:
+                self.event_bus.emit(EventType.EXIT_FLOW_STALLED, flow, time)

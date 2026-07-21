@@ -9,6 +9,7 @@ from command_center.incident_panel import IncidentPanel
 from command_center.incident_status_bar import IncidentStatusBar
 from command_center.live_ai_panel import LiveAIPanel
 from command_center.live_events_panel import LiveEventsPanel
+from command_center.live_evacuation_progress_panel import LiveEvacuationProgressPanel
 from command_center.live_status_panel import LiveStatusPanel
 from command_center.occupancy_panel import OccupancyPanel
 from command_center.recommendation_center import RecommendationCenter
@@ -82,6 +83,7 @@ class Dashboard(QWidget):
         # apply_snapshot()'s Live path; harmlessly empty in Replay mode.
         self.live_status_panel = LiveStatusPanel()
         self.live_ai_panel = LiveAIPanel()
+        self.live_evacuation_progress_panel = LiveEvacuationProgressPanel()
         self.live_events_panel = LiveEventsPanel()
 
         self.side_tabs = QTabWidget()
@@ -94,6 +96,7 @@ class Dashboard(QWidget):
         self.side_tabs.addTab(self.human_panel, "People")
         self.side_tabs.addTab(self.live_status_panel, "Live Status")
         self.side_tabs.addTab(self.live_ai_panel, "Live AI")
+        self.side_tabs.addTab(self.live_evacuation_progress_panel, "Live Evacuation Progress")
         self.side_tabs.addTab(self.live_events_panel, "Live Events")
 
         # Tabs that only make sense against a completed-run IncidentData
@@ -277,6 +280,7 @@ class Dashboard(QWidget):
 
         self.live_status_panel.show_building_state(snapshot.building_state)
         self.live_ai_panel.show_prediction(snapshot.ai_prediction_snapshot, stale=is_stale)
+        self.live_evacuation_progress_panel.show_progress(snapshot.evacuation_progress)
         self.live_events_panel.show_recent_events(snapshot.recent_events)
 
         self.live_consistency_banner.setText(_consistency_banner_text(snapshot))

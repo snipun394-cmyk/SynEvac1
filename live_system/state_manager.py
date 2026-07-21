@@ -21,6 +21,8 @@ from building_state.models import BuildingState
 
 from crowd_intelligence.models import CrowdIntelligenceSnapshot
 
+from evacuation_progress.models import EvacuationProgressSnapshot
+
 from live_system.live_ai_gateway import LiveAIPredictionSnapshot
 
 
@@ -115,6 +117,14 @@ class LiveBuildingSnapshot:
     # gateway is configured and has produced at least one snapshot --
     # never a fabricated empty-but-present snapshot.
     crowd_intelligence: Optional[CrowdIntelligenceSnapshot] = None
+
+    # Live Evacuation Progress, Flow & Clearance Intelligence milestone --
+    # the canonical live_system.evacuation_progress_gateway output, kept
+    # as its own sibling field exactly like crowd_intelligence/
+    # ai_prediction_snapshot/advisory_report above. None until an
+    # evacuation_progress_gateway is configured and has produced at
+    # least one snapshot -- never a fabricated empty-but-present snapshot.
+    evacuation_progress: Optional[EvacuationProgressSnapshot] = None
 
     # component -> the timestamp its own field was last actually
     # updated -- distinct from `timestamp` (this snapshot's own
@@ -221,6 +231,7 @@ class LiveBuildingSnapshot:
             "decision_policy": self.decision_policy,
             "recommendations": self.recommendations,
             "crowd_intelligence": self.crowd_intelligence,
+            "evacuation_progress": self.evacuation_progress,
             "component_timestamps": self.component_timestamps,
         }
         current.update(changes)
@@ -400,6 +411,27 @@ class StateManager:
             timestamp=time,
             crowd_intelligence=crowd_intelligence,
             component_timestamps=self._stamp("crowd_intelligence", time),
+        )
+
+    # =====================================================
+
+    def latest_evacuation_progress(self) -> Optional[EvacuationProgressSnapshot]:
+
+        # Mirrors latest_crowd_intelligence()'s own convenience-accessor
+        # role, one field over.
+
+        return self._snapshot.evacuation_progress
+
+    # =====================================================
+
+    def update_evacuation_progress(
+        self, evacuation_progress: EvacuationProgressSnapshot, time: float,
+    ) -> LiveBuildingSnapshot:
+
+        return self._replace(
+            timestamp=time,
+            evacuation_progress=evacuation_progress,
+            component_timestamps=self._stamp("evacuation_progress", time),
         )
 
     # =====================================================

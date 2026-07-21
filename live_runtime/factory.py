@@ -38,7 +38,10 @@ from live_perception.providers import (
 
 from crowd_intelligence.engine import CrowdIntelligenceEngine
 
+from evacuation_progress.engine import EvacuationProgressEngine
+
 from live_system.crowd_intelligence_gateway import EngineCrowdIntelligenceGateway
+from live_system.evacuation_progress_gateway import EngineEvacuationProgressGateway
 
 from live_runtime.runtime import LiveRuntime
 
@@ -72,6 +75,7 @@ def build_live_runtime(
     live_occupant_manager: Optional[LiveOccupantManager] = None,
     sensor_fusion_engine: Optional[SensorFusionEngine] = None,
     crowd_intelligence_engine: Optional[CrowdIntelligenceEngine] = None,
+    evacuation_progress_engine: Optional[EvacuationProgressEngine] = None,
     smoke_detector_reading_provider: Optional[Callable[[float], object]] = None,
     heat_detector_reading_provider: Optional[Callable[[float], object]] = None,
     camera_manager: Optional[CameraManager] = None,
@@ -111,7 +115,29 @@ def build_live_runtime(
     # requirement), never duplicated.
     # =====================================================
 
-    live_occupant_manager = live_occupant_manager if live_occupant_manager is not None else LiveOccupantManager()
+    # Live Evacuation Progress, Flow & Clearance Intelligence milestone --
+    # resolved HERE, before LiveOccupantManager's own default
+    # construction, fixing a genuine pre-existing gap this milestone's
+    # own investigation found: LiveOccupantManager() was previously
+    # constructed with NEITHER an event_bus NOR an exits= list, meaning
+    # (a) no occupant lifecycle event was EVER published in production
+    # (evacuation_progress.ledger.EvacuationLedger, and any other future
+    # event subscriber, would silently receive nothing), and (b)
+    # live_occupants.lifecycle.is_near_exit() always returned False
+    # against an empty exits list, making OccupantStatus.EXITED
+    # completely unreachable in production. Both are fixed below, in the
+    # SAME default-construction path a caller's own supplied
+    # live_occupant_manager already bypasses entirely (a caller
+    # constructing their own is assumed to have wired both correctly,
+    # exactly as before).
+    event_bus = event_bus if event_bus is not None else EventBus()
+
+    building_exits = [exit_obj for floor in building.ordered_floors() for exit_obj in floor.exits]
+
+    live_occupant_manager = (
+        live_occupant_manager if live_occupant_manager is not None
+        else LiveOccupantManager(event_bus=event_bus, exits=building_exits)
+    )
     sensor_fusion_engine = sensor_fusion_engine if sensor_fusion_engine is not None else SensorFusionEngine()
 
     # Live Occupancy, Crowd Density & Congestion Intelligence milestone --
@@ -126,6 +152,16 @@ def build_live_runtime(
     crowd_intelligence_engine = (
         crowd_intelligence_engine if crowd_intelligence_engine is not None
         else CrowdIntelligenceEngine(building, live_occupant_manager)
+    )
+
+    # Live Evacuation Progress, Flow & Clearance Intelligence milestone --
+    # exactly ONE EvacuationProgressEngine for this live session,
+    # subscribing to the SAME event_bus live_occupant_manager itself now
+    # publishes to (see the event_bus/exits fix above -- without it,
+    # this engine would silently see zero occupant lifecycle events).
+    evacuation_progress_engine = (
+        evacuation_progress_engine if evacuation_progress_engine is not None
+        else EvacuationProgressEngine(building, live_occupant_manager, event_bus)
     )
 
     # =====================================================
@@ -312,12 +348,11 @@ def build_live_runtime(
         ),
     )
 
-    event_bus = event_bus if event_bus is not None else EventBus()
-
     orchestrator = LiveOrchestrator(
         event_bus=event_bus,
         building_state_gateway=building_state_gateway,
         crowd_intelligence_gateway=EngineCrowdIntelligenceGateway(crowd_intelligence_engine),
+        evacuation_progress_gateway=EngineEvacuationProgressGateway(evacuation_progress_engine),
         live_ai_gateway=live_ai_gateway,
         live_advisory_gateway=live_advisory_gateway,
         interval_seconds=interval_seconds,
@@ -355,6 +390,7 @@ def build_live_runtime(
         sensor_fusion_engine=sensor_fusion_engine,
         perception_fusion_coordinator=perception_fusion_coordinator,
         crowd_intelligence_engine=crowd_intelligence_engine,
+        evacuation_progress_engine=evacuation_progress_engine,
     )
 
 

@@ -4,10 +4,16 @@ from advisory_system.ai_evidence import AIDecisionEvidence, UNAVAILABLE_AI_DECIS
 from advisory_system.crowd_evidence import (
     CrowdAssetDetail, CrowdDecisionEvidence, CrowdZoneDetail, UNAVAILABLE_CROWD_DECISION_EVIDENCE,
 )
+from advisory_system.evacuation_progress_evidence import (
+    EvacuationExitDetail, EvacuationProgressEvidence, EvacuationZoneDetail,
+    UNAVAILABLE_EVACUATION_PROGRESS_EVIDENCE,
+)
 from advisory_system.orchestrator import AdvisoryOrchestrator
 from advisory_system.recommendation_models import AdvisoryInputs, AdvisoryReport
 
 from crowd_intelligence.models import CrowdIntelligenceSnapshot, TrendDirection
+
+from evacuation_progress.models import EvacuationProgressSnapshot, ZoneClearanceStatus
 
 from live_system.live_ai_gateway import LiveAIPredictionSnapshot
 
@@ -201,6 +207,71 @@ def crowd_decision_evidence_from_snapshot(
 
 
 # =====================================================
+# Live Evacuation Progress, Flow & Clearance Intelligence milestone --
+# the evacuation-progress counterpart to crowd_decision_evidence_from_
+# snapshot() immediately above, same placement/role.
+# =====================================================
+
+
+def evacuation_progress_evidence_from_snapshot(
+    snapshot: Optional[EvacuationProgressSnapshot],
+) -> EvacuationProgressEvidence:
+
+    if snapshot is None:
+        return UNAVAILABLE_EVACUATION_PROGRESS_EVIDENCE
+
+    stalled_zone_ids = snapshot.stalled_zone_ids
+    zones_observed_clear = tuple(sorted(
+        zone_id for zone_id, clearance in snapshot.zones.items() if clearance.status == ZoneClearanceStatus.OBSERVED_CLEAR
+    ))
+    zones_clearance_unknown = tuple(sorted(
+        zone_id for zone_id, clearance in snapshot.zones.items()
+        if clearance.status == ZoneClearanceStatus.UNKNOWN and clearance.baseline_observed_count > 0
+    ))
+
+    high_queue_low_flow_exit_ids = snapshot.low_flow_exit_ids
+    slow_flow_exit_ids = tuple(sorted(
+        exit_id for exit_id, flow in snapshot.exits.items()
+        if flow.trend in ("SLOWING", "STALLED")
+    ))
+
+    flagged_zone_ids = set(stalled_zone_ids) | set(zones_observed_clear) | set(zones_clearance_unknown)
+    zone_details = {
+        zone_id: EvacuationZoneDetail(
+            status=clearance.status, clearance_fraction=clearance.clearance_fraction,
+            current_active_count=clearance.current_active_count, trend=clearance.trend,
+        )
+        for zone_id, clearance in snapshot.zones.items()
+        if zone_id in flagged_zone_ids
+    }
+
+    flagged_exit_ids = set(high_queue_low_flow_exit_ids) | set(slow_flow_exit_ids)
+    exit_details = {
+        exit_id: EvacuationExitDetail(
+            unique_exited_count=flow.unique_exited_count, queue_candidate_count=flow.queue_candidate_count,
+            recent_flow_per_minute=flow.recent_flow_per_minute, trend=flow.trend,
+        )
+        for exit_id, flow in snapshot.exits.items()
+        if exit_id in flagged_exit_ids
+    }
+
+    return EvacuationProgressEvidence(
+        available=True,
+        timestamp=snapshot.timestamp,
+        overall_progress_fraction=snapshot.evacuation_progress_fraction,
+        overall_progress_trend=snapshot.overall_progress_trend,
+        stalled_zone_ids=stalled_zone_ids,
+        zones_observed_clear=zones_observed_clear,
+        zones_clearance_unknown=zones_clearance_unknown,
+        slow_flow_exit_ids=slow_flow_exit_ids,
+        high_queue_low_flow_exit_ids=high_queue_low_flow_exit_ids,
+        observability_fraction=snapshot.observability.position_coverage_fraction,
+        zone_details=zone_details,
+        exit_details=exit_details,
+    )
+
+
+# =====================================================
 
 
 class LiveAdvisoryGateway(Protocol):
@@ -215,16 +286,15 @@ class LiveAdvisoryGateway(Protocol):
     # entry, the identical staleness-detection mechanism live_ai_gateway
     # already established.
     #
-    # crowd_evidence defaults to None -- Live Crowd Intelligence ->
-    # Operational Advisory Integration milestone, additive. A caller
-    # that never supplies one (every existing test/deployment) keeps
-    # working unchanged; LiveOrchestrator.run_cycle() always passes one
-    # (UNAVAILABLE_CROWD_DECISION_EVIDENCE when no crowd_intelligence_
-    # gateway is configured, or this cycle's real evidence otherwise).
+    # crowd_evidence/evacuation_progress_evidence both default to None --
+    # additive across two separate milestones. A caller that never
+    # supplies either (every existing test/deployment) keeps working
+    # unchanged; LiveOrchestrator.run_cycle() always passes both.
 
     def generate(
         self, ai_evidence: Optional[AIDecisionEvidence], time: float,
         crowd_evidence: Optional[CrowdDecisionEvidence] = None,
+        evacuation_progress_evidence: Optional[EvacuationProgressEvidence] = None,
     ) -> Optional[AdvisoryReport]: ...
 
 
@@ -274,6 +344,7 @@ class ReplayCompatibleAdvisoryGateway:
     def generate(
         self, ai_evidence: Optional[AIDecisionEvidence], time: float,
         crowd_evidence: Optional[CrowdDecisionEvidence] = None,
+        evacuation_progress_evidence: Optional[EvacuationProgressEvidence] = None,
     ) -> Optional[AdvisoryReport]:
 
         try:
@@ -301,6 +372,7 @@ class ReplayCompatibleAdvisoryGateway:
                 simulation_time=time,
                 ai_decision_evidence=ai_evidence,
                 crowd_decision_evidence=crowd_evidence,
+                evacuation_progress_evidence=evacuation_progress_evidence,
             )
 
             return self._orchestrator.generate_report(inputs)
