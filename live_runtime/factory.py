@@ -26,6 +26,16 @@ from live_system.orchestrator import LiveOrchestrator
 
 from command_center.live_operator_action_gateway import LiveOperatorActionGateway
 
+from live_occupants.manager import LiveOccupantManager
+
+from sensor_fusion.engine import SensorFusionEngine
+
+from live_perception.coordinator import LivePerceptionFusionCoordinator
+from live_perception.providers import (
+    LiveFACPObservationProvider, LiveHeatObservationProvider,
+    LiveOccupantObservationProvider, LiveSmokeObservationProvider,
+)
+
 from live_runtime.runtime import LiveRuntime
 
 
@@ -51,6 +61,14 @@ def build_live_runtime(
     frame_sources: Optional[Mapping[str, object]] = None,
     human_detector: Optional[object] = None,
     identity_resolver: Optional[object] = None,
+    tracker: Optional[object] = None,
+    behavior_recognizer: Optional[object] = None,
+    cross_camera_identity_resolver: Optional[object] = None,
+    world_projector: Optional[object] = None,
+    live_occupant_manager: Optional[LiveOccupantManager] = None,
+    sensor_fusion_engine: Optional[SensorFusionEngine] = None,
+    smoke_detector_reading_provider: Optional[Callable[[float], object]] = None,
+    heat_detector_reading_provider: Optional[Callable[[float], object]] = None,
     camera_manager: Optional[CameraManager] = None,
     sensor_manager: Optional[SensorManager] = None,
     fusion_engine: Optional[MultiCameraFusionEngine] = None,
@@ -65,6 +83,31 @@ def build_live_runtime(
     recent_events_limit: int = 20,
     interval_seconds: float = 1.0,
 ) -> LiveRuntime:
+
+    # =====================================================
+    # Live Perception -> BuildingState Integration Bridge milestone --
+    # closes the gap Phase 1's own investigation found: this factory
+    # previously wired human_detector/identity_resolver into
+    # LiveCameraPipeline but NEVER tracker/behavior_recognizer/
+    # cross_camera_identity_resolver/world_projector/live_occupant_manager
+    # (every one of those milestones' own work existed only as a
+    # standalone, separately-tested package, never actually reachable
+    # from build_live_runtime() at all) -- and BuildingState's
+    # hazard_snapshot was ALWAYS the gateway's own empty default in
+    # production (no hazard_snapshot_provider was ever wired), while
+    # smoke_detector_reading_provider/heat_detector_reading_provider
+    # were never wired either (only detector STATUS, never an actual
+    # reading). All five new tracker-chain parameters above are
+    # OPTIONAL and threaded into the SAME single LiveCameraPipeline
+    # instance already constructed below -- there is exactly one
+    # LiveCameraPipeline for every camera in frame_sources, so
+    # live_occupant_manager is automatically the ONE shared instance
+    # every camera contributes to (Phase 5's own "not one per camera"
+    # requirement), never duplicated.
+    # =====================================================
+
+    live_occupant_manager = live_occupant_manager if live_occupant_manager is not None else LiveOccupantManager()
+    sensor_fusion_engine = sensor_fusion_engine if sensor_fusion_engine is not None else SensorFusionEngine()
 
     # =====================================================
     # Digital Twin / asset-management layer (Phase 1/4) -- exactly one
@@ -109,6 +152,9 @@ def build_live_runtime(
         camera_pipeline = LiveCameraPipeline(
             frame_sources=frame_sources, human_detector=human_detector,
             identity_resolver=identity_resolver, detection_provider=detection_provider,
+            tracker=tracker, behavior_recognizer=behavior_recognizer,
+            cross_camera_identity_resolver=cross_camera_identity_resolver,
+            world_projector=world_projector, live_occupant_manager=live_occupant_manager,
         )
 
         camera_manager.register_detection_provider(DeviceMode.LIVE, detection_provider)
@@ -177,19 +223,70 @@ def build_live_runtime(
     )
 
     # =====================================================
+    # Live Perception -> BuildingState Integration Bridge milestone,
+    # Phase 2/3/6 -- exactly ONE SensorFusionEngine for this live
+    # session (sensor_fusion_engine, defaulted above), fed by whichever
+    # production observation providers this deployment actually has
+    # evidence for. LiveOccupantObservationProvider is always present
+    # (live_occupant_manager itself always exists, even with zero
+    # occupants yet -- an honestly empty provider, never an error);
+    # the detector-reading and FACP providers are added ONLY when a
+    # caller actually supplied a real reading source/FACP (Phase 4's
+    # own "never fabricate a source" discipline extended one layer
+    # up -- no reading provider configured means no SMOKE/HEAT
+    # Observations at all, not a fabricated non-alarming one).
+    # =====================================================
+
+    perception_providers = [LiveOccupantObservationProvider(live_occupant_manager)]
+
+    if smoke_detector_reading_provider is not None:
+        perception_providers.append(
+            LiveSmokeObservationProvider(sensor_manager, reading_provider=smoke_detector_reading_provider)
+        )
+
+    if heat_detector_reading_provider is not None:
+        perception_providers.append(
+            LiveHeatObservationProvider(sensor_manager, reading_provider=heat_detector_reading_provider)
+        )
+
+    if facp is not None:
+        perception_providers.append(
+            LiveFACPObservationProvider(sensor_manager, snapshot_provider=facp_snapshot_provider)
+        )
+
+    perception_fusion_coordinator = LivePerceptionFusionCoordinator(
+        providers=perception_providers, engine=sensor_fusion_engine,
+    )
+
+    # =====================================================
     # BuildingState assembly -- reuses EstimatorBuildingStateGateway
     # verbatim (Canonical Live BuildingState Runtime Assembly milestone),
     # never reimplemented. Every provider left unconfigured resolves to
     # that gateway's own already-established honest empty default.
+    #
+    # hazard_snapshot_provider is wired for the FIRST time this
+    # milestone -- production BuildingState.hazard_summary was always
+    # empty before (see this function's own Phase 1 investigation
+    # comment above). occupancy_snapshot_provider prefers a caller-
+    # supplied value (backward compatible with every existing caller
+    # that already wires its own, e.g. a Ground-Truth-backed one) and
+    # falls back to the SensorFusionEngine-derived one otherwise --
+    # never silently overriding an explicit caller choice.
     # =====================================================
 
     building_state_gateway = EstimatorBuildingStateGateway(
         camera_status_provider=lambda time: camera_manager.all_statuses(),
         fusion_result_provider=fusion_result_provider,
         facp_snapshot_provider=facp_snapshot_provider,
-        occupancy_snapshot_provider=occupancy_snapshot_provider,
+        hazard_snapshot_provider=perception_fusion_coordinator.hazard_snapshot_provider,
+        occupancy_snapshot_provider=(
+            occupancy_snapshot_provider if occupancy_snapshot_provider is not None
+            else perception_fusion_coordinator.occupancy_snapshot_provider
+        ),
         smoke_detector_status_provider=smoke_detector_status_provider,
+        smoke_detector_reading_provider=smoke_detector_reading_provider,
         heat_detector_status_provider=heat_detector_status_provider,
+        heat_detector_reading_provider=heat_detector_reading_provider,
         control_snapshot_provider=(
             (lambda time: building_control_controller.snapshot())
             if building_control_controller is not None else None
@@ -234,6 +331,9 @@ def build_live_runtime(
         operator_action_gateway=operator_action_gateway,
         voice_evacuation_controller=voice_evacuation_controller,
         building_control_controller=building_control_controller,
+        live_occupant_manager=live_occupant_manager,
+        sensor_fusion_engine=sensor_fusion_engine,
+        perception_fusion_coordinator=perception_fusion_coordinator,
     )
 
 

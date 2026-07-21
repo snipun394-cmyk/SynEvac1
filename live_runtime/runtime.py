@@ -45,6 +45,9 @@ class LiveRuntime:
         operator_action_gateway,
         voice_evacuation_controller,
         building_control_controller,
+        live_occupant_manager=None,
+        sensor_fusion_engine=None,
+        perception_fusion_coordinator=None,
     ):
 
         # Digital Twin / asset-management layer -- Phase 4's shared-
@@ -78,6 +81,22 @@ class LiveRuntime:
         self.operator_action_gateway = operator_action_gateway
         self.voice_evacuation_controller = voice_evacuation_controller
         self.building_control_controller = building_control_controller
+
+        # Live Perception -> BuildingState Integration Bridge milestone
+        # -- exactly one LiveOccupantManager/SensorFusionEngine for this
+        # live session (Phase 5/6's own "not one per camera, not a
+        # hidden second engine" requirement), plus the coordinator that
+        # composes them with this session's own production observation
+        # providers. Deliberately untyped, like every other attribute on
+        # this class (Phase 2's "composition and lifecycle management
+        # only" -- this file imports no concrete collaborator class at
+        # all, mechanically enforced by tests/
+        # test_live_runtime_architecture_guards.py::
+        # GatewayIsTheOnlyExecutionSeamTests::
+        # test_live_runtime_container_holds_no_concrete_class_imports).
+        self.live_occupant_manager = live_occupant_manager
+        self.sensor_fusion_engine = sensor_fusion_engine
+        self.perception_fusion_coordinator = perception_fusion_coordinator
 
         self._running = False
 

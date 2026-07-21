@@ -126,6 +126,28 @@ class EstimatorBuildingStateGateway:
 
     def collect(self, time: float) -> BuildingState:
 
+        # Live Perception -> BuildingState Integration Bridge milestone
+        # -- fusion_result is resolved FIRST, deliberately, before every
+        # other provider below. Python evaluates keyword arguments in
+        # the order they are WRITTEN, and live_runtime.factory.
+        # build_live_runtime()'s own fusion_result_provider is the one
+        # provider with a real side effect: it is what actually calls
+        # live_camera_pipeline.pipeline.LiveCameraPipeline.run_cycle()
+        # this cycle, which is also what populates
+        # live_occupants.manager.LiveOccupantManager (consumed by that
+        # same factory's hazard_snapshot_provider/occupancy_snapshot_
+        # provider, backed by sensor_fusion.engine.SensorFusionEngine).
+        # Every provider here was originally designed to be independent
+        # or a caller could freely omit any subset (still true) -- but
+        # once a caller's OWN providers share a hidden dependency like
+        # this one, resolving fusion_result first is what makes
+        # hazard_snapshot/occupancy_snapshot see this cycle's fresh
+        # camera-pipeline output rather than last cycle's (or, on the
+        # very first cycle, nothing at all). Reordering this is the
+        # only change in this file -- no provider's own contract,
+        # BuildingStateEstimator, or BuildingState changed at all.
+        fusion_result = self._resolve_optional(self._fusion_result_provider, time)
+
         return self._estimator.estimate(
             time,
             hazard_snapshot=self._resolve(
@@ -140,7 +162,7 @@ class EstimatorBuildingStateGateway:
             smoke_detector_readings=self._resolve_iterable(self._smoke_detector_reading_provider, time),
             heat_detector_statuses=self._resolve_iterable(self._heat_detector_status_provider, time),
             heat_detector_readings=self._resolve_iterable(self._heat_detector_reading_provider, time),
-            fusion_result=self._resolve_optional(self._fusion_result_provider, time),
+            fusion_result=fusion_result,
             facp_snapshot=self._resolve_optional(self._facp_snapshot_provider, time),
             control_snapshot=self._resolve_optional(self._control_snapshot_provider, time),
         )

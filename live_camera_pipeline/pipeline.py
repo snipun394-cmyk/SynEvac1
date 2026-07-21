@@ -158,26 +158,51 @@ class LiveCameraPipeline:
     # Detection through live_camera_pipeline.identity_resolver.
     # _to_detection(), never by modifying IdentityResolver itself).
 
-    # Live Occupant Digital Twin milestone, Phase 7: `live_occupant_manager`
-    # is a further OPTIONAL, additive seam, only ever consulted when
-    # `tracker` is also supplied. Unlike every seam before it, this one
-    # is a pure OBSERVER of the same per-cycle data already flowing
-    # through this method -- it never changes what RawHumanDetection/
-    # Detection/BuildingState themselves contain (Phase 7's own "Detection
+    # Live Occupant Digital Twin milestone, Phase 7 (refined by Live
+    # Perception -> BuildingState Integration Bridge milestone, Phase 8
+    # -- see below): `live_occupant_manager` is a further OPTIONAL,
+    # additive seam, only ever consulted when `tracker` is also
+    # supplied. It never changes what RawHumanDetection/Detection/
+    # BuildingState themselves contain (Phase 7's own "Detection
     # remains immutable... do not redesign downstream systems").
-    # live_occupants.manager.LiveOccupantManager.update() is called once
-    # per currently-matched TrackedHuman, keyed by whatever occupant_id
-    # is already in hand this cycle (the cross-camera GLOBAL id if
-    # cross_camera_identity_resolver is configured, else the tracker's
-    # own per-camera-local id -- LiveOccupantManager works either way,
-    # just without cross-camera unification in the latter case).
-    # run_cycle() calls LiveOccupantManager.sweep_missing() exactly ONCE
-    # per overall cycle, after every camera's own per-camera loop
-    # iteration has already reported who it actually saw -- this is what
-    # lets the manager detect "missing" without needing to know anything
-    # about tracking's own MISSING/EXPIRED states or cross_camera_
-    # identity's own registry internals directly (see docs/architecture/
-    # live_occupants.md Sec 5 for the full reasoning).
+    #
+    # CORRECTED in the Live Perception -> BuildingState Integration
+    # Bridge milestone: LiveOccupantManager.update() is now called
+    # AFTER identity_resolver.resolve() runs, keyed by the FINAL
+    # Detection.occupant_id -- NOT the tracker's own per-camera-local
+    # track_id, and not only the cross_camera_identity_resolver's own
+    # global id. The earlier version keyed it by local_track_id
+    # (replaced by cross_camera_identity_resolver's global id ONLY when
+    # that seam was configured), which silently DISAGREED with
+    # BuildingState.occupant_tracks whenever a deployment resolved
+    # cross-camera identity a different way -- e.g. via
+    # MappingIdentityResolver (the existing, already-proven mechanism
+    # for reconciling two cameras that see the SAME person
+    # SIMULTANEOUSLY, which cross_camera_identity_resolver's own
+    # sequential departure/arrival matcher cannot do -- see
+    # docs/architecture/live_perception_building_state_integration.md
+    # Sec 8). Proven directly in tests/test_live_perception_double_
+    # counting.py: 2 cameras, 3 physical occupants, 4 raw detections ->
+    # exactly 3 in BuildingState.occupant_tracks, LiveOccupantManager,
+    # and BuildingState.zone_occupancy alike -- never 4, 6, or 7.
+    #
+    # _process_camera_cycle() below no longer calls live_occupant_
+    # manager.update() itself -- it returns a `pending_updates` list,
+    # positionally aligned with its own `raw` return value (one entry
+    # per detection, None wherever live_occupant_manager is not
+    # configured), carrying exactly the fields Detection itself cannot
+    # (RecognizedBehavior, camera_id, tracker-local track_id,
+    # confidence -- Detection only ever gets the LOSSY HumanState
+    # mapping, never the rich RecognizedBehavior enum). run_cycle()
+    # zips this list against identity_resolver.resolve()'s own output
+    # (relying on the same one-Detection-per-RawHumanDetection,
+    # same-order guarantee every existing IdentityResolver
+    # implementation already provides) to call live_occupant_manager.
+    # update() with the FINAL occupant_id, alongside Detection's own
+    # already-correct zone_id/floor_id/position/world_velocity (passed
+    # through unchanged from what this method already computed).
+    # LiveOccupantManager.sweep_missing() still runs exactly ONCE per
+    # overall cycle, now driven by the FINAL resolved occupant_ids.
 
     def __init__(
         self,
@@ -207,7 +232,7 @@ class LiveCameraPipeline:
     def run_cycle(self, time: float) -> None:
 
         raw_detections = []
-        seen_occupant_ids = set()
+        pending_occupant_updates = []
 
         for camera_id, frame_source in self.frame_sources.items():
 
@@ -219,15 +244,40 @@ class LiveCameraPipeline:
             raw = self.human_detector.detect(frame)
 
             if self.tracker is not None:
-                raw, camera_occupant_ids = self._process_camera_cycle(camera_id, frame.timestamp, raw)
-                seen_occupant_ids.update(camera_occupant_ids)
+                raw, camera_pending_updates = self._process_camera_cycle(camera_id, frame.timestamp, raw)
+            else:
+                camera_pending_updates = [None] * len(raw)
 
             raw_detections.extend(raw)
-
-        if self.live_occupant_manager is not None:
-            self.live_occupant_manager.sweep_missing(time, seen_occupant_ids)
+            pending_occupant_updates.extend(camera_pending_updates)
 
         resolved = self.identity_resolver.resolve(raw_detections, time)
+
+        if self.live_occupant_manager is not None:
+
+            seen_occupant_ids = set()
+
+            # Relies on identity_resolver.resolve() returning exactly
+            # one Detection per RawHumanDetection, in the same order --
+            # true of every existing IdentityResolver implementation
+            # (SimulationIdentityResolver/MappingIdentityResolver both
+            # build their result via a single `for raw in
+            # raw_detections` comprehension) and the only way to
+            # correlate a resolved Detection back to the rich,
+            # pre-resolution data pending_occupant_updates carries.
+            for detection, pending in zip(resolved, pending_occupant_updates):
+
+                if pending is None:
+                    continue
+
+                self.live_occupant_manager.update(
+                    detection.occupant_id, pending["camera_id"], pending["track_id"],
+                    detection.zone_id, detection.floor_id, detection.position, detection.world_velocity,
+                    pending["behavior"], pending["confidence"], time,
+                )
+                seen_occupant_ids.add(detection.occupant_id)
+
+            self.live_occupant_manager.sweep_missing(time, seen_occupant_ids)
 
         self.detection_provider.publish(self.frame_sources.keys(), resolved)
 
@@ -271,7 +321,7 @@ class LiveCameraPipeline:
             }
 
         results = []
-        occupant_ids_seen = set()
+        pending_updates = []
 
         for detection, tracked_human in zip(raw, matched):
 
@@ -311,12 +361,15 @@ class LiveCameraPipeline:
 
             if self.live_occupant_manager is not None:
 
-                occupant_id = local_track_id  # the global id when cross_camera_identity_resolver is configured, else the per-camera-local id
+                pending_updates.append({
+                    "camera_id": camera_id,
+                    "track_id": tracked_human.track_id,
+                    "behavior": recognized_behavior,
+                    "confidence": tracked_human.confidence,
+                })
 
-                self.live_occupant_manager.update(
-                    occupant_id, camera_id, tracked_human.track_id, zone_id, floor_id,
-                    world_position, world_velocity, recognized_behavior, tracked_human.confidence, timestamp,
-                )
-                occupant_ids_seen.add(occupant_id)
+            else:
 
-        return tuple(results), occupant_ids_seen
+                pending_updates.append(None)
+
+        return tuple(results), pending_updates
