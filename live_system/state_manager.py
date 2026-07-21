@@ -19,6 +19,8 @@ from advisory_system.recommendation_models import AdvisoryReport
 
 from building_state.models import BuildingState
 
+from crowd_intelligence.models import CrowdIntelligenceSnapshot
+
 from live_system.live_ai_gateway import LiveAIPredictionSnapshot
 
 
@@ -103,6 +105,16 @@ class LiveBuildingSnapshot:
 
     decision_policy: Optional[DecisionPolicy] = None
     recommendations: Tuple[Recommendation, ...] = field(default_factory=tuple)
+
+    # Live Occupancy, Crowd Density & Congestion Intelligence milestone --
+    # the canonical live_system.crowd_intelligence_gateway output, kept
+    # as its own sibling field exactly like ai_prediction_snapshot/
+    # advisory_report above (investigated and deliberately NOT folded
+    # into building_state -- see live_system.crowd_intelligence_gateway's
+    # own module docstring for why). None until a crowd_intelligence_
+    # gateway is configured and has produced at least one snapshot --
+    # never a fabricated empty-but-present snapshot.
+    crowd_intelligence: Optional[CrowdIntelligenceSnapshot] = None
 
     # component -> the timestamp its own field was last actually
     # updated -- distinct from `timestamp` (this snapshot's own
@@ -208,6 +220,7 @@ class LiveBuildingSnapshot:
             "advisory_report": self.advisory_report,
             "decision_policy": self.decision_policy,
             "recommendations": self.recommendations,
+            "crowd_intelligence": self.crowd_intelligence,
             "component_timestamps": self.component_timestamps,
         }
         current.update(changes)
@@ -365,6 +378,28 @@ class StateManager:
             timestamp=time,
             recommendations=recommendations,
             component_timestamps=self._stamp("recommendations", time),
+        )
+
+    # =====================================================
+
+    def latest_crowd_intelligence(self) -> Optional[CrowdIntelligenceSnapshot]:
+
+        # Mirrors latest_building_state()/latest_ai_prediction()/
+        # latest_advisory_report()'s own convenience-accessor role, one
+        # field over.
+
+        return self._snapshot.crowd_intelligence
+
+    # =====================================================
+
+    def update_crowd_intelligence(
+        self, crowd_intelligence: CrowdIntelligenceSnapshot, time: float,
+    ) -> LiveBuildingSnapshot:
+
+        return self._replace(
+            timestamp=time,
+            crowd_intelligence=crowd_intelligence,
+            component_timestamps=self._stamp("crowd_intelligence", time),
         )
 
     # =====================================================

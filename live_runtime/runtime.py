@@ -48,6 +48,7 @@ class LiveRuntime:
         live_occupant_manager=None,
         sensor_fusion_engine=None,
         perception_fusion_coordinator=None,
+        crowd_intelligence_engine=None,
     ):
 
         # Digital Twin / asset-management layer -- Phase 4's shared-
@@ -97,6 +98,13 @@ class LiveRuntime:
         self.live_occupant_manager = live_occupant_manager
         self.sensor_fusion_engine = sensor_fusion_engine
         self.perception_fusion_coordinator = perception_fusion_coordinator
+
+        # Live Occupancy, Crowd Density & Congestion Intelligence
+        # milestone -- exactly ONE CrowdIntelligenceEngine for this live
+        # session (Phase 10's own "wire exactly ONE shared
+        # CrowdIntelligenceEngine" requirement), same untyped-attribute
+        # discipline as every other collaborator on this class.
+        self.crowd_intelligence_engine = crowd_intelligence_engine
 
         self._running = False
 

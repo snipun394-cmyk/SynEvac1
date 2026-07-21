@@ -6,6 +6,7 @@ from perception.models.building_observation import ObservationState
 from building_state.models import BuildingState
 
 from live_system.building_state_gateway import BuildingStateGateway
+from live_system.crowd_intelligence_gateway import CrowdIntelligenceGateway
 from live_system.event_bus import EventBus, EventType
 from live_system.incident_manager import IncidentManager, IncidentState
 from live_system.integration import (
@@ -90,6 +91,7 @@ class LiveOrchestrator:
         building_state_gateway: Optional[BuildingStateGateway] = None,
         live_ai_gateway: Optional[LiveAIInferenceGateway] = None,
         live_advisory_gateway: Optional[LiveAdvisoryGateway] = None,
+        crowd_intelligence_gateway: Optional[CrowdIntelligenceGateway] = None,
         ai_inference_gateway: Optional[AIInferenceGateway] = None,
         decision_policy_gateway: Optional[DecisionPolicyGateway] = None,
         command_center_gateway: Optional[CommandCenterGateway] = None,
@@ -106,6 +108,7 @@ class LiveOrchestrator:
         self.building_state_gateway = building_state_gateway
         self.live_ai_gateway = live_ai_gateway
         self.live_advisory_gateway = live_advisory_gateway
+        self.crowd_intelligence_gateway = crowd_intelligence_gateway
         self.ai_inference_gateway = ai_inference_gateway
         self.decision_policy_gateway = decision_policy_gateway
         self.command_center_gateway = command_center_gateway
@@ -156,6 +159,15 @@ class LiveOrchestrator:
         # Mirrors latest_building_state's own forwarding-property style.
 
         return self.state_manager.latest_advisory_report()
+
+    # =====================================================
+
+    @property
+    def latest_crowd_intelligence(self):
+
+        # Mirrors latest_building_state's own forwarding-property style.
+
+        return self.state_manager.latest_crowd_intelligence()
 
     # =====================================================
 
@@ -258,6 +270,32 @@ class LiveOrchestrator:
             snapshot = self.state_manager.update_building_state(building_state, time)
 
             self.event_bus.emit(EventType.BUILDING_STATE_UPDATED, building_state, time)
+
+        if self.crowd_intelligence_gateway is not None:
+
+            # Live Occupancy, Crowd Density & Congestion Intelligence
+            # milestone -- runs AFTER building_state_gateway (live
+            # occupant/perception state for this cycle has already been
+            # updated by whichever fusion_result_provider/camera_pipeline
+            # run this triggered) and BEFORE live_ai_gateway/
+            # live_advisory_gateway (Phase 10's own "must run before
+            # consumers that may display the result" -- a future AI/
+            # Advisory/Command Center consumer can read this cycle's
+            # crowd_intelligence the same cycle it was computed). Neither
+            # existing AI nor Advisory stage below is reordered -- this
+            # is a new, independent, optional stage slotted in between
+            # two that already existed. None means "not configured, or
+            # this cycle's computation failed" (see
+            # EngineCrowdIntelligenceGateway.compute()) -- the previous
+            # snapshot (if any) is left in place, un-restamped, the same
+            # "never silently present a stale value as fresh" discipline
+            # live_ai_gateway/live_advisory_gateway already established.
+            crowd_intelligence_snapshot = self.crowd_intelligence_gateway.compute(time)
+
+            if crowd_intelligence_snapshot is not None:
+
+                snapshot = self.state_manager.update_crowd_intelligence(crowd_intelligence_snapshot, time)
+                self.event_bus.emit(EventType.CROWD_INTELLIGENCE_UPDATED, crowd_intelligence_snapshot, time)
 
         if self.live_ai_gateway is not None:
 

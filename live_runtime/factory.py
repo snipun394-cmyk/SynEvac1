@@ -36,6 +36,10 @@ from live_perception.providers import (
     LiveOccupantObservationProvider, LiveSmokeObservationProvider,
 )
 
+from crowd_intelligence.engine import CrowdIntelligenceEngine
+
+from live_system.crowd_intelligence_gateway import EngineCrowdIntelligenceGateway
+
 from live_runtime.runtime import LiveRuntime
 
 
@@ -67,6 +71,7 @@ def build_live_runtime(
     world_projector: Optional[object] = None,
     live_occupant_manager: Optional[LiveOccupantManager] = None,
     sensor_fusion_engine: Optional[SensorFusionEngine] = None,
+    crowd_intelligence_engine: Optional[CrowdIntelligenceEngine] = None,
     smoke_detector_reading_provider: Optional[Callable[[float], object]] = None,
     heat_detector_reading_provider: Optional[Callable[[float], object]] = None,
     camera_manager: Optional[CameraManager] = None,
@@ -108,6 +113,20 @@ def build_live_runtime(
 
     live_occupant_manager = live_occupant_manager if live_occupant_manager is not None else LiveOccupantManager()
     sensor_fusion_engine = sensor_fusion_engine if sensor_fusion_engine is not None else SensorFusionEngine()
+
+    # Live Occupancy, Crowd Density & Congestion Intelligence milestone --
+    # exactly ONE CrowdIntelligenceEngine for this live session (Phase
+    # 10), reading the SAME shared live_occupant_manager every other
+    # stage above reads, plus this session's own Building (read-only
+    # geometry -- Zone/Door/Exit/Staircase). Always constructed (a
+    # caller may still supply their own, e.g. with custom thresholds),
+    # never conditionally, mirroring live_occupant_manager/
+    # sensor_fusion_engine's own "always exists, even with zero
+    # occupants yet" default above.
+    crowd_intelligence_engine = (
+        crowd_intelligence_engine if crowd_intelligence_engine is not None
+        else CrowdIntelligenceEngine(building, live_occupant_manager)
+    )
 
     # =====================================================
     # Digital Twin / asset-management layer (Phase 1/4) -- exactly one
@@ -298,6 +317,7 @@ def build_live_runtime(
     orchestrator = LiveOrchestrator(
         event_bus=event_bus,
         building_state_gateway=building_state_gateway,
+        crowd_intelligence_gateway=EngineCrowdIntelligenceGateway(crowd_intelligence_engine),
         live_ai_gateway=live_ai_gateway,
         live_advisory_gateway=live_advisory_gateway,
         interval_seconds=interval_seconds,
@@ -334,6 +354,7 @@ def build_live_runtime(
         live_occupant_manager=live_occupant_manager,
         sensor_fusion_engine=sensor_fusion_engine,
         perception_fusion_coordinator=perception_fusion_coordinator,
+        crowd_intelligence_engine=crowd_intelligence_engine,
     )
 
 
