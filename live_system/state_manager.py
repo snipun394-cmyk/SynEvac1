@@ -25,6 +25,8 @@ from evacuation_progress.models import EvacuationProgressSnapshot
 
 from emergency_response.models import EmergencyResponseSnapshot
 
+from trajectory_intelligence.models import TrajectoryIntelligenceSnapshot
+
 from live_system.live_ai_gateway import LiveAIPredictionSnapshot
 
 
@@ -133,6 +135,15 @@ class LiveBuildingSnapshot:
     # mirroring crowd_intelligence/evacuation_progress above exactly.
     emergency_response: Optional[EmergencyResponseSnapshot] = None
 
+    # Live Occupant Trajectory, Movement Anomaly & Route-Deviation
+    # Intelligence milestone -- the canonical live_system.
+    # trajectory_intelligence_gateway output, mirroring emergency_
+    # response/crowd_intelligence/evacuation_progress above exactly.
+    # None until a trajectory_intelligence_gateway is configured and has
+    # produced at least one snapshot -- never a fabricated empty-but-
+    # present snapshot.
+    trajectory_intelligence: Optional[TrajectoryIntelligenceSnapshot] = None
+
     # component -> the timestamp its own field was last actually
     # updated -- distinct from `timestamp` (this snapshot's own
     # as-of time) because a cycle in which, say, AI Inference is not
@@ -240,6 +251,7 @@ class LiveBuildingSnapshot:
             "crowd_intelligence": self.crowd_intelligence,
             "evacuation_progress": self.evacuation_progress,
             "emergency_response": self.emergency_response,
+            "trajectory_intelligence": self.trajectory_intelligence,
             "component_timestamps": self.component_timestamps,
         }
         current.update(changes)
@@ -458,6 +470,24 @@ class StateManager:
             timestamp=time,
             emergency_response=emergency_response,
             component_timestamps=self._stamp("emergency_response", time),
+        )
+
+    # =====================================================
+
+    def latest_trajectory_intelligence(self) -> Optional[TrajectoryIntelligenceSnapshot]:
+
+        return self._snapshot.trajectory_intelligence
+
+    # =====================================================
+
+    def update_trajectory_intelligence(
+        self, trajectory_intelligence: TrajectoryIntelligenceSnapshot, time: float,
+    ) -> LiveBuildingSnapshot:
+
+        return self._replace(
+            timestamp=time,
+            trajectory_intelligence=trajectory_intelligence,
+            component_timestamps=self._stamp("trajectory_intelligence", time),
         )
 
     # =====================================================

@@ -262,11 +262,13 @@ class LiveCommandCenterDataSource:
             ai_prediction_snapshot=snapshot.ai_prediction_snapshot,
             evacuation_progress=snapshot.evacuation_progress,
             emergency_response=snapshot.emergency_response,
+            trajectory_intelligence=snapshot.trajectory_intelligence,
             building_state_timestamp=timestamps.get("building_state"),
             ai_prediction_timestamp=timestamps.get("ai_prediction_snapshot"),
             advisory_timestamp=timestamps.get("advisory_report"),
             evacuation_progress_timestamp=timestamps.get("evacuation_progress"),
             emergency_response_timestamp=timestamps.get("emergency_response"),
+            trajectory_intelligence_timestamp=timestamps.get("trajectory_intelligence"),
             consistency=self._resolve_consistency(timestamps),
             recent_events=self._recent_events(),
         )

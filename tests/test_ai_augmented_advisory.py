@@ -765,7 +765,10 @@ class OrchestratorLiveAdvisoryWiringTests(unittest.TestCase):
 
         class _FlakyGateway:
 
-            def generate(self, ai_evidence, time, crowd_evidence=None, evacuation_progress_evidence=None, emergency_response_evidence=None):
+            def generate(
+                self, ai_evidence, time, crowd_evidence=None, evacuation_progress_evidence=None,
+                emergency_response_evidence=None, trajectory_decision_evidence=None,
+            ):
                 calls["count"] += 1
                 if calls["count"] == 1:
                     return AdvisoryOrchestrator().generate_report(

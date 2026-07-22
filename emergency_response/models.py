@@ -73,6 +73,16 @@ class ResponseReason:
     FACP_ALARM_ACTIVE = "FACP_ALARM_ACTIVE"
     OBSERVED_CLEAR = "OBSERVED_CLEAR"
 
+    # Live Occupant Trajectory, Movement Anomaly & Route-Deviation
+    # Intelligence milestone, Phase 21 -- additive. Deliberately a
+    # SINGLE, conservative reason covering every severe trajectory
+    # anomaly case (HIGH/CRITICAL anomaly_severity, or NO_SAFE_ROUTE) --
+    # route deviation is decision-support evidence, never proof of
+    # confusion/panic/non-compliance (trajectory_intelligence.models's
+    # own documented boundary), so it never becomes its own assistance
+    # tier here either; it only ever nudges search/response priority.
+    SEVERE_ROUTE_ANOMALY = "SEVERE_ROUTE_ANOMALY"
+
 
 @dataclass(frozen=True)
 class ResponseWeights:
@@ -110,6 +120,13 @@ class ResponseWeights:
     congestion_restricting_weight: float = 0.15
     uncertainty_weight: float = 0.20
     facp_alarm_weight: float = 0.15
+
+    # Live Occupant Trajectory, Movement Anomaly & Route-Deviation
+    # Intelligence milestone, Phase 21 -- additive, deliberately modest
+    # (smaller than confirmed_assistance_weight/hazard_weight): route
+    # anomaly evidence may raise a zone's search/response priority, it
+    # never substitutes for genuine assistance/hazard evidence.
+    severe_route_anomaly_weight: float = 0.20
 
 
 @dataclass(frozen=True)

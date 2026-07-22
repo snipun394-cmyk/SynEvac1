@@ -11,6 +11,9 @@ from advisory_system.evacuation_progress_evidence import (
 from advisory_system.emergency_response_evidence import (
     EmergencyResponseEvidence, UNAVAILABLE_EMERGENCY_RESPONSE_EVIDENCE, ZoneResponseDetail,
 )
+from advisory_system.trajectory_evidence import (
+    TrajectoryDecisionEvidence, TrajectoryZoneDetail, UNAVAILABLE_TRAJECTORY_DECISION_EVIDENCE,
+)
 from advisory_system.orchestrator import AdvisoryOrchestrator
 from advisory_system.recommendation_models import AdvisoryInputs, AdvisoryReport
 
@@ -19,6 +22,8 @@ from crowd_intelligence.models import CrowdIntelligenceSnapshot, TrendDirection
 from evacuation_progress.models import EvacuationProgressSnapshot, ZoneClearanceStatus
 
 from emergency_response.models import EmergencyResponseSnapshot, ResponsePriorityLevel
+
+from trajectory_intelligence.models import AnomalyFlag, TrajectoryIntelligenceSnapshot
 
 from live_system.live_ai_gateway import LiveAIPredictionSnapshot
 
@@ -357,6 +362,97 @@ def emergency_response_evidence_from_snapshot(
 
 
 # =====================================================
+# Live Occupant Trajectory, Movement Anomaly & Route-Deviation
+# Intelligence milestone, Phase 22 -- the trajectory-intelligence
+# counterpart to the three adapters above, same placement/role.
+# =====================================================
+
+
+_ANOMALY_SEVERITY_RANK = {"NONE": 0, "LOW": 1, "MODERATE": 2, "HIGH": 3, "CRITICAL": 4}
+
+
+def trajectory_decision_evidence_from_snapshot(
+    snapshot: Optional[TrajectoryIntelligenceSnapshot],
+) -> TrajectoryDecisionEvidence:
+
+    if snapshot is None:
+        return UNAVAILABLE_TRAJECTORY_DECISION_EVIDENCE
+
+    route_deviation_zone_ids = set()
+    movement_stalled_zone_ids = set()
+    hazardous_zone_movement_zone_ids = set()
+    no_safe_route_zone_ids = set()
+    shared_route_deviation_zone_ids = set()
+
+    critical_occupant_ids = []
+    highest_severity = "NONE"
+
+    zone_flags: Dict[str, set] = {}
+    zone_occupants: Dict[str, list] = {}
+
+    for occupant_id, result in snapshot.occupants.items():
+
+        if result.zone_id is None:
+            continue
+
+        zone_occupants.setdefault(result.zone_id, []).append(occupant_id)
+        zone_flags.setdefault(result.zone_id, set()).update(result.anomaly_flags)
+
+        if result.anomaly_flags:
+
+            if AnomalyFlag.MOVING_AWAY_FROM_SAFE_EXIT in result.anomaly_flags or AnomalyFlag.REPEATED_ROUTE_REVERSAL in result.anomaly_flags:
+                route_deviation_zone_ids.add(result.zone_id)
+
+            if AnomalyFlag.MOVEMENT_STALLED in result.anomaly_flags:
+                movement_stalled_zone_ids.add(result.zone_id)
+
+            if AnomalyFlag.ENTERED_HAZARDOUS_ZONE in result.anomaly_flags or AnomalyFlag.REMAINS_IN_HAZARDOUS_ZONE in result.anomaly_flags:
+                hazardous_zone_movement_zone_ids.add(result.zone_id)
+
+            if AnomalyFlag.NO_SAFE_ROUTE in result.anomaly_flags:
+                no_safe_route_zone_ids.add(result.zone_id)
+
+            if AnomalyFlag.SHARED_ROUTE_DEVIATION in result.anomaly_flags or AnomalyFlag.MULTI_OCCUPANT_REVERSAL in result.anomaly_flags:
+                shared_route_deviation_zone_ids.add(result.zone_id)
+
+        if _ANOMALY_SEVERITY_RANK.get(result.anomaly_severity, 0) > _ANOMALY_SEVERITY_RANK[highest_severity]:
+            highest_severity = result.anomaly_severity
+
+        if result.anomaly_severity == "CRITICAL":
+            critical_occupant_ids.append(occupant_id)
+
+    flagged_zone_ids = (
+        route_deviation_zone_ids | movement_stalled_zone_ids | hazardous_zone_movement_zone_ids
+        | no_safe_route_zone_ids | shared_route_deviation_zone_ids
+    )
+
+    zone_details = {
+        zone_id: TrajectoryZoneDetail(
+            occupant_ids=tuple(sorted(zone_occupants.get(zone_id, ()))),
+            anomaly_flags=tuple(sorted(zone_flags.get(zone_id, ()))),
+            highest_anomaly_severity=max(
+                (snapshot.occupant(occ_id).anomaly_severity for occ_id in zone_occupants.get(zone_id, ())),
+                key=lambda s: _ANOMALY_SEVERITY_RANK.get(s, 0), default=None,
+            ),
+        )
+        for zone_id in sorted(flagged_zone_ids)
+    }
+
+    return TrajectoryDecisionEvidence(
+        available=True,
+        timestamp=snapshot.timestamp,
+        route_deviation_zone_ids=tuple(sorted(route_deviation_zone_ids)),
+        movement_stalled_zone_ids=tuple(sorted(movement_stalled_zone_ids)),
+        hazardous_zone_movement_zone_ids=tuple(sorted(hazardous_zone_movement_zone_ids)),
+        no_safe_route_zone_ids=tuple(sorted(no_safe_route_zone_ids)),
+        shared_route_deviation_zone_ids=tuple(sorted(shared_route_deviation_zone_ids)),
+        highest_anomaly_severity=highest_severity if highest_severity != "NONE" else None,
+        critical_anomaly_occupant_ids=tuple(sorted(critical_occupant_ids)),
+        zone_details=zone_details,
+    )
+
+
+# =====================================================
 
 
 class LiveAdvisoryGateway(Protocol):
@@ -382,6 +478,7 @@ class LiveAdvisoryGateway(Protocol):
         crowd_evidence: Optional[CrowdDecisionEvidence] = None,
         evacuation_progress_evidence: Optional[EvacuationProgressEvidence] = None,
         emergency_response_evidence: Optional[EmergencyResponseEvidence] = None,
+        trajectory_decision_evidence: Optional[TrajectoryDecisionEvidence] = None,
     ) -> Optional[AdvisoryReport]: ...
 
 
@@ -433,6 +530,7 @@ class ReplayCompatibleAdvisoryGateway:
         crowd_evidence: Optional[CrowdDecisionEvidence] = None,
         evacuation_progress_evidence: Optional[EvacuationProgressEvidence] = None,
         emergency_response_evidence: Optional[EmergencyResponseEvidence] = None,
+        trajectory_decision_evidence: Optional[TrajectoryDecisionEvidence] = None,
     ) -> Optional[AdvisoryReport]:
 
         try:
@@ -462,6 +560,7 @@ class ReplayCompatibleAdvisoryGateway:
                 crowd_decision_evidence=crowd_evidence,
                 evacuation_progress_evidence=evacuation_progress_evidence,
                 emergency_response_evidence=emergency_response_evidence,
+                trajectory_decision_evidence=trajectory_decision_evidence,
             )
 
             return self._orchestrator.generate_report(inputs)

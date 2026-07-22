@@ -1416,6 +1416,15 @@ def build_commander_dashboard(
         else None
     )
 
+    # Live Occupant Trajectory, Movement Anomaly & Route-Deviation
+    # Intelligence milestone, Phase 22 -- deliberately NOT folded into
+    # rec_confidence below (route-deviation evidence is commander
+    # AWARENESS only, never a recommendation-confidence contributor --
+    # unlike crowd/progress/response evidence, it never changes what a
+    # civilian/building recommendation actually says).
+    trajectory_evidence = inputs.trajectory_decision_evidence
+    trajectory_available = trajectory_evidence is not None and trajectory_evidence.available
+
     rec_confidence = combine_confidence(
         *[entry.confidence for entry in civilian_announcements],
         *[entry.confidence for entry in building_recommendations],
@@ -1459,6 +1468,15 @@ def build_commander_dashboard(
         response_critical_zone_ids=response_evidence.critical_zone_ids if response_available else (),
         response_possible_assistance_zone_ids=response_evidence.possible_assistance_zone_ids if response_available else (),
         response_being_assisted_zone_ids=response_evidence.being_assisted_zone_ids if response_available else (),
+        movement_route_deviation_zone_ids=(
+            trajectory_evidence.route_deviation_zone_ids if trajectory_available else ()
+        ),
+        movement_stalled_zone_ids=(
+            trajectory_evidence.movement_stalled_zone_ids if trajectory_available else ()
+        ),
+        movement_hazardous_zone_ids=(
+            trajectory_evidence.hazardous_zone_movement_zone_ids if trajectory_available else ()
+        ),
     )
 
 

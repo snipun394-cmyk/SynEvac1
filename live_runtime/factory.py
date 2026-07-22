@@ -42,9 +42,14 @@ from evacuation_progress.engine import EvacuationProgressEngine
 
 from emergency_response.engine import EmergencyResponseIntelligenceEngine
 
+from trajectory_intelligence.engine import TrajectoryIntelligenceEngine
+
+from navigation.graph_builder import NavigationGraphGenerator
+
 from live_system.crowd_intelligence_gateway import EngineCrowdIntelligenceGateway
 from live_system.evacuation_progress_gateway import EngineEvacuationProgressGateway
 from live_system.emergency_response_gateway import EngineEmergencyResponseGateway
+from live_system.trajectory_intelligence_gateway import EngineTrajectoryIntelligenceGateway
 
 from live_runtime.runtime import LiveRuntime
 
@@ -79,6 +84,8 @@ def build_live_runtime(
     sensor_fusion_engine: Optional[SensorFusionEngine] = None,
     crowd_intelligence_engine: Optional[CrowdIntelligenceEngine] = None,
     evacuation_progress_engine: Optional[EvacuationProgressEngine] = None,
+    trajectory_intelligence_engine: Optional[TrajectoryIntelligenceEngine] = None,
+    navigation_graph: Optional[object] = None,
     emergency_response_engine: Optional[EmergencyResponseIntelligenceEngine] = None,
     smoke_detector_reading_provider: Optional[Callable[[float], object]] = None,
     heat_detector_reading_provider: Optional[Callable[[float], object]] = None,
@@ -166,6 +173,22 @@ def build_live_runtime(
     evacuation_progress_engine = (
         evacuation_progress_engine if evacuation_progress_engine is not None
         else EvacuationProgressEngine(building, live_occupant_manager, event_bus)
+    )
+
+    # Live Occupant Trajectory, Movement Anomaly & Route-Deviation
+    # Intelligence milestone -- exactly ONE TrajectoryIntelligenceEngine
+    # for this live session, reading the SAME shared live_occupant_
+    # manager every other stage above reads, plus a NavigationGraph
+    # built (once, here) from this session's own Building -- never
+    # imported from decision_policy/simulation, and never rebuilt per
+    # cycle (the graph is a derived, read-only view; SafeRouteCalculator
+    # inside the engine itself handles its own per-cycle safety-state
+    # caching, see trajectory_intelligence.route_progress).
+    navigation_graph = navigation_graph if navigation_graph is not None else NavigationGraphGenerator().build(building)
+
+    trajectory_intelligence_engine = (
+        trajectory_intelligence_engine if trajectory_intelligence_engine is not None
+        else TrajectoryIntelligenceEngine(building, navigation_graph, live_occupant_manager)
     )
 
     # Live Emergency Response & Rescue Priority Intelligence milestone --
@@ -366,6 +389,7 @@ def build_live_runtime(
         building_state_gateway=building_state_gateway,
         crowd_intelligence_gateway=EngineCrowdIntelligenceGateway(crowd_intelligence_engine),
         evacuation_progress_gateway=EngineEvacuationProgressGateway(evacuation_progress_engine),
+        trajectory_intelligence_gateway=EngineTrajectoryIntelligenceGateway(trajectory_intelligence_engine),
         emergency_response_gateway=EngineEmergencyResponseGateway(emergency_response_engine),
         live_ai_gateway=live_ai_gateway,
         live_advisory_gateway=live_advisory_gateway,
@@ -405,6 +429,7 @@ def build_live_runtime(
         perception_fusion_coordinator=perception_fusion_coordinator,
         crowd_intelligence_engine=crowd_intelligence_engine,
         evacuation_progress_engine=evacuation_progress_engine,
+        trajectory_intelligence_engine=trajectory_intelligence_engine,
         emergency_response_engine=emergency_response_engine,
     )
 

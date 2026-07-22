@@ -9,10 +9,12 @@ from live_system.building_state_gateway import BuildingStateGateway
 from live_system.crowd_intelligence_gateway import CrowdIntelligenceGateway
 from live_system.evacuation_progress_gateway import EvacuationProgressGateway
 from live_system.emergency_response_gateway import EmergencyResponseGateway
+from live_system.trajectory_intelligence_gateway import TrajectoryIntelligenceGateway
 from live_system.event_bus import EventBus, EventType
 
 from evacuation_progress.models import EvacuationProgressTrend, ZoneClearanceStatus
 from emergency_response.models import ResponsePriorityLevel
+from trajectory_intelligence.models import AnomalyFlag
 from live_system.incident_manager import IncidentManager, IncidentState
 from live_system.integration import (
     AIInferenceGateway,
@@ -28,6 +30,7 @@ from live_system.live_advisory_gateway import (
     crowd_decision_evidence_from_snapshot,
     emergency_response_evidence_from_snapshot,
     evacuation_progress_evidence_from_snapshot,
+    trajectory_decision_evidence_from_snapshot,
 )
 from live_system.sensor_registry import SensorRegistry
 from live_system.state_manager import LiveBuildingSnapshot, StateManager
@@ -101,6 +104,7 @@ class LiveOrchestrator:
         live_advisory_gateway: Optional[LiveAdvisoryGateway] = None,
         crowd_intelligence_gateway: Optional[CrowdIntelligenceGateway] = None,
         evacuation_progress_gateway: Optional[EvacuationProgressGateway] = None,
+        trajectory_intelligence_gateway: Optional[TrajectoryIntelligenceGateway] = None,
         emergency_response_gateway: Optional[EmergencyResponseGateway] = None,
         ai_inference_gateway: Optional[AIInferenceGateway] = None,
         decision_policy_gateway: Optional[DecisionPolicyGateway] = None,
@@ -120,6 +124,7 @@ class LiveOrchestrator:
         self.live_advisory_gateway = live_advisory_gateway
         self.crowd_intelligence_gateway = crowd_intelligence_gateway
         self.evacuation_progress_gateway = evacuation_progress_gateway
+        self.trajectory_intelligence_gateway = trajectory_intelligence_gateway
         self.emergency_response_gateway = emergency_response_gateway
         self.ai_inference_gateway = ai_inference_gateway
         self.decision_policy_gateway = decision_policy_gateway
@@ -198,6 +203,15 @@ class LiveOrchestrator:
         # Mirrors latest_building_state's own forwarding-property style.
 
         return self.state_manager.latest_emergency_response()
+
+    # =====================================================
+
+    @property
+    def latest_trajectory_intelligence(self):
+
+        # Mirrors latest_building_state's own forwarding-property style.
+
+        return self.state_manager.latest_trajectory_intelligence()
 
     # =====================================================
 
@@ -354,6 +368,31 @@ class LiveOrchestrator:
                 snapshot = self.state_manager.update_evacuation_progress(evacuation_progress_snapshot, time)
                 self.event_bus.emit(EventType.EVACUATION_PROGRESS_UPDATED, evacuation_progress_snapshot, time)
 
+        if self.trajectory_intelligence_gateway is not None:
+
+            # Live Occupant Trajectory, Movement Anomaly & Route-
+            # Deviation Intelligence milestone -- runs AFTER
+            # evacuation_progress_gateway (reads snapshot.building_state,
+            # this cycle's fresh value or the previous cycle's) and
+            # BEFORE emergency_response_gateway, so a severe route
+            # anomaly this cycle can already influence this SAME cycle's
+            # response priority (Phase 21). Neither existing stage is
+            # reordered.
+            previous_trajectory_intelligence = self.state_manager.latest_trajectory_intelligence()
+
+            trajectory_intelligence_snapshot = self.trajectory_intelligence_gateway.compute(
+                time, snapshot.building_state, snapshot.crowd_intelligence, snapshot.evacuation_progress,
+            )
+
+            if trajectory_intelligence_snapshot is not None:
+
+                self._emit_trajectory_intelligence_transition_events(
+                    previous_trajectory_intelligence, trajectory_intelligence_snapshot, time,
+                )
+
+                snapshot = self.state_manager.update_trajectory_intelligence(trajectory_intelligence_snapshot, time)
+                self.event_bus.emit(EventType.TRAJECTORY_INTELLIGENCE_UPDATED, trajectory_intelligence_snapshot, time)
+
         if self.emergency_response_gateway is not None:
 
             # Live Emergency Response & Rescue Priority Intelligence
@@ -366,6 +405,7 @@ class LiveOrchestrator:
 
             emergency_response_snapshot = self.emergency_response_gateway.compute(
                 time, snapshot.building_state, snapshot.crowd_intelligence, snapshot.evacuation_progress,
+                trajectory_snapshot=snapshot.trajectory_intelligence,
             )
 
             if emergency_response_snapshot is not None:
@@ -414,8 +454,14 @@ class LiveOrchestrator:
             # milestone -- the SAME pattern, one field over.
             emergency_response_evidence = emergency_response_evidence_from_snapshot(snapshot.emergency_response)
 
+            # Live Occupant Trajectory, Movement Anomaly & Route-
+            # Deviation Intelligence milestone -- the SAME pattern, one
+            # field over.
+            trajectory_decision_evidence = trajectory_decision_evidence_from_snapshot(snapshot.trajectory_intelligence)
+
             advisory_report = self.live_advisory_gateway.generate(
                 ai_evidence, time, crowd_evidence, evacuation_progress_evidence, emergency_response_evidence,
+                trajectory_decision_evidence=trajectory_decision_evidence,
             )
 
             # None means "no update this cycle" -- covers BOTH "not
@@ -615,3 +661,68 @@ class LiveOrchestrator:
 
             if current_assistance > 0 and previous_assistance == 0:
                 self.event_bus.emit(EventType.POSSIBLE_ASSISTANCE_DETECTED, priority, time)
+
+    # =====================================================
+
+    def _emit_trajectory_intelligence_transition_events(self, previous, current, time: float) -> None:
+
+        # Live Occupant Trajectory, Movement Anomaly & Route-Deviation
+        # Intelligence milestone, Phase 25 -- "add events only if
+        # operationally useful ... do not spam identical events every
+        # cycle." Every event below fires ONLY the cycle an occupant's
+        # own anomaly_flags set genuinely gains/loses the relevant flag
+        # since the previous cycle -- never re-fired every cycle the
+        # same flag merely continues to hold. TRAJECTORY_INTELLIGENCE_
+        # UPDATED (emitted unconditionally by the caller) remains the
+        # general-purpose "a fresh snapshot exists" signal, mirroring
+        # EVACUATION_PROGRESS_UPDATED/RESPONSE_PRIORITY_UPDATED's own role.
+
+        previous_occupants = previous.occupants if previous is not None else {}
+
+        for occupant_id, result in current.occupants.items():
+
+            previous_result = previous_occupants.get(occupant_id)
+            previous_flags = previous_result.anomaly_flags if previous_result is not None else ()
+
+            self._emit_flag_transition(
+                result.anomaly_flags, previous_flags, AnomalyFlag.MOVING_AWAY_FROM_SAFE_EXIT,
+                EventType.OCCUPANT_ROUTE_DEVIATION_DETECTED, EventType.OCCUPANT_ROUTE_RECOVERED, result, time,
+            )
+
+            self._emit_flag_transition(
+                result.anomaly_flags, previous_flags, AnomalyFlag.MOVEMENT_STALLED,
+                EventType.OCCUPANT_MOVEMENT_STALLED, EventType.OCCUPANT_MOVEMENT_RESUMED, result, time,
+            )
+
+            currently_hazardous = (
+                AnomalyFlag.ENTERED_HAZARDOUS_ZONE in result.anomaly_flags
+                or AnomalyFlag.REMAINS_IN_HAZARDOUS_ZONE in result.anomaly_flags
+            )
+            previously_hazardous = (
+                AnomalyFlag.ENTERED_HAZARDOUS_ZONE in previous_flags or AnomalyFlag.REMAINS_IN_HAZARDOUS_ZONE in previous_flags
+            )
+
+            if currently_hazardous and not previously_hazardous:
+                self.event_bus.emit(EventType.OCCUPANT_ENTERED_HAZARDOUS_ZONE, result, time)
+
+            if previously_hazardous and not currently_hazardous:
+                self.event_bus.emit(EventType.OCCUPANT_EXITED_HAZARDOUS_ZONE, result, time)
+
+        previous_group_keys = {
+            (record.anomaly_type, record.zone_id) for record in (previous.group_anomalies if previous is not None else ())
+        }
+
+        for record in current.group_anomalies:
+
+            if (record.anomaly_type, record.zone_id) not in previous_group_keys:
+                self.event_bus.emit(EventType.SHARED_ROUTE_DEVIATION_DETECTED, record, time)
+
+    # =====================================================
+
+    def _emit_flag_transition(self, current_flags, previous_flags, flag, gained_event, lost_event, payload, time: float) -> None:
+
+        if flag in current_flags and flag not in previous_flags:
+            self.event_bus.emit(gained_event, payload, time)
+
+        if flag in previous_flags and flag not in current_flags:
+            self.event_bus.emit(lost_event, payload, time)

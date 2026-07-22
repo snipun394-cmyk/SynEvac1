@@ -55,6 +55,21 @@ class EventType(Enum):
     POSSIBLE_ASSISTANCE_REQUIRED = auto()
     CONFIRMED_ASSISTANCE_REQUIRED = auto()
 
+    # Live Occupant Trajectory, Movement Anomaly & Route-Deviation
+    # Intelligence milestone, Phase 25 -- published by live_system.
+    # orchestrator.LiveOrchestrator, transition-only (fired the cycle a
+    # condition NEWLY becomes/stops being true, never every cycle it
+    # merely continues to hold -- mirrors ZONE_CLEARANCE_STALLED/
+    # ZONE_RESPONSE_ESCALATED's own established discipline).
+    TRAJECTORY_INTELLIGENCE_UPDATED = auto()
+    OCCUPANT_ROUTE_DEVIATION_DETECTED = auto()
+    OCCUPANT_ROUTE_RECOVERED = auto()
+    OCCUPANT_MOVEMENT_STALLED = auto()
+    OCCUPANT_MOVEMENT_RESUMED = auto()
+    OCCUPANT_ENTERED_HAZARDOUS_ZONE = auto()
+    OCCUPANT_EXITED_HAZARDOUS_ZONE = auto()
+    SHARED_ROUTE_DEVIATION_DETECTED = auto()
+
 
 @dataclass(frozen=True)
 class Event:

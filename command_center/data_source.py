@@ -106,6 +106,12 @@ class CommandCenterSnapshot:
     # evacuation_progress's own convention exactly.
     emergency_response: Optional[Any] = None
 
+    # Live Occupant Trajectory, Movement Anomaly & Route-Deviation
+    # Intelligence milestone -- trajectory_intelligence.models.
+    # TrajectoryIntelligenceSnapshot, mirroring emergency_response's own
+    # convention exactly.
+    trajectory_intelligence: Optional[Any] = None
+
     # Phase 14 -- per-component as-of timestamps, honestly reported.
     # None means that component has never been populated at all (not
     # "populated at time 0.0"). Always None/CURRENT in Replay mode,
@@ -116,6 +122,7 @@ class CommandCenterSnapshot:
     advisory_timestamp: Optional[float] = None
     evacuation_progress_timestamp: Optional[float] = None
     emergency_response_timestamp: Optional[float] = None
+    trajectory_intelligence_timestamp: Optional[float] = None
     consistency: SnapshotConsistency = SnapshotConsistency.CURRENT
 
     # Phase 15 -- a bounded, most-recent-last list of human-readable

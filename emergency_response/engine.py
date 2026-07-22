@@ -124,7 +124,18 @@ class EmergencyResponseIntelligenceEngine:
     def compute(
         self, time: float, building_state, crowd_snapshot=None, evacuation_progress_snapshot=None,
         human_state_by_occupant_id: Optional[Mapping[str, HumanState]] = None,
+        trajectory_snapshot=None,
     ) -> EmergencyResponseSnapshot:
+
+        # trajectory_snapshot -- Live Occupant Trajectory, Movement
+        # Anomaly & Route-Deviation Intelligence milestone, Phase 21.
+        # Typed Any/untyped-object here deliberately (a trajectory_
+        # intelligence.models.TrajectoryIntelligenceSnapshot, consulted
+        # ONLY through its own public .occupant(occupant_id) accessor)
+        # -- the same sibling-snapshot pattern crowd_snapshot/
+        # evacuation_progress_snapshot already establish. Kept last and
+        # optional so every existing positional caller keeps working
+        # unchanged.
 
         active_occupants = self.live_occupant_manager.active_occupants()
         human_state_by_occupant_id = human_state_by_occupant_id or {}
@@ -146,6 +157,7 @@ class EmergencyResponseIntelligenceEngine:
                 evacuation_progress_snapshot=evacuation_progress_snapshot,
                 human_state_by_occupant_id=human_state_by_occupant_id,
                 alarm_active=zone.id in zone_alarm_ids,
+                trajectory_snapshot=trajectory_snapshot,
                 time=time,
             )
 
@@ -183,7 +195,7 @@ class EmergencyResponseIntelligenceEngine:
 
     def _compute_zone_priority(
         self, *, zone_id, floor_id, occupants, building_state, crowd_snapshot, evacuation_progress_snapshot,
-        human_state_by_occupant_id, alarm_active, time,
+        human_state_by_occupant_id, alarm_active, trajectory_snapshot, time,
     ) -> ZoneResponsePriority:
 
         known_occupant_count = len(occupants)
@@ -246,11 +258,14 @@ class EmergencyResponseIntelligenceEngine:
                     zone_density.density_classification.value >= IntensityLevel.HIGH.value and evacuation_stalled
                 )
 
+        severe_route_anomaly = self._severe_route_anomaly(occupants, trajectory_snapshot)
+
         score, reason_codes = self._score_zone(
             known_occupant_count=known_occupant_count, possible_count=possible_count, confirmed_count=confirmed_count,
             being_assisted_count=being_assisted_count, vulnerable_person_observed=vulnerable_person_observed,
             evacuation_stalled=evacuation_stalled, hazard_severity=hazard_severity,
             congestion_restricting=congestion_restricting, clearance_status=clearance_status, alarm_active=alarm_active,
+            severe_route_anomaly=severe_route_anomaly,
         )
 
         priority_level = self.thresholds.classify(score)
@@ -298,10 +313,38 @@ class EmergencyResponseIntelligenceEngine:
 
     # =====================================================
 
+    def _severe_route_anomaly(self, occupants, trajectory_snapshot) -> bool:
+
+        # Live Occupant Trajectory, Movement Anomaly & Route-Deviation
+        # Intelligence milestone, Phase 21 -- consulted ONLY through
+        # trajectory_snapshot's own public .occupant(occupant_id)
+        # accessor (never a direct import of trajectory_intelligence.
+        # engine/anomaly/route_progress -- see this package's own
+        # architecture guard test's allow-list). Examples this is meant
+        # to catch: confirmed FALLEN + MOVEMENT_STALLED, an occupant
+        # remaining in a hazardous zone, persistent moving-away from
+        # every safe exit, or NO_SAFE_ROUTE -- all already folded into
+        # trajectory_intelligence's own anomaly_severity, so this is
+        # simply "does any occupant here carry a HIGH/CRITICAL reading."
+
+        if trajectory_snapshot is None:
+            return False
+
+        for occupant in occupants:
+
+            result = trajectory_snapshot.occupant(occupant.occupant_id)
+
+            if result is not None and result.anomaly_severity in ("HIGH", "CRITICAL"):
+                return True
+
+        return False
+
+    # =====================================================
+
     def _score_zone(
         self, *, known_occupant_count, possible_count, confirmed_count, being_assisted_count,
         vulnerable_person_observed, evacuation_stalled, hazard_severity, congestion_restricting,
-        clearance_status, alarm_active,
+        clearance_status, alarm_active, severe_route_anomaly,
     ):
 
         # Phase 7's own explicit transparency requirement -- every
@@ -325,7 +368,7 @@ class EmergencyResponseIntelligenceEngine:
         has_any_evidence = (
             known_occupant_count > 0 or possible_count > 0 or confirmed_count > 0 or being_assisted_count > 0
             or vulnerable_person_observed or evacuation_stalled
-            or hazard_severity is not None or clearance_status is not None or alarm_active
+            or hazard_severity is not None or clearance_status is not None or alarm_active or severe_route_anomaly
         )
 
         if not has_any_evidence:
@@ -393,6 +436,11 @@ class EmergencyResponseIntelligenceEngine:
 
             score += w.facp_alarm_weight
             reasons.append(ResponseReason.FACP_ALARM_ACTIVE)
+
+        if severe_route_anomaly:
+
+            score += w.severe_route_anomaly_weight
+            reasons.append(ResponseReason.SEVERE_ROUTE_ANOMALY)
 
         return score, tuple(reasons)
 

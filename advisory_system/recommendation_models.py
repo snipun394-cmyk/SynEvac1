@@ -10,6 +10,7 @@ from advisory_system.ai_evidence import AIDecisionEvidence
 from advisory_system.crowd_evidence import CrowdDecisionEvidence
 from advisory_system.evacuation_progress_evidence import EvacuationProgressEvidence
 from advisory_system.emergency_response_evidence import EmergencyResponseEvidence
+from advisory_system.trajectory_evidence import TrajectoryDecisionEvidence
 
 
 # =====================================================
@@ -122,6 +123,11 @@ class AdvisoryInputs:
     # Live Emergency Response & Rescue Priority Intelligence milestone --
     # additive, mirrors evacuation_progress_evidence exactly.
     emergency_response_evidence: Optional[EmergencyResponseEvidence] = None
+
+    # Live Occupant Trajectory, Movement Anomaly & Route-Deviation
+    # Intelligence milestone -- additive, mirrors emergency_response_
+    # evidence exactly. None means "no trajectory evidence this cycle."
+    trajectory_decision_evidence: Optional[TrajectoryDecisionEvidence] = None
 
     # =====================================================
 
@@ -369,6 +375,18 @@ class IncidentCommanderDashboard:
     # additive, mirrors the fields immediately above exactly (Phase 20).
     response_being_assisted_zone_ids: Tuple[str, ...] = field(default_factory=tuple)
 
+    # Live Occupant Trajectory, Movement Anomaly & Route-Deviation
+    # Intelligence milestone -- additive, mirrors the response_*/
+    # evacuation_*/crowd_* fields immediately above exactly. Zones with
+    # at least one occupant showing route-deviation/movement-stall/
+    # hazardous-zone-movement evidence -- commander AWARENESS only,
+    # never folded into critical_zones/warning_zones/blocked_routes
+    # above (Phase 22's own "keep provenance separate" requirement,
+    # same as crowd_*/evacuation_*/response_* before it).
+    movement_route_deviation_zone_ids: Tuple[str, ...] = field(default_factory=tuple)
+    movement_stalled_zone_ids: Tuple[str, ...] = field(default_factory=tuple)
+    movement_hazardous_zone_ids: Tuple[str, ...] = field(default_factory=tuple)
+
     def to_dict(self) -> Dict[str, Any]:
 
         return {
@@ -398,6 +416,9 @@ class IncidentCommanderDashboard:
             "response_critical_zone_ids": list(self.response_critical_zone_ids),
             "response_possible_assistance_zone_ids": list(self.response_possible_assistance_zone_ids),
             "response_being_assisted_zone_ids": list(self.response_being_assisted_zone_ids),
+            "movement_route_deviation_zone_ids": list(self.movement_route_deviation_zone_ids),
+            "movement_stalled_zone_ids": list(self.movement_stalled_zone_ids),
+            "movement_hazardous_zone_ids": list(self.movement_hazardous_zone_ids),
         }
 
 

@@ -50,6 +50,7 @@ class LiveRuntime:
         perception_fusion_coordinator=None,
         crowd_intelligence_engine=None,
         evacuation_progress_engine=None,
+        trajectory_intelligence_engine=None,
         emergency_response_engine=None,
     ):
 
@@ -114,6 +115,12 @@ class LiveRuntime:
         # requirement), same untyped-attribute discipline as every
         # other collaborator on this class.
         self.evacuation_progress_engine = evacuation_progress_engine
+
+        # Live Occupant Trajectory, Movement Anomaly & Route-Deviation
+        # Intelligence milestone -- exactly ONE TrajectoryIntelligenceEngine
+        # for this live session, same untyped-attribute discipline as
+        # every other collaborator on this class.
+        self.trajectory_intelligence_engine = trajectory_intelligence_engine
 
         # Live Emergency Response & Rescue Priority Intelligence
         # milestone -- exactly ONE EmergencyResponseIntelligenceEngine

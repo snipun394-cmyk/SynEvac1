@@ -17,6 +17,7 @@ class EmergencyResponseGateway(Protocol):
 
     def compute(
         self, time: float, building_state, crowd_snapshot, evacuation_progress_snapshot,
+        trajectory_snapshot=None,
     ) -> Optional[EmergencyResponseSnapshot]: ...
 
 
@@ -29,6 +30,11 @@ class EngineEmergencyResponseGateway:
     # crash the live cycle, exactly the same discipline
     # EngineCrowdIntelligenceGateway/EngineEvacuationProgressGateway
     # already established.
+    #
+    # trajectory_snapshot -- Live Occupant Trajectory, Movement Anomaly
+    # & Route-Deviation Intelligence milestone, Phase 21 -- additive,
+    # optional, forwarded unchanged to EmergencyResponseIntelligenceEngine.
+    # compute()'s own new keyword-only parameter.
 
     def __init__(self, engine: EmergencyResponseIntelligenceEngine):
 
@@ -38,11 +44,15 @@ class EngineEmergencyResponseGateway:
 
     def compute(
         self, time: float, building_state, crowd_snapshot, evacuation_progress_snapshot,
+        trajectory_snapshot=None,
     ) -> Optional[EmergencyResponseSnapshot]:
 
         try:
 
-            return self._engine.compute(time, building_state, crowd_snapshot, evacuation_progress_snapshot)
+            return self._engine.compute(
+                time, building_state, crowd_snapshot, evacuation_progress_snapshot,
+                trajectory_snapshot=trajectory_snapshot,
+            )
 
         except Exception:  # noqa: BLE001 -- an unexpected emergency-response failure must never crash the live cycle
 
