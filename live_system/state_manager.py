@@ -27,6 +27,8 @@ from emergency_response.models import EmergencyResponseSnapshot
 
 from trajectory_intelligence.models import TrajectoryIntelligenceSnapshot
 
+from evacuation_recommendation.models import EvacuationRecommendationSnapshot
+
 from live_system.live_ai_gateway import LiveAIPredictionSnapshot
 
 
@@ -144,6 +146,13 @@ class LiveBuildingSnapshot:
     # present snapshot.
     trajectory_intelligence: Optional[TrajectoryIntelligenceSnapshot] = None
 
+    # Live Dynamic Evacuation Recommendation Engine milestone -- the
+    # canonical live_system.evacuation_recommendation_gateway output,
+    # mirroring trajectory_intelligence/emergency_response above
+    # exactly. None until an evacuation_recommendation_gateway is
+    # configured and has produced at least one snapshot.
+    evacuation_recommendation: Optional[EvacuationRecommendationSnapshot] = None
+
     # component -> the timestamp its own field was last actually
     # updated -- distinct from `timestamp` (this snapshot's own
     # as-of time) because a cycle in which, say, AI Inference is not
@@ -252,6 +261,7 @@ class LiveBuildingSnapshot:
             "evacuation_progress": self.evacuation_progress,
             "emergency_response": self.emergency_response,
             "trajectory_intelligence": self.trajectory_intelligence,
+            "evacuation_recommendation": self.evacuation_recommendation,
             "component_timestamps": self.component_timestamps,
         }
         current.update(changes)
@@ -488,6 +498,24 @@ class StateManager:
             timestamp=time,
             trajectory_intelligence=trajectory_intelligence,
             component_timestamps=self._stamp("trajectory_intelligence", time),
+        )
+
+    # =====================================================
+
+    def latest_evacuation_recommendation(self) -> Optional[EvacuationRecommendationSnapshot]:
+
+        return self._snapshot.evacuation_recommendation
+
+    # =====================================================
+
+    def update_evacuation_recommendation(
+        self, evacuation_recommendation: EvacuationRecommendationSnapshot, time: float,
+    ) -> LiveBuildingSnapshot:
+
+        return self._replace(
+            timestamp=time,
+            evacuation_recommendation=evacuation_recommendation,
+            component_timestamps=self._stamp("evacuation_recommendation", time),
         )
 
     # =====================================================

@@ -11,6 +11,7 @@ from advisory_system.crowd_evidence import CrowdDecisionEvidence
 from advisory_system.evacuation_progress_evidence import EvacuationProgressEvidence
 from advisory_system.emergency_response_evidence import EmergencyResponseEvidence
 from advisory_system.trajectory_evidence import TrajectoryDecisionEvidence
+from advisory_system.evacuation_recommendation_evidence import EvacuationRecommendationEvidence
 
 
 # =====================================================
@@ -128,6 +129,11 @@ class AdvisoryInputs:
     # Intelligence milestone -- additive, mirrors emergency_response_
     # evidence exactly. None means "no trajectory evidence this cycle."
     trajectory_decision_evidence: Optional[TrajectoryDecisionEvidence] = None
+
+    # Live Dynamic Evacuation Recommendation Engine milestone --
+    # additive, mirrors trajectory_decision_evidence exactly. None
+    # means "no recommendation evidence this cycle."
+    evacuation_recommendation_evidence: Optional[EvacuationRecommendationEvidence] = None
 
     # =====================================================
 
@@ -387,6 +393,16 @@ class IncidentCommanderDashboard:
     movement_stalled_zone_ids: Tuple[str, ...] = field(default_factory=tuple)
     movement_hazardous_zone_ids: Tuple[str, ...] = field(default_factory=tuple)
 
+    # Live Dynamic Evacuation Recommendation Engine milestone --
+    # additive, mirrors the movement_*/response_*/evacuation_*/crowd_*
+    # fields immediately above exactly. Commander AWARENESS only --
+    # never folded into available_exits/blocked_routes above, which
+    # remain exclusively GroundTruth/DecisionPolicy-sourced (Phase 17's
+    # own "keep provenance separate" requirement, same as every prior
+    # live-evidence field before it).
+    zones_with_evacuation_recommendation_ids: Tuple[str, ...] = field(default_factory=tuple)
+    zones_without_safe_exit_ids: Tuple[str, ...] = field(default_factory=tuple)
+
     def to_dict(self) -> Dict[str, Any]:
 
         return {
@@ -419,6 +435,8 @@ class IncidentCommanderDashboard:
             "movement_route_deviation_zone_ids": list(self.movement_route_deviation_zone_ids),
             "movement_stalled_zone_ids": list(self.movement_stalled_zone_ids),
             "movement_hazardous_zone_ids": list(self.movement_hazardous_zone_ids),
+            "zones_with_evacuation_recommendation_ids": list(self.zones_with_evacuation_recommendation_ids),
+            "zones_without_safe_exit_ids": list(self.zones_without_safe_exit_ids),
         }
 
 

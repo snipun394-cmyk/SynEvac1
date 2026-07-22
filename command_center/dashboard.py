@@ -12,6 +12,7 @@ from command_center.live_events_panel import LiveEventsPanel
 from command_center.live_evacuation_progress_panel import LiveEvacuationProgressPanel
 from command_center.live_emergency_response_panel import LiveEmergencyResponsePanel
 from command_center.live_trajectory_intelligence_panel import LiveMovementIntelligencePanel
+from command_center.live_evacuation_recommendation_panel import LiveEvacuationRecommendationPanel
 from command_center.live_status_panel import LiveStatusPanel
 from command_center.occupancy_panel import OccupancyPanel
 from command_center.recommendation_center import RecommendationCenter
@@ -88,6 +89,7 @@ class Dashboard(QWidget):
         self.live_evacuation_progress_panel = LiveEvacuationProgressPanel()
         self.live_emergency_response_panel = LiveEmergencyResponsePanel()
         self.live_movement_intelligence_panel = LiveMovementIntelligencePanel()
+        self.live_evacuation_recommendation_panel = LiveEvacuationRecommendationPanel()
         self.live_events_panel = LiveEventsPanel()
 
         self.side_tabs = QTabWidget()
@@ -103,6 +105,7 @@ class Dashboard(QWidget):
         self.side_tabs.addTab(self.live_evacuation_progress_panel, "Live Evacuation Progress")
         self.side_tabs.addTab(self.live_emergency_response_panel, "Live Emergency Response")
         self.side_tabs.addTab(self.live_movement_intelligence_panel, "Live Movement Intelligence")
+        self.side_tabs.addTab(self.live_evacuation_recommendation_panel, "Live Evacuation Recommendations")
         self.side_tabs.addTab(self.live_events_panel, "Live Events")
 
         # Tabs that only make sense against a completed-run IncidentData
@@ -289,6 +292,7 @@ class Dashboard(QWidget):
         self.live_evacuation_progress_panel.show_progress(snapshot.evacuation_progress)
         self.live_emergency_response_panel.show_response(snapshot.emergency_response)
         self.live_movement_intelligence_panel.show_trajectory_intelligence(snapshot.trajectory_intelligence)
+        self.live_evacuation_recommendation_panel.show_recommendations(snapshot.evacuation_recommendation)
         self.live_events_panel.show_recent_events(snapshot.recent_events)
 
         self.live_consistency_banner.setText(_consistency_banner_text(snapshot))

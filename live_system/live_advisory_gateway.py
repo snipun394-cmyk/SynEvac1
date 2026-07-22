@@ -14,6 +14,9 @@ from advisory_system.emergency_response_evidence import (
 from advisory_system.trajectory_evidence import (
     TrajectoryDecisionEvidence, TrajectoryZoneDetail, UNAVAILABLE_TRAJECTORY_DECISION_EVIDENCE,
 )
+from advisory_system.evacuation_recommendation_evidence import (
+    EvacuationRecommendationEvidence, UNAVAILABLE_EVACUATION_RECOMMENDATION_EVIDENCE, ZoneRecommendationDetail,
+)
 from advisory_system.orchestrator import AdvisoryOrchestrator
 from advisory_system.recommendation_models import AdvisoryInputs, AdvisoryReport
 
@@ -24,6 +27,8 @@ from evacuation_progress.models import EvacuationProgressSnapshot, ZoneClearance
 from emergency_response.models import EmergencyResponseSnapshot, ResponsePriorityLevel
 
 from trajectory_intelligence.models import AnomalyFlag, TrajectoryIntelligenceSnapshot
+
+from evacuation_recommendation.models import EvacuationRecommendationSnapshot, RecommendationStatus
 
 from live_system.live_ai_gateway import LiveAIPredictionSnapshot
 
@@ -453,6 +458,46 @@ def trajectory_decision_evidence_from_snapshot(
 
 
 # =====================================================
+# Live Dynamic Evacuation Recommendation Engine milestone -- the
+# recommendation-evidence counterpart to trajectory_decision_evidence_
+# from_snapshot() immediately above, same placement/role.
+# =====================================================
+
+
+def evacuation_recommendation_evidence_from_snapshot(
+    snapshot: Optional[EvacuationRecommendationSnapshot],
+) -> EvacuationRecommendationEvidence:
+
+    if snapshot is None:
+        return UNAVAILABLE_EVACUATION_RECOMMENDATION_EVIDENCE
+
+    with_recommendation = tuple(sorted(
+        zone_id for zone_id, rec in snapshot.zones.items() if rec.status == RecommendationStatus.RECOMMENDED
+    ))
+    without_safe_exit = tuple(sorted(
+        zone_id for zone_id, rec in snapshot.zones.items() if rec.status == RecommendationStatus.NO_SAFE_EXIT_AVAILABLE
+    ))
+
+    zone_details = {
+        zone_id: ZoneRecommendationDetail(
+            status=rec.status, recommended_exit_id=rec.recommended_exit_id,
+            alternative_exit_ids=rec.alternative_exit_ids, confidence=rec.confidence,
+            reason_codes=rec.reason_codes,
+        )
+        for zone_id, rec in snapshot.zones.items()
+    }
+
+    return EvacuationRecommendationEvidence(
+        available=True,
+        timestamp=snapshot.timestamp,
+        zone_ids_with_recommendation=with_recommendation,
+        zone_ids_without_safe_exit=without_safe_exit,
+        safe_exit_ids=snapshot.safe_exit_ids,
+        zone_details=zone_details,
+    )
+
+
+# =====================================================
 
 
 class LiveAdvisoryGateway(Protocol):
@@ -479,6 +524,7 @@ class LiveAdvisoryGateway(Protocol):
         evacuation_progress_evidence: Optional[EvacuationProgressEvidence] = None,
         emergency_response_evidence: Optional[EmergencyResponseEvidence] = None,
         trajectory_decision_evidence: Optional[TrajectoryDecisionEvidence] = None,
+        evacuation_recommendation_evidence: Optional[EvacuationRecommendationEvidence] = None,
     ) -> Optional[AdvisoryReport]: ...
 
 
@@ -531,6 +577,7 @@ class ReplayCompatibleAdvisoryGateway:
         evacuation_progress_evidence: Optional[EvacuationProgressEvidence] = None,
         emergency_response_evidence: Optional[EmergencyResponseEvidence] = None,
         trajectory_decision_evidence: Optional[TrajectoryDecisionEvidence] = None,
+        evacuation_recommendation_evidence: Optional[EvacuationRecommendationEvidence] = None,
     ) -> Optional[AdvisoryReport]:
 
         try:
@@ -561,6 +608,7 @@ class ReplayCompatibleAdvisoryGateway:
                 evacuation_progress_evidence=evacuation_progress_evidence,
                 emergency_response_evidence=emergency_response_evidence,
                 trajectory_decision_evidence=trajectory_decision_evidence,
+                evacuation_recommendation_evidence=evacuation_recommendation_evidence,
             )
 
             return self._orchestrator.generate_report(inputs)

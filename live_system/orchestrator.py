@@ -10,11 +10,13 @@ from live_system.crowd_intelligence_gateway import CrowdIntelligenceGateway
 from live_system.evacuation_progress_gateway import EvacuationProgressGateway
 from live_system.emergency_response_gateway import EmergencyResponseGateway
 from live_system.trajectory_intelligence_gateway import TrajectoryIntelligenceGateway
+from live_system.evacuation_recommendation_gateway import EvacuationRecommendationGateway
 from live_system.event_bus import EventBus, EventType
 
 from evacuation_progress.models import EvacuationProgressTrend, ZoneClearanceStatus
 from emergency_response.models import ResponsePriorityLevel
 from trajectory_intelligence.models import AnomalyFlag
+from evacuation_recommendation.models import RecommendationStatus
 from live_system.incident_manager import IncidentManager, IncidentState
 from live_system.integration import (
     AIInferenceGateway,
@@ -31,6 +33,7 @@ from live_system.live_advisory_gateway import (
     emergency_response_evidence_from_snapshot,
     evacuation_progress_evidence_from_snapshot,
     trajectory_decision_evidence_from_snapshot,
+    evacuation_recommendation_evidence_from_snapshot,
 )
 from live_system.sensor_registry import SensorRegistry
 from live_system.state_manager import LiveBuildingSnapshot, StateManager
@@ -106,6 +109,7 @@ class LiveOrchestrator:
         evacuation_progress_gateway: Optional[EvacuationProgressGateway] = None,
         trajectory_intelligence_gateway: Optional[TrajectoryIntelligenceGateway] = None,
         emergency_response_gateway: Optional[EmergencyResponseGateway] = None,
+        evacuation_recommendation_gateway: Optional[EvacuationRecommendationGateway] = None,
         ai_inference_gateway: Optional[AIInferenceGateway] = None,
         decision_policy_gateway: Optional[DecisionPolicyGateway] = None,
         command_center_gateway: Optional[CommandCenterGateway] = None,
@@ -126,6 +130,7 @@ class LiveOrchestrator:
         self.evacuation_progress_gateway = evacuation_progress_gateway
         self.trajectory_intelligence_gateway = trajectory_intelligence_gateway
         self.emergency_response_gateway = emergency_response_gateway
+        self.evacuation_recommendation_gateway = evacuation_recommendation_gateway
         self.ai_inference_gateway = ai_inference_gateway
         self.decision_policy_gateway = decision_policy_gateway
         self.command_center_gateway = command_center_gateway
@@ -212,6 +217,15 @@ class LiveOrchestrator:
         # Mirrors latest_building_state's own forwarding-property style.
 
         return self.state_manager.latest_trajectory_intelligence()
+
+    # =====================================================
+
+    @property
+    def latest_evacuation_recommendation(self):
+
+        # Mirrors latest_building_state's own forwarding-property style.
+
+        return self.state_manager.latest_evacuation_recommendation()
 
     # =====================================================
 
@@ -432,6 +446,34 @@ class LiveOrchestrator:
                 snapshot = self.state_manager.update_ai_prediction(ai_prediction_snapshot, time)
                 self.event_bus.emit(EventType.AI_PREDICTION_UPDATED, ai_prediction_snapshot, time)
 
+        if self.evacuation_recommendation_gateway is not None:
+
+            # Live Dynamic Evacuation Recommendation Engine milestone --
+            # runs AFTER every deterministic-evidence stage above
+            # (crowd/evacuation-progress/trajectory/emergency-response)
+            # AND after live_ai_gateway (this cycle's own fresh AI
+            # evidence, if any, or the previous cycle's), and BEFORE
+            # live_advisory_gateway, so Advisory can read this cycle's
+            # recommendation the same cycle it was computed -- the exact
+            # pipeline order this milestone's own brief names: "...
+            # Emergency Response -> AI Evidence -> Recommendation Engine
+            # -> Advisory." Neither existing stage is reordered.
+            previous_evacuation_recommendation = self.state_manager.latest_evacuation_recommendation()
+
+            evacuation_recommendation_snapshot = self.evacuation_recommendation_gateway.compute(
+                time, snapshot.building_state, snapshot.crowd_intelligence, snapshot.evacuation_progress,
+                snapshot.trajectory_intelligence, snapshot.emergency_response, snapshot.ai_prediction_snapshot,
+            )
+
+            if evacuation_recommendation_snapshot is not None:
+
+                self._emit_evacuation_recommendation_transition_events(
+                    previous_evacuation_recommendation, evacuation_recommendation_snapshot, time,
+                )
+
+                snapshot = self.state_manager.update_evacuation_recommendation(evacuation_recommendation_snapshot, time)
+                self.event_bus.emit(EventType.EVACUATION_RECOMMENDATION_UPDATED, evacuation_recommendation_snapshot, time)
+
         if self.live_advisory_gateway is not None:
 
             ai_evidence = ai_decision_evidence_from_prediction_snapshot(snapshot.ai_prediction_snapshot)
@@ -459,9 +501,16 @@ class LiveOrchestrator:
             # field over.
             trajectory_decision_evidence = trajectory_decision_evidence_from_snapshot(snapshot.trajectory_intelligence)
 
+            # Live Dynamic Evacuation Recommendation Engine milestone --
+            # the SAME pattern, one field over.
+            evacuation_recommendation_evidence = evacuation_recommendation_evidence_from_snapshot(
+                snapshot.evacuation_recommendation,
+            )
+
             advisory_report = self.live_advisory_gateway.generate(
                 ai_evidence, time, crowd_evidence, evacuation_progress_evidence, emergency_response_evidence,
                 trajectory_decision_evidence=trajectory_decision_evidence,
+                evacuation_recommendation_evidence=evacuation_recommendation_evidence,
             )
 
             # None means "no update this cycle" -- covers BOTH "not
@@ -726,3 +775,41 @@ class LiveOrchestrator:
 
         if flag in previous_flags and flag not in current_flags:
             self.event_bus.emit(lost_event, payload, time)
+
+    # =====================================================
+
+    def _emit_evacuation_recommendation_transition_events(self, previous, current, time: float) -> None:
+
+        # Live Dynamic Evacuation Recommendation Engine milestone, Phase
+        # 9/10 -- "do not regenerate identical recommendations
+        # unnecessarily" at the EVENT level (the underlying snapshot is
+        # still recomputed every cycle, cheaply, via SafeExitDistanceCalculator's
+        # own per-cycle fingerprint cache -- see evacuation_recommendation.
+        # ranking's own module docstring -- mirroring every sibling live-
+        # intelligence package's own "full recompute, transition-gated
+        # events" convention exactly). Every event below fires ONLY on a
+        # genuine transition since the previous cycle.
+
+        previous_zones = previous.zones if previous is not None else {}
+
+        for zone_id, recommendation in current.zones.items():
+
+            previous_recommendation = previous_zones.get(zone_id)
+            previous_status = previous_recommendation.status if previous_recommendation is not None else None
+
+            if recommendation.status == RecommendationStatus.NO_SAFE_EXIT_AVAILABLE and previous_status == RecommendationStatus.RECOMMENDED:
+                self.event_bus.emit(EventType.NO_SAFE_EXIT, recommendation, time)
+
+            elif recommendation.status == RecommendationStatus.RECOMMENDED and previous_status == RecommendationStatus.NO_SAFE_EXIT_AVAILABLE:
+                self.event_bus.emit(EventType.RECOVERY_OF_SAFE_EXIT, recommendation, time)
+
+            elif (
+                recommendation.status == RecommendationStatus.RECOMMENDED and previous_status == RecommendationStatus.RECOMMENDED
+                and recommendation.recommended_exit_id != previous_recommendation.recommended_exit_id
+            ):
+                self.event_bus.emit(EventType.RECOMMENDATION_CHANGED, recommendation, time)
+
+        previous_safe_exit_ids = set(previous.safe_exit_ids) if previous is not None else set()
+
+        if set(current.safe_exit_ids) != previous_safe_exit_ids:
+            self.event_bus.emit(EventType.SAFE_EXIT_CHANGED, current.safe_exit_ids, time)

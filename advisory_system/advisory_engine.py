@@ -1425,6 +1425,12 @@ def build_commander_dashboard(
     trajectory_evidence = inputs.trajectory_decision_evidence
     trajectory_available = trajectory_evidence is not None and trajectory_evidence.available
 
+    # Live Dynamic Evacuation Recommendation Engine milestone -- also
+    # deliberately NOT folded into rec_confidence (commander AWARENESS
+    # only, same reasoning as trajectory_evidence immediately above).
+    recommendation_evidence = inputs.evacuation_recommendation_evidence
+    recommendation_available = recommendation_evidence is not None and recommendation_evidence.available
+
     rec_confidence = combine_confidence(
         *[entry.confidence for entry in civilian_announcements],
         *[entry.confidence for entry in building_recommendations],
@@ -1476,6 +1482,12 @@ def build_commander_dashboard(
         ),
         movement_hazardous_zone_ids=(
             trajectory_evidence.hazardous_zone_movement_zone_ids if trajectory_available else ()
+        ),
+        zones_with_evacuation_recommendation_ids=(
+            recommendation_evidence.zone_ids_with_recommendation if recommendation_available else ()
+        ),
+        zones_without_safe_exit_ids=(
+            recommendation_evidence.zone_ids_without_safe_exit if recommendation_available else ()
         ),
     )
 

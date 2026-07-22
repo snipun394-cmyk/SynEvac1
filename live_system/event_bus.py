@@ -70,6 +70,18 @@ class EventType(Enum):
     OCCUPANT_EXITED_HAZARDOUS_ZONE = auto()
     SHARED_ROUTE_DEVIATION_DETECTED = auto()
 
+    # Live Dynamic Evacuation Recommendation Engine milestone --
+    # published by live_system.orchestrator.LiveOrchestrator,
+    # transition-only (fired the cycle a zone's own recommendation
+    # genuinely changes, or the building-wide safe-exit set genuinely
+    # changes -- never every cycle it merely continues to hold, mirrors
+    # every prior milestone's own established discipline).
+    EVACUATION_RECOMMENDATION_UPDATED = auto()
+    RECOMMENDATION_CHANGED = auto()
+    SAFE_EXIT_CHANGED = auto()
+    NO_SAFE_EXIT = auto()
+    RECOVERY_OF_SAFE_EXIT = auto()
+
 
 @dataclass(frozen=True)
 class Event:

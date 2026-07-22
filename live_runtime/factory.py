@@ -44,12 +44,15 @@ from emergency_response.engine import EmergencyResponseIntelligenceEngine
 
 from trajectory_intelligence.engine import TrajectoryIntelligenceEngine
 
+from evacuation_recommendation.engine import EvacuationRecommendationEngine
+
 from navigation.graph_builder import NavigationGraphGenerator
 
 from live_system.crowd_intelligence_gateway import EngineCrowdIntelligenceGateway
 from live_system.evacuation_progress_gateway import EngineEvacuationProgressGateway
 from live_system.emergency_response_gateway import EngineEmergencyResponseGateway
 from live_system.trajectory_intelligence_gateway import EngineTrajectoryIntelligenceGateway
+from live_system.evacuation_recommendation_gateway import EngineEvacuationRecommendationGateway
 
 from live_runtime.runtime import LiveRuntime
 
@@ -87,6 +90,7 @@ def build_live_runtime(
     trajectory_intelligence_engine: Optional[TrajectoryIntelligenceEngine] = None,
     navigation_graph: Optional[object] = None,
     emergency_response_engine: Optional[EmergencyResponseIntelligenceEngine] = None,
+    evacuation_recommendation_engine: Optional[EvacuationRecommendationEngine] = None,
     smoke_detector_reading_provider: Optional[Callable[[float], object]] = None,
     heat_detector_reading_provider: Optional[Callable[[float], object]] = None,
     camera_manager: Optional[CameraManager] = None,
@@ -198,6 +202,18 @@ def build_live_runtime(
     emergency_response_engine = (
         emergency_response_engine if emergency_response_engine is not None
         else EmergencyResponseIntelligenceEngine(building, live_occupant_manager)
+    )
+
+    # Live Dynamic Evacuation Recommendation Engine milestone -- exactly
+    # ONE EvacuationRecommendationEngine for this live session, sharing
+    # the SAME navigation_graph/live_occupant_manager every other stage
+    # above reads. Sits after every deterministic-evidence engine above
+    # in construction order too, purely for readability -- it reads none
+    # of them directly (every sibling snapshot arrives as a compute()
+    # parameter each cycle, never a constructor dependency).
+    evacuation_recommendation_engine = (
+        evacuation_recommendation_engine if evacuation_recommendation_engine is not None
+        else EvacuationRecommendationEngine(building, navigation_graph, live_occupant_manager)
     )
 
     # =====================================================
@@ -391,6 +407,7 @@ def build_live_runtime(
         evacuation_progress_gateway=EngineEvacuationProgressGateway(evacuation_progress_engine),
         trajectory_intelligence_gateway=EngineTrajectoryIntelligenceGateway(trajectory_intelligence_engine),
         emergency_response_gateway=EngineEmergencyResponseGateway(emergency_response_engine),
+        evacuation_recommendation_gateway=EngineEvacuationRecommendationGateway(evacuation_recommendation_engine),
         live_ai_gateway=live_ai_gateway,
         live_advisory_gateway=live_advisory_gateway,
         interval_seconds=interval_seconds,
@@ -431,6 +448,7 @@ def build_live_runtime(
         evacuation_progress_engine=evacuation_progress_engine,
         trajectory_intelligence_engine=trajectory_intelligence_engine,
         emergency_response_engine=emergency_response_engine,
+        evacuation_recommendation_engine=evacuation_recommendation_engine,
     )
 
 
