@@ -94,6 +94,24 @@ class EventType(Enum):
     EVACUATION_GUIDANCE_RECOVERED = auto()
     GUIDANCE_DELIVERY_UNAVAILABLE = auto()
 
+    # Live Dynamic Evacuation Signage milestone, Phase 23 -- published
+    # by live_system.orchestrator.LiveOrchestrator, transition-only
+    # (fired the cycle a sign's own effective instruction genuinely
+    # changes/becomes unavailable/recovers, or a conflict is newly
+    # detected/cleared -- never every cycle it merely continues to
+    # hold, mirrors every prior milestone's own established discipline).
+    # The approval-workflow events (APPROVED/REJECTED) are instead
+    # published by the Command Center's own operator-action seam, the
+    # one place an explicit operator action happens.
+    SIGNAGE_PLAN_UPDATED = auto()
+    SIGNAGE_INSTRUCTION_CHANGED = auto()
+    SIGNAGE_CONFLICT_DETECTED = auto()
+    SIGNAGE_CONFLICT_CLEARED = auto()
+    SIGNAGE_UNAVAILABLE = auto()
+    SIGNAGE_RECOVERED = auto()
+    SIGNAGE_INSTRUCTION_APPROVED = auto()
+    SIGNAGE_INSTRUCTION_REJECTED = auto()
+
 
 @dataclass(frozen=True)
 class Event:

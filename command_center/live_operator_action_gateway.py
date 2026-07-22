@@ -11,6 +11,11 @@ from building_control.history import ControlEvent
 from building_control.requests import ControlRequest
 from building_control.snapshot import ControlStateEntry
 
+from dynamic_signage.controller import DynamicSignageController, SignageControlEvent, SignageRequestStatus
+from dynamic_signage.models import SignageInstruction, SignageStatus
+
+from live_system.event_bus import EventType
+
 
 # =====================================================
 # Live Operator Action Routing milestone -- the ONE seam Command Center
@@ -130,10 +135,22 @@ class LiveOperatorActionGateway:
         *,
         voice_controller: Optional[VoiceEvacuationController] = None,
         control_controller: Optional[BuildingControlController] = None,
+        signage_controller: Optional[DynamicSignageController] = None,
+        event_bus: Optional[object] = None,
     ):
 
         self._voice_controller = voice_controller
         self._control_controller = control_controller
+        self._signage_controller = signage_controller
+
+        # Optional -- duck-typed (only .emit(event_type, payload, time)
+        # is ever called), so this module never needs to import
+        # live_system.event_bus.EventType itself just to accept one.
+        # None is the honest default for every existing caller that
+        # constructed this gateway before Live Dynamic Evacuation
+        # Signage added it -- no behavior change for voice/building
+        # control, which never published bus events and still don't.
+        self._event_bus = event_bus
 
         # zone_id + announcement text -> "APPROVED"/"REJECTED". Keyed on
         # content, not just zone_id, so a genuinely NEW recommendation
@@ -201,6 +218,13 @@ class LiveOperatorActionGateway:
         return self._control_controller
 
     # =====================================================
+
+    @property
+    def signage_controller(self) -> Optional[DynamicSignageController]:
+
+        return self._signage_controller
+
+    # =====================================================
     # Provider capability (Phase 5)
     # =====================================================
 
@@ -225,6 +249,19 @@ class LiveOperatorActionGateway:
 
         return (
             PROVIDER_CAPABILITY_SIMULATION if self._control_controller.provider.is_simulation_only
+            else PROVIDER_CAPABILITY_LIVE_HARDWARE
+        )
+
+    # =====================================================
+
+    @property
+    def signage_capability(self) -> str:
+
+        if self._signage_controller is None:
+            return PROVIDER_CAPABILITY_NO_PROVIDER
+
+        return (
+            PROVIDER_CAPABILITY_SIMULATION if self._signage_controller.provider.is_simulation_only
             else PROVIDER_CAPABILITY_LIVE_HARDWARE
         )
 
@@ -523,3 +560,112 @@ class LiveOperatorActionGateway:
             return ()
 
         return self._control_controller.history()
+
+    # =====================================================
+    # Dynamic Evacuation Signage operator workflow -- Live Dynamic
+    # Evacuation Signage milestone, Phase 17/18. Mirrors the Building
+    # Control workflow immediately above in shape (submit-then-decide,
+    # via DynamicSignageController's own PENDING_APPROVAL/APPROVED/
+    # REJECTED lifecycle -- unlike voice, which tracks the decision on
+    # THIS gateway, DynamicSignageController tracks it itself, per
+    # Phase 13's own explicit design). Only ACTIVE instructions (a
+    # genuine, actionable indication) are ever submitted for approval --
+    # an UNAVAILABLE/CONFLICT instruction is display-only, never
+    # something an operator can "approve" into existence.
+    # =====================================================
+
+    def ingest_signage_instructions(self, snapshot) -> Tuple[SignageInstruction, ...]:
+
+        if self._signage_controller is None or snapshot is None:
+            return ()
+
+        submitted = []
+
+        for instruction in snapshot.instructions.values():
+
+            if instruction.status != SignageStatus.ACTIVE:
+                continue
+
+            submitted.append(self._signage_controller.submit(instruction, instruction.timestamp))
+
+        return tuple(submitted)
+
+    # =====================================================
+
+    def signage_instruction_status(self, instruction: SignageInstruction) -> str:
+
+        # Pure derivation, safe to call every render cycle -- never
+        # mutates state, never touches the controller/provider itself.
+
+        if self._signage_controller is None:
+            return SignageRequestStatus.PENDING_APPROVAL
+
+        try:
+            return self._signage_controller.status_of(instruction.sign_id, instruction.signage_revision)
+        except KeyError:
+            return SignageRequestStatus.PENDING_APPROVAL
+
+    # =====================================================
+
+    def approve_signage_instruction(self, instruction: SignageInstruction, time: float) -> SignageInstruction:
+
+        if self._signage_controller is None:
+
+            raise OperatorActionUnavailable(
+                "No dynamic signage provider is configured -- cannot approve this sign instruction."
+            )
+
+        result = self._signage_controller.approve(
+            instruction.sign_id, instruction.signage_revision, time, actor=OPERATOR_ACTOR,
+        )
+
+        if self._event_bus is not None:
+            self._event_bus.emit(EventType.SIGNAGE_INSTRUCTION_APPROVED, result, time)
+
+        return result
+
+    # =====================================================
+
+    def reject_signage_instruction(self, instruction: SignageInstruction, time: float) -> SignageInstruction:
+
+        if self._signage_controller is None:
+
+            raise OperatorActionUnavailable(
+                "No dynamic signage provider is configured -- cannot reject this sign instruction."
+            )
+
+        result = self._signage_controller.reject(
+            instruction.sign_id, instruction.signage_revision, time, actor=OPERATOR_ACTOR,
+        )
+
+        if self._event_bus is not None:
+            self._event_bus.emit(EventType.SIGNAGE_INSTRUCTION_REJECTED, result, time)
+
+        return result
+
+    # =====================================================
+
+    def pending_signage_instructions(self) -> Tuple[SignageInstruction, ...]:
+
+        if self._signage_controller is None:
+            return ()
+
+        return self._signage_controller.pending_instructions()
+
+    # =====================================================
+
+    def all_signage_instructions(self) -> Tuple[SignageInstruction, ...]:
+
+        if self._signage_controller is None:
+            return ()
+
+        return self._signage_controller.all_instructions()
+
+    # =====================================================
+
+    def signage_history(self) -> Tuple[SignageControlEvent, ...]:
+
+        if self._signage_controller is None:
+            return ()
+
+        return self._signage_controller.history()

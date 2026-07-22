@@ -45,6 +45,8 @@ class LiveRuntime:
         operator_action_gateway,
         voice_evacuation_controller,
         building_control_controller,
+        sign_manager=None,
+        dynamic_signage_controller=None,
         live_occupant_manager=None,
         sensor_fusion_engine=None,
         perception_fusion_coordinator=None,
@@ -54,6 +56,7 @@ class LiveRuntime:
         emergency_response_engine=None,
         evacuation_recommendation_engine=None,
         evacuation_guidance_engine=None,
+        dynamic_signage_planner=None,
     ):
 
         # Digital Twin / asset-management layer -- Phase 4's shared-
@@ -66,6 +69,15 @@ class LiveRuntime:
         self.fusion_engine = fusion_engine
         self.facp = facp
         self.speaker_manager = speaker_manager
+
+        # Live Dynamic Evacuation Signage milestone -- exactly one
+        # SignManager/DynamicSignageController for this live session,
+        # mirroring speaker_manager/voice_evacuation_controller's own
+        # "shared instance, never duplicated" role. Both None whenever
+        # this deployment/test does not wire signage at all -- never
+        # fabricated.
+        self.sign_manager = sign_manager
+        self.dynamic_signage_controller = dynamic_signage_controller
 
         # Camera ingestion -- camera_id -> CameraFrameSource (Replay
         # today; RTSPFrameSource, unchanged, once physical CCTV access
@@ -141,6 +153,11 @@ class LiveRuntime:
         # same untyped-attribute discipline as every other collaborator
         # on this class.
         self.evacuation_guidance_engine = evacuation_guidance_engine
+
+        # Live Dynamic Evacuation Signage milestone -- exactly ONE
+        # DynamicSignagePlanner for this live session, same untyped-
+        # attribute discipline as every other collaborator on this class.
+        self.dynamic_signage_planner = dynamic_signage_planner
 
         self._running = False
 

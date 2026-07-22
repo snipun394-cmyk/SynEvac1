@@ -31,6 +31,8 @@ from evacuation_recommendation.models import EvacuationRecommendationSnapshot
 
 from evacuation_guidance.models import EvacuationGuidanceSnapshot
 
+from dynamic_signage.models import DynamicSignageSnapshot
+
 from live_system.live_ai_gateway import LiveAIPredictionSnapshot
 
 
@@ -160,6 +162,15 @@ class LiveBuildingSnapshot:
     # evacuation_recommendation/trajectory_intelligence above exactly.
     evacuation_guidance: Optional[EvacuationGuidanceSnapshot] = None
 
+    # Live Dynamic Evacuation Signage milestone -- the canonical
+    # live_system.evacuation_signage_gateway output, mirroring
+    # evacuation_guidance above exactly (Phase 24's own investigation:
+    # signage is an OUTPUT/control-planning state, kept as its own
+    # sibling snapshot, deliberately never folded into canonical
+    # BuildingState -- see docs/architecture/
+    # live_dynamic_evacuation_signage.md).
+    dynamic_signage: Optional[DynamicSignageSnapshot] = None
+
     # component -> the timestamp its own field was last actually
     # updated -- distinct from `timestamp` (this snapshot's own
     # as-of time) because a cycle in which, say, AI Inference is not
@@ -270,6 +281,7 @@ class LiveBuildingSnapshot:
             "trajectory_intelligence": self.trajectory_intelligence,
             "evacuation_recommendation": self.evacuation_recommendation,
             "evacuation_guidance": self.evacuation_guidance,
+            "dynamic_signage": self.dynamic_signage,
             "component_timestamps": self.component_timestamps,
         }
         current.update(changes)
@@ -542,6 +554,24 @@ class StateManager:
             timestamp=time,
             evacuation_guidance=evacuation_guidance,
             component_timestamps=self._stamp("evacuation_guidance", time),
+        )
+
+    # =====================================================
+
+    def latest_dynamic_signage(self) -> Optional[DynamicSignageSnapshot]:
+
+        return self._snapshot.dynamic_signage
+
+    # =====================================================
+
+    def update_dynamic_signage(
+        self, dynamic_signage: DynamicSignageSnapshot, time: float,
+    ) -> LiveBuildingSnapshot:
+
+        return self._replace(
+            timestamp=time,
+            dynamic_signage=dynamic_signage,
+            component_timestamps=self._stamp("dynamic_signage", time),
         )
 
     # =====================================================

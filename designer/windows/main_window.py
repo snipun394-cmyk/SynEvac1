@@ -23,6 +23,7 @@ from designer.items.obstacle_item import ObstacleItem
 from designer.items.occupant_item import OccupantItem
 from designer.items.smoke_detector_item import SmokeDetectorItem
 from designer.items.speaker_item import SpeakerItem
+from designer.items.sign_item import SignItem
 from designer.items.stair_item import StairItem
 from designer.items.zone_rectangle import ZoneRectangle
 from designer.scene.graphics_view import GraphicsView
@@ -754,6 +755,12 @@ class MainWindow(QMainWindow):
             )
         )
 
+        self.toolbar.sign_action.triggered.connect(
+            lambda: self.change_tool(
+                "sign"
+            )
+        )
+
         self.toolbar.assembly_point_action.triggered.connect(
             lambda: self.change_tool(
                 "assembly_point"
@@ -1063,6 +1070,9 @@ class MainWindow(QMainWindow):
 
         elif isinstance(item, SpeakerItem):
             self.property_panel.show_speaker(item)
+
+        elif isinstance(item, SignItem):
+            self.property_panel.show_sign(item)
 
         elif isinstance(item, AssemblyPointItem):
             self.property_panel.show_assembly_point(item)

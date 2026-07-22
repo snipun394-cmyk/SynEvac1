@@ -616,6 +616,43 @@ class PropertyPanel(QWidget):
         ]
 
         # =====================================================
+        # Dynamic Evacuation Sign (Live Dynamic Evacuation Signage
+        # milestone) -- Phase 19's own required minimum: Name (shared
+        # object_name field), Active, Orientation, Covered Zone(s). No
+        # graphical sign editor, no supported-indications multi-select
+        # UI (the model's own DEFAULT_SUPPORTED already covers every
+        # Designer-placed sign; narrowing it is a project-file/scripted
+        # edit, not a Property Panel concern this milestone requires).
+        # =====================================================
+
+        self.sign_x = QLineEdit()
+        self.sign_y = QLineEdit()
+
+        self.sign_orientation = QLineEdit()
+
+        self.sign_active = QCheckBox()
+
+        # Single-zone assignment, same V1 simplicity convention as
+        # self.camera_zone above -- Sign.zone_ids already holds a tuple,
+        # so a future multi-select UI can widen this without any model
+        # change.
+        self.sign_zone = QComboBox()
+
+        layout.addRow("Position X (m)", self.sign_x)
+        layout.addRow("Position Y (m)", self.sign_y)
+        layout.addRow("Orientation (deg)", self.sign_orientation)
+        layout.addRow("Active", self.sign_active)
+        layout.addRow("Covered Zone", self.sign_zone)
+
+        self.sign_fields = [
+            self.sign_x,
+            self.sign_y,
+            self.sign_orientation,
+            self.sign_active,
+            self.sign_zone,
+        ]
+
+        # =====================================================
         # Assembly Point Geometry
         # =====================================================
 
@@ -1105,6 +1142,22 @@ class PropertyPanel(QWidget):
             self.update_speaker_installation_date
         )
 
+        self.sign_x.editingFinished.connect(
+            self.update_sign_geometry
+        )
+        self.sign_y.editingFinished.connect(
+            self.update_sign_geometry
+        )
+        self.sign_orientation.editingFinished.connect(
+            self.update_sign_orientation
+        )
+        self.sign_active.toggled.connect(
+            self.update_sign_active
+        )
+        self.sign_zone.currentIndexChanged.connect(
+            self.update_sign_zone
+        )
+
         self.assembly_x.editingFinished.connect(
             self.update_assembly_point_geometry
         )
@@ -1217,6 +1270,7 @@ class PropertyPanel(QWidget):
         self._set_fields_visible(self.smoke_detector_fields, False)
         self._set_fields_visible(self.heat_detector_fields, False)
         self._set_fields_visible(self.speaker_fields, False)
+        self._set_fields_visible(self.sign_fields, False)
         self._set_fields_visible(self.assembly_fields, False)
         self._set_fields_visible(self.obstacle_fields, False)
         self._set_fields_visible(self.door_fields, False)
@@ -1267,6 +1321,7 @@ class PropertyPanel(QWidget):
         self._set_fields_visible(self.smoke_detector_fields, False)
         self._set_fields_visible(self.heat_detector_fields, False)
         self._set_fields_visible(self.speaker_fields, False)
+        self._set_fields_visible(self.sign_fields, False)
         self._set_fields_visible(self.assembly_fields, False)
         self._set_fields_visible(self.obstacle_fields, False)
         self._set_fields_visible(self.door_fields, False)
@@ -1348,6 +1403,7 @@ class PropertyPanel(QWidget):
         self._set_fields_visible(self.smoke_detector_fields, False)
         self._set_fields_visible(self.heat_detector_fields, False)
         self._set_fields_visible(self.speaker_fields, False)
+        self._set_fields_visible(self.sign_fields, False)
         self._set_fields_visible(self.assembly_fields, False)
         self._set_fields_visible(self.obstacle_fields, False)
         self._set_fields_visible(self.door_fields, False)
@@ -1423,6 +1479,7 @@ class PropertyPanel(QWidget):
         self._set_fields_visible(self.smoke_detector_fields, False)
         self._set_fields_visible(self.heat_detector_fields, False)
         self._set_fields_visible(self.speaker_fields, False)
+        self._set_fields_visible(self.sign_fields, False)
         self._set_fields_visible(self.assembly_fields, False)
         self._set_fields_visible(self.obstacle_fields, False)
         self._set_fields_visible(self.door_fields, False)
@@ -1536,6 +1593,7 @@ class PropertyPanel(QWidget):
         self._set_fields_visible(self.smoke_detector_fields, False)
         self._set_fields_visible(self.heat_detector_fields, False)
         self._set_fields_visible(self.speaker_fields, False)
+        self._set_fields_visible(self.sign_fields, False)
         self._set_fields_visible(self.assembly_fields, False)
         self._set_fields_visible(self.obstacle_fields, False)
         self._set_fields_visible(self.door_fields, False)
@@ -1676,6 +1734,7 @@ class PropertyPanel(QWidget):
         self._set_fields_visible(self.smoke_detector_fields, False)
         self._set_fields_visible(self.heat_detector_fields, False)
         self._set_fields_visible(self.speaker_fields, False)
+        self._set_fields_visible(self.sign_fields, False)
         self._set_fields_visible(self.assembly_fields, False)
         self._set_fields_visible(self.obstacle_fields, False)
         self._set_fields_visible(self.door_fields, False)
@@ -1747,6 +1806,7 @@ class PropertyPanel(QWidget):
         self._set_fields_visible(self.smoke_detector_fields, True)
         self._set_fields_visible(self.heat_detector_fields, False)
         self._set_fields_visible(self.speaker_fields, False)
+        self._set_fields_visible(self.sign_fields, False)
         self._set_fields_visible(self.assembly_fields, False)
         self._set_fields_visible(self.obstacle_fields, False)
         self._set_fields_visible(self.door_fields, False)
@@ -1851,6 +1911,7 @@ class PropertyPanel(QWidget):
         self._set_fields_visible(self.smoke_detector_fields, False)
         self._set_fields_visible(self.heat_detector_fields, True)
         self._set_fields_visible(self.speaker_fields, False)
+        self._set_fields_visible(self.sign_fields, False)
         self._set_fields_visible(self.assembly_fields, False)
         self._set_fields_visible(self.obstacle_fields, False)
         self._set_fields_visible(self.door_fields, False)
@@ -1947,6 +2008,7 @@ class PropertyPanel(QWidget):
         self._set_fields_visible(self.smoke_detector_fields, False)
         self._set_fields_visible(self.heat_detector_fields, False)
         self._set_fields_visible(self.speaker_fields, True)
+        self._set_fields_visible(self.sign_fields, False)
         self._set_fields_visible(self.assembly_fields, False)
         self._set_fields_visible(self.obstacle_fields, False)
         self._set_fields_visible(self.door_fields, False)
@@ -2005,6 +2067,68 @@ class PropertyPanel(QWidget):
         self.speaker_type.blockSignals(False)
         self.speaker_volume.blockSignals(False)
         self.speaker_installation_date.blockSignals(False)
+
+    # =====================================================
+    # Dynamic Evacuation Sign (Live Dynamic Evacuation Signage milestone)
+    # =====================================================
+
+    def show_sign(self, sign_item):
+
+        self.current_item = sign_item
+        self._refresh_handler = self.show_sign
+
+        self._set_fields_visible(self.zone_fields, False)
+        self._set_fields_visible(self.exit_fields, False)
+        self._set_fields_visible(self.stair_fields, False)
+        self._set_fields_visible(self.camera_fields, False)
+        self._set_fields_visible(self.detector_fields, False)
+        self._set_fields_visible(self.smoke_detector_fields, False)
+        self._set_fields_visible(self.heat_detector_fields, False)
+        self._set_fields_visible(self.speaker_fields, False)
+        self._set_fields_visible(self.sign_fields, True)
+        self._set_fields_visible(self.assembly_fields, False)
+        self._set_fields_visible(self.obstacle_fields, False)
+        self._set_fields_visible(self.door_fields, False)
+        self._set_fields_visible(self.floor_fields, False)
+
+        model = sign_item.model
+
+        self.object_type.setText("Dynamic Sign")
+        self.object_id.setText(sign_item.object_id)
+
+        self.object_name.blockSignals(True)
+        self.sign_x.blockSignals(True)
+        self.sign_y.blockSignals(True)
+        self.sign_orientation.blockSignals(True)
+        self.sign_active.blockSignals(True)
+        self.sign_zone.blockSignals(True)
+
+        self.object_name.setText(sign_item.object_name)
+
+        if model is not None:
+
+            px, py = model.position
+
+            self.sign_x.setText(f"{px:.2f}")
+            self.sign_y.setText(f"{py:.2f}")
+
+            self.sign_orientation.setText(f"{model.orientation:.1f}")
+
+            self.sign_active.setChecked(model.active)
+
+            self._populate_zone_combo(
+                self.sign_zone,
+                model,
+                model.zone_ids[0] if model.zone_ids else "",
+                "",
+            )
+
+        self.object_name.blockSignals(False)
+        self.sign_x.blockSignals(False)
+        self.sign_y.blockSignals(False)
+        self.sign_orientation.blockSignals(False)
+        self.sign_active.blockSignals(False)
+        self.sign_zone.blockSignals(False)
 
     # =====================================================
 
@@ -2083,6 +2207,61 @@ class PropertyPanel(QWidget):
         self.current_item.model.installation_date = self.speaker_installation_date.text()
 
     # =====================================================
+    # Dynamic Evacuation Sign
+    # =====================================================
+
+    def update_sign_geometry(self):
+
+        if self.current_item is None:
+            return
+
+        try:
+            x = float(self.sign_x.text())
+            y = float(self.sign_y.text())
+        except ValueError:
+            return
+
+        self.current_item.setPos(x * self.GRID_SIZE, y * self.GRID_SIZE)
+        self.current_item.sync_to_model()
+
+    # =====================================================
+
+    def update_sign_orientation(self):
+
+        if self.current_item is None:
+            return
+
+        try:
+            degrees = float(self.sign_orientation.text())
+        except ValueError:
+            return
+
+        self.current_item.set_orientation_degrees(degrees)
+
+    # =====================================================
+
+    def update_sign_active(self):
+
+        if self.current_item is None or self.current_item.model is None:
+            return
+
+        self.current_item.model.active = self.sign_active.isChecked()
+        self.current_item.refresh_geometry()
+
+    # =====================================================
+
+    def update_sign_zone(self, index):
+
+        if self.current_item is None or self.current_item.model is None:
+            return
+
+        zone_id = self.sign_zone.itemData(index)
+
+        self.current_item.model.zone_ids = (
+            (zone_id,) if zone_id else ()
+        )
+
+    # =====================================================
     # Assembly Point
     # =====================================================
 
@@ -2099,6 +2278,7 @@ class PropertyPanel(QWidget):
         self._set_fields_visible(self.smoke_detector_fields, False)
         self._set_fields_visible(self.heat_detector_fields, False)
         self._set_fields_visible(self.speaker_fields, False)
+        self._set_fields_visible(self.sign_fields, False)
         self._set_fields_visible(self.assembly_fields, True)
         self._set_fields_visible(self.obstacle_fields, False)
         self._set_fields_visible(self.door_fields, False)
@@ -2173,6 +2353,7 @@ class PropertyPanel(QWidget):
         self._set_fields_visible(self.smoke_detector_fields, False)
         self._set_fields_visible(self.heat_detector_fields, False)
         self._set_fields_visible(self.speaker_fields, False)
+        self._set_fields_visible(self.sign_fields, False)
         self._set_fields_visible(self.assembly_fields, False)
         self._set_fields_visible(self.obstacle_fields, True)
         self._set_fields_visible(self.door_fields, False)
@@ -2252,6 +2433,7 @@ class PropertyPanel(QWidget):
         self._set_fields_visible(self.smoke_detector_fields, False)
         self._set_fields_visible(self.heat_detector_fields, False)
         self._set_fields_visible(self.speaker_fields, False)
+        self._set_fields_visible(self.sign_fields, False)
         self._set_fields_visible(self.assembly_fields, False)
         self._set_fields_visible(self.obstacle_fields, False)
         self._set_fields_visible(self.door_fields, True)
@@ -2354,6 +2536,7 @@ class PropertyPanel(QWidget):
         self._set_fields_visible(self.smoke_detector_fields, False)
         self._set_fields_visible(self.heat_detector_fields, False)
         self._set_fields_visible(self.speaker_fields, False)
+        self._set_fields_visible(self.sign_fields, False)
         self._set_fields_visible(self.assembly_fields, False)
         self._set_fields_visible(self.obstacle_fields, False)
         self._set_fields_visible(self.door_fields, False)
@@ -2497,6 +2680,7 @@ class PropertyPanel(QWidget):
         self._set_fields_visible(self.smoke_detector_fields, False)
         self._set_fields_visible(self.heat_detector_fields, False)
         self._set_fields_visible(self.speaker_fields, False)
+        self._set_fields_visible(self.sign_fields, False)
         self._set_fields_visible(self.assembly_fields, False)
         self._set_fields_visible(self.obstacle_fields, False)
         self._set_fields_visible(self.door_fields, False)
@@ -2547,6 +2731,7 @@ class PropertyPanel(QWidget):
         self._set_fields_visible(self.smoke_detector_fields, False)
         self._set_fields_visible(self.heat_detector_fields, False)
         self._set_fields_visible(self.speaker_fields, False)
+        self._set_fields_visible(self.sign_fields, False)
         self._set_fields_visible(self.assembly_fields, False)
         self._set_fields_visible(self.obstacle_fields, False)
         self._set_fields_visible(self.door_fields, False)
@@ -2732,6 +2917,18 @@ class PropertyPanel(QWidget):
 
         self.speaker_volume.clear()
         self.speaker_installation_date.clear()
+
+        self.sign_x.clear()
+        self.sign_y.clear()
+        self.sign_orientation.clear()
+
+        self.sign_active.blockSignals(True)
+        self.sign_active.setChecked(False)
+        self.sign_active.blockSignals(False)
+
+        self.sign_zone.blockSignals(True)
+        self.sign_zone.clear()
+        self.sign_zone.blockSignals(False)
 
         self.assembly_x.clear()
         self.assembly_y.clear()

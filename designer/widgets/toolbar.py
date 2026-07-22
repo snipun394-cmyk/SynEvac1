@@ -87,6 +87,11 @@ class MainToolbar(QToolBar):
         # above.
         self.speaker_action = QAction("Speaker", self)
 
+        # Live Dynamic Evacuation Signage milestone -- a first-class
+        # Dynamic Sign placement tool, same "additive, alongside the
+        # existing device tools" convention as Speaker above.
+        self.sign_action = QAction("Dynamic Sign", self)
+
         # =====================================================
         # Safety
         # =====================================================
@@ -153,6 +158,7 @@ class MainToolbar(QToolBar):
         self.addAction(self.smoke_detector_action)
         self.addAction(self.heat_detector_action)
         self.addAction(self.speaker_action)
+        self.addAction(self.sign_action)
 
         self.addSeparator()
 

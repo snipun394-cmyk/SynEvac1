@@ -17,6 +17,7 @@ from designer.items.exit_item import ExitItem
 from designer.items.heat_detector_item import HeatDetectorItem
 from designer.items.obstacle_item import ObstacleItem
 from designer.items.occupant_item import OccupantItem
+from designer.items.sign_item import SignItem
 from designer.items.smoke_detector_item import SmokeDetectorItem
 from designer.items.speaker_item import SpeakerItem
 from designer.items.stair_item import StairItem
@@ -32,6 +33,7 @@ from models.heat_detector import HeatDetector
 from models.obstacle import Obstacle
 from models.smoke_detector import SmokeDetector
 from models.speaker import Speaker
+from models.dynamic_sign import DynamicEvacuationSign
 from models.staircase import Staircase
 from models.zone import Zone
 
@@ -334,7 +336,7 @@ class GraphicsScene(QGraphicsScene):
             if self.selected_item:
                 self.selected_item.set_selected(False)
 
-            if isinstance(item, (ZoneRectangle, ExitItem, StairItem, CameraItem, DetectorItem, SmokeDetectorItem, HeatDetectorItem, SpeakerItem, AssemblyPointItem, ObstacleItem, DoorItem, OccupantItem)):
+            if isinstance(item, (ZoneRectangle, ExitItem, StairItem, CameraItem, DetectorItem, SmokeDetectorItem, HeatDetectorItem, SpeakerItem, SignItem, AssemblyPointItem, ObstacleItem, DoorItem, OccupantItem)):
 
                 self.selected_item = item
 
@@ -935,6 +937,44 @@ class GraphicsScene(QGraphicsScene):
             return
 
         # -------------------------------------------------
+        # Dynamic Sign Tool (Live Dynamic Evacuation Signage milestone)
+        # -- a point object placed with a single click just like
+        # Camera/Detector/Speaker.
+        # -------------------------------------------------
+
+        if self.current_tool == "sign":
+
+            if self.current_floor.locked:
+                return
+
+            x, y = self.snap(
+                event.scenePos()
+            )
+
+            sign_model = DynamicEvacuationSign(
+                name=f"Sign {self.current_floor.sign_count + 1}",
+                position=(
+                    x / self.GRID_SIZE,
+                    y / self.GRID_SIZE,
+                ),
+                floor_id=self.current_floor.id,
+            )
+
+            self.current_floor.add_sign(
+                sign_model
+            )
+
+            sign_item = SignItem(
+                x,
+                y,
+                model=sign_model,
+            )
+
+            self.addItem(sign_item)
+
+            return
+
+        # -------------------------------------------------
         # Assembly Point Tool
         #
         # A permanent, purely geometric safe-destination marker,
@@ -1509,6 +1549,15 @@ class GraphicsScene(QGraphicsScene):
 
                 elif isinstance(
                     self.selected_item,
+                    SignItem,
+                ):
+
+                    self.current_floor.remove_sign(
+                        self.selected_item.model
+                    )
+
+                elif isinstance(
+                    self.selected_item,
                     AssemblyPointItem,
                 ):
 
@@ -1610,7 +1659,7 @@ class GraphicsScene(QGraphicsScene):
 
             if isinstance(
                 item,
-                (ZoneRectangle, ExitItem, StairItem, CameraItem, DetectorItem, SmokeDetectorItem, HeatDetectorItem, SpeakerItem, AssemblyPointItem, ObstacleItem, DoorItem, OccupantItem),
+                (ZoneRectangle, ExitItem, StairItem, CameraItem, DetectorItem, SmokeDetectorItem, HeatDetectorItem, SpeakerItem, SignItem, AssemblyPointItem, ObstacleItem, DoorItem, OccupantItem),
             ):
                 self.removeItem(item)
 
@@ -1812,6 +1861,23 @@ class GraphicsScene(QGraphicsScene):
             )
 
             self.addItem(speaker_item)
+
+        for sign_obj in self.current_floor.signs:
+
+            x, y = sign_obj.position
+
+            sign_item = SignItem(
+                x * self.GRID_SIZE,
+                y * self.GRID_SIZE,
+                model=sign_obj,
+            )
+
+            sign_item.setFlag(
+                QGraphicsItem.GraphicsItemFlag.ItemIsMovable,
+                movable,
+            )
+
+            self.addItem(sign_item)
 
         for assembly_point_obj in self.current_floor.assembly_points:
 

@@ -10,6 +10,11 @@ from multi_camera_fusion.engine import MultiCameraFusionEngine
 
 from speaker_manager.manager import SpeakerManager
 
+from sign_manager.manager import SignManager
+
+from dynamic_signage.planner import DynamicSignagePlanner
+from dynamic_signage.controller import DynamicSignageController
+
 from live_camera_pipeline.detection_provider import LiveCameraPipelineDetectionProvider
 from live_camera_pipeline.pipeline import LiveCameraPipeline
 
@@ -48,6 +53,8 @@ from evacuation_recommendation.engine import EvacuationRecommendationEngine
 
 from evacuation_guidance.engine import EvacuationGuidanceEngine
 
+from dynamic_signage.provider import SimulationDynamicSignageProvider
+
 from navigation.graph_builder import NavigationGraphGenerator
 
 from live_system.crowd_intelligence_gateway import EngineCrowdIntelligenceGateway
@@ -56,6 +63,7 @@ from live_system.emergency_response_gateway import EngineEmergencyResponseGatewa
 from live_system.trajectory_intelligence_gateway import EngineTrajectoryIntelligenceGateway
 from live_system.evacuation_recommendation_gateway import EngineEvacuationRecommendationGateway
 from live_system.evacuation_guidance_gateway import EngineEvacuationGuidanceGateway
+from live_system.evacuation_signage_gateway import EngineEvacuationSignageGateway
 
 from live_runtime.runtime import LiveRuntime
 
@@ -95,6 +103,9 @@ def build_live_runtime(
     emergency_response_engine: Optional[EmergencyResponseIntelligenceEngine] = None,
     evacuation_recommendation_engine: Optional[EvacuationRecommendationEngine] = None,
     evacuation_guidance_engine: Optional[EvacuationGuidanceEngine] = None,
+    dynamic_signage_planner: Optional[DynamicSignagePlanner] = None,
+    sign_manager: Optional[SignManager] = None,
+    dynamic_signage_provider: Optional[object] = None,
     smoke_detector_reading_provider: Optional[Callable[[float], object]] = None,
     heat_detector_reading_provider: Optional[Callable[[float], object]] = None,
     camera_manager: Optional[CameraManager] = None,
@@ -232,6 +243,18 @@ def build_live_runtime(
         else EvacuationGuidanceEngine(building, navigation_graph)
     )
 
+    # Live Dynamic Evacuation Signage milestone -- exactly ONE
+    # DynamicSignagePlanner for this live session, sharing the SAME
+    # Building every other stage above reads. Reads no occupant/live
+    # state of its own at construction time -- it only ever consumes an
+    # already-computed EvacuationGuidanceSnapshot (and, at compute()
+    # time, this session's own signs, wired via the gateway below once
+    # sign_manager itself has been constructed).
+    dynamic_signage_planner = (
+        dynamic_signage_planner if dynamic_signage_planner is not None
+        else DynamicSignagePlanner(building)
+    )
+
     # =====================================================
     # Digital Twin / asset-management layer (Phase 1/4) -- exactly one
     # CameraManager/SensorManager/MultiCameraFusionEngine/SpeakerManager
@@ -251,6 +274,9 @@ def build_live_runtime(
 
     speaker_manager = speaker_manager if speaker_manager is not None else SpeakerManager()
     speaker_manager.discover_speakers(building)
+
+    sign_manager = sign_manager if sign_manager is not None else SignManager()
+    sign_manager.discover_signs(building)
 
     # =====================================================
     # Camera ingestion (Phase 3) -- wired through CameraManager's own
@@ -341,8 +367,18 @@ def build_live_runtime(
         if building_control_provider is not None else None
     )
 
+    # Live Dynamic Evacuation Signage milestone -- the SAME "None
+    # whenever no provider was supplied" discipline, one collaborator
+    # over. Never a second, independently-constructed controller
+    # anywhere else in this deployment.
+    dynamic_signage_controller = (
+        DynamicSignageController(dynamic_signage_provider)
+        if dynamic_signage_provider is not None else None
+    )
+
     operator_action_gateway = LiveOperatorActionGateway(
         voice_controller=voice_evacuation_controller, control_controller=building_control_controller,
+        signage_controller=dynamic_signage_controller,
     )
 
     # =====================================================
@@ -425,6 +461,7 @@ def build_live_runtime(
         emergency_response_gateway=EngineEmergencyResponseGateway(emergency_response_engine),
         evacuation_recommendation_gateway=EngineEvacuationRecommendationGateway(evacuation_recommendation_engine),
         evacuation_guidance_gateway=EngineEvacuationGuidanceGateway(evacuation_guidance_engine, speaker_manager=speaker_manager),
+        evacuation_signage_gateway=EngineEvacuationSignageGateway(dynamic_signage_planner, sign_manager=sign_manager),
         live_ai_gateway=live_ai_gateway,
         live_advisory_gateway=live_advisory_gateway,
         interval_seconds=interval_seconds,
@@ -458,6 +495,8 @@ def build_live_runtime(
         operator_action_gateway=operator_action_gateway,
         voice_evacuation_controller=voice_evacuation_controller,
         building_control_controller=building_control_controller,
+        sign_manager=sign_manager,
+        dynamic_signage_controller=dynamic_signage_controller,
         live_occupant_manager=live_occupant_manager,
         sensor_fusion_engine=sensor_fusion_engine,
         perception_fusion_coordinator=perception_fusion_coordinator,
@@ -467,6 +506,7 @@ def build_live_runtime(
         emergency_response_engine=emergency_response_engine,
         evacuation_recommendation_engine=evacuation_recommendation_engine,
         evacuation_guidance_engine=evacuation_guidance_engine,
+        dynamic_signage_planner=dynamic_signage_planner,
     )
 
 
@@ -499,6 +539,7 @@ def build_offline_demo_runtime(
 
     kwargs.setdefault("voice_output_provider", SimulationVoiceOutputProvider())
     kwargs.setdefault("building_control_provider", SimulationControlProvider(building, action_executor))
+    kwargs.setdefault("dynamic_signage_provider", SimulationDynamicSignageProvider())
 
     return build_live_runtime(
         building, frame_sources=frame_sources, human_detector=human_detector,

@@ -13,6 +13,7 @@ from models.speaker import Speaker
 from models.assembly_point import AssemblyPoint
 from models.obstacle import Obstacle
 from models.door import Door
+from models.dynamic_sign import DynamicEvacuationSign
 
 
 @dataclass
@@ -71,6 +72,14 @@ class Floor:
     # so it is placed alongside them here rather than in a parallel
     # per-type list scheme.
     speakers: list[Speaker] = field(default_factory=list)
+
+    # Live Dynamic Evacuation Signage milestone -- additive, same
+    # EngineeringAsset-based convention as speakers/cameras/detectors
+    # above. A new list on an existing dataclass: old .syn files simply
+    # have no "signs" key at all, and from_dict() below defaults that to
+    # an empty list, so every pre-existing project keeps loading
+    # unchanged (Phase 2's own backward-compatibility requirement).
+    signs: list[DynamicEvacuationSign] = field(default_factory=list)
 
     assembly_points: list[AssemblyPoint] = field(default_factory=list)
     obstacles: list[Obstacle] = field(default_factory=list)
@@ -200,6 +209,19 @@ class Floor:
             self.speakers.remove(speaker)
 
     # =====================================================
+    # Dynamic Evacuation Signs
+    # =====================================================
+
+    def add_sign(self, sign):
+
+        self.signs.append(sign)
+
+    def remove_sign(self, sign):
+
+        if sign in self.signs:
+            self.signs.remove(sign)
+
+    # =====================================================
     # Assembly Points
     # =====================================================
 
@@ -281,6 +303,11 @@ class Floor:
         return len(self.speakers)
 
     @property
+    def sign_count(self):
+
+        return len(self.signs)
+
+    @property
     def assembly_point_count(self):
 
         return len(self.assembly_points)
@@ -355,6 +382,11 @@ class Floor:
             "speakers": [
                 speaker.to_dict()
                 for speaker in self.speakers
+            ],
+
+            "signs": [
+                sign.to_dict()
+                for sign in self.signs
             ],
 
             "assembly_points": [
@@ -468,6 +500,12 @@ class Floor:
 
             floor.speakers.append(
                 Speaker.from_dict(speaker_data)
+            )
+
+        for sign_data in data.get("signs", []):
+
+            floor.signs.append(
+                DynamicEvacuationSign.from_dict(sign_data)
             )
 
         for assembly_point_data in data.get("assembly_points", []):

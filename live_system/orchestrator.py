@@ -12,6 +12,7 @@ from live_system.emergency_response_gateway import EmergencyResponseGateway
 from live_system.trajectory_intelligence_gateway import TrajectoryIntelligenceGateway
 from live_system.evacuation_recommendation_gateway import EvacuationRecommendationGateway
 from live_system.evacuation_guidance_gateway import EvacuationGuidanceGateway
+from live_system.evacuation_signage_gateway import EvacuationSignageGateway
 from live_system.event_bus import EventBus, EventType
 
 from evacuation_progress.models import EvacuationProgressTrend, ZoneClearanceStatus
@@ -19,6 +20,9 @@ from emergency_response.models import ResponsePriorityLevel
 from trajectory_intelligence.models import AnomalyFlag
 from evacuation_recommendation.models import RecommendationStatus
 from evacuation_guidance.models import GuidanceInconsistency
+
+from dynamic_signage.models import SignageStatus
+
 from live_system.incident_manager import IncidentManager, IncidentState
 from live_system.integration import (
     AIInferenceGateway,
@@ -114,6 +118,7 @@ class LiveOrchestrator:
         emergency_response_gateway: Optional[EmergencyResponseGateway] = None,
         evacuation_recommendation_gateway: Optional[EvacuationRecommendationGateway] = None,
         evacuation_guidance_gateway: Optional[EvacuationGuidanceGateway] = None,
+        evacuation_signage_gateway: Optional[EvacuationSignageGateway] = None,
         ai_inference_gateway: Optional[AIInferenceGateway] = None,
         decision_policy_gateway: Optional[DecisionPolicyGateway] = None,
         command_center_gateway: Optional[CommandCenterGateway] = None,
@@ -136,6 +141,7 @@ class LiveOrchestrator:
         self.emergency_response_gateway = emergency_response_gateway
         self.evacuation_recommendation_gateway = evacuation_recommendation_gateway
         self.evacuation_guidance_gateway = evacuation_guidance_gateway
+        self.evacuation_signage_gateway = evacuation_signage_gateway
         self.ai_inference_gateway = ai_inference_gateway
         self.decision_policy_gateway = decision_policy_gateway
         self.command_center_gateway = command_center_gateway
@@ -240,6 +246,15 @@ class LiveOrchestrator:
         # Mirrors latest_building_state's own forwarding-property style.
 
         return self.state_manager.latest_evacuation_guidance()
+
+    # =====================================================
+
+    @property
+    def latest_dynamic_signage(self):
+
+        # Mirrors latest_building_state's own forwarding-property style.
+
+        return self.state_manager.latest_dynamic_signage()
 
     # =====================================================
 
@@ -516,6 +531,35 @@ class LiveOrchestrator:
 
                 snapshot = self.state_manager.update_evacuation_guidance(evacuation_guidance_snapshot, time)
                 self.event_bus.emit(EventType.EVACUATION_GUIDANCE_UPDATED, evacuation_guidance_snapshot, time)
+
+        if self.evacuation_signage_gateway is not None:
+
+            # Live Dynamic Evacuation Signage milestone -- runs
+            # immediately AFTER evacuation_guidance_gateway (reads this
+            # cycle's fresh snapshot.evacuation_guidance, or the
+            # previous cycle's if this cycle's own computation failed/
+            # was unconfigured) and BEFORE live_advisory_gateway, so
+            # Advisory can display "signage available" the same cycle it
+            # was planned -- "Guidance -> Signage -> Advisory" (this
+            # milestone's own named pipeline). Neither existing stage is
+            # reordered. Converts "how to reach it" into "what each sign
+            # should indicate"; has ZERO execution/dispatch authority
+            # (never reaches DynamicSignageController itself -- see
+            # dynamic_signage/planner.py's own docstring).
+            previous_dynamic_signage = self.state_manager.latest_dynamic_signage()
+
+            dynamic_signage_snapshot = self.evacuation_signage_gateway.compute(
+                time, snapshot.evacuation_guidance,
+            )
+
+            if dynamic_signage_snapshot is not None:
+
+                self._emit_dynamic_signage_transition_events(
+                    previous_dynamic_signage, dynamic_signage_snapshot, time,
+                )
+
+                snapshot = self.state_manager.update_dynamic_signage(dynamic_signage_snapshot, time)
+                self.event_bus.emit(EventType.SIGNAGE_PLAN_UPDATED, dynamic_signage_snapshot, time)
 
         if self.live_advisory_gateway is not None:
 
@@ -898,3 +942,44 @@ class LiveOrchestrator:
 
             if plan.is_valid() and currently_no_speaker and not previously_no_speaker:
                 self.event_bus.emit(EventType.GUIDANCE_DELIVERY_UNAVAILABLE, plan, time)
+
+    # =====================================================
+
+    def _emit_dynamic_signage_transition_events(self, previous, current, time: float) -> None:
+
+        # Live Dynamic Evacuation Signage milestone, Phase 23 -- "do not
+        # emit identical events every cycle," the same transition-gated-
+        # events-over-a-full-recompute convention every sibling live-
+        # intelligence package already established (see
+        # _emit_evacuation_guidance_transition_events's own identical
+        # framing immediately above).
+
+        previous_instructions = previous.instructions if previous is not None else {}
+        previous_conflicts = previous.conflicts if previous is not None else {}
+
+        for sign_id, instruction in current.instructions.items():
+
+            previous_instruction = previous_instructions.get(sign_id)
+            previous_status = previous_instruction.status if previous_instruction is not None else None
+
+            if instruction.status == SignageStatus.ACTIVE and previous_status == SignageStatus.UNAVAILABLE:
+                self.event_bus.emit(EventType.SIGNAGE_RECOVERED, instruction, time)
+
+            elif instruction.status == SignageStatus.UNAVAILABLE and previous_status == SignageStatus.ACTIVE:
+                self.event_bus.emit(EventType.SIGNAGE_UNAVAILABLE, instruction, time)
+
+            elif (
+                instruction.status == SignageStatus.ACTIVE and previous_status == SignageStatus.ACTIVE
+                and instruction.signage_revision != previous_instruction.signage_revision
+            ):
+                self.event_bus.emit(EventType.SIGNAGE_INSTRUCTION_CHANGED, instruction, time)
+
+        for sign_id, conflict in current.conflicts.items():
+
+            if sign_id not in previous_conflicts:
+                self.event_bus.emit(EventType.SIGNAGE_CONFLICT_DETECTED, conflict, time)
+
+        for sign_id in previous_conflicts:
+
+            if sign_id not in current.conflicts:
+                self.event_bus.emit(EventType.SIGNAGE_CONFLICT_CLEARED, previous_conflicts[sign_id], time)
