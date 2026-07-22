@@ -17,6 +17,9 @@ from advisory_system.trajectory_evidence import (
 from advisory_system.evacuation_recommendation_evidence import (
     EvacuationRecommendationEvidence, UNAVAILABLE_EVACUATION_RECOMMENDATION_EVIDENCE, ZoneRecommendationDetail,
 )
+from advisory_system.evacuation_guidance_evidence import (
+    EvacuationGuidanceEvidence, UNAVAILABLE_EVACUATION_GUIDANCE_EVIDENCE, ZoneGuidanceDetail,
+)
 from advisory_system.orchestrator import AdvisoryOrchestrator
 from advisory_system.recommendation_models import AdvisoryInputs, AdvisoryReport
 
@@ -29,6 +32,8 @@ from emergency_response.models import EmergencyResponseSnapshot, ResponsePriorit
 from trajectory_intelligence.models import AnomalyFlag, TrajectoryIntelligenceSnapshot
 
 from evacuation_recommendation.models import EvacuationRecommendationSnapshot, RecommendationStatus
+
+from evacuation_guidance.models import EvacuationGuidanceSnapshot
 
 from live_system.live_ai_gateway import LiveAIPredictionSnapshot
 
@@ -498,6 +503,53 @@ def evacuation_recommendation_evidence_from_snapshot(
 
 
 # =====================================================
+# Live Evacuation Guidance & Zoned Message Planning milestone -- the
+# guidance-evidence counterpart to evacuation_recommendation_evidence_
+# from_snapshot() immediately above, same placement/role. Deliberately
+# does NOT surface VoiceGuidanceMessagePlan/message_text here -- that
+# remains reachable ONLY through command_center.live_operator_action_
+# gateway.LiveOperatorActionGateway's own explicit operator-approval
+# methods, never through Advisory (Phase 15/19's own "Advisory is
+# commander awareness only, never a second broadcast path" boundary).
+# =====================================================
+
+
+def evacuation_guidance_evidence_from_snapshot(
+    snapshot: Optional[EvacuationGuidanceSnapshot],
+) -> EvacuationGuidanceEvidence:
+
+    if snapshot is None:
+        return UNAVAILABLE_EVACUATION_GUIDANCE_EVIDENCE
+
+    with_valid_route = tuple(sorted(zone_id for zone_id, plan in snapshot.zones.items() if plan.is_valid()))
+    without_valid_route = tuple(sorted(zone_id for zone_id, plan in snapshot.zones.items() if not plan.is_valid()))
+    with_inconsistency = tuple(sorted(zone_id for zone_id, plan in snapshot.zones.items() if plan.inconsistencies))
+    missing_speaker_coverage = tuple(sorted(
+        zone_id for zone_id, plan in snapshot.zones.items() if "NO_SPEAKER_COVERAGE" in plan.inconsistencies
+    ))
+
+    flagged_zone_ids = set(with_inconsistency) | set(without_valid_route)
+    zone_details = {
+        zone_id: ZoneGuidanceDetail(
+            route_status=plan.route_status, recommended_exit_id=plan.recommended_exit_id,
+            revision=plan.revision, inconsistencies=plan.inconsistencies,
+        )
+        for zone_id, plan in snapshot.zones.items()
+        if zone_id in flagged_zone_ids
+    }
+
+    return EvacuationGuidanceEvidence(
+        available=True,
+        timestamp=snapshot.timestamp,
+        zone_ids_with_valid_route=with_valid_route,
+        zone_ids_without_valid_route=without_valid_route,
+        zone_ids_with_inconsistency=with_inconsistency,
+        zone_ids_missing_speaker_coverage=missing_speaker_coverage,
+        zone_details=zone_details,
+    )
+
+
+# =====================================================
 
 
 class LiveAdvisoryGateway(Protocol):
@@ -525,6 +577,7 @@ class LiveAdvisoryGateway(Protocol):
         emergency_response_evidence: Optional[EmergencyResponseEvidence] = None,
         trajectory_decision_evidence: Optional[TrajectoryDecisionEvidence] = None,
         evacuation_recommendation_evidence: Optional[EvacuationRecommendationEvidence] = None,
+        evacuation_guidance_evidence: Optional[EvacuationGuidanceEvidence] = None,
     ) -> Optional[AdvisoryReport]: ...
 
 
@@ -578,6 +631,7 @@ class ReplayCompatibleAdvisoryGateway:
         emergency_response_evidence: Optional[EmergencyResponseEvidence] = None,
         trajectory_decision_evidence: Optional[TrajectoryDecisionEvidence] = None,
         evacuation_recommendation_evidence: Optional[EvacuationRecommendationEvidence] = None,
+        evacuation_guidance_evidence: Optional[EvacuationGuidanceEvidence] = None,
     ) -> Optional[AdvisoryReport]:
 
         try:
@@ -609,6 +663,7 @@ class ReplayCompatibleAdvisoryGateway:
                 emergency_response_evidence=emergency_response_evidence,
                 trajectory_decision_evidence=trajectory_decision_evidence,
                 evacuation_recommendation_evidence=evacuation_recommendation_evidence,
+                evacuation_guidance_evidence=evacuation_guidance_evidence,
             )
 
             return self._orchestrator.generate_report(inputs)

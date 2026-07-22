@@ -82,6 +82,18 @@ class EventType(Enum):
     NO_SAFE_EXIT = auto()
     RECOVERY_OF_SAFE_EXIT = auto()
 
+    # Live Evacuation Guidance & Zoned Message Planning milestone --
+    # published by live_system.orchestrator.LiveOrchestrator,
+    # transition-only (fired the cycle a zone's own guidance genuinely
+    # changes/becomes unavailable/recovers, or its delivery coverage
+    # genuinely changes -- never every cycle it merely continues to
+    # hold, mirrors every prior milestone's own established discipline).
+    EVACUATION_GUIDANCE_UPDATED = auto()
+    EVACUATION_ROUTE_CHANGED = auto()
+    EVACUATION_GUIDANCE_UNAVAILABLE = auto()
+    EVACUATION_GUIDANCE_RECOVERED = auto()
+    GUIDANCE_DELIVERY_UNAVAILABLE = auto()
+
 
 @dataclass(frozen=True)
 class Event:

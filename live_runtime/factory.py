@@ -46,6 +46,8 @@ from trajectory_intelligence.engine import TrajectoryIntelligenceEngine
 
 from evacuation_recommendation.engine import EvacuationRecommendationEngine
 
+from evacuation_guidance.engine import EvacuationGuidanceEngine
+
 from navigation.graph_builder import NavigationGraphGenerator
 
 from live_system.crowd_intelligence_gateway import EngineCrowdIntelligenceGateway
@@ -53,6 +55,7 @@ from live_system.evacuation_progress_gateway import EngineEvacuationProgressGate
 from live_system.emergency_response_gateway import EngineEmergencyResponseGateway
 from live_system.trajectory_intelligence_gateway import EngineTrajectoryIntelligenceGateway
 from live_system.evacuation_recommendation_gateway import EngineEvacuationRecommendationGateway
+from live_system.evacuation_guidance_gateway import EngineEvacuationGuidanceGateway
 
 from live_runtime.runtime import LiveRuntime
 
@@ -91,6 +94,7 @@ def build_live_runtime(
     navigation_graph: Optional[object] = None,
     emergency_response_engine: Optional[EmergencyResponseIntelligenceEngine] = None,
     evacuation_recommendation_engine: Optional[EvacuationRecommendationEngine] = None,
+    evacuation_guidance_engine: Optional[EvacuationGuidanceEngine] = None,
     smoke_detector_reading_provider: Optional[Callable[[float], object]] = None,
     heat_detector_reading_provider: Optional[Callable[[float], object]] = None,
     camera_manager: Optional[CameraManager] = None,
@@ -214,6 +218,18 @@ def build_live_runtime(
     evacuation_recommendation_engine = (
         evacuation_recommendation_engine if evacuation_recommendation_engine is not None
         else EvacuationRecommendationEngine(building, navigation_graph, live_occupant_manager)
+    )
+
+    # Live Evacuation Guidance & Zoned Message Planning milestone --
+    # exactly ONE EvacuationGuidanceEngine for this live session,
+    # sharing the SAME navigation_graph. Reads no occupant/live state
+    # of its own at construction time -- it only ever consumes an
+    # already-computed EvacuationRecommendationSnapshot (and, at
+    # compute() time, an optional speaker_manager, wired via the
+    # gateway below once speaker_manager itself has been constructed).
+    evacuation_guidance_engine = (
+        evacuation_guidance_engine if evacuation_guidance_engine is not None
+        else EvacuationGuidanceEngine(building, navigation_graph)
     )
 
     # =====================================================
@@ -408,6 +424,7 @@ def build_live_runtime(
         trajectory_intelligence_gateway=EngineTrajectoryIntelligenceGateway(trajectory_intelligence_engine),
         emergency_response_gateway=EngineEmergencyResponseGateway(emergency_response_engine),
         evacuation_recommendation_gateway=EngineEvacuationRecommendationGateway(evacuation_recommendation_engine),
+        evacuation_guidance_gateway=EngineEvacuationGuidanceGateway(evacuation_guidance_engine, speaker_manager=speaker_manager),
         live_ai_gateway=live_ai_gateway,
         live_advisory_gateway=live_advisory_gateway,
         interval_seconds=interval_seconds,
@@ -449,6 +466,7 @@ def build_live_runtime(
         trajectory_intelligence_engine=trajectory_intelligence_engine,
         emergency_response_engine=emergency_response_engine,
         evacuation_recommendation_engine=evacuation_recommendation_engine,
+        evacuation_guidance_engine=evacuation_guidance_engine,
     )
 
 

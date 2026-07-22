@@ -11,12 +11,14 @@ from live_system.evacuation_progress_gateway import EvacuationProgressGateway
 from live_system.emergency_response_gateway import EmergencyResponseGateway
 from live_system.trajectory_intelligence_gateway import TrajectoryIntelligenceGateway
 from live_system.evacuation_recommendation_gateway import EvacuationRecommendationGateway
+from live_system.evacuation_guidance_gateway import EvacuationGuidanceGateway
 from live_system.event_bus import EventBus, EventType
 
 from evacuation_progress.models import EvacuationProgressTrend, ZoneClearanceStatus
 from emergency_response.models import ResponsePriorityLevel
 from trajectory_intelligence.models import AnomalyFlag
 from evacuation_recommendation.models import RecommendationStatus
+from evacuation_guidance.models import GuidanceInconsistency
 from live_system.incident_manager import IncidentManager, IncidentState
 from live_system.integration import (
     AIInferenceGateway,
@@ -34,6 +36,7 @@ from live_system.live_advisory_gateway import (
     evacuation_progress_evidence_from_snapshot,
     trajectory_decision_evidence_from_snapshot,
     evacuation_recommendation_evidence_from_snapshot,
+    evacuation_guidance_evidence_from_snapshot,
 )
 from live_system.sensor_registry import SensorRegistry
 from live_system.state_manager import LiveBuildingSnapshot, StateManager
@@ -110,6 +113,7 @@ class LiveOrchestrator:
         trajectory_intelligence_gateway: Optional[TrajectoryIntelligenceGateway] = None,
         emergency_response_gateway: Optional[EmergencyResponseGateway] = None,
         evacuation_recommendation_gateway: Optional[EvacuationRecommendationGateway] = None,
+        evacuation_guidance_gateway: Optional[EvacuationGuidanceGateway] = None,
         ai_inference_gateway: Optional[AIInferenceGateway] = None,
         decision_policy_gateway: Optional[DecisionPolicyGateway] = None,
         command_center_gateway: Optional[CommandCenterGateway] = None,
@@ -131,6 +135,7 @@ class LiveOrchestrator:
         self.trajectory_intelligence_gateway = trajectory_intelligence_gateway
         self.emergency_response_gateway = emergency_response_gateway
         self.evacuation_recommendation_gateway = evacuation_recommendation_gateway
+        self.evacuation_guidance_gateway = evacuation_guidance_gateway
         self.ai_inference_gateway = ai_inference_gateway
         self.decision_policy_gateway = decision_policy_gateway
         self.command_center_gateway = command_center_gateway
@@ -226,6 +231,15 @@ class LiveOrchestrator:
         # Mirrors latest_building_state's own forwarding-property style.
 
         return self.state_manager.latest_evacuation_recommendation()
+
+    # =====================================================
+
+    @property
+    def latest_evacuation_guidance(self):
+
+        # Mirrors latest_building_state's own forwarding-property style.
+
+        return self.state_manager.latest_evacuation_guidance()
 
     # =====================================================
 
@@ -474,6 +488,35 @@ class LiveOrchestrator:
                 snapshot = self.state_manager.update_evacuation_recommendation(evacuation_recommendation_snapshot, time)
                 self.event_bus.emit(EventType.EVACUATION_RECOMMENDATION_UPDATED, evacuation_recommendation_snapshot, time)
 
+        if self.evacuation_guidance_gateway is not None:
+
+            # Live Evacuation Guidance & Zoned Message Planning milestone
+            # -- runs immediately AFTER evacuation_recommendation_gateway
+            # (reads this cycle's fresh snapshot.evacuation_recommendation,
+            # or the previous cycle's if this cycle's own computation
+            # failed/was unconfigured) and BEFORE live_advisory_gateway,
+            # so Advisory can read this cycle's guidance the same cycle
+            # it was computed -- "Recommendation -> Guidance -> Advisory"
+            # (this milestone's own named pipeline). Neither existing
+            # stage is reordered. Converts "which exit" into "how to
+            # reach it" + a PLANNED-ONLY voice message candidate; has
+            # ZERO execution authority (never reaches VoiceEvacuationController
+            # itself -- see evacuation_guidance/engine.py's own docstring).
+            previous_evacuation_guidance = self.state_manager.latest_evacuation_guidance()
+
+            evacuation_guidance_snapshot = self.evacuation_guidance_gateway.compute(
+                time, snapshot.evacuation_recommendation, snapshot.building_state,
+            )
+
+            if evacuation_guidance_snapshot is not None:
+
+                self._emit_evacuation_guidance_transition_events(
+                    previous_evacuation_guidance, evacuation_guidance_snapshot, time,
+                )
+
+                snapshot = self.state_manager.update_evacuation_guidance(evacuation_guidance_snapshot, time)
+                self.event_bus.emit(EventType.EVACUATION_GUIDANCE_UPDATED, evacuation_guidance_snapshot, time)
+
         if self.live_advisory_gateway is not None:
 
             ai_evidence = ai_decision_evidence_from_prediction_snapshot(snapshot.ai_prediction_snapshot)
@@ -507,10 +550,15 @@ class LiveOrchestrator:
                 snapshot.evacuation_recommendation,
             )
 
+            # Live Evacuation Guidance & Zoned Message Planning
+            # milestone -- the SAME pattern, one field over.
+            evacuation_guidance_evidence = evacuation_guidance_evidence_from_snapshot(snapshot.evacuation_guidance)
+
             advisory_report = self.live_advisory_gateway.generate(
                 ai_evidence, time, crowd_evidence, evacuation_progress_evidence, emergency_response_evidence,
                 trajectory_decision_evidence=trajectory_decision_evidence,
                 evacuation_recommendation_evidence=evacuation_recommendation_evidence,
+                evacuation_guidance_evidence=evacuation_guidance_evidence,
             )
 
             # None means "no update this cycle" -- covers BOTH "not
@@ -813,3 +861,40 @@ class LiveOrchestrator:
 
         if set(current.safe_exit_ids) != previous_safe_exit_ids:
             self.event_bus.emit(EventType.SAFE_EXIT_CHANGED, current.safe_exit_ids, time)
+
+    # =====================================================
+
+    def _emit_evacuation_guidance_transition_events(self, previous, current, time: float) -> None:
+
+        # Live Evacuation Guidance & Zoned Message Planning milestone,
+        # Phase 11/24 -- "emit change only when the effective guidance
+        # changes" / "do not spam identical events every cycle," the
+        # SAME transition-gated-events-over-a-full-recompute convention
+        # every sibling live-intelligence package already established
+        # (see _emit_evacuation_recommendation_transition_events's own
+        # identical framing immediately above).
+
+        previous_zones = previous.zones if previous is not None else {}
+
+        for zone_id, plan in current.zones.items():
+
+            previous_plan = previous_zones.get(zone_id)
+            previous_valid = previous_plan.is_valid() if previous_plan is not None else None
+
+            if plan.is_valid() and previous_valid is False:
+                self.event_bus.emit(EventType.EVACUATION_GUIDANCE_RECOVERED, plan, time)
+
+            elif not plan.is_valid() and previous_valid is True:
+                self.event_bus.emit(EventType.EVACUATION_GUIDANCE_UNAVAILABLE, plan, time)
+
+            elif plan.is_valid() and previous_valid and plan.revision != previous_plan.revision:
+                self.event_bus.emit(EventType.EVACUATION_ROUTE_CHANGED, plan, time)
+
+            currently_no_speaker = GuidanceInconsistency.NO_SPEAKER_COVERAGE in plan.inconsistencies
+            previously_no_speaker = (
+                GuidanceInconsistency.NO_SPEAKER_COVERAGE in previous_plan.inconsistencies
+                if previous_plan is not None else False
+            )
+
+            if plan.is_valid() and currently_no_speaker and not previously_no_speaker:
+                self.event_bus.emit(EventType.GUIDANCE_DELIVERY_UNAVAILABLE, plan, time)

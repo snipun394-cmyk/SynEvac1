@@ -29,6 +29,8 @@ from trajectory_intelligence.models import TrajectoryIntelligenceSnapshot
 
 from evacuation_recommendation.models import EvacuationRecommendationSnapshot
 
+from evacuation_guidance.models import EvacuationGuidanceSnapshot
+
 from live_system.live_ai_gateway import LiveAIPredictionSnapshot
 
 
@@ -153,6 +155,11 @@ class LiveBuildingSnapshot:
     # configured and has produced at least one snapshot.
     evacuation_recommendation: Optional[EvacuationRecommendationSnapshot] = None
 
+    # Live Evacuation Guidance & Zoned Message Planning milestone -- the
+    # canonical live_system.evacuation_guidance_gateway output, mirroring
+    # evacuation_recommendation/trajectory_intelligence above exactly.
+    evacuation_guidance: Optional[EvacuationGuidanceSnapshot] = None
+
     # component -> the timestamp its own field was last actually
     # updated -- distinct from `timestamp` (this snapshot's own
     # as-of time) because a cycle in which, say, AI Inference is not
@@ -262,6 +269,7 @@ class LiveBuildingSnapshot:
             "emergency_response": self.emergency_response,
             "trajectory_intelligence": self.trajectory_intelligence,
             "evacuation_recommendation": self.evacuation_recommendation,
+            "evacuation_guidance": self.evacuation_guidance,
             "component_timestamps": self.component_timestamps,
         }
         current.update(changes)
@@ -516,6 +524,24 @@ class StateManager:
             timestamp=time,
             evacuation_recommendation=evacuation_recommendation,
             component_timestamps=self._stamp("evacuation_recommendation", time),
+        )
+
+    # =====================================================
+
+    def latest_evacuation_guidance(self) -> Optional[EvacuationGuidanceSnapshot]:
+
+        return self._snapshot.evacuation_guidance
+
+    # =====================================================
+
+    def update_evacuation_guidance(
+        self, evacuation_guidance: EvacuationGuidanceSnapshot, time: float,
+    ) -> LiveBuildingSnapshot:
+
+        return self._replace(
+            timestamp=time,
+            evacuation_guidance=evacuation_guidance,
+            component_timestamps=self._stamp("evacuation_guidance", time),
         )
 
     # =====================================================

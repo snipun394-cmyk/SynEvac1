@@ -117,6 +117,11 @@ class CommandCenterSnapshot:
     # mirroring trajectory_intelligence's own convention exactly.
     evacuation_recommendation: Optional[Any] = None
 
+    # Live Evacuation Guidance & Zoned Message Planning milestone --
+    # evacuation_guidance.models.EvacuationGuidanceSnapshot, mirroring
+    # evacuation_recommendation's own convention exactly.
+    evacuation_guidance: Optional[Any] = None
+
     # Phase 14 -- per-component as-of timestamps, honestly reported.
     # None means that component has never been populated at all (not
     # "populated at time 0.0"). Always None/CURRENT in Replay mode,
@@ -129,6 +134,7 @@ class CommandCenterSnapshot:
     emergency_response_timestamp: Optional[float] = None
     trajectory_intelligence_timestamp: Optional[float] = None
     evacuation_recommendation_timestamp: Optional[float] = None
+    evacuation_guidance_timestamp: Optional[float] = None
     consistency: SnapshotConsistency = SnapshotConsistency.CURRENT
 
     # Phase 15 -- a bounded, most-recent-last list of human-readable

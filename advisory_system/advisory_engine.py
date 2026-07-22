@@ -1431,6 +1431,13 @@ def build_commander_dashboard(
     recommendation_evidence = inputs.evacuation_recommendation_evidence
     recommendation_available = recommendation_evidence is not None and recommendation_evidence.available
 
+    # Live Evacuation Guidance & Zoned Message Planning milestone --
+    # also deliberately NOT folded into rec_confidence (commander
+    # AWARENESS only, same reasoning as recommendation_evidence
+    # immediately above).
+    guidance_evidence = inputs.evacuation_guidance_evidence
+    guidance_available = guidance_evidence is not None and guidance_evidence.available
+
     rec_confidence = combine_confidence(
         *[entry.confidence for entry in civilian_announcements],
         *[entry.confidence for entry in building_recommendations],
@@ -1488,6 +1495,12 @@ def build_commander_dashboard(
         ),
         zones_without_safe_exit_ids=(
             recommendation_evidence.zone_ids_without_safe_exit if recommendation_available else ()
+        ),
+        zones_with_valid_guidance_route_ids=(
+            guidance_evidence.zone_ids_with_valid_route if guidance_available else ()
+        ),
+        zones_with_guidance_inconsistency_ids=(
+            guidance_evidence.zone_ids_with_inconsistency if guidance_available else ()
         ),
     )
 

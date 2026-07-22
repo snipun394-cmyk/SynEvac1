@@ -53,6 +53,7 @@ class LiveRuntime:
         trajectory_intelligence_engine=None,
         emergency_response_engine=None,
         evacuation_recommendation_engine=None,
+        evacuation_guidance_engine=None,
     ):
 
         # Digital Twin / asset-management layer -- Phase 4's shared-
@@ -134,6 +135,12 @@ class LiveRuntime:
         # session, same untyped-attribute discipline as every other
         # collaborator on this class.
         self.evacuation_recommendation_engine = evacuation_recommendation_engine
+
+        # Live Evacuation Guidance & Zoned Message Planning milestone --
+        # exactly ONE EvacuationGuidanceEngine for this live session,
+        # same untyped-attribute discipline as every other collaborator
+        # on this class.
+        self.evacuation_guidance_engine = evacuation_guidance_engine
 
         self._running = False
 

@@ -4,6 +4,8 @@ from advisory_system.recommendation_models import CivilianAnnouncement
 
 from decision_policy.zone_policy import EVACUATE_IMMEDIATELY, SHELTER_IN_PLACE, WAIT
 
+from evacuation_guidance.models import VoiceGuidanceMessagePlan
+
 from voice_evacuation.models import VoiceMessage, VoiceMessageType, priority_for_message_type
 
 
@@ -89,4 +91,43 @@ def civilian_announcements_to_voice_messages(
             announcement, timestamp, zone_action=zone_actions.get(announcement.zone_id),
         )
         for announcement in announcements
+    )
+
+
+# =====================================================
+# Live Evacuation Guidance & Zoned Message Planning milestone, Phase 15
+# -- the SECOND, separately-labelled voice-message source this
+# milestone's own required "explicit architecture decision" resolves
+# on: guidance messages are NEVER merged into CivilianAnnouncement.
+# announcement text, and never broadcast independently either. They
+# become their own VoiceMessage, always VoiceMessageType.ROUTE_GUIDANCE
+# (priority 50 -- see voice_evacuation.models._PRIORITY_BY_TYPE),
+# reaching VoiceEvacuationController through the EXACT SAME operator-
+# approval seam a civilian announcement already does (command_center.
+# live_operator_action_gateway.LiveOperatorActionGateway.
+# approve_guidance_message()). "One final operator-visible message per
+# zone" is then enforced by VoiceEvacuationController's OWN pre-existing
+# per-zone priority supersession (voice_evacuation/controller.py's
+# _route_to_zone()) -- an EVACUATE_IMMEDIATELY civilian announcement
+# (priority 90) for the same zone always outranks and supersedes a
+# ROUTE_GUIDANCE message (priority 50), never the reverse, without this
+# module needing any reconciliation logic of its own.
+# =====================================================
+
+
+def guidance_plan_to_voice_message(plan: VoiceGuidanceMessagePlan, timestamp: float) -> VoiceMessage:
+
+    # message_text is carried through VERBATIM from evacuation_guidance.
+    # message_planner.build_voice_message_text() -- this function never
+    # generates, rewrites, or paraphrases wording of its own, mirroring
+    # civilian_announcement_to_voice_message()'s own identical discipline.
+
+    return VoiceMessage(
+        timestamp=timestamp,
+        target_zone_ids=(plan.zone_id,),
+        message_text=plan.message_text,
+        message_type=VoiceMessageType.ROUTE_GUIDANCE,
+        priority=priority_for_message_type(VoiceMessageType.ROUTE_GUIDANCE),
+        source_recommendation_id=f"{plan.zone_id}@guidance-rev-{plan.guidance_revision}",
+        confidence=None,
     )

@@ -12,6 +12,7 @@ from advisory_system.evacuation_progress_evidence import EvacuationProgressEvide
 from advisory_system.emergency_response_evidence import EmergencyResponseEvidence
 from advisory_system.trajectory_evidence import TrajectoryDecisionEvidence
 from advisory_system.evacuation_recommendation_evidence import EvacuationRecommendationEvidence
+from advisory_system.evacuation_guidance_evidence import EvacuationGuidanceEvidence
 
 
 # =====================================================
@@ -134,6 +135,11 @@ class AdvisoryInputs:
     # additive, mirrors trajectory_decision_evidence exactly. None
     # means "no recommendation evidence this cycle."
     evacuation_recommendation_evidence: Optional[EvacuationRecommendationEvidence] = None
+
+    # Live Evacuation Guidance & Zoned Message Planning milestone --
+    # additive, mirrors evacuation_recommendation_evidence exactly. None
+    # means "no guidance evidence this cycle."
+    evacuation_guidance_evidence: Optional[EvacuationGuidanceEvidence] = None
 
     # =====================================================
 
@@ -403,6 +409,12 @@ class IncidentCommanderDashboard:
     zones_with_evacuation_recommendation_ids: Tuple[str, ...] = field(default_factory=tuple)
     zones_without_safe_exit_ids: Tuple[str, ...] = field(default_factory=tuple)
 
+    # Live Evacuation Guidance & Zoned Message Planning milestone --
+    # additive, mirrors the zones_with_evacuation_recommendation_ids/
+    # zones_without_safe_exit_ids fields immediately above exactly.
+    zones_with_valid_guidance_route_ids: Tuple[str, ...] = field(default_factory=tuple)
+    zones_with_guidance_inconsistency_ids: Tuple[str, ...] = field(default_factory=tuple)
+
     def to_dict(self) -> Dict[str, Any]:
 
         return {
@@ -437,6 +449,8 @@ class IncidentCommanderDashboard:
             "movement_hazardous_zone_ids": list(self.movement_hazardous_zone_ids),
             "zones_with_evacuation_recommendation_ids": list(self.zones_with_evacuation_recommendation_ids),
             "zones_without_safe_exit_ids": list(self.zones_without_safe_exit_ids),
+            "zones_with_valid_guidance_route_ids": list(self.zones_with_valid_guidance_route_ids),
+            "zones_with_guidance_inconsistency_ids": list(self.zones_with_guidance_inconsistency_ids),
         }
 
 

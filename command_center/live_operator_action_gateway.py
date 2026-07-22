@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Tuple
 
-from voice_evacuation.adapter import civilian_announcement_to_voice_message
+from voice_evacuation.adapter import civilian_announcement_to_voice_message, guidance_plan_to_voice_message
 from voice_evacuation.controller import VoiceEvacuationController
 from voice_evacuation.models import BroadcastInstruction, BroadcastStatus
 
@@ -144,6 +144,21 @@ class LiveOperatorActionGateway:
         self._voice_decisions: Dict[str, str] = {}
         self._voice_instructions: Dict[str, Tuple[BroadcastInstruction, ...]] = {}
         self._voice_audit_log: List[OperatorActionRecord] = []
+
+        # Live Evacuation Guidance & Zoned Message Planning milestone,
+        # Phase 15/16/19 -- a SEPARATE, identically-shaped decision/
+        # instruction store for guidance-derived messages, keyed on
+        # zone_id + guidance_revision (never message text -- Phase 12's
+        # own revision already IS the deterministic content identity).
+        # A new revision always starts fresh as RECOMMENDED; the OLD
+        # revision's own key/decision/instructions are never deleted
+        # (Phase 16's own "sent old guidance remains in history, unsent
+        # old guidance becomes stale" requirement) -- superseding a
+        # message an operator never approved simply means its own key
+        # is left behind at whatever RECOMMENDED/REJECTED state it was
+        # in, no longer reachable from the CURRENT revision's own key.
+        self._guidance_decisions: Dict[str, str] = {}
+        self._guidance_instructions: Dict[str, Tuple[BroadcastInstruction, ...]] = {}
 
         # source_recommendation_id values an operator has explicitly
         # rejected (Phase 4/11 item 8). REJECTED is a TERMINAL status
@@ -313,6 +328,101 @@ class LiveOperatorActionGateway:
             return ()
 
         return self._voice_controller.broadcast_log.all_instructions()
+
+    # =====================================================
+    # Live Evacuation Guidance & Zoned Message Planning milestone,
+    # Phase 14/19 -- the guidance-message counterpart to the civilian-
+    # announcement workflow immediately above, same shape, same
+    # requirement ("every method here is called from exactly one
+    # place -- an operator's own explicit click"). Reuses the SAME
+    # self._voice_controller (never a second controller) -- "one final
+    # operator-visible message per zone" is enforced by that
+    # controller's own pre-existing per-zone priority supersession
+    # (see voice_evacuation/adapter.py's own guidance_plan_to_voice_
+    # message() docstring), not by any new logic here.
+    # =====================================================
+
+    def _guidance_key(self, plan) -> str:
+
+        return f"{plan.zone_id}::{plan.guidance_revision}"
+
+    # =====================================================
+
+    def guidance_recommendation_status(self, plan) -> str:
+
+        # Pure derivation, safe to call every render cycle -- never
+        # mutates state, never touches the controller/provider. Mirrors
+        # voice_recommendation_status() exactly.
+
+        key = self._guidance_key(plan)
+        decision = self._guidance_decisions.get(key)
+
+        if decision is None:
+            return VOICE_STATUS_RECOMMENDED
+
+        if decision == VOICE_STATUS_REJECTED:
+            return VOICE_STATUS_REJECTED
+
+        instructions = self._guidance_instructions.get(key, ())
+
+        if not instructions:
+            return VOICE_STATUS_APPROVED
+
+        relevant = tuple(i for i in instructions if i.target_zone_id == plan.zone_id)
+        latest = relevant[-1] if relevant else instructions[-1]
+
+        return _VOICE_STATUS_BY_BROADCAST_STATUS.get(latest.status, VOICE_STATUS_APPROVED)
+
+    # =====================================================
+
+    def approve_guidance_message(self, plan, time: float) -> Tuple[BroadcastInstruction, ...]:
+
+        if self._voice_controller is None:
+
+            raise OperatorActionUnavailable(
+                "No voice output provider is configured -- cannot approve/send this guidance message."
+            )
+
+        key = self._guidance_key(plan)
+
+        if self._guidance_decisions.get(key) == VOICE_STATUS_APPROVED:
+
+            # Duplicate click / re-approving the identical, already-
+            # approved revision -- never re-broadcast.
+            return self._guidance_instructions.get(key, ())
+
+        message = guidance_plan_to_voice_message(plan, timestamp=time)
+        instructions = self._voice_controller.broadcast(message, time)
+
+        self._guidance_decisions[key] = VOICE_STATUS_APPROVED
+        self._guidance_instructions[key] = instructions
+
+        self._voice_audit_log.append(
+            OperatorActionRecord(
+                action="APPROVE_GUIDANCE_MESSAGE", zone_id=plan.zone_id,
+                actor=OPERATOR_ACTOR, time=time, detail=plan.message_text,
+            )
+        )
+
+        return instructions
+
+    # =====================================================
+
+    def reject_guidance_message(self, plan, time: float) -> None:
+
+        # Rejecting never requires a provider -- purely "the operator
+        # chooses not to approve this," never touches the controller/
+        # output provider at all.
+
+        key = self._guidance_key(plan)
+        self._guidance_decisions[key] = VOICE_STATUS_REJECTED
+
+        self._voice_audit_log.append(
+            OperatorActionRecord(
+                action="REJECT_GUIDANCE_MESSAGE", zone_id=plan.zone_id,
+                actor=OPERATOR_ACTOR, time=time, detail=plan.message_text,
+            )
+        )
 
     # =====================================================
     # Building Control operator workflow (Phase 4)
