@@ -64,6 +64,7 @@ from live_system.trajectory_intelligence_gateway import EngineTrajectoryIntellig
 from live_system.evacuation_recommendation_gateway import EngineEvacuationRecommendationGateway
 from live_system.evacuation_guidance_gateway import EngineEvacuationGuidanceGateway
 from live_system.evacuation_signage_gateway import EngineEvacuationSignageGateway
+from live_system.facp_gateway import EngineFACPGateway
 
 from live_runtime.runtime import LiveRuntime
 
@@ -319,19 +320,32 @@ def build_live_runtime(
             return fusion_engine.fuse(detections, time)
 
     # =====================================================
-    # FACP (Phase 1 item 5/8) -- read-only passthrough only. This
-    # factory never calls facp.evaluate()/acknowledge()/silence()/
-    # reset() itself -- exactly as building_state_gateway.py's own
-    # facp_snapshot_provider contract requires ("the estimator/gateway
-    # never call acknowledge()/silence()/reset()/evaluate() themselves");
-    # feeding it real detector condition reports each cycle is a
-    # separate, already-existing SensorManager+FACP integration concern
-    # this milestone does not reinvent, left to the caller (or a future
-    # milestone) to wire, the same way Designer's own
-    # BuildingStateDebugRunner does it today.
+    # FACP -- building_state_gateway.py's own facp_snapshot_provider
+    # contract remains strictly read-only ("the estimator/gateway never
+    # call acknowledge()/silence()/reset()/evaluate() themselves"), and
+    # still holds unchanged here. Digital Twin Asset -> Zone Assignment
+    # & Live FACP Runtime milestone -- what changed is that this
+    # factory now ALSO wires facp_gateway (live_system.facp_gateway.
+    # EngineFACPGateway) into LiveOrchestrator, which is the seam that
+    # actually calls facp.evaluate() once per cycle, BEFORE building_
+    # state_gateway.collect() reads current_snapshot() -- previously
+    # nothing in production ever called evaluate() at all, only
+    # Designer's own BuildingStateDebugRunner did (debug-only). Reuses
+    # the SAME facp/sensor_manager instances already held above -- never
+    # a second FACP, never a second SensorManager. None whenever no
+    # facp was supplied (NO_PROVIDER-equivalent) -- never fabricated.
     # =====================================================
 
     facp_snapshot_provider = (lambda time: facp.current_snapshot(time)) if facp is not None else None
+
+    facp_gateway = (
+        EngineFACPGateway(
+            facp, sensor_manager,
+            smoke_detector_reading_provider=smoke_detector_reading_provider,
+            heat_detector_reading_provider=heat_detector_reading_provider,
+        )
+        if facp is not None else None
+    )
 
     # =====================================================
     # Sensor status (bookkeeping only -- SensorManager.all_statuses()
@@ -454,6 +468,7 @@ def build_live_runtime(
 
     orchestrator = LiveOrchestrator(
         event_bus=event_bus,
+        facp_gateway=facp_gateway,
         building_state_gateway=building_state_gateway,
         crowd_intelligence_gateway=EngineCrowdIntelligenceGateway(crowd_intelligence_engine),
         evacuation_progress_gateway=EngineEvacuationProgressGateway(evacuation_progress_engine),

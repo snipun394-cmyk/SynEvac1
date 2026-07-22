@@ -40,9 +40,45 @@ def validate_building_authoring(building) -> ValidationReport:
         for stair in floor.stairs:
             _check_stair(report, floor, stair)
 
+        for speaker in floor.speakers:
+            _check_zone_assignment(report, floor, speaker, "Speaker", "speaker_missing_zone")
+
+        for smoke_detector in floor.smoke_detectors:
+            _check_zone_assignment(report, floor, smoke_detector, "Smoke Detector", "smoke_detector_missing_zone")
+
+        for heat_detector in floor.heat_detectors:
+            _check_zone_assignment(report, floor, heat_detector, "Heat Detector", "heat_detector_missing_zone")
+
     _detect_duplicate_stairs(report, building)
 
     return report
+
+
+# =====================================================
+# Digital Twin Asset -> Zone Assignment & Live FACP Runtime milestone,
+# Phase 5 -- reuses this module's own existing ValidationReport
+# mechanism rather than a new framework. Deliberately WARNING, not
+# ERROR, unlike Door/Exit/Stair above: an unassigned Speaker/Smoke/Heat
+# Detector still exists and still functions as a device (a detector
+# still computes its own DetectorState, a speaker is still a real
+# asset) -- only its ZONE-SCOPED behavior (voice broadcast routing,
+# FACP zone-consistency) is degraded, never a structurally broken
+# Navigation Graph the way an unconnected Door/Exit/Stair is.
+# =====================================================
+
+def _check_zone_assignment(report, floor, asset, label, code):
+
+    if not asset.zone_ids:
+
+        report.add(
+            code,
+            f"{label} '{asset.name}' on '{floor.name}' has no zone assigned -- "
+            f"it will not participate in zone-scoped voice evacuation/FACP "
+            f"consistency checks until one is configured.",
+            severity=ValidationReport.WARNING,
+            object_id=asset.id,
+            floor_id=floor.id,
+        )
 
 
 # =====================================================

@@ -13,6 +13,7 @@ from live_system.trajectory_intelligence_gateway import TrajectoryIntelligenceGa
 from live_system.evacuation_recommendation_gateway import EvacuationRecommendationGateway
 from live_system.evacuation_guidance_gateway import EvacuationGuidanceGateway
 from live_system.evacuation_signage_gateway import EvacuationSignageGateway
+from live_system.facp_gateway import FACPGateway
 from live_system.event_bus import EventBus, EventType
 
 from evacuation_progress.models import EvacuationProgressTrend, ZoneClearanceStatus
@@ -109,6 +110,7 @@ class LiveOrchestrator:
         state_manager: Optional[StateManager] = None,
         incident_manager: Optional[IncidentManager] = None,
         perception_gateway: Optional[PerceptionGateway] = None,
+        facp_gateway: Optional[FACPGateway] = None,
         building_state_gateway: Optional[BuildingStateGateway] = None,
         live_ai_gateway: Optional[LiveAIInferenceGateway] = None,
         live_advisory_gateway: Optional[LiveAdvisoryGateway] = None,
@@ -132,6 +134,7 @@ class LiveOrchestrator:
         self.incident_manager = incident_manager if incident_manager is not None else IncidentManager()
 
         self.perception_gateway = perception_gateway
+        self.facp_gateway = facp_gateway
         self.building_state_gateway = building_state_gateway
         self.live_ai_gateway = live_ai_gateway
         self.live_advisory_gateway = live_advisory_gateway
@@ -350,6 +353,24 @@ class LiveOrchestrator:
             self.event_bus.emit(EventType.HAZARD_UPDATED, observation, time)
 
             self._maybe_activate_alarm(observation, time)
+
+        if self.facp_gateway is not None:
+
+            # Digital Twin Asset -> Zone Assignment & Live FACP Runtime
+            # milestone -- runs BEFORE building_state_gateway,
+            # deliberately: EstimatorBuildingStateGateway's own
+            # facp_snapshot_provider only ever READS facp.current_
+            # snapshot(time) (see live_system/building_state_gateway.py's
+            # own module docstring -- "the estimator/gateway never call
+            # acknowledge()/silence()/reset()/evaluate() themselves"),
+            # so whatever this cycle's detector conditions are must
+            # already be evaluate()'d into the panel before that read
+            # happens, or BuildingState.facp_status would always lag
+            # one cycle behind. This is the ONLY call to facp.evaluate()
+            # in the production live cycle -- never acknowledge()/
+            # silence()/reset(), which remain explicit operator actions
+            # reached through a different seam entirely (Phase 10).
+            self.facp_gateway.evaluate(time)
 
         if self.building_state_gateway is not None:
 

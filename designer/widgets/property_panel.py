@@ -1,3 +1,5 @@
+from PyQt6.QtCore import Qt
+
 from PyQt6.QtWidgets import (
     QApplication,
     QWidget,
@@ -7,6 +9,8 @@ from PyQt6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QLineEdit,
+    QListWidget,
+    QListWidgetItem,
     QPushButton,
 )
 
@@ -480,6 +484,23 @@ class PropertyPanel(QWidget):
 
         self.smoke_detector_state = QLabel("-")
 
+        # Digital Twin Asset -> Zone Assignment & Live FACP Runtime
+        # milestone -- Zone.contains() auto-assigns this on placement
+        # (see GraphicsScene._find_unambiguous_zone_at()); this combo is
+        # both the visible confirmation of that and the manual override/
+        # reassignment path, same "Assigned Zone" convention Camera/
+        # DynamicSign already established (single zone -- a point
+        # detector's zone_ids represents the one physical zone containing
+        # it, not a multi-zone service-coverage concept; see this
+        # milestone's own architecture doc for the full reasoning).
+        self.smoke_detector_zone = QComboBox()
+
+        self.smoke_detector_zone_warning = QLabel(
+            "Zone assignment required for live operation."
+        )
+        self.smoke_detector_zone_warning.setWordWrap(True)
+        self.smoke_detector_zone_warning.setStyleSheet("color: #b45309;")
+
         layout.addRow("Position X (m)", self.smoke_detector_x)
         layout.addRow("Position Y (m)", self.smoke_detector_y)
 
@@ -494,6 +515,9 @@ class PropertyPanel(QWidget):
         layout.addRow("Test Smoke Level (0-1)", self.smoke_detector_test_level)
         layout.addRow("Current State", self.smoke_detector_state)
 
+        layout.addRow("Assigned Zone", self.smoke_detector_zone)
+        layout.addRow("", self.smoke_detector_zone_warning)
+
         self.smoke_detector_fields = [
             self.smoke_detector_x,
             self.smoke_detector_y,
@@ -504,6 +528,8 @@ class PropertyPanel(QWidget):
             self.smoke_detector_installation_date,
             self.smoke_detector_test_level,
             self.smoke_detector_state,
+            self.smoke_detector_zone,
+            self.smoke_detector_zone_warning,
         ]
 
         # =====================================================
@@ -534,6 +560,16 @@ class PropertyPanel(QWidget):
 
         self.heat_detector_state = QLabel("-")
 
+        # Same auto-assignment/manual-override convention as Smoke
+        # Detector immediately above.
+        self.heat_detector_zone = QComboBox()
+
+        self.heat_detector_zone_warning = QLabel(
+            "Zone assignment required for live operation."
+        )
+        self.heat_detector_zone_warning.setWordWrap(True)
+        self.heat_detector_zone_warning.setStyleSheet("color: #b45309;")
+
         layout.addRow("Position X (m)", self.heat_detector_x)
         layout.addRow("Position Y (m)", self.heat_detector_y)
 
@@ -548,6 +584,9 @@ class PropertyPanel(QWidget):
         layout.addRow("Test Temperature (°C)", self.heat_detector_test_temperature)
         layout.addRow("Current State", self.heat_detector_state)
 
+        layout.addRow("Assigned Zone", self.heat_detector_zone)
+        layout.addRow("", self.heat_detector_zone_warning)
+
         self.heat_detector_fields = [
             self.heat_detector_x,
             self.heat_detector_y,
@@ -558,6 +597,8 @@ class PropertyPanel(QWidget):
             self.heat_detector_installation_date,
             self.heat_detector_test_temperature,
             self.heat_detector_state,
+            self.heat_detector_zone,
+            self.heat_detector_zone_warning,
         ]
 
         # =====================================================
@@ -592,6 +633,25 @@ class PropertyPanel(QWidget):
 
         self.speaker_installation_date = QLineEdit()
 
+        # Digital Twin Asset -> Zone Assignment & Live FACP Runtime
+        # milestone -- Speaker.zone_ids is SERVICE/BROADCAST COVERAGE,
+        # not physical location (a speaker mounted in one zone may
+        # legitimately serve others -- Phase 2's own explicit semantics).
+        # Genuinely multi-select (see _populate_zone_checklist()'s own
+        # docstring for why this is a checklist, not a QComboBox), and
+        # deliberately NEVER auto-assigned from position (Phase 4's own
+        # explicit "do not automatically assign Speaker coverage based
+        # solely on position" instruction) -- always starts empty on
+        # placement, manual assignment only.
+        self.speaker_zones = QListWidget()
+        self.speaker_zones.setMaximumHeight(90)
+
+        self.speaker_zone_warning = QLabel(
+            "Zone assignment required for live operation."
+        )
+        self.speaker_zone_warning.setWordWrap(True)
+        self.speaker_zone_warning.setStyleSheet("color: #b45309;")
+
         layout.addRow("Position X (m)", self.speaker_x)
         layout.addRow("Position Y (m)", self.speaker_y)
 
@@ -604,6 +664,9 @@ class PropertyPanel(QWidget):
         layout.addRow("Volume Level (dB)", self.speaker_volume)
         layout.addRow("Installation Date", self.speaker_installation_date)
 
+        layout.addRow("Covered Zone(s)", self.speaker_zones)
+        layout.addRow("", self.speaker_zone_warning)
+
         self.speaker_fields = [
             self.speaker_x,
             self.speaker_y,
@@ -613,6 +676,8 @@ class PropertyPanel(QWidget):
             self.speaker_type,
             self.speaker_volume,
             self.speaker_installation_date,
+            self.speaker_zones,
+            self.speaker_zone_warning,
         ]
 
         # =====================================================
@@ -1085,6 +1150,10 @@ class PropertyPanel(QWidget):
             self.update_smoke_detector_test_reading
         )
 
+        self.smoke_detector_zone.currentIndexChanged.connect(
+            self.update_smoke_detector_zone
+        )
+
         self.heat_detector_x.editingFinished.connect(
             self.update_heat_detector_geometry
         )
@@ -1117,6 +1186,10 @@ class PropertyPanel(QWidget):
             self.update_heat_detector_test_reading
         )
 
+        self.heat_detector_zone.currentIndexChanged.connect(
+            self.update_heat_detector_zone
+        )
+
         self.speaker_x.editingFinished.connect(
             self.update_speaker_geometry
         )
@@ -1140,6 +1213,10 @@ class PropertyPanel(QWidget):
         )
         self.speaker_installation_date.editingFinished.connect(
             self.update_speaker_installation_date
+        )
+
+        self.speaker_zones.itemChanged.connect(
+            self.update_speaker_zones
         )
 
         self.sign_x.editingFinished.connect(
@@ -1826,6 +1903,7 @@ class PropertyPanel(QWidget):
         self.smoke_detector_threshold.blockSignals(True)
         self.smoke_detector_installation_date.blockSignals(True)
         self.smoke_detector_test_level.blockSignals(True)
+        self.smoke_detector_zone.blockSignals(True)
 
         self.object_name.setText(smoke_detector_item.object_name)
 
@@ -1851,6 +1929,14 @@ class PropertyPanel(QWidget):
             self.smoke_detector_threshold.setText(f"{model.activation_threshold:.2f}")
             self.smoke_detector_installation_date.setText(model.installation_date)
 
+            self._populate_zone_combo(
+                self.smoke_detector_zone,
+                model,
+                model.zone_ids[0] if model.zone_ids else "",
+                "",
+            )
+            self._update_zone_warning(self.smoke_detector_zone_warning, model.zone_ids)
+
             self._refresh_smoke_detector_state(smoke_detector_item)
 
         self.object_name.blockSignals(False)
@@ -1862,6 +1948,7 @@ class PropertyPanel(QWidget):
         self.smoke_detector_threshold.blockSignals(False)
         self.smoke_detector_installation_date.blockSignals(False)
         self.smoke_detector_test_level.blockSignals(False)
+        self.smoke_detector_zone.blockSignals(False)
 
     # =====================================================
 
@@ -1931,6 +2018,7 @@ class PropertyPanel(QWidget):
         self.heat_detector_threshold.blockSignals(True)
         self.heat_detector_installation_date.blockSignals(True)
         self.heat_detector_test_temperature.blockSignals(True)
+        self.heat_detector_zone.blockSignals(True)
 
         self.object_name.setText(heat_detector_item.object_name)
 
@@ -1956,6 +2044,14 @@ class PropertyPanel(QWidget):
             self.heat_detector_threshold.setText(f"{model.activation_threshold:.2f}")
             self.heat_detector_installation_date.setText(model.installation_date)
 
+            self._populate_zone_combo(
+                self.heat_detector_zone,
+                model,
+                model.zone_ids[0] if model.zone_ids else "",
+                "",
+            )
+            self._update_zone_warning(self.heat_detector_zone_warning, model.zone_ids)
+
             self._refresh_heat_detector_state(heat_detector_item)
 
         self.object_name.blockSignals(False)
@@ -1967,6 +2063,7 @@ class PropertyPanel(QWidget):
         self.heat_detector_threshold.blockSignals(False)
         self.heat_detector_installation_date.blockSignals(False)
         self.heat_detector_test_temperature.blockSignals(False)
+        self.heat_detector_zone.blockSignals(False)
 
     # =====================================================
 
@@ -2028,6 +2125,7 @@ class PropertyPanel(QWidget):
         self.speaker_type.blockSignals(True)
         self.speaker_volume.blockSignals(True)
         self.speaker_installation_date.blockSignals(True)
+        self.speaker_zones.blockSignals(True)
 
         self.object_name.setText(speaker_item.object_name)
 
@@ -2058,6 +2156,9 @@ class PropertyPanel(QWidget):
             self.speaker_volume.setText(f"{model.volume_level:.1f}")
             self.speaker_installation_date.setText(model.installation_date)
 
+            self._populate_zone_checklist(self.speaker_zones, model, model.zone_ids)
+            self._update_zone_warning(self.speaker_zone_warning, model.zone_ids)
+
         self.object_name.blockSignals(False)
         self.speaker_x.blockSignals(False)
         self.speaker_y.blockSignals(False)
@@ -2067,6 +2168,7 @@ class PropertyPanel(QWidget):
         self.speaker_type.blockSignals(False)
         self.speaker_volume.blockSignals(False)
         self.speaker_installation_date.blockSignals(False)
+        self.speaker_zones.blockSignals(False)
 
     # =====================================================
     # Dynamic Evacuation Sign (Live Dynamic Evacuation Signage milestone)
@@ -2205,6 +2307,16 @@ class PropertyPanel(QWidget):
             return
 
         self.current_item.model.installation_date = self.speaker_installation_date.text()
+
+    # =====================================================
+
+    def update_speaker_zones(self):
+
+        if self.current_item is None or self.current_item.model is None:
+            return
+
+        self.current_item.model.zone_ids = self._checked_zone_ids(self.speaker_zones)
+        self._update_zone_warning(self.speaker_zone_warning, self.current_item.model.zone_ids)
 
     # =====================================================
     # Dynamic Evacuation Sign
@@ -2876,6 +2988,11 @@ class PropertyPanel(QWidget):
         self.smoke_detector_test_level.clear()
         self.smoke_detector_state.setText("-")
 
+        self.smoke_detector_zone.blockSignals(True)
+        self.smoke_detector_zone.clear()
+        self.smoke_detector_zone.blockSignals(False)
+        self.smoke_detector_zone_warning.setVisible(False)
+
         self.heat_detector_x.clear()
         self.heat_detector_y.clear()
 
@@ -2895,6 +3012,11 @@ class PropertyPanel(QWidget):
         self.heat_detector_installation_date.clear()
         self.heat_detector_test_temperature.clear()
         self.heat_detector_state.setText("-")
+
+        self.heat_detector_zone.blockSignals(True)
+        self.heat_detector_zone.clear()
+        self.heat_detector_zone.blockSignals(False)
+        self.heat_detector_zone_warning.setVisible(False)
 
         self.speaker_x.clear()
         self.speaker_y.clear()
@@ -2917,6 +3039,11 @@ class PropertyPanel(QWidget):
 
         self.speaker_volume.clear()
         self.speaker_installation_date.clear()
+
+        self.speaker_zones.blockSignals(True)
+        self.speaker_zones.clear()
+        self.speaker_zones.blockSignals(False)
+        self.speaker_zone_warning.setVisible(False)
 
         self.sign_x.clear()
         self.sign_y.clear()
@@ -3743,6 +3870,20 @@ class PropertyPanel(QWidget):
         self._refresh_smoke_detector_state(self.current_item)
 
     # =====================================================
+
+    def update_smoke_detector_zone(self, index):
+
+        if self.current_item is None or self.current_item.model is None:
+            return
+
+        zone_id = self.smoke_detector_zone.itemData(index)
+
+        self.current_item.model.zone_ids = (
+            (zone_id,) if zone_id else ()
+        )
+        self._update_zone_warning(self.smoke_detector_zone_warning, self.current_item.model.zone_ids)
+
+    # =====================================================
     # Heat Detector (Building Sensor Network Framework)
     # =====================================================
 
@@ -3862,6 +4003,20 @@ class PropertyPanel(QWidget):
             return
 
         self._refresh_heat_detector_state(self.current_item)
+
+    # =====================================================
+
+    def update_heat_detector_zone(self, index):
+
+        if self.current_item is None or self.current_item.model is None:
+            return
+
+        zone_id = self.heat_detector_zone.itemData(index)
+
+        self.current_item.model.zone_ids = (
+            (zone_id,) if zone_id else ()
+        )
+        self._update_zone_warning(self.heat_detector_zone_warning, self.current_item.model.zone_ids)
 
     # =====================================================
 
@@ -4153,6 +4308,75 @@ class PropertyPanel(QWidget):
         combo.setCurrentIndex(index)
 
         combo.blockSignals(False)
+
+    # =====================================================
+    # Digital Twin Asset -> Zone Assignment & Live FACP Runtime milestone,
+    # Phase 3 -- the genuine multi-select sibling of _populate_zone_combo()
+    # above, for Speaker.zone_ids specifically. speaker_manager.
+    # SpeakerManager.active_speakers_in_zone()/voice_evacuation.controller.
+    # VoiceEvacuationController already treat zone_ids as an ordinary
+    # tuple-membership test with no cardinality limit (confirmed by
+    # reading both directly) -- a single QComboBox would silently reduce
+    # a Speaker to at most one served zone, which Phase 3 explicitly
+    # forbids doing "merely because a single QComboBox is easier". Each
+    # row is a checkable QListWidgetItem (never a modal/dialog selector)
+    # so "which zones are currently checked" is always visible at a
+    # glance, same "show current state, not just an editor" spirit as
+    # every other field in this panel.
+    # =====================================================
+
+    def _populate_zone_checklist(self, list_widget, model, current_zone_ids):
+
+        list_widget.blockSignals(True)
+
+        list_widget.clear()
+
+        if self.building is not None:
+
+            floor = self.building.get_floor(model.floor_id)
+
+            if floor is not None:
+
+                for space_type, space in connectable_space.all_connectable_spaces(floor):
+
+                    item = QListWidgetItem(
+                        connectable_space.label_for(space_type, space.name)
+                    )
+                    item.setData(Qt.ItemDataRole.UserRole, space.id)
+                    item.setFlags(item.flags() | Qt.ItemFlag.ItemIsUserCheckable)
+
+                    item.setCheckState(
+                        Qt.CheckState.Checked if space.id in current_zone_ids
+                        else Qt.CheckState.Unchecked
+                    )
+
+                    list_widget.addItem(item)
+
+        list_widget.blockSignals(False)
+
+    # =====================================================
+
+    def _checked_zone_ids(self, list_widget):
+
+        return tuple(
+            list_widget.item(row).data(Qt.ItemDataRole.UserRole)
+            for row in range(list_widget.count())
+            if list_widget.item(row).checkState() == Qt.CheckState.Checked
+        )
+
+    # =====================================================
+    # Phase 5 -- a modest, reused-everywhere inline hint (never a new
+    # validation framework): visible exactly when an asset whose
+    # downstream operation depends on zone_ids currently has none.
+    # designer/validation.py's own validate_building_authoring() reports
+    # the identical condition as a project-wide WARNING for the
+    # "Validate Project" dialog -- this is the same fact, surfaced
+    # inline for whichever single asset is currently selected.
+    # =====================================================
+
+    def _update_zone_warning(self, warning_label, zone_ids):
+
+        warning_label.setVisible(not zone_ids)
 
     # =====================================================
 

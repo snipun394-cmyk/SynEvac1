@@ -227,6 +227,27 @@ class GraphicsScene(QGraphicsScene):
         return None
 
     # =====================================================
+    # Digital Twin Asset -> Zone Assignment & Live FACP Runtime milestone,
+    # Phase 4 -- a deliberately STRICTER sibling of _find_zone_at() above,
+    # used only for auto-assigning a newly-placed Smoke/Heat Detector's
+    # zone_ids. _find_zone_at() (Stair authoring, untouched) returns the
+    # FIRST matching zone and is fine with that -- a Stair landing click
+    # always has an explicit human confirming the floor/zone right there.
+    # Auto-assignment has no such confirmation step, so it must never
+    # guess: if a position falls inside more than one zone (overlapping
+    # zones on the same floor), this returns None -- the honest "cannot
+    # auto-assign unambiguously" answer -- rather than silently picking
+    # whichever zone happened to be first in the list. Manual Property
+    # Panel assignment always remains available regardless.
+    # =====================================================
+
+    def _find_unambiguous_zone_at(self, floor, x_m, y_m):
+
+        matches = [zone for zone in floor.zones if zone.contains(x_m, y_m)]
+
+        return matches[0] if len(matches) == 1 else None
+
+    # =====================================================
     # Whether a Stair already connects this exact pair of floors, in
     # either direction -- used only to decide whether the duplicate-
     # confirmation callback needs to be asked before starting a new
@@ -846,6 +867,17 @@ class GraphicsScene(QGraphicsScene):
                 floor_id=self.current_floor.id,
             )
 
+            # Phase 4 -- a point detector auto-assigns the single zone
+            # containing its position; ambiguous (overlapping zones) or
+            # outside every zone both honestly leave zone_ids empty
+            # rather than fabricating a nearest/first-match guess.
+            containing_zone = self._find_unambiguous_zone_at(
+                self.current_floor, x / self.GRID_SIZE, y / self.GRID_SIZE,
+            )
+
+            if containing_zone is not None:
+                smoke_detector_model.zone_ids = (containing_zone.id,)
+
             self.current_floor.add_smoke_detector(
                 smoke_detector_model
             )
@@ -883,6 +915,15 @@ class GraphicsScene(QGraphicsScene):
                 ),
                 floor_id=self.current_floor.id,
             )
+
+            # Phase 4 -- same auto-assignment rule as Smoke Detector
+            # immediately above.
+            containing_zone = self._find_unambiguous_zone_at(
+                self.current_floor, x / self.GRID_SIZE, y / self.GRID_SIZE,
+            )
+
+            if containing_zone is not None:
+                heat_detector_model.zone_ids = (containing_zone.id,)
 
             self.current_floor.add_heat_detector(
                 heat_detector_model
