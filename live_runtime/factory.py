@@ -12,6 +12,8 @@ from speaker_manager.manager import SpeakerManager
 
 from sign_manager.manager import SignManager
 
+from emergency_light_manager.manager import EmergencyLightManager
+
 from dynamic_signage.planner import DynamicSignagePlanner
 from dynamic_signage.controller import DynamicSignageController
 
@@ -107,6 +109,7 @@ def build_live_runtime(
     dynamic_signage_planner: Optional[DynamicSignagePlanner] = None,
     sign_manager: Optional[SignManager] = None,
     dynamic_signage_provider: Optional[object] = None,
+    emergency_light_manager: Optional[EmergencyLightManager] = None,
     smoke_detector_reading_provider: Optional[Callable[[float], object]] = None,
     heat_detector_reading_provider: Optional[Callable[[float], object]] = None,
     camera_manager: Optional[CameraManager] = None,
@@ -278,6 +281,11 @@ def build_live_runtime(
 
     sign_manager = sign_manager if sign_manager is not None else SignManager()
     sign_manager.discover_signs(building)
+
+    emergency_light_manager = (
+        emergency_light_manager if emergency_light_manager is not None else EmergencyLightManager()
+    )
+    emergency_light_manager.discover_lights(building)
 
     # =====================================================
     # Camera ingestion (Phase 3) -- wired through CameraManager's own
@@ -512,6 +520,7 @@ def build_live_runtime(
         building_control_controller=building_control_controller,
         sign_manager=sign_manager,
         dynamic_signage_controller=dynamic_signage_controller,
+        emergency_light_manager=emergency_light_manager,
         live_occupant_manager=live_occupant_manager,
         sensor_fusion_engine=sensor_fusion_engine,
         perception_fusion_coordinator=perception_fusion_coordinator,

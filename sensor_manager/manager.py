@@ -74,6 +74,17 @@ class SensorManager:
             for heat_detector in floor.heat_detectors:
                 self.register_sensor(heat_detector)
 
+            # Manual Call Points & Emergency Lighting milestone -- an
+            # MCP is a fire-protection alarm SOURCE with the exact same
+            # SensorAsset shape as Smoke/Heat Detector (see models/
+            # sensor_asset.py's own docstring, which already names
+            # "Manual Call Point" as a future candidate fitting this
+            # shape unchanged), so it is discovered here alongside them
+            # rather than through a new manager (this milestone's own
+            # "avoid manager proliferation without reason" instruction).
+            for manual_call_point in floor.manual_call_points:
+                self.register_sensor(manual_call_point)
+
             for legacy_detector in floor.detectors:
 
                 adapted = adapt_legacy_detector(legacy_detector, floor.zones)

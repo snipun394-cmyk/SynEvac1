@@ -54,6 +54,24 @@ class LiveStatusPanel(QWidget):
         self.facp_state_table.horizontalHeader().setStretchLastSection(True)
         self.facp_state_table.verticalHeader().setVisible(False)
         facp_layout.addWidget(self.facp_state_table)
+
+        # Manual Call Points & Emergency Lighting milestone, Phase 11 --
+        # "MCP activations should appear through the existing FACP/alarm
+        # presentation wherever possible... existing FACP UI can display
+        # source id, source type, zone, state." Every alarm/fault source
+        # (SmokeDetector, HeatDetector, ManualCallPoint alike -- this
+        # table has no hardcoded knowledge of any specific asset type)
+        # already reaches facp.active_alarm_source_ids/active_fault_
+        # source_ids; this table only adds richer per-source display
+        # over that SAME already-existing FACPSnapshot data (cross-
+        # referenced against facp.recent_events for type/zone), never a
+        # second alarm representation or a new BuildingState field.
+        self.facp_sources_table = QTableWidget(0, 4)
+        self.facp_sources_table.setHorizontalHeaderLabels(["Source", "Type", "Zone", "State"])
+        self.facp_sources_table.horizontalHeader().setStretchLastSection(True)
+        self.facp_sources_table.verticalHeader().setVisible(False)
+        facp_layout.addWidget(self.facp_sources_table)
+
         layout.addWidget(facp_group)
 
         layout.addStretch(1)
@@ -67,6 +85,7 @@ class LiveStatusPanel(QWidget):
             self.camera_table.setRowCount(0)
             self.sensor_table.setRowCount(0)
             self.facp_state_table.setRowCount(0)
+            self.facp_sources_table.setRowCount(0)
             return
 
         cameras = list(building_state.camera_observations.values())
@@ -103,6 +122,7 @@ class LiveStatusPanel(QWidget):
         if facp is None:
 
             self.facp_state_table.setRowCount(0)
+            self.facp_sources_table.setRowCount(0)
             return
 
         rows = [
@@ -116,3 +136,36 @@ class LiveStatusPanel(QWidget):
         for row_index, (field, value) in enumerate(rows):
             self.facp_state_table.setItem(row_index, 0, QTableWidgetItem(field))
             self.facp_state_table.setItem(row_index, 1, QTableWidgetItem(value))
+
+        self._show_facp_sources(facp)
+
+    # =====================================================
+
+    def _show_facp_sources(self, facp) -> None:
+
+        # The most recent event mentioning each source id, purely for
+        # type/zone display -- an id with no matching event in the
+        # bounded recent_events window (e.g. it alarmed before the
+        # window started) still shows honestly as "-" for those two
+        # columns, never fabricated, and its own id/state are never
+        # withheld on account of it.
+        latest_event_by_source = {}
+        for event in facp.recent_events:
+            if event.source_asset_id is not None:
+                latest_event_by_source[event.source_asset_id] = event
+
+        rows = [(source_id, "ALARM") for source_id in facp.active_alarm_source_ids]
+        rows += [(source_id, "FAULT") for source_id in facp.active_fault_source_ids]
+
+        self.facp_sources_table.setRowCount(len(rows))
+
+        for row_index, (source_id, state) in enumerate(rows):
+
+            event = latest_event_by_source.get(source_id)
+            source_type = event.source_asset_type if event is not None and event.source_asset_type else "-"
+            zone = _dash_join(event.zone_ids) if event is not None else "-"
+
+            self.facp_sources_table.setItem(row_index, 0, QTableWidgetItem(source_id))
+            self.facp_sources_table.setItem(row_index, 1, QTableWidgetItem(source_type))
+            self.facp_sources_table.setItem(row_index, 2, QTableWidgetItem(zone))
+            self.facp_sources_table.setItem(row_index, 3, QTableWidgetItem(state))

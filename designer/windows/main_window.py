@@ -24,6 +24,8 @@ from designer.items.occupant_item import OccupantItem
 from designer.items.smoke_detector_item import SmokeDetectorItem
 from designer.items.speaker_item import SpeakerItem
 from designer.items.sign_item import SignItem
+from designer.items.manual_call_point_item import ManualCallPointItem
+from designer.items.emergency_light_item import EmergencyLightItem
 from designer.items.stair_item import StairItem
 from designer.items.zone_rectangle import ZoneRectangle
 from designer.scene.graphics_view import GraphicsView
@@ -761,6 +763,18 @@ class MainWindow(QMainWindow):
             )
         )
 
+        self.toolbar.manual_call_point_action.triggered.connect(
+            lambda: self.change_tool(
+                "manual_call_point"
+            )
+        )
+
+        self.toolbar.emergency_light_action.triggered.connect(
+            lambda: self.change_tool(
+                "emergency_light"
+            )
+        )
+
         self.toolbar.assembly_point_action.triggered.connect(
             lambda: self.change_tool(
                 "assembly_point"
@@ -1073,6 +1087,12 @@ class MainWindow(QMainWindow):
 
         elif isinstance(item, SignItem):
             self.property_panel.show_sign(item)
+
+        elif isinstance(item, ManualCallPointItem):
+            self.property_panel.show_manual_call_point(item)
+
+        elif isinstance(item, EmergencyLightItem):
+            self.property_panel.show_emergency_light(item)
 
         elif isinstance(item, AssemblyPointItem):
             self.property_panel.show_assembly_point(item)

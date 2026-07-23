@@ -49,6 +49,12 @@ def validate_building_authoring(building) -> ValidationReport:
         for heat_detector in floor.heat_detectors:
             _check_zone_assignment(report, floor, heat_detector, "Heat Detector", "heat_detector_missing_zone")
 
+        for mcp in floor.manual_call_points:
+            _check_zone_assignment(report, floor, mcp, "Manual Call Point", "manual_call_point_missing_zone")
+
+        for emergency_light in floor.emergency_lights:
+            _check_zone_assignment(report, floor, emergency_light, "Emergency Light", "emergency_light_missing_zone")
+
     _detect_duplicate_stairs(report, building)
 
     return report

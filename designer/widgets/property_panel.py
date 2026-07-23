@@ -17,6 +17,7 @@ from PyQt6.QtWidgets import (
 from models import connectable_space
 from models.detector import Detector
 from models.door import Door
+from models.emergency_light import EmergencyLight, EmergencyLightAvailability
 from models.engineering_asset import DeviceMode
 from models.floor import Floor
 from models.obstacle import Obstacle
@@ -718,6 +719,129 @@ class PropertyPanel(QWidget):
         ]
 
         # =====================================================
+        # Manual Call Point (Manual Call Points & Emergency Lighting
+        # milestone) -- reuses the exact same SensorAsset foundation as
+        # Smoke/Heat Detector, minus the continuous-reading "test level"
+        # control neither needs: an MCP's own `activated` field IS the
+        # ground truth (a direct human action on the device, not an
+        # external hazard reading -- see models.manual_call_point.
+        # ManualCallPoint's own docstring), so it gets a plain "Activated"
+        # checkbox instead.
+        # =====================================================
+
+        self.mcp_x = QLineEdit()
+        self.mcp_y = QLineEdit()
+
+        self.mcp_active = QCheckBox()
+        self.mcp_activated = QCheckBox()
+
+        self.mcp_health = QComboBox()
+
+        for health_status in HealthStatus.ALL:
+            self.mcp_health.addItem(health_status)
+
+        self.mcp_mode = QComboBox()
+
+        for mode in DeviceMode.ALL:
+            self.mcp_mode.addItem(mode)
+
+        self.mcp_installation_date = QLineEdit()
+
+        self.mcp_state = QLabel("-")
+
+        # Single-zone physical-location assignment, same convention as
+        # Camera/Sign/Smoke-Heat Detector.
+        self.mcp_zone = QComboBox()
+
+        self.mcp_zone_warning = QLabel(
+            "Zone assignment required for live operation."
+        )
+        self.mcp_zone_warning.setWordWrap(True)
+        self.mcp_zone_warning.setStyleSheet("color: #b45309;")
+
+        layout.addRow("Position X (m)", self.mcp_x)
+        layout.addRow("Position Y (m)", self.mcp_y)
+
+        layout.addRow("Active", self.mcp_active)
+        layout.addRow("Activated", self.mcp_activated)
+
+        layout.addRow("Health Status", self.mcp_health)
+        layout.addRow("Mode", self.mcp_mode)
+        layout.addRow("Installation Date", self.mcp_installation_date)
+        layout.addRow("Current State", self.mcp_state)
+
+        layout.addRow("Assigned Zone", self.mcp_zone)
+        layout.addRow("", self.mcp_zone_warning)
+
+        self.mcp_fields = [
+            self.mcp_x,
+            self.mcp_y,
+            self.mcp_active,
+            self.mcp_activated,
+            self.mcp_health,
+            self.mcp_mode,
+            self.mcp_installation_date,
+            self.mcp_state,
+            self.mcp_zone,
+            self.mcp_zone_warning,
+        ]
+
+        # =====================================================
+        # Emergency Light (Manual Call Points & Emergency Lighting
+        # milestone) -- a building safety OUTPUT asset, not a sensor
+        # (see models.emergency_light.EmergencyLight's own docstring) --
+        # no alarm/current-state concept, only availability.
+        # =====================================================
+
+        self.emergency_light_x = QLineEdit()
+        self.emergency_light_y = QLineEdit()
+
+        self.emergency_light_active = QCheckBox()
+
+        self.emergency_light_health = QComboBox()
+
+        for health_status in HealthStatus.ALL:
+            self.emergency_light_health.addItem(health_status)
+
+        self.emergency_light_type = QComboBox()
+
+        for light_type in EmergencyLight.LIGHT_TYPES:
+            self.emergency_light_type.addItem(light_type)
+
+        self.emergency_light_availability = QLabel("-")
+
+        self.emergency_light_zone = QComboBox()
+
+        self.emergency_light_zone_warning = QLabel(
+            "Zone assignment required for live operation."
+        )
+        self.emergency_light_zone_warning.setWordWrap(True)
+        self.emergency_light_zone_warning.setStyleSheet("color: #b45309;")
+
+        layout.addRow("Position X (m)", self.emergency_light_x)
+        layout.addRow("Position Y (m)", self.emergency_light_y)
+
+        layout.addRow("Active", self.emergency_light_active)
+
+        layout.addRow("Health Status", self.emergency_light_health)
+        layout.addRow("Light Type", self.emergency_light_type)
+        layout.addRow("Availability", self.emergency_light_availability)
+
+        layout.addRow("Assigned Zone", self.emergency_light_zone)
+        layout.addRow("", self.emergency_light_zone_warning)
+
+        self.emergency_light_fields = [
+            self.emergency_light_x,
+            self.emergency_light_y,
+            self.emergency_light_active,
+            self.emergency_light_health,
+            self.emergency_light_type,
+            self.emergency_light_availability,
+            self.emergency_light_zone,
+            self.emergency_light_zone_warning,
+        ]
+
+        # =====================================================
         # Assembly Point Geometry
         # =====================================================
 
@@ -1235,6 +1359,50 @@ class PropertyPanel(QWidget):
             self.update_sign_zone
         )
 
+        self.mcp_x.editingFinished.connect(
+            self.update_mcp_geometry
+        )
+        self.mcp_y.editingFinished.connect(
+            self.update_mcp_geometry
+        )
+        self.mcp_active.toggled.connect(
+            self.update_mcp_active
+        )
+        self.mcp_activated.toggled.connect(
+            self.update_mcp_activated
+        )
+        self.mcp_health.currentIndexChanged.connect(
+            self.update_mcp_health
+        )
+        self.mcp_mode.currentIndexChanged.connect(
+            self.update_mcp_mode
+        )
+        self.mcp_installation_date.editingFinished.connect(
+            self.update_mcp_installation_date
+        )
+        self.mcp_zone.currentIndexChanged.connect(
+            self.update_mcp_zone
+        )
+
+        self.emergency_light_x.editingFinished.connect(
+            self.update_emergency_light_geometry
+        )
+        self.emergency_light_y.editingFinished.connect(
+            self.update_emergency_light_geometry
+        )
+        self.emergency_light_active.toggled.connect(
+            self.update_emergency_light_active
+        )
+        self.emergency_light_health.currentIndexChanged.connect(
+            self.update_emergency_light_health
+        )
+        self.emergency_light_type.currentIndexChanged.connect(
+            self.update_emergency_light_type
+        )
+        self.emergency_light_zone.currentIndexChanged.connect(
+            self.update_emergency_light_zone
+        )
+
         self.assembly_x.editingFinished.connect(
             self.update_assembly_point_geometry
         )
@@ -1348,6 +1516,8 @@ class PropertyPanel(QWidget):
         self._set_fields_visible(self.heat_detector_fields, False)
         self._set_fields_visible(self.speaker_fields, False)
         self._set_fields_visible(self.sign_fields, False)
+        self._set_fields_visible(self.mcp_fields, False)
+        self._set_fields_visible(self.emergency_light_fields, False)
         self._set_fields_visible(self.assembly_fields, False)
         self._set_fields_visible(self.obstacle_fields, False)
         self._set_fields_visible(self.door_fields, False)
@@ -1399,6 +1569,8 @@ class PropertyPanel(QWidget):
         self._set_fields_visible(self.heat_detector_fields, False)
         self._set_fields_visible(self.speaker_fields, False)
         self._set_fields_visible(self.sign_fields, False)
+        self._set_fields_visible(self.mcp_fields, False)
+        self._set_fields_visible(self.emergency_light_fields, False)
         self._set_fields_visible(self.assembly_fields, False)
         self._set_fields_visible(self.obstacle_fields, False)
         self._set_fields_visible(self.door_fields, False)
@@ -1481,6 +1653,8 @@ class PropertyPanel(QWidget):
         self._set_fields_visible(self.heat_detector_fields, False)
         self._set_fields_visible(self.speaker_fields, False)
         self._set_fields_visible(self.sign_fields, False)
+        self._set_fields_visible(self.mcp_fields, False)
+        self._set_fields_visible(self.emergency_light_fields, False)
         self._set_fields_visible(self.assembly_fields, False)
         self._set_fields_visible(self.obstacle_fields, False)
         self._set_fields_visible(self.door_fields, False)
@@ -1557,6 +1731,8 @@ class PropertyPanel(QWidget):
         self._set_fields_visible(self.heat_detector_fields, False)
         self._set_fields_visible(self.speaker_fields, False)
         self._set_fields_visible(self.sign_fields, False)
+        self._set_fields_visible(self.mcp_fields, False)
+        self._set_fields_visible(self.emergency_light_fields, False)
         self._set_fields_visible(self.assembly_fields, False)
         self._set_fields_visible(self.obstacle_fields, False)
         self._set_fields_visible(self.door_fields, False)
@@ -1671,6 +1847,8 @@ class PropertyPanel(QWidget):
         self._set_fields_visible(self.heat_detector_fields, False)
         self._set_fields_visible(self.speaker_fields, False)
         self._set_fields_visible(self.sign_fields, False)
+        self._set_fields_visible(self.mcp_fields, False)
+        self._set_fields_visible(self.emergency_light_fields, False)
         self._set_fields_visible(self.assembly_fields, False)
         self._set_fields_visible(self.obstacle_fields, False)
         self._set_fields_visible(self.door_fields, False)
@@ -1812,6 +1990,8 @@ class PropertyPanel(QWidget):
         self._set_fields_visible(self.heat_detector_fields, False)
         self._set_fields_visible(self.speaker_fields, False)
         self._set_fields_visible(self.sign_fields, False)
+        self._set_fields_visible(self.mcp_fields, False)
+        self._set_fields_visible(self.emergency_light_fields, False)
         self._set_fields_visible(self.assembly_fields, False)
         self._set_fields_visible(self.obstacle_fields, False)
         self._set_fields_visible(self.door_fields, False)
@@ -1884,6 +2064,8 @@ class PropertyPanel(QWidget):
         self._set_fields_visible(self.heat_detector_fields, False)
         self._set_fields_visible(self.speaker_fields, False)
         self._set_fields_visible(self.sign_fields, False)
+        self._set_fields_visible(self.mcp_fields, False)
+        self._set_fields_visible(self.emergency_light_fields, False)
         self._set_fields_visible(self.assembly_fields, False)
         self._set_fields_visible(self.obstacle_fields, False)
         self._set_fields_visible(self.door_fields, False)
@@ -1999,6 +2181,8 @@ class PropertyPanel(QWidget):
         self._set_fields_visible(self.heat_detector_fields, True)
         self._set_fields_visible(self.speaker_fields, False)
         self._set_fields_visible(self.sign_fields, False)
+        self._set_fields_visible(self.mcp_fields, False)
+        self._set_fields_visible(self.emergency_light_fields, False)
         self._set_fields_visible(self.assembly_fields, False)
         self._set_fields_visible(self.obstacle_fields, False)
         self._set_fields_visible(self.door_fields, False)
@@ -2106,6 +2290,8 @@ class PropertyPanel(QWidget):
         self._set_fields_visible(self.heat_detector_fields, False)
         self._set_fields_visible(self.speaker_fields, True)
         self._set_fields_visible(self.sign_fields, False)
+        self._set_fields_visible(self.mcp_fields, False)
+        self._set_fields_visible(self.emergency_light_fields, False)
         self._set_fields_visible(self.assembly_fields, False)
         self._set_fields_visible(self.obstacle_fields, False)
         self._set_fields_visible(self.door_fields, False)
@@ -2188,6 +2374,8 @@ class PropertyPanel(QWidget):
         self._set_fields_visible(self.heat_detector_fields, False)
         self._set_fields_visible(self.speaker_fields, False)
         self._set_fields_visible(self.sign_fields, True)
+        self._set_fields_visible(self.mcp_fields, False)
+        self._set_fields_visible(self.emergency_light_fields, False)
         self._set_fields_visible(self.assembly_fields, False)
         self._set_fields_visible(self.obstacle_fields, False)
         self._set_fields_visible(self.door_fields, False)
@@ -2231,6 +2419,342 @@ class PropertyPanel(QWidget):
         self.sign_orientation.blockSignals(False)
         self.sign_active.blockSignals(False)
         self.sign_zone.blockSignals(False)
+
+    # =====================================================
+    # Manual Call Point (Manual Call Points & Emergency Lighting
+    # milestone)
+    # =====================================================
+
+    def show_manual_call_point(self, mcp_item):
+
+        self.current_item = mcp_item
+        self._refresh_handler = self.show_manual_call_point
+
+        self._set_fields_visible(self.zone_fields, False)
+        self._set_fields_visible(self.exit_fields, False)
+        self._set_fields_visible(self.stair_fields, False)
+        self._set_fields_visible(self.camera_fields, False)
+        self._set_fields_visible(self.detector_fields, False)
+        self._set_fields_visible(self.smoke_detector_fields, False)
+        self._set_fields_visible(self.heat_detector_fields, False)
+        self._set_fields_visible(self.speaker_fields, False)
+        self._set_fields_visible(self.sign_fields, False)
+        self._set_fields_visible(self.mcp_fields, True)
+        self._set_fields_visible(self.emergency_light_fields, False)
+        self._set_fields_visible(self.assembly_fields, False)
+        self._set_fields_visible(self.obstacle_fields, False)
+        self._set_fields_visible(self.door_fields, False)
+        self._set_fields_visible(self.floor_fields, False)
+
+        model = mcp_item.model
+
+        self.object_type.setText("Manual Call Point")
+        self.object_id.setText(mcp_item.object_id)
+
+        self.object_name.blockSignals(True)
+        self.mcp_x.blockSignals(True)
+        self.mcp_y.blockSignals(True)
+        self.mcp_active.blockSignals(True)
+        self.mcp_activated.blockSignals(True)
+        self.mcp_health.blockSignals(True)
+        self.mcp_mode.blockSignals(True)
+        self.mcp_installation_date.blockSignals(True)
+        self.mcp_zone.blockSignals(True)
+
+        self.object_name.setText(mcp_item.object_name)
+
+        if model is not None:
+
+            px, py = model.position
+
+            self.mcp_x.setText(f"{px:.2f}")
+            self.mcp_y.setText(f"{py:.2f}")
+
+            self.mcp_active.setChecked(model.active)
+            self.mcp_activated.setChecked(model.activated)
+
+            health_index = self.mcp_health.findText(model.health_status)
+
+            if health_index != -1:
+                self.mcp_health.setCurrentIndex(health_index)
+
+            mode_index = self.mcp_mode.findText(model.mode)
+
+            if mode_index != -1:
+                self.mcp_mode.setCurrentIndex(mode_index)
+
+            self.mcp_installation_date.setText(model.installation_date)
+
+            self._populate_zone_combo(
+                self.mcp_zone,
+                model,
+                model.zone_ids[0] if model.zone_ids else "",
+                "",
+            )
+            self._update_zone_warning(self.mcp_zone_warning, model.zone_ids)
+
+            self._refresh_mcp_state(mcp_item)
+
+        self.object_name.blockSignals(False)
+        self.mcp_x.blockSignals(False)
+        self.mcp_y.blockSignals(False)
+        self.mcp_active.blockSignals(False)
+        self.mcp_activated.blockSignals(False)
+        self.mcp_health.blockSignals(False)
+        self.mcp_mode.blockSignals(False)
+        self.mcp_installation_date.blockSignals(False)
+        self.mcp_zone.blockSignals(False)
+
+    # =====================================================
+
+    def _refresh_mcp_state(self, mcp_item):
+
+        model = mcp_item.model
+
+        if model is None:
+            return
+
+        state = model.compute_state()
+
+        self.mcp_state.setText(state.name)
+
+        mcp_item.current_state = state
+        mcp_item.refresh_geometry()
+
+    # =====================================================
+
+    def update_mcp_geometry(self):
+
+        if self.current_item is None:
+            return
+
+        try:
+            x = float(self.mcp_x.text())
+            y = float(self.mcp_y.text())
+        except ValueError:
+            return
+
+        self.current_item.setPos(x * self.GRID_SIZE, y * self.GRID_SIZE)
+        self.current_item.sync_to_model()
+
+    # =====================================================
+
+    def update_mcp_active(self):
+
+        if self.current_item is None or self.current_item.model is None:
+            return
+
+        self.current_item.model.active = self.mcp_active.isChecked()
+        self._refresh_mcp_state(self.current_item)
+
+    # =====================================================
+
+    def update_mcp_activated(self):
+
+        if self.current_item is None or self.current_item.model is None:
+            return
+
+        if self.mcp_activated.isChecked():
+            self.current_item.model.activate()
+        else:
+            self.current_item.model.restore()
+
+        self._refresh_mcp_state(self.current_item)
+
+    # =====================================================
+
+    def update_mcp_health(self, index):
+
+        if self.current_item is None or self.current_item.model is None:
+            return
+
+        self.current_item.model.health_status = self.mcp_health.itemText(index)
+        self._refresh_mcp_state(self.current_item)
+
+    # =====================================================
+
+    def update_mcp_mode(self, index):
+
+        if self.current_item is None or self.current_item.model is None:
+            return
+
+        self.current_item.model.mode = self.mcp_mode.itemText(index)
+
+    # =====================================================
+
+    def update_mcp_installation_date(self):
+
+        if self.current_item is None or self.current_item.model is None:
+            return
+
+        self.current_item.model.installation_date = self.mcp_installation_date.text()
+
+    # =====================================================
+
+    def update_mcp_zone(self, index):
+
+        if self.current_item is None or self.current_item.model is None:
+            return
+
+        zone_id = self.mcp_zone.itemData(index)
+
+        self.current_item.model.zone_ids = (
+            (zone_id,) if zone_id else ()
+        )
+        self._update_zone_warning(self.mcp_zone_warning, self.current_item.model.zone_ids)
+
+    # =====================================================
+    # Emergency Light (Manual Call Points & Emergency Lighting
+    # milestone)
+    # =====================================================
+
+    def show_emergency_light(self, light_item):
+
+        self.current_item = light_item
+        self._refresh_handler = self.show_emergency_light
+
+        self._set_fields_visible(self.zone_fields, False)
+        self._set_fields_visible(self.exit_fields, False)
+        self._set_fields_visible(self.stair_fields, False)
+        self._set_fields_visible(self.camera_fields, False)
+        self._set_fields_visible(self.detector_fields, False)
+        self._set_fields_visible(self.smoke_detector_fields, False)
+        self._set_fields_visible(self.heat_detector_fields, False)
+        self._set_fields_visible(self.speaker_fields, False)
+        self._set_fields_visible(self.sign_fields, False)
+        self._set_fields_visible(self.mcp_fields, False)
+        self._set_fields_visible(self.emergency_light_fields, True)
+        self._set_fields_visible(self.assembly_fields, False)
+        self._set_fields_visible(self.obstacle_fields, False)
+        self._set_fields_visible(self.door_fields, False)
+        self._set_fields_visible(self.floor_fields, False)
+
+        model = light_item.model
+
+        self.object_type.setText("Emergency Light")
+        self.object_id.setText(light_item.object_id)
+
+        self.object_name.blockSignals(True)
+        self.emergency_light_x.blockSignals(True)
+        self.emergency_light_y.blockSignals(True)
+        self.emergency_light_active.blockSignals(True)
+        self.emergency_light_health.blockSignals(True)
+        self.emergency_light_type.blockSignals(True)
+        self.emergency_light_zone.blockSignals(True)
+
+        self.object_name.setText(light_item.object_name)
+
+        if model is not None:
+
+            px, py = model.position
+
+            self.emergency_light_x.setText(f"{px:.2f}")
+            self.emergency_light_y.setText(f"{py:.2f}")
+
+            self.emergency_light_active.setChecked(model.active)
+
+            health_index = self.emergency_light_health.findText(model.health_status)
+
+            if health_index != -1:
+                self.emergency_light_health.setCurrentIndex(health_index)
+
+            type_index = self.emergency_light_type.findText(model.light_type)
+
+            if type_index != -1:
+                self.emergency_light_type.setCurrentIndex(type_index)
+
+            self._populate_zone_combo(
+                self.emergency_light_zone,
+                model,
+                model.zone_ids[0] if model.zone_ids else "",
+                "",
+            )
+            self._update_zone_warning(self.emergency_light_zone_warning, model.zone_ids)
+
+            self._refresh_emergency_light_availability(light_item)
+
+        self.object_name.blockSignals(False)
+        self.emergency_light_x.blockSignals(False)
+        self.emergency_light_y.blockSignals(False)
+        self.emergency_light_active.blockSignals(False)
+        self.emergency_light_health.blockSignals(False)
+        self.emergency_light_type.blockSignals(False)
+        self.emergency_light_zone.blockSignals(False)
+
+    # =====================================================
+
+    def _refresh_emergency_light_availability(self, light_item):
+
+        model = light_item.model
+
+        if model is None:
+            return
+
+        availability = model.compute_availability()
+
+        self.emergency_light_availability.setText(availability)
+
+        light_item.current_availability = availability
+        light_item.refresh_geometry()
+
+    # =====================================================
+
+    def update_emergency_light_geometry(self):
+
+        if self.current_item is None:
+            return
+
+        try:
+            x = float(self.emergency_light_x.text())
+            y = float(self.emergency_light_y.text())
+        except ValueError:
+            return
+
+        self.current_item.setPos(x * self.GRID_SIZE, y * self.GRID_SIZE)
+        self.current_item.sync_to_model()
+
+    # =====================================================
+
+    def update_emergency_light_active(self):
+
+        if self.current_item is None or self.current_item.model is None:
+            return
+
+        self.current_item.model.active = self.emergency_light_active.isChecked()
+        self._refresh_emergency_light_availability(self.current_item)
+
+    # =====================================================
+
+    def update_emergency_light_health(self, index):
+
+        if self.current_item is None or self.current_item.model is None:
+            return
+
+        self.current_item.model.health_status = self.emergency_light_health.itemText(index)
+        self._refresh_emergency_light_availability(self.current_item)
+
+    # =====================================================
+
+    def update_emergency_light_type(self, index):
+
+        if self.current_item is None or self.current_item.model is None:
+            return
+
+        self.current_item.model.light_type = self.emergency_light_type.itemText(index)
+
+    # =====================================================
+
+    def update_emergency_light_zone(self, index):
+
+        if self.current_item is None or self.current_item.model is None:
+            return
+
+        zone_id = self.emergency_light_zone.itemData(index)
+
+        self.current_item.model.zone_ids = (
+            (zone_id,) if zone_id else ()
+        )
+        self._update_zone_warning(self.emergency_light_zone_warning, self.current_item.model.zone_ids)
 
     # =====================================================
 
@@ -2391,6 +2915,8 @@ class PropertyPanel(QWidget):
         self._set_fields_visible(self.heat_detector_fields, False)
         self._set_fields_visible(self.speaker_fields, False)
         self._set_fields_visible(self.sign_fields, False)
+        self._set_fields_visible(self.mcp_fields, False)
+        self._set_fields_visible(self.emergency_light_fields, False)
         self._set_fields_visible(self.assembly_fields, True)
         self._set_fields_visible(self.obstacle_fields, False)
         self._set_fields_visible(self.door_fields, False)
@@ -2466,6 +2992,8 @@ class PropertyPanel(QWidget):
         self._set_fields_visible(self.heat_detector_fields, False)
         self._set_fields_visible(self.speaker_fields, False)
         self._set_fields_visible(self.sign_fields, False)
+        self._set_fields_visible(self.mcp_fields, False)
+        self._set_fields_visible(self.emergency_light_fields, False)
         self._set_fields_visible(self.assembly_fields, False)
         self._set_fields_visible(self.obstacle_fields, True)
         self._set_fields_visible(self.door_fields, False)
@@ -2546,6 +3074,8 @@ class PropertyPanel(QWidget):
         self._set_fields_visible(self.heat_detector_fields, False)
         self._set_fields_visible(self.speaker_fields, False)
         self._set_fields_visible(self.sign_fields, False)
+        self._set_fields_visible(self.mcp_fields, False)
+        self._set_fields_visible(self.emergency_light_fields, False)
         self._set_fields_visible(self.assembly_fields, False)
         self._set_fields_visible(self.obstacle_fields, False)
         self._set_fields_visible(self.door_fields, True)
@@ -2649,6 +3179,8 @@ class PropertyPanel(QWidget):
         self._set_fields_visible(self.heat_detector_fields, False)
         self._set_fields_visible(self.speaker_fields, False)
         self._set_fields_visible(self.sign_fields, False)
+        self._set_fields_visible(self.mcp_fields, False)
+        self._set_fields_visible(self.emergency_light_fields, False)
         self._set_fields_visible(self.assembly_fields, False)
         self._set_fields_visible(self.obstacle_fields, False)
         self._set_fields_visible(self.door_fields, False)
@@ -2793,6 +3325,8 @@ class PropertyPanel(QWidget):
         self._set_fields_visible(self.heat_detector_fields, False)
         self._set_fields_visible(self.speaker_fields, False)
         self._set_fields_visible(self.sign_fields, False)
+        self._set_fields_visible(self.mcp_fields, False)
+        self._set_fields_visible(self.emergency_light_fields, False)
         self._set_fields_visible(self.assembly_fields, False)
         self._set_fields_visible(self.obstacle_fields, False)
         self._set_fields_visible(self.door_fields, False)
@@ -2844,6 +3378,8 @@ class PropertyPanel(QWidget):
         self._set_fields_visible(self.heat_detector_fields, False)
         self._set_fields_visible(self.speaker_fields, False)
         self._set_fields_visible(self.sign_fields, False)
+        self._set_fields_visible(self.mcp_fields, False)
+        self._set_fields_visible(self.emergency_light_fields, False)
         self._set_fields_visible(self.assembly_fields, False)
         self._set_fields_visible(self.obstacle_fields, False)
         self._set_fields_visible(self.door_fields, False)
@@ -3056,6 +3592,55 @@ class PropertyPanel(QWidget):
         self.sign_zone.blockSignals(True)
         self.sign_zone.clear()
         self.sign_zone.blockSignals(False)
+
+        self.mcp_x.clear()
+        self.mcp_y.clear()
+
+        self.mcp_active.blockSignals(True)
+        self.mcp_active.setChecked(False)
+        self.mcp_active.blockSignals(False)
+
+        self.mcp_activated.blockSignals(True)
+        self.mcp_activated.setChecked(False)
+        self.mcp_activated.blockSignals(False)
+
+        self.mcp_health.blockSignals(True)
+        self.mcp_health.setCurrentIndex(0)
+        self.mcp_health.blockSignals(False)
+
+        self.mcp_mode.blockSignals(True)
+        self.mcp_mode.setCurrentIndex(0)
+        self.mcp_mode.blockSignals(False)
+
+        self.mcp_installation_date.clear()
+        self.mcp_state.setText("-")
+
+        self.mcp_zone.blockSignals(True)
+        self.mcp_zone.clear()
+        self.mcp_zone.blockSignals(False)
+        self.mcp_zone_warning.setVisible(False)
+
+        self.emergency_light_x.clear()
+        self.emergency_light_y.clear()
+
+        self.emergency_light_active.blockSignals(True)
+        self.emergency_light_active.setChecked(False)
+        self.emergency_light_active.blockSignals(False)
+
+        self.emergency_light_health.blockSignals(True)
+        self.emergency_light_health.setCurrentIndex(0)
+        self.emergency_light_health.blockSignals(False)
+
+        self.emergency_light_type.blockSignals(True)
+        self.emergency_light_type.setCurrentIndex(0)
+        self.emergency_light_type.blockSignals(False)
+
+        self.emergency_light_availability.setText("-")
+
+        self.emergency_light_zone.blockSignals(True)
+        self.emergency_light_zone.clear()
+        self.emergency_light_zone.blockSignals(False)
+        self.emergency_light_zone_warning.setVisible(False)
 
         self.assembly_x.clear()
         self.assembly_y.clear()

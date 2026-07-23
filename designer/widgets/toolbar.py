@@ -92,6 +92,11 @@ class MainToolbar(QToolBar):
         # existing device tools" convention as Speaker above.
         self.sign_action = QAction("Dynamic Sign", self)
 
+        # Manual Call Points & Emergency Lighting milestone -- same
+        # "additive, alongside the existing device tools" convention.
+        self.manual_call_point_action = QAction("Manual Call Point", self)
+        self.emergency_light_action = QAction("Emergency Light", self)
+
         # =====================================================
         # Safety
         # =====================================================
@@ -159,6 +164,8 @@ class MainToolbar(QToolBar):
         self.addAction(self.heat_detector_action)
         self.addAction(self.speaker_action)
         self.addAction(self.sign_action)
+        self.addAction(self.manual_call_point_action)
+        self.addAction(self.emergency_light_action)
 
         self.addSeparator()
 

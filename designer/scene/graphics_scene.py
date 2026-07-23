@@ -18,6 +18,8 @@ from designer.items.heat_detector_item import HeatDetectorItem
 from designer.items.obstacle_item import ObstacleItem
 from designer.items.occupant_item import OccupantItem
 from designer.items.sign_item import SignItem
+from designer.items.manual_call_point_item import ManualCallPointItem
+from designer.items.emergency_light_item import EmergencyLightItem
 from designer.items.smoke_detector_item import SmokeDetectorItem
 from designer.items.speaker_item import SpeakerItem
 from designer.items.stair_item import StairItem
@@ -34,6 +36,8 @@ from models.obstacle import Obstacle
 from models.smoke_detector import SmokeDetector
 from models.speaker import Speaker
 from models.dynamic_sign import DynamicEvacuationSign
+from models.manual_call_point import ManualCallPoint
+from models.emergency_light import EmergencyLight
 from models.staircase import Staircase
 from models.zone import Zone
 
@@ -357,7 +361,7 @@ class GraphicsScene(QGraphicsScene):
             if self.selected_item:
                 self.selected_item.set_selected(False)
 
-            if isinstance(item, (ZoneRectangle, ExitItem, StairItem, CameraItem, DetectorItem, SmokeDetectorItem, HeatDetectorItem, SpeakerItem, SignItem, AssemblyPointItem, ObstacleItem, DoorItem, OccupantItem)):
+            if isinstance(item, (ZoneRectangle, ExitItem, StairItem, CameraItem, DetectorItem, SmokeDetectorItem, HeatDetectorItem, SpeakerItem, SignItem, ManualCallPointItem, EmergencyLightItem, AssemblyPointItem, ObstacleItem, DoorItem, OccupantItem)):
 
                 self.selected_item = item
 
@@ -1016,6 +1020,101 @@ class GraphicsScene(QGraphicsScene):
             return
 
         # -------------------------------------------------
+        # Manual Call Point Tool (Manual Call Points & Emergency
+        # Lighting milestone) -- a point object placed with a single
+        # click just like Smoke/Heat Detector, with the exact same
+        # unambiguous-zone auto-assignment (Phase 5).
+        # -------------------------------------------------
+
+        if self.current_tool == "manual_call_point":
+
+            if self.current_floor.locked:
+                return
+
+            x, y = self.snap(
+                event.scenePos()
+            )
+
+            mcp_model = ManualCallPoint(
+                name=f"Manual Call Point {self.current_floor.manual_call_point_count + 1}",
+                position=(
+                    x / self.GRID_SIZE,
+                    y / self.GRID_SIZE,
+                ),
+                floor_id=self.current_floor.id,
+            )
+
+            containing_zone = self._find_unambiguous_zone_at(
+                self.current_floor, x / self.GRID_SIZE, y / self.GRID_SIZE,
+            )
+
+            if containing_zone is not None:
+                mcp_model.zone_ids = (containing_zone.id,)
+
+            self.current_floor.add_manual_call_point(
+                mcp_model
+            )
+
+            mcp_item = ManualCallPointItem(
+                x,
+                y,
+                model=mcp_model,
+            )
+
+            self.addItem(mcp_item)
+
+            return
+
+        # -------------------------------------------------
+        # Emergency Light Tool (Manual Call Points & Emergency Lighting
+        # milestone) -- a point object placed with a single click,
+        # same unambiguous-zone auto-assignment as Manual Call Point/
+        # Smoke/Heat Detector above (Phase 7's own "the zone it
+        # illuminates is, for any realistic placement, the zone
+        # containing its own position" reasoning -- see docs/
+        # architecture/manual_call_point_and_emergency_lighting.md).
+        # -------------------------------------------------
+
+        if self.current_tool == "emergency_light":
+
+            if self.current_floor.locked:
+                return
+
+            x, y = self.snap(
+                event.scenePos()
+            )
+
+            light_model = EmergencyLight(
+                name=f"Emergency Light {self.current_floor.emergency_light_count + 1}",
+                position=(
+                    x / self.GRID_SIZE,
+                    y / self.GRID_SIZE,
+                ),
+                floor_id=self.current_floor.id,
+            )
+
+            containing_zone = self._find_unambiguous_zone_at(
+                self.current_floor, x / self.GRID_SIZE, y / self.GRID_SIZE,
+            )
+
+            if containing_zone is not None:
+                light_model.zone_ids = (containing_zone.id,)
+
+            self.current_floor.add_emergency_light(
+                light_model
+            )
+
+            light_item = EmergencyLightItem(
+                x,
+                y,
+                model=light_model,
+            )
+
+            self.addItem(light_item)
+
+            return
+
+        # -------------------------------------------------
         # Assembly Point Tool
         #
         # A permanent, purely geometric safe-destination marker,
@@ -1599,6 +1698,24 @@ class GraphicsScene(QGraphicsScene):
 
                 elif isinstance(
                     self.selected_item,
+                    ManualCallPointItem,
+                ):
+
+                    self.current_floor.remove_manual_call_point(
+                        self.selected_item.model
+                    )
+
+                elif isinstance(
+                    self.selected_item,
+                    EmergencyLightItem,
+                ):
+
+                    self.current_floor.remove_emergency_light(
+                        self.selected_item.model
+                    )
+
+                elif isinstance(
+                    self.selected_item,
                     AssemblyPointItem,
                 ):
 
@@ -1700,7 +1817,7 @@ class GraphicsScene(QGraphicsScene):
 
             if isinstance(
                 item,
-                (ZoneRectangle, ExitItem, StairItem, CameraItem, DetectorItem, SmokeDetectorItem, HeatDetectorItem, SpeakerItem, SignItem, AssemblyPointItem, ObstacleItem, DoorItem, OccupantItem),
+                (ZoneRectangle, ExitItem, StairItem, CameraItem, DetectorItem, SmokeDetectorItem, HeatDetectorItem, SpeakerItem, SignItem, ManualCallPointItem, EmergencyLightItem, AssemblyPointItem, ObstacleItem, DoorItem, OccupantItem),
             ):
                 self.removeItem(item)
 
@@ -1919,6 +2036,40 @@ class GraphicsScene(QGraphicsScene):
             )
 
             self.addItem(sign_item)
+
+        for mcp_obj in self.current_floor.manual_call_points:
+
+            x, y = mcp_obj.position
+
+            mcp_item = ManualCallPointItem(
+                x * self.GRID_SIZE,
+                y * self.GRID_SIZE,
+                model=mcp_obj,
+            )
+
+            mcp_item.setFlag(
+                QGraphicsItem.GraphicsItemFlag.ItemIsMovable,
+                movable,
+            )
+
+            self.addItem(mcp_item)
+
+        for light_obj in self.current_floor.emergency_lights:
+
+            x, y = light_obj.position
+
+            light_item = EmergencyLightItem(
+                x * self.GRID_SIZE,
+                y * self.GRID_SIZE,
+                model=light_obj,
+            )
+
+            light_item.setFlag(
+                QGraphicsItem.GraphicsItemFlag.ItemIsMovable,
+                movable,
+            )
+
+            self.addItem(light_item)
 
         for assembly_point_obj in self.current_floor.assembly_points:
 

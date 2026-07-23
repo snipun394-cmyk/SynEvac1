@@ -2,6 +2,8 @@ from typing import Callable, Iterable, Optional, Protocol, Tuple
 
 from facp.models import DetectorConditionReport, PanelEvent
 
+from models.sensor_asset import DetectorState
+
 
 # =====================================================
 # Digital Twin Asset -> Zone Assignment & Live FACP Runtime milestone,
@@ -85,6 +87,7 @@ class EngineFACPGateway:
 
         smoke_statuses = []
         heat_statuses = []
+        mcp_statuses = []
 
         for status in self._sensor_manager.all_statuses():
 
@@ -92,6 +95,8 @@ class EngineFACPGateway:
                 smoke_statuses.append(status)
             elif status.sensor_type == "HeatDetector":
                 heat_statuses.append(status)
+            elif status.sensor_type == "ManualCallPoint":
+                mcp_statuses.append(status)
 
         smoke_readings = (
             self._smoke_detector_reading_provider(time)
@@ -118,4 +123,37 @@ class EngineFACPGateway:
             for status in heat_statuses
         })
 
+        # Manual Call Points & Emergency Lighting milestone -- an MCP
+        # has no external Ground-Truth-driven reading (see models.
+        # manual_call_point.ManualCallPoint's own docstring: activation
+        # is intrinsic device state, a direct human action, not a
+        # threshold-compared hazard reading), so there is no reading-
+        # provider seam to thread through here the way smoke/heat have.
+        # Its own compute_state() already IS the complete, authoritative
+        # answer -- read directly off the real registered object via
+        # SensorManager.get_sensor(), never re-derived or duplicated.
+        reports.update({
+            status.sensor_id: DetectorConditionReport(
+                asset_id=status.sensor_id, asset_type=status.sensor_type,
+                state=self._mcp_state(status, time),
+                floor_id=status.floor_id, zone_ids=status.zone_ids,
+            )
+            for status in mcp_statuses
+        })
+
         return reports
+
+    # =====================================================
+
+    def _mcp_state(self, status, time: float):
+
+        mcp = self._sensor_manager.get_sensor(status.sensor_id)
+
+        if mcp is None:
+            # Honest fallback for an id SensorManager reported a status
+            # for but no longer holds the live object for (should not
+            # happen in practice -- both come from the same registry --
+            # but never fabricated as ALARM/FAULT either way).
+            return DetectorState.NORMAL
+
+        return mcp.compute_state(time)

@@ -14,6 +14,8 @@ from models.assembly_point import AssemblyPoint
 from models.obstacle import Obstacle
 from models.door import Door
 from models.dynamic_sign import DynamicEvacuationSign
+from models.manual_call_point import ManualCallPoint
+from models.emergency_light import EmergencyLight
 
 
 @dataclass
@@ -80,6 +82,11 @@ class Floor:
     # an empty list, so every pre-existing project keeps loading
     # unchanged (Phase 2's own backward-compatibility requirement).
     signs: list[DynamicEvacuationSign] = field(default_factory=list)
+
+    # Manual Call Points & Emergency Lighting milestone -- additive,
+    # same SensorAsset/EngineeringAsset-based conventions as above.
+    manual_call_points: list[ManualCallPoint] = field(default_factory=list)
+    emergency_lights: list[EmergencyLight] = field(default_factory=list)
 
     assembly_points: list[AssemblyPoint] = field(default_factory=list)
     obstacles: list[Obstacle] = field(default_factory=list)
@@ -222,6 +229,32 @@ class Floor:
             self.signs.remove(sign)
 
     # =====================================================
+    # Manual Call Points
+    # =====================================================
+
+    def add_manual_call_point(self, manual_call_point):
+
+        self.manual_call_points.append(manual_call_point)
+
+    def remove_manual_call_point(self, manual_call_point):
+
+        if manual_call_point in self.manual_call_points:
+            self.manual_call_points.remove(manual_call_point)
+
+    # =====================================================
+    # Emergency Lights
+    # =====================================================
+
+    def add_emergency_light(self, emergency_light):
+
+        self.emergency_lights.append(emergency_light)
+
+    def remove_emergency_light(self, emergency_light):
+
+        if emergency_light in self.emergency_lights:
+            self.emergency_lights.remove(emergency_light)
+
+    # =====================================================
     # Assembly Points
     # =====================================================
 
@@ -308,6 +341,16 @@ class Floor:
         return len(self.signs)
 
     @property
+    def manual_call_point_count(self):
+
+        return len(self.manual_call_points)
+
+    @property
+    def emergency_light_count(self):
+
+        return len(self.emergency_lights)
+
+    @property
     def assembly_point_count(self):
 
         return len(self.assembly_points)
@@ -387,6 +430,16 @@ class Floor:
             "signs": [
                 sign.to_dict()
                 for sign in self.signs
+            ],
+
+            "manual_call_points": [
+                mcp.to_dict()
+                for mcp in self.manual_call_points
+            ],
+
+            "emergency_lights": [
+                light.to_dict()
+                for light in self.emergency_lights
             ],
 
             "assembly_points": [
@@ -506,6 +559,18 @@ class Floor:
 
             floor.signs.append(
                 DynamicEvacuationSign.from_dict(sign_data)
+            )
+
+        for mcp_data in data.get("manual_call_points", []):
+
+            floor.manual_call_points.append(
+                ManualCallPoint.from_dict(mcp_data)
+            )
+
+        for emergency_light_data in data.get("emergency_lights", []):
+
+            floor.emergency_lights.append(
+                EmergencyLight.from_dict(emergency_light_data)
             )
 
         for assembly_point_data in data.get("assembly_points", []):

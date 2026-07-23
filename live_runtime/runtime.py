@@ -47,6 +47,7 @@ class LiveRuntime:
         building_control_controller,
         sign_manager=None,
         dynamic_signage_controller=None,
+        emergency_light_manager=None,
         live_occupant_manager=None,
         sensor_fusion_engine=None,
         perception_fusion_coordinator=None,
@@ -78,6 +79,14 @@ class LiveRuntime:
         # fabricated.
         self.sign_manager = sign_manager
         self.dynamic_signage_controller = dynamic_signage_controller
+
+        # Manual Call Points & Emergency Lighting milestone -- exactly
+        # one EmergencyLightManager for this live session, same shared-
+        # instance discipline as every other manager above. Manual Call
+        # Points need no new manager of their own -- see sensor_manager.
+        # manager.SensorManager.discover_sensors(), which now discovers
+        # them alongside Smoke/Heat Detector.
+        self.emergency_light_manager = emergency_light_manager
 
         # Camera ingestion -- camera_id -> CameraFrameSource (Replay
         # today; RTSPFrameSource, unchanged, once physical CCTV access
