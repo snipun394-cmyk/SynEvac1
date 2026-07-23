@@ -26,6 +26,10 @@ from designer.items.speaker_item import SpeakerItem
 from designer.items.sign_item import SignItem
 from designer.items.manual_call_point_item import ManualCallPointItem
 from designer.items.emergency_light_item import EmergencyLightItem
+from designer.items.sprinkler_item import SprinklerItem
+from designer.items.fire_extinguisher_item import FireExtinguisherItem
+from designer.items.fire_hydrant_item import FireHydrantItem
+from designer.items.hose_reel_item import HoseReelItem
 from designer.items.stair_item import StairItem
 from designer.items.zone_rectangle import ZoneRectangle
 from designer.scene.graphics_view import GraphicsView
@@ -775,6 +779,30 @@ class MainWindow(QMainWindow):
             )
         )
 
+        self.toolbar.sprinkler_action.triggered.connect(
+            lambda: self.change_tool(
+                "sprinkler"
+            )
+        )
+
+        self.toolbar.fire_extinguisher_action.triggered.connect(
+            lambda: self.change_tool(
+                "fire_extinguisher"
+            )
+        )
+
+        self.toolbar.fire_hydrant_action.triggered.connect(
+            lambda: self.change_tool(
+                "fire_hydrant"
+            )
+        )
+
+        self.toolbar.hose_reel_action.triggered.connect(
+            lambda: self.change_tool(
+                "hose_reel"
+            )
+        )
+
         self.toolbar.assembly_point_action.triggered.connect(
             lambda: self.change_tool(
                 "assembly_point"
@@ -1093,6 +1121,18 @@ class MainWindow(QMainWindow):
 
         elif isinstance(item, EmergencyLightItem):
             self.property_panel.show_emergency_light(item)
+
+        elif isinstance(item, SprinklerItem):
+            self.property_panel.show_sprinkler(item)
+
+        elif isinstance(item, FireExtinguisherItem):
+            self.property_panel.show_fire_extinguisher(item)
+
+        elif isinstance(item, FireHydrantItem):
+            self.property_panel.show_fire_hydrant(item)
+
+        elif isinstance(item, HoseReelItem):
+            self.property_panel.show_hose_reel(item)
 
         elif isinstance(item, AssemblyPointItem):
             self.property_panel.show_assembly_point(item)

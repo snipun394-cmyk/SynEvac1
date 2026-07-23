@@ -55,6 +55,18 @@ def validate_building_authoring(building) -> ValidationReport:
         for emergency_light in floor.emergency_lights:
             _check_zone_assignment(report, floor, emergency_light, "Emergency Light", "emergency_light_missing_zone")
 
+        for sprinkler in floor.sprinklers:
+            _check_zone_assignment(report, floor, sprinkler, "Sprinkler", "sprinkler_missing_zone")
+
+        for fire_extinguisher in floor.fire_extinguishers:
+            _check_zone_assignment(report, floor, fire_extinguisher, "Fire Extinguisher", "fire_extinguisher_missing_zone")
+
+        for fire_hydrant in floor.fire_hydrants:
+            _check_zone_assignment(report, floor, fire_hydrant, "Fire Hydrant", "fire_hydrant_missing_zone")
+
+        for hose_reel in floor.hose_reels:
+            _check_zone_assignment(report, floor, hose_reel, "Hose Reel", "hose_reel_missing_zone")
+
     _detect_duplicate_stairs(report, building)
 
     return report

@@ -19,7 +19,10 @@ from models.detector import Detector
 from models.door import Door
 from models.emergency_light import EmergencyLight, EmergencyLightAvailability
 from models.engineering_asset import DeviceMode
+from models.fire_extinguisher import FireExtinguisher
+from models.fire_hydrant import FireHydrant
 from models.floor import Floor
+from models.hose_reel import HoseReel
 from models.obstacle import Obstacle
 from models.sensor_asset import HealthStatus
 from models.speaker import Speaker
@@ -842,6 +845,236 @@ class PropertyPanel(QWidget):
         ]
 
         # =====================================================
+        # Sprinkler (Fire Suppression & Water-Based Safety Asset
+        # Digital Twin milestone) -- reuses the exact same SensorAsset
+        # foundation and "Test Temperature" manual-reading convention
+        # Heat Detector already establishes above (no live hazard
+        # simulation is wired into the Designer -- see
+        # models.sprinkler.Sprinkler's own docstring for why this
+        # produces a SprinklerActivationState, never a DetectorState).
+        # =====================================================
+
+        self.sprinkler_x = QLineEdit()
+        self.sprinkler_y = QLineEdit()
+
+        self.sprinkler_active = QCheckBox()
+
+        self.sprinkler_health = QComboBox()
+
+        for health_status in HealthStatus.ALL:
+            self.sprinkler_health.addItem(health_status)
+
+        self.sprinkler_mode = QComboBox()
+
+        for mode in DeviceMode.ALL:
+            self.sprinkler_mode.addItem(mode)
+
+        self.sprinkler_activation_temperature = QLineEdit()
+
+        self.sprinkler_installation_date = QLineEdit()
+
+        self.sprinkler_test_temperature = QLineEdit()
+
+        self.sprinkler_state = QLabel("-")
+
+        self.sprinkler_zone = QComboBox()
+
+        self.sprinkler_zone_warning = QLabel(
+            "Zone assignment required for live operation."
+        )
+        self.sprinkler_zone_warning.setWordWrap(True)
+        self.sprinkler_zone_warning.setStyleSheet("color: #b45309;")
+
+        layout.addRow("Position X (m)", self.sprinkler_x)
+        layout.addRow("Position Y (m)", self.sprinkler_y)
+
+        layout.addRow("Active", self.sprinkler_active)
+
+        layout.addRow("Health Status", self.sprinkler_health)
+        layout.addRow("Mode", self.sprinkler_mode)
+
+        layout.addRow("Activation Temperature (°C)", self.sprinkler_activation_temperature)
+        layout.addRow("Installation Date", self.sprinkler_installation_date)
+
+        layout.addRow("Test Temperature (°C)", self.sprinkler_test_temperature)
+        layout.addRow("Current State", self.sprinkler_state)
+
+        layout.addRow("Assigned Zone", self.sprinkler_zone)
+        layout.addRow("", self.sprinkler_zone_warning)
+
+        self.sprinkler_fields = [
+            self.sprinkler_x,
+            self.sprinkler_y,
+            self.sprinkler_active,
+            self.sprinkler_health,
+            self.sprinkler_mode,
+            self.sprinkler_activation_temperature,
+            self.sprinkler_installation_date,
+            self.sprinkler_test_temperature,
+            self.sprinkler_state,
+            self.sprinkler_zone,
+            self.sprinkler_zone_warning,
+        ]
+
+        # =====================================================
+        # Fire Extinguisher (Fire Suppression & Water-Based Safety
+        # Asset Digital Twin milestone) -- a passive, manually-operated
+        # resource, not a sensor -- no current-state/test-reading
+        # controls, only availability (see models.fire_extinguisher.
+        # FireExtinguisher's own docstring).
+        # =====================================================
+
+        self.fire_extinguisher_x = QLineEdit()
+        self.fire_extinguisher_y = QLineEdit()
+
+        self.fire_extinguisher_active = QCheckBox()
+
+        self.fire_extinguisher_health = QComboBox()
+
+        for health_status in HealthStatus.ALL:
+            self.fire_extinguisher_health.addItem(health_status)
+
+        self.fire_extinguisher_type = QComboBox()
+
+        for extinguisher_type in FireExtinguisher.EXTINGUISHER_TYPES:
+            self.fire_extinguisher_type.addItem(extinguisher_type)
+
+        self.fire_extinguisher_availability = QLabel("-")
+
+        self.fire_extinguisher_zone = QComboBox()
+
+        self.fire_extinguisher_zone_warning = QLabel(
+            "Zone assignment required for live operation."
+        )
+        self.fire_extinguisher_zone_warning.setWordWrap(True)
+        self.fire_extinguisher_zone_warning.setStyleSheet("color: #b45309;")
+
+        layout.addRow("Position X (m)", self.fire_extinguisher_x)
+        layout.addRow("Position Y (m)", self.fire_extinguisher_y)
+
+        layout.addRow("Active", self.fire_extinguisher_active)
+
+        layout.addRow("Health Status", self.fire_extinguisher_health)
+        layout.addRow("Extinguisher Type", self.fire_extinguisher_type)
+        layout.addRow("Availability", self.fire_extinguisher_availability)
+
+        layout.addRow("Assigned Zone", self.fire_extinguisher_zone)
+        layout.addRow("", self.fire_extinguisher_zone_warning)
+
+        self.fire_extinguisher_fields = [
+            self.fire_extinguisher_x,
+            self.fire_extinguisher_y,
+            self.fire_extinguisher_active,
+            self.fire_extinguisher_health,
+            self.fire_extinguisher_type,
+            self.fire_extinguisher_availability,
+            self.fire_extinguisher_zone,
+            self.fire_extinguisher_zone_warning,
+        ]
+
+        # =====================================================
+        # Fire Hydrant / Landing Valve (Fire Suppression & Water-Based
+        # Safety Asset Digital Twin milestone) -- same passive-resource
+        # shape as Fire Extinguisher above.
+        # =====================================================
+
+        self.fire_hydrant_x = QLineEdit()
+        self.fire_hydrant_y = QLineEdit()
+
+        self.fire_hydrant_active = QCheckBox()
+
+        self.fire_hydrant_health = QComboBox()
+
+        for health_status in HealthStatus.ALL:
+            self.fire_hydrant_health.addItem(health_status)
+
+        self.fire_hydrant_type = QComboBox()
+
+        for hydrant_type in FireHydrant.HYDRANT_TYPES:
+            self.fire_hydrant_type.addItem(hydrant_type)
+
+        self.fire_hydrant_availability = QLabel("-")
+
+        self.fire_hydrant_zone = QComboBox()
+
+        self.fire_hydrant_zone_warning = QLabel(
+            "Zone assignment required for live operation."
+        )
+        self.fire_hydrant_zone_warning.setWordWrap(True)
+        self.fire_hydrant_zone_warning.setStyleSheet("color: #b45309;")
+
+        layout.addRow("Position X (m)", self.fire_hydrant_x)
+        layout.addRow("Position Y (m)", self.fire_hydrant_y)
+
+        layout.addRow("Active", self.fire_hydrant_active)
+
+        layout.addRow("Health Status", self.fire_hydrant_health)
+        layout.addRow("Hydrant Type", self.fire_hydrant_type)
+        layout.addRow("Availability", self.fire_hydrant_availability)
+
+        layout.addRow("Assigned Zone", self.fire_hydrant_zone)
+        layout.addRow("", self.fire_hydrant_zone_warning)
+
+        self.fire_hydrant_fields = [
+            self.fire_hydrant_x,
+            self.fire_hydrant_y,
+            self.fire_hydrant_active,
+            self.fire_hydrant_health,
+            self.fire_hydrant_type,
+            self.fire_hydrant_availability,
+            self.fire_hydrant_zone,
+            self.fire_hydrant_zone_warning,
+        ]
+
+        # =====================================================
+        # Hose Reel (Fire Suppression & Water-Based Safety Asset
+        # Digital Twin milestone) -- same passive-resource shape as
+        # Fire Extinguisher/Fire Hydrant above, minus a type combo
+        # (see models.hose_reel.HoseReel's own docstring for why).
+        # =====================================================
+
+        self.hose_reel_x = QLineEdit()
+        self.hose_reel_y = QLineEdit()
+
+        self.hose_reel_active = QCheckBox()
+
+        self.hose_reel_health = QComboBox()
+
+        for health_status in HealthStatus.ALL:
+            self.hose_reel_health.addItem(health_status)
+
+        self.hose_reel_availability = QLabel("-")
+
+        self.hose_reel_zone = QComboBox()
+
+        self.hose_reel_zone_warning = QLabel(
+            "Zone assignment required for live operation."
+        )
+        self.hose_reel_zone_warning.setWordWrap(True)
+        self.hose_reel_zone_warning.setStyleSheet("color: #b45309;")
+
+        layout.addRow("Position X (m)", self.hose_reel_x)
+        layout.addRow("Position Y (m)", self.hose_reel_y)
+
+        layout.addRow("Active", self.hose_reel_active)
+
+        layout.addRow("Health Status", self.hose_reel_health)
+        layout.addRow("Availability", self.hose_reel_availability)
+
+        layout.addRow("Assigned Zone", self.hose_reel_zone)
+        layout.addRow("", self.hose_reel_zone_warning)
+
+        self.hose_reel_fields = [
+            self.hose_reel_x,
+            self.hose_reel_y,
+            self.hose_reel_active,
+            self.hose_reel_health,
+            self.hose_reel_availability,
+            self.hose_reel_zone,
+            self.hose_reel_zone_warning,
+        ]
+
+        # =====================================================
         # Assembly Point Geometry
         # =====================================================
 
@@ -1403,6 +1636,88 @@ class PropertyPanel(QWidget):
             self.update_emergency_light_zone
         )
 
+        self.sprinkler_x.editingFinished.connect(
+            self.update_sprinkler_geometry
+        )
+        self.sprinkler_y.editingFinished.connect(
+            self.update_sprinkler_geometry
+        )
+        self.sprinkler_active.toggled.connect(
+            self.update_sprinkler_active
+        )
+        self.sprinkler_health.currentIndexChanged.connect(
+            self.update_sprinkler_health
+        )
+        self.sprinkler_mode.currentIndexChanged.connect(
+            self.update_sprinkler_mode
+        )
+        self.sprinkler_activation_temperature.editingFinished.connect(
+            self.update_sprinkler_activation_temperature
+        )
+        self.sprinkler_installation_date.editingFinished.connect(
+            self.update_sprinkler_installation_date
+        )
+        self.sprinkler_test_temperature.editingFinished.connect(
+            self.update_sprinkler_test_reading
+        )
+        self.sprinkler_zone.currentIndexChanged.connect(
+            self.update_sprinkler_zone
+        )
+
+        self.fire_extinguisher_x.editingFinished.connect(
+            self.update_fire_extinguisher_geometry
+        )
+        self.fire_extinguisher_y.editingFinished.connect(
+            self.update_fire_extinguisher_geometry
+        )
+        self.fire_extinguisher_active.toggled.connect(
+            self.update_fire_extinguisher_active
+        )
+        self.fire_extinguisher_health.currentIndexChanged.connect(
+            self.update_fire_extinguisher_health
+        )
+        self.fire_extinguisher_type.currentIndexChanged.connect(
+            self.update_fire_extinguisher_type
+        )
+        self.fire_extinguisher_zone.currentIndexChanged.connect(
+            self.update_fire_extinguisher_zone
+        )
+
+        self.fire_hydrant_x.editingFinished.connect(
+            self.update_fire_hydrant_geometry
+        )
+        self.fire_hydrant_y.editingFinished.connect(
+            self.update_fire_hydrant_geometry
+        )
+        self.fire_hydrant_active.toggled.connect(
+            self.update_fire_hydrant_active
+        )
+        self.fire_hydrant_health.currentIndexChanged.connect(
+            self.update_fire_hydrant_health
+        )
+        self.fire_hydrant_type.currentIndexChanged.connect(
+            self.update_fire_hydrant_type
+        )
+        self.fire_hydrant_zone.currentIndexChanged.connect(
+            self.update_fire_hydrant_zone
+        )
+
+        self.hose_reel_x.editingFinished.connect(
+            self.update_hose_reel_geometry
+        )
+        self.hose_reel_y.editingFinished.connect(
+            self.update_hose_reel_geometry
+        )
+        self.hose_reel_active.toggled.connect(
+            self.update_hose_reel_active
+        )
+        self.hose_reel_health.currentIndexChanged.connect(
+            self.update_hose_reel_health
+        )
+        self.hose_reel_zone.currentIndexChanged.connect(
+            self.update_hose_reel_zone
+        )
+
         self.assembly_x.editingFinished.connect(
             self.update_assembly_point_geometry
         )
@@ -1518,6 +1833,10 @@ class PropertyPanel(QWidget):
         self._set_fields_visible(self.sign_fields, False)
         self._set_fields_visible(self.mcp_fields, False)
         self._set_fields_visible(self.emergency_light_fields, False)
+        self._set_fields_visible(self.sprinkler_fields, False)
+        self._set_fields_visible(self.fire_extinguisher_fields, False)
+        self._set_fields_visible(self.fire_hydrant_fields, False)
+        self._set_fields_visible(self.hose_reel_fields, False)
         self._set_fields_visible(self.assembly_fields, False)
         self._set_fields_visible(self.obstacle_fields, False)
         self._set_fields_visible(self.door_fields, False)
@@ -1571,6 +1890,10 @@ class PropertyPanel(QWidget):
         self._set_fields_visible(self.sign_fields, False)
         self._set_fields_visible(self.mcp_fields, False)
         self._set_fields_visible(self.emergency_light_fields, False)
+        self._set_fields_visible(self.sprinkler_fields, False)
+        self._set_fields_visible(self.fire_extinguisher_fields, False)
+        self._set_fields_visible(self.fire_hydrant_fields, False)
+        self._set_fields_visible(self.hose_reel_fields, False)
         self._set_fields_visible(self.assembly_fields, False)
         self._set_fields_visible(self.obstacle_fields, False)
         self._set_fields_visible(self.door_fields, False)
@@ -1655,6 +1978,10 @@ class PropertyPanel(QWidget):
         self._set_fields_visible(self.sign_fields, False)
         self._set_fields_visible(self.mcp_fields, False)
         self._set_fields_visible(self.emergency_light_fields, False)
+        self._set_fields_visible(self.sprinkler_fields, False)
+        self._set_fields_visible(self.fire_extinguisher_fields, False)
+        self._set_fields_visible(self.fire_hydrant_fields, False)
+        self._set_fields_visible(self.hose_reel_fields, False)
         self._set_fields_visible(self.assembly_fields, False)
         self._set_fields_visible(self.obstacle_fields, False)
         self._set_fields_visible(self.door_fields, False)
@@ -1733,6 +2060,10 @@ class PropertyPanel(QWidget):
         self._set_fields_visible(self.sign_fields, False)
         self._set_fields_visible(self.mcp_fields, False)
         self._set_fields_visible(self.emergency_light_fields, False)
+        self._set_fields_visible(self.sprinkler_fields, False)
+        self._set_fields_visible(self.fire_extinguisher_fields, False)
+        self._set_fields_visible(self.fire_hydrant_fields, False)
+        self._set_fields_visible(self.hose_reel_fields, False)
         self._set_fields_visible(self.assembly_fields, False)
         self._set_fields_visible(self.obstacle_fields, False)
         self._set_fields_visible(self.door_fields, False)
@@ -1849,6 +2180,10 @@ class PropertyPanel(QWidget):
         self._set_fields_visible(self.sign_fields, False)
         self._set_fields_visible(self.mcp_fields, False)
         self._set_fields_visible(self.emergency_light_fields, False)
+        self._set_fields_visible(self.sprinkler_fields, False)
+        self._set_fields_visible(self.fire_extinguisher_fields, False)
+        self._set_fields_visible(self.fire_hydrant_fields, False)
+        self._set_fields_visible(self.hose_reel_fields, False)
         self._set_fields_visible(self.assembly_fields, False)
         self._set_fields_visible(self.obstacle_fields, False)
         self._set_fields_visible(self.door_fields, False)
@@ -1992,6 +2327,10 @@ class PropertyPanel(QWidget):
         self._set_fields_visible(self.sign_fields, False)
         self._set_fields_visible(self.mcp_fields, False)
         self._set_fields_visible(self.emergency_light_fields, False)
+        self._set_fields_visible(self.sprinkler_fields, False)
+        self._set_fields_visible(self.fire_extinguisher_fields, False)
+        self._set_fields_visible(self.fire_hydrant_fields, False)
+        self._set_fields_visible(self.hose_reel_fields, False)
         self._set_fields_visible(self.assembly_fields, False)
         self._set_fields_visible(self.obstacle_fields, False)
         self._set_fields_visible(self.door_fields, False)
@@ -2066,6 +2405,10 @@ class PropertyPanel(QWidget):
         self._set_fields_visible(self.sign_fields, False)
         self._set_fields_visible(self.mcp_fields, False)
         self._set_fields_visible(self.emergency_light_fields, False)
+        self._set_fields_visible(self.sprinkler_fields, False)
+        self._set_fields_visible(self.fire_extinguisher_fields, False)
+        self._set_fields_visible(self.fire_hydrant_fields, False)
+        self._set_fields_visible(self.hose_reel_fields, False)
         self._set_fields_visible(self.assembly_fields, False)
         self._set_fields_visible(self.obstacle_fields, False)
         self._set_fields_visible(self.door_fields, False)
@@ -2183,6 +2526,10 @@ class PropertyPanel(QWidget):
         self._set_fields_visible(self.sign_fields, False)
         self._set_fields_visible(self.mcp_fields, False)
         self._set_fields_visible(self.emergency_light_fields, False)
+        self._set_fields_visible(self.sprinkler_fields, False)
+        self._set_fields_visible(self.fire_extinguisher_fields, False)
+        self._set_fields_visible(self.fire_hydrant_fields, False)
+        self._set_fields_visible(self.hose_reel_fields, False)
         self._set_fields_visible(self.assembly_fields, False)
         self._set_fields_visible(self.obstacle_fields, False)
         self._set_fields_visible(self.door_fields, False)
@@ -2292,6 +2639,10 @@ class PropertyPanel(QWidget):
         self._set_fields_visible(self.sign_fields, False)
         self._set_fields_visible(self.mcp_fields, False)
         self._set_fields_visible(self.emergency_light_fields, False)
+        self._set_fields_visible(self.sprinkler_fields, False)
+        self._set_fields_visible(self.fire_extinguisher_fields, False)
+        self._set_fields_visible(self.fire_hydrant_fields, False)
+        self._set_fields_visible(self.hose_reel_fields, False)
         self._set_fields_visible(self.assembly_fields, False)
         self._set_fields_visible(self.obstacle_fields, False)
         self._set_fields_visible(self.door_fields, False)
@@ -2376,6 +2727,10 @@ class PropertyPanel(QWidget):
         self._set_fields_visible(self.sign_fields, True)
         self._set_fields_visible(self.mcp_fields, False)
         self._set_fields_visible(self.emergency_light_fields, False)
+        self._set_fields_visible(self.sprinkler_fields, False)
+        self._set_fields_visible(self.fire_extinguisher_fields, False)
+        self._set_fields_visible(self.fire_hydrant_fields, False)
+        self._set_fields_visible(self.hose_reel_fields, False)
         self._set_fields_visible(self.assembly_fields, False)
         self._set_fields_visible(self.obstacle_fields, False)
         self._set_fields_visible(self.door_fields, False)
@@ -2441,6 +2796,10 @@ class PropertyPanel(QWidget):
         self._set_fields_visible(self.sign_fields, False)
         self._set_fields_visible(self.mcp_fields, True)
         self._set_fields_visible(self.emergency_light_fields, False)
+        self._set_fields_visible(self.sprinkler_fields, False)
+        self._set_fields_visible(self.fire_extinguisher_fields, False)
+        self._set_fields_visible(self.fire_hydrant_fields, False)
+        self._set_fields_visible(self.hose_reel_fields, False)
         self._set_fields_visible(self.assembly_fields, False)
         self._set_fields_visible(self.obstacle_fields, False)
         self._set_fields_visible(self.door_fields, False)
@@ -2624,6 +2983,10 @@ class PropertyPanel(QWidget):
         self._set_fields_visible(self.sign_fields, False)
         self._set_fields_visible(self.mcp_fields, False)
         self._set_fields_visible(self.emergency_light_fields, True)
+        self._set_fields_visible(self.sprinkler_fields, False)
+        self._set_fields_visible(self.fire_extinguisher_fields, False)
+        self._set_fields_visible(self.fire_hydrant_fields, False)
+        self._set_fields_visible(self.hose_reel_fields, False)
         self._set_fields_visible(self.assembly_fields, False)
         self._set_fields_visible(self.obstacle_fields, False)
         self._set_fields_visible(self.door_fields, False)
@@ -2755,6 +3118,669 @@ class PropertyPanel(QWidget):
             (zone_id,) if zone_id else ()
         )
         self._update_zone_warning(self.emergency_light_zone_warning, self.current_item.model.zone_ids)
+
+    # =====================================================
+    # Sprinkler (Fire Suppression & Water-Based Safety Asset Digital
+    # Twin milestone)
+    # =====================================================
+
+    def show_sprinkler(self, sprinkler_item):
+
+        self.current_item = sprinkler_item
+        self._refresh_handler = self.show_sprinkler
+
+        self._set_fields_visible(self.zone_fields, False)
+        self._set_fields_visible(self.exit_fields, False)
+        self._set_fields_visible(self.stair_fields, False)
+        self._set_fields_visible(self.camera_fields, False)
+        self._set_fields_visible(self.detector_fields, False)
+        self._set_fields_visible(self.smoke_detector_fields, False)
+        self._set_fields_visible(self.heat_detector_fields, False)
+        self._set_fields_visible(self.speaker_fields, False)
+        self._set_fields_visible(self.sign_fields, False)
+        self._set_fields_visible(self.mcp_fields, False)
+        self._set_fields_visible(self.emergency_light_fields, False)
+        self._set_fields_visible(self.sprinkler_fields, True)
+        self._set_fields_visible(self.fire_extinguisher_fields, False)
+        self._set_fields_visible(self.fire_hydrant_fields, False)
+        self._set_fields_visible(self.hose_reel_fields, False)
+        self._set_fields_visible(self.assembly_fields, False)
+        self._set_fields_visible(self.obstacle_fields, False)
+        self._set_fields_visible(self.door_fields, False)
+        self._set_fields_visible(self.floor_fields, False)
+
+        model = sprinkler_item.model
+
+        self.object_type.setText("Sprinkler")
+        self.object_id.setText(sprinkler_item.object_id)
+
+        self.object_name.blockSignals(True)
+        self.sprinkler_x.blockSignals(True)
+        self.sprinkler_y.blockSignals(True)
+        self.sprinkler_active.blockSignals(True)
+        self.sprinkler_health.blockSignals(True)
+        self.sprinkler_mode.blockSignals(True)
+        self.sprinkler_activation_temperature.blockSignals(True)
+        self.sprinkler_installation_date.blockSignals(True)
+        self.sprinkler_test_temperature.blockSignals(True)
+        self.sprinkler_zone.blockSignals(True)
+
+        self.object_name.setText(sprinkler_item.object_name)
+
+        if model is not None:
+
+            px, py = model.position
+
+            self.sprinkler_x.setText(f"{px:.2f}")
+            self.sprinkler_y.setText(f"{py:.2f}")
+
+            self.sprinkler_active.setChecked(model.active)
+
+            health_index = self.sprinkler_health.findText(model.health_status)
+
+            if health_index != -1:
+                self.sprinkler_health.setCurrentIndex(health_index)
+
+            mode_index = self.sprinkler_mode.findText(model.mode)
+
+            if mode_index != -1:
+                self.sprinkler_mode.setCurrentIndex(mode_index)
+
+            self.sprinkler_activation_temperature.setText(f"{model.activation_temperature:.2f}")
+            self.sprinkler_installation_date.setText(model.installation_date)
+
+            self._populate_zone_combo(
+                self.sprinkler_zone,
+                model,
+                model.zone_ids[0] if model.zone_ids else "",
+                "",
+            )
+            self._update_zone_warning(self.sprinkler_zone_warning, model.zone_ids)
+
+            self._refresh_sprinkler_state(sprinkler_item)
+
+        self.object_name.blockSignals(False)
+        self.sprinkler_x.blockSignals(False)
+        self.sprinkler_y.blockSignals(False)
+        self.sprinkler_active.blockSignals(False)
+        self.sprinkler_health.blockSignals(False)
+        self.sprinkler_mode.blockSignals(False)
+        self.sprinkler_activation_temperature.blockSignals(False)
+        self.sprinkler_installation_date.blockSignals(False)
+        self.sprinkler_test_temperature.blockSignals(False)
+        self.sprinkler_zone.blockSignals(False)
+
+    # =====================================================
+
+    def _refresh_sprinkler_state(self, sprinkler_item):
+
+        model = sprinkler_item.model
+
+        if model is None:
+            return
+
+        text = self.sprinkler_test_temperature.text().strip()
+
+        try:
+            temperature = float(text) if text else None
+        except ValueError:
+            temperature = None
+
+        state = model.compute_state(temperature)
+
+        self.sprinkler_state.setText(state.name)
+
+        sprinkler_item.current_state = state
+        sprinkler_item.refresh_geometry()
+
+    # =====================================================
+
+    def update_sprinkler_geometry(self):
+
+        if self.current_item is None:
+            return
+
+        try:
+            x = float(self.sprinkler_x.text())
+            y = float(self.sprinkler_y.text())
+        except ValueError:
+            return
+
+        self.current_item.setPos(x * self.GRID_SIZE, y * self.GRID_SIZE)
+        self.current_item.sync_to_model()
+
+    # =====================================================
+
+    def update_sprinkler_active(self):
+
+        if self.current_item is None or self.current_item.model is None:
+            return
+
+        self.current_item.model.active = self.sprinkler_active.isChecked()
+        self._refresh_sprinkler_state(self.current_item)
+
+    # =====================================================
+
+    def update_sprinkler_health(self, index):
+
+        if self.current_item is None or self.current_item.model is None:
+            return
+
+        self.current_item.model.health_status = self.sprinkler_health.itemText(index)
+        self._refresh_sprinkler_state(self.current_item)
+
+    # =====================================================
+
+    def update_sprinkler_mode(self, index):
+
+        if self.current_item is None or self.current_item.model is None:
+            return
+
+        self.current_item.model.mode = self.sprinkler_mode.itemText(index)
+
+    # =====================================================
+
+    def update_sprinkler_activation_temperature(self):
+
+        if self.current_item is None or self.current_item.model is None:
+            return
+
+        try:
+            threshold = float(self.sprinkler_activation_temperature.text())
+        except ValueError:
+            self.refresh()
+            return
+
+        self.current_item.model.activation_temperature = threshold
+        self._refresh_sprinkler_state(self.current_item)
+
+    # =====================================================
+
+    def update_sprinkler_installation_date(self):
+
+        if self.current_item is None or self.current_item.model is None:
+            return
+
+        self.current_item.model.installation_date = self.sprinkler_installation_date.text()
+
+    # =====================================================
+
+    def update_sprinkler_test_reading(self):
+
+        if self.current_item is None:
+            return
+
+        self._refresh_sprinkler_state(self.current_item)
+
+    # =====================================================
+
+    def update_sprinkler_zone(self, index):
+
+        if self.current_item is None or self.current_item.model is None:
+            return
+
+        zone_id = self.sprinkler_zone.itemData(index)
+
+        self.current_item.model.zone_ids = (
+            (zone_id,) if zone_id else ()
+        )
+        self._update_zone_warning(self.sprinkler_zone_warning, self.current_item.model.zone_ids)
+
+    # =====================================================
+    # Fire Extinguisher (Fire Suppression & Water-Based Safety Asset
+    # Digital Twin milestone) -- a passive resource, no current-state
+    # concept, only availability (mirrors Emergency Light exactly).
+    # =====================================================
+
+    def show_fire_extinguisher(self, extinguisher_item):
+
+        self.current_item = extinguisher_item
+        self._refresh_handler = self.show_fire_extinguisher
+
+        self._set_fields_visible(self.zone_fields, False)
+        self._set_fields_visible(self.exit_fields, False)
+        self._set_fields_visible(self.stair_fields, False)
+        self._set_fields_visible(self.camera_fields, False)
+        self._set_fields_visible(self.detector_fields, False)
+        self._set_fields_visible(self.smoke_detector_fields, False)
+        self._set_fields_visible(self.heat_detector_fields, False)
+        self._set_fields_visible(self.speaker_fields, False)
+        self._set_fields_visible(self.sign_fields, False)
+        self._set_fields_visible(self.mcp_fields, False)
+        self._set_fields_visible(self.emergency_light_fields, False)
+        self._set_fields_visible(self.sprinkler_fields, False)
+        self._set_fields_visible(self.fire_extinguisher_fields, True)
+        self._set_fields_visible(self.fire_hydrant_fields, False)
+        self._set_fields_visible(self.hose_reel_fields, False)
+        self._set_fields_visible(self.assembly_fields, False)
+        self._set_fields_visible(self.obstacle_fields, False)
+        self._set_fields_visible(self.door_fields, False)
+        self._set_fields_visible(self.floor_fields, False)
+
+        model = extinguisher_item.model
+
+        self.object_type.setText("Fire Extinguisher")
+        self.object_id.setText(extinguisher_item.object_id)
+
+        self.object_name.blockSignals(True)
+        self.fire_extinguisher_x.blockSignals(True)
+        self.fire_extinguisher_y.blockSignals(True)
+        self.fire_extinguisher_active.blockSignals(True)
+        self.fire_extinguisher_health.blockSignals(True)
+        self.fire_extinguisher_type.blockSignals(True)
+        self.fire_extinguisher_zone.blockSignals(True)
+
+        self.object_name.setText(extinguisher_item.object_name)
+
+        if model is not None:
+
+            px, py = model.position
+
+            self.fire_extinguisher_x.setText(f"{px:.2f}")
+            self.fire_extinguisher_y.setText(f"{py:.2f}")
+
+            self.fire_extinguisher_active.setChecked(model.active)
+
+            health_index = self.fire_extinguisher_health.findText(model.health_status)
+
+            if health_index != -1:
+                self.fire_extinguisher_health.setCurrentIndex(health_index)
+
+            type_index = self.fire_extinguisher_type.findText(model.extinguisher_type)
+
+            if type_index != -1:
+                self.fire_extinguisher_type.setCurrentIndex(type_index)
+
+            self._populate_zone_combo(
+                self.fire_extinguisher_zone,
+                model,
+                model.zone_ids[0] if model.zone_ids else "",
+                "",
+            )
+            self._update_zone_warning(self.fire_extinguisher_zone_warning, model.zone_ids)
+
+            self._refresh_fire_extinguisher_availability(extinguisher_item)
+
+        self.object_name.blockSignals(False)
+        self.fire_extinguisher_x.blockSignals(False)
+        self.fire_extinguisher_y.blockSignals(False)
+        self.fire_extinguisher_active.blockSignals(False)
+        self.fire_extinguisher_health.blockSignals(False)
+        self.fire_extinguisher_type.blockSignals(False)
+        self.fire_extinguisher_zone.blockSignals(False)
+
+    # =====================================================
+
+    def _refresh_fire_extinguisher_availability(self, extinguisher_item):
+
+        model = extinguisher_item.model
+
+        if model is None:
+            return
+
+        availability = model.compute_availability()
+
+        self.fire_extinguisher_availability.setText(availability)
+
+        extinguisher_item.current_availability = availability
+        extinguisher_item.refresh_geometry()
+
+    # =====================================================
+
+    def update_fire_extinguisher_geometry(self):
+
+        if self.current_item is None:
+            return
+
+        try:
+            x = float(self.fire_extinguisher_x.text())
+            y = float(self.fire_extinguisher_y.text())
+        except ValueError:
+            return
+
+        self.current_item.setPos(x * self.GRID_SIZE, y * self.GRID_SIZE)
+        self.current_item.sync_to_model()
+
+    # =====================================================
+
+    def update_fire_extinguisher_active(self):
+
+        if self.current_item is None or self.current_item.model is None:
+            return
+
+        self.current_item.model.active = self.fire_extinguisher_active.isChecked()
+        self._refresh_fire_extinguisher_availability(self.current_item)
+
+    # =====================================================
+
+    def update_fire_extinguisher_health(self, index):
+
+        if self.current_item is None or self.current_item.model is None:
+            return
+
+        self.current_item.model.health_status = self.fire_extinguisher_health.itemText(index)
+        self._refresh_fire_extinguisher_availability(self.current_item)
+
+    # =====================================================
+
+    def update_fire_extinguisher_type(self, index):
+
+        if self.current_item is None or self.current_item.model is None:
+            return
+
+        self.current_item.model.extinguisher_type = self.fire_extinguisher_type.itemText(index)
+
+    # =====================================================
+
+    def update_fire_extinguisher_zone(self, index):
+
+        if self.current_item is None or self.current_item.model is None:
+            return
+
+        zone_id = self.fire_extinguisher_zone.itemData(index)
+
+        self.current_item.model.zone_ids = (
+            (zone_id,) if zone_id else ()
+        )
+        self._update_zone_warning(self.fire_extinguisher_zone_warning, self.current_item.model.zone_ids)
+
+    # =====================================================
+    # Fire Hydrant / Landing Valve (Fire Suppression & Water-Based
+    # Safety Asset Digital Twin milestone)
+    # =====================================================
+
+    def show_fire_hydrant(self, hydrant_item):
+
+        self.current_item = hydrant_item
+        self._refresh_handler = self.show_fire_hydrant
+
+        self._set_fields_visible(self.zone_fields, False)
+        self._set_fields_visible(self.exit_fields, False)
+        self._set_fields_visible(self.stair_fields, False)
+        self._set_fields_visible(self.camera_fields, False)
+        self._set_fields_visible(self.detector_fields, False)
+        self._set_fields_visible(self.smoke_detector_fields, False)
+        self._set_fields_visible(self.heat_detector_fields, False)
+        self._set_fields_visible(self.speaker_fields, False)
+        self._set_fields_visible(self.sign_fields, False)
+        self._set_fields_visible(self.mcp_fields, False)
+        self._set_fields_visible(self.emergency_light_fields, False)
+        self._set_fields_visible(self.sprinkler_fields, False)
+        self._set_fields_visible(self.fire_extinguisher_fields, False)
+        self._set_fields_visible(self.fire_hydrant_fields, True)
+        self._set_fields_visible(self.hose_reel_fields, False)
+        self._set_fields_visible(self.assembly_fields, False)
+        self._set_fields_visible(self.obstacle_fields, False)
+        self._set_fields_visible(self.door_fields, False)
+        self._set_fields_visible(self.floor_fields, False)
+
+        model = hydrant_item.model
+
+        self.object_type.setText("Fire Hydrant")
+        self.object_id.setText(hydrant_item.object_id)
+
+        self.object_name.blockSignals(True)
+        self.fire_hydrant_x.blockSignals(True)
+        self.fire_hydrant_y.blockSignals(True)
+        self.fire_hydrant_active.blockSignals(True)
+        self.fire_hydrant_health.blockSignals(True)
+        self.fire_hydrant_type.blockSignals(True)
+        self.fire_hydrant_zone.blockSignals(True)
+
+        self.object_name.setText(hydrant_item.object_name)
+
+        if model is not None:
+
+            px, py = model.position
+
+            self.fire_hydrant_x.setText(f"{px:.2f}")
+            self.fire_hydrant_y.setText(f"{py:.2f}")
+
+            self.fire_hydrant_active.setChecked(model.active)
+
+            health_index = self.fire_hydrant_health.findText(model.health_status)
+
+            if health_index != -1:
+                self.fire_hydrant_health.setCurrentIndex(health_index)
+
+            type_index = self.fire_hydrant_type.findText(model.hydrant_type)
+
+            if type_index != -1:
+                self.fire_hydrant_type.setCurrentIndex(type_index)
+
+            self._populate_zone_combo(
+                self.fire_hydrant_zone,
+                model,
+                model.zone_ids[0] if model.zone_ids else "",
+                "",
+            )
+            self._update_zone_warning(self.fire_hydrant_zone_warning, model.zone_ids)
+
+            self._refresh_fire_hydrant_availability(hydrant_item)
+
+        self.object_name.blockSignals(False)
+        self.fire_hydrant_x.blockSignals(False)
+        self.fire_hydrant_y.blockSignals(False)
+        self.fire_hydrant_active.blockSignals(False)
+        self.fire_hydrant_health.blockSignals(False)
+        self.fire_hydrant_type.blockSignals(False)
+        self.fire_hydrant_zone.blockSignals(False)
+
+    # =====================================================
+
+    def _refresh_fire_hydrant_availability(self, hydrant_item):
+
+        model = hydrant_item.model
+
+        if model is None:
+            return
+
+        availability = model.compute_availability()
+
+        self.fire_hydrant_availability.setText(availability)
+
+        hydrant_item.current_availability = availability
+        hydrant_item.refresh_geometry()
+
+    # =====================================================
+
+    def update_fire_hydrant_geometry(self):
+
+        if self.current_item is None:
+            return
+
+        try:
+            x = float(self.fire_hydrant_x.text())
+            y = float(self.fire_hydrant_y.text())
+        except ValueError:
+            return
+
+        self.current_item.setPos(x * self.GRID_SIZE, y * self.GRID_SIZE)
+        self.current_item.sync_to_model()
+
+    # =====================================================
+
+    def update_fire_hydrant_active(self):
+
+        if self.current_item is None or self.current_item.model is None:
+            return
+
+        self.current_item.model.active = self.fire_hydrant_active.isChecked()
+        self._refresh_fire_hydrant_availability(self.current_item)
+
+    # =====================================================
+
+    def update_fire_hydrant_health(self, index):
+
+        if self.current_item is None or self.current_item.model is None:
+            return
+
+        self.current_item.model.health_status = self.fire_hydrant_health.itemText(index)
+        self._refresh_fire_hydrant_availability(self.current_item)
+
+    # =====================================================
+
+    def update_fire_hydrant_type(self, index):
+
+        if self.current_item is None or self.current_item.model is None:
+            return
+
+        self.current_item.model.hydrant_type = self.fire_hydrant_type.itemText(index)
+
+    # =====================================================
+
+    def update_fire_hydrant_zone(self, index):
+
+        if self.current_item is None or self.current_item.model is None:
+            return
+
+        zone_id = self.fire_hydrant_zone.itemData(index)
+
+        self.current_item.model.zone_ids = (
+            (zone_id,) if zone_id else ()
+        )
+        self._update_zone_warning(self.fire_hydrant_zone_warning, self.current_item.model.zone_ids)
+
+    # =====================================================
+    # Hose Reel (Fire Suppression & Water-Based Safety Asset Digital
+    # Twin milestone)
+    # =====================================================
+
+    def show_hose_reel(self, hose_reel_item):
+
+        self.current_item = hose_reel_item
+        self._refresh_handler = self.show_hose_reel
+
+        self._set_fields_visible(self.zone_fields, False)
+        self._set_fields_visible(self.exit_fields, False)
+        self._set_fields_visible(self.stair_fields, False)
+        self._set_fields_visible(self.camera_fields, False)
+        self._set_fields_visible(self.detector_fields, False)
+        self._set_fields_visible(self.smoke_detector_fields, False)
+        self._set_fields_visible(self.heat_detector_fields, False)
+        self._set_fields_visible(self.speaker_fields, False)
+        self._set_fields_visible(self.sign_fields, False)
+        self._set_fields_visible(self.mcp_fields, False)
+        self._set_fields_visible(self.emergency_light_fields, False)
+        self._set_fields_visible(self.sprinkler_fields, False)
+        self._set_fields_visible(self.fire_extinguisher_fields, False)
+        self._set_fields_visible(self.fire_hydrant_fields, False)
+        self._set_fields_visible(self.hose_reel_fields, True)
+        self._set_fields_visible(self.assembly_fields, False)
+        self._set_fields_visible(self.obstacle_fields, False)
+        self._set_fields_visible(self.door_fields, False)
+        self._set_fields_visible(self.floor_fields, False)
+
+        model = hose_reel_item.model
+
+        self.object_type.setText("Hose Reel")
+        self.object_id.setText(hose_reel_item.object_id)
+
+        self.object_name.blockSignals(True)
+        self.hose_reel_x.blockSignals(True)
+        self.hose_reel_y.blockSignals(True)
+        self.hose_reel_active.blockSignals(True)
+        self.hose_reel_health.blockSignals(True)
+        self.hose_reel_zone.blockSignals(True)
+
+        self.object_name.setText(hose_reel_item.object_name)
+
+        if model is not None:
+
+            px, py = model.position
+
+            self.hose_reel_x.setText(f"{px:.2f}")
+            self.hose_reel_y.setText(f"{py:.2f}")
+
+            self.hose_reel_active.setChecked(model.active)
+
+            health_index = self.hose_reel_health.findText(model.health_status)
+
+            if health_index != -1:
+                self.hose_reel_health.setCurrentIndex(health_index)
+
+            self._populate_zone_combo(
+                self.hose_reel_zone,
+                model,
+                model.zone_ids[0] if model.zone_ids else "",
+                "",
+            )
+            self._update_zone_warning(self.hose_reel_zone_warning, model.zone_ids)
+
+            self._refresh_hose_reel_availability(hose_reel_item)
+
+        self.object_name.blockSignals(False)
+        self.hose_reel_x.blockSignals(False)
+        self.hose_reel_y.blockSignals(False)
+        self.hose_reel_active.blockSignals(False)
+        self.hose_reel_health.blockSignals(False)
+        self.hose_reel_zone.blockSignals(False)
+
+    # =====================================================
+
+    def _refresh_hose_reel_availability(self, hose_reel_item):
+
+        model = hose_reel_item.model
+
+        if model is None:
+            return
+
+        availability = model.compute_availability()
+
+        self.hose_reel_availability.setText(availability)
+
+        hose_reel_item.current_availability = availability
+        hose_reel_item.refresh_geometry()
+
+    # =====================================================
+
+    def update_hose_reel_geometry(self):
+
+        if self.current_item is None:
+            return
+
+        try:
+            x = float(self.hose_reel_x.text())
+            y = float(self.hose_reel_y.text())
+        except ValueError:
+            return
+
+        self.current_item.setPos(x * self.GRID_SIZE, y * self.GRID_SIZE)
+        self.current_item.sync_to_model()
+
+    # =====================================================
+
+    def update_hose_reel_active(self):
+
+        if self.current_item is None or self.current_item.model is None:
+            return
+
+        self.current_item.model.active = self.hose_reel_active.isChecked()
+        self._refresh_hose_reel_availability(self.current_item)
+
+    # =====================================================
+
+    def update_hose_reel_health(self, index):
+
+        if self.current_item is None or self.current_item.model is None:
+            return
+
+        self.current_item.model.health_status = self.hose_reel_health.itemText(index)
+        self._refresh_hose_reel_availability(self.current_item)
+
+    # =====================================================
+
+    def update_hose_reel_zone(self, index):
+
+        if self.current_item is None or self.current_item.model is None:
+            return
+
+        zone_id = self.hose_reel_zone.itemData(index)
+
+        self.current_item.model.zone_ids = (
+            (zone_id,) if zone_id else ()
+        )
+        self._update_zone_warning(self.hose_reel_zone_warning, self.current_item.model.zone_ids)
 
     # =====================================================
 
@@ -2917,6 +3943,10 @@ class PropertyPanel(QWidget):
         self._set_fields_visible(self.sign_fields, False)
         self._set_fields_visible(self.mcp_fields, False)
         self._set_fields_visible(self.emergency_light_fields, False)
+        self._set_fields_visible(self.sprinkler_fields, False)
+        self._set_fields_visible(self.fire_extinguisher_fields, False)
+        self._set_fields_visible(self.fire_hydrant_fields, False)
+        self._set_fields_visible(self.hose_reel_fields, False)
         self._set_fields_visible(self.assembly_fields, True)
         self._set_fields_visible(self.obstacle_fields, False)
         self._set_fields_visible(self.door_fields, False)
@@ -2994,6 +4024,10 @@ class PropertyPanel(QWidget):
         self._set_fields_visible(self.sign_fields, False)
         self._set_fields_visible(self.mcp_fields, False)
         self._set_fields_visible(self.emergency_light_fields, False)
+        self._set_fields_visible(self.sprinkler_fields, False)
+        self._set_fields_visible(self.fire_extinguisher_fields, False)
+        self._set_fields_visible(self.fire_hydrant_fields, False)
+        self._set_fields_visible(self.hose_reel_fields, False)
         self._set_fields_visible(self.assembly_fields, False)
         self._set_fields_visible(self.obstacle_fields, True)
         self._set_fields_visible(self.door_fields, False)
@@ -3076,6 +4110,10 @@ class PropertyPanel(QWidget):
         self._set_fields_visible(self.sign_fields, False)
         self._set_fields_visible(self.mcp_fields, False)
         self._set_fields_visible(self.emergency_light_fields, False)
+        self._set_fields_visible(self.sprinkler_fields, False)
+        self._set_fields_visible(self.fire_extinguisher_fields, False)
+        self._set_fields_visible(self.fire_hydrant_fields, False)
+        self._set_fields_visible(self.hose_reel_fields, False)
         self._set_fields_visible(self.assembly_fields, False)
         self._set_fields_visible(self.obstacle_fields, False)
         self._set_fields_visible(self.door_fields, True)
@@ -3181,6 +4219,10 @@ class PropertyPanel(QWidget):
         self._set_fields_visible(self.sign_fields, False)
         self._set_fields_visible(self.mcp_fields, False)
         self._set_fields_visible(self.emergency_light_fields, False)
+        self._set_fields_visible(self.sprinkler_fields, False)
+        self._set_fields_visible(self.fire_extinguisher_fields, False)
+        self._set_fields_visible(self.fire_hydrant_fields, False)
+        self._set_fields_visible(self.hose_reel_fields, False)
         self._set_fields_visible(self.assembly_fields, False)
         self._set_fields_visible(self.obstacle_fields, False)
         self._set_fields_visible(self.door_fields, False)
@@ -3327,6 +4369,10 @@ class PropertyPanel(QWidget):
         self._set_fields_visible(self.sign_fields, False)
         self._set_fields_visible(self.mcp_fields, False)
         self._set_fields_visible(self.emergency_light_fields, False)
+        self._set_fields_visible(self.sprinkler_fields, False)
+        self._set_fields_visible(self.fire_extinguisher_fields, False)
+        self._set_fields_visible(self.fire_hydrant_fields, False)
+        self._set_fields_visible(self.hose_reel_fields, False)
         self._set_fields_visible(self.assembly_fields, False)
         self._set_fields_visible(self.obstacle_fields, False)
         self._set_fields_visible(self.door_fields, False)
@@ -3380,6 +4426,10 @@ class PropertyPanel(QWidget):
         self._set_fields_visible(self.sign_fields, False)
         self._set_fields_visible(self.mcp_fields, False)
         self._set_fields_visible(self.emergency_light_fields, False)
+        self._set_fields_visible(self.sprinkler_fields, False)
+        self._set_fields_visible(self.fire_extinguisher_fields, False)
+        self._set_fields_visible(self.fire_hydrant_fields, False)
+        self._set_fields_visible(self.hose_reel_fields, False)
         self._set_fields_visible(self.assembly_fields, False)
         self._set_fields_visible(self.obstacle_fields, False)
         self._set_fields_visible(self.door_fields, False)
@@ -3641,6 +4691,93 @@ class PropertyPanel(QWidget):
         self.emergency_light_zone.clear()
         self.emergency_light_zone.blockSignals(False)
         self.emergency_light_zone_warning.setVisible(False)
+
+        self.sprinkler_x.clear()
+        self.sprinkler_y.clear()
+
+        self.sprinkler_active.blockSignals(True)
+        self.sprinkler_active.setChecked(False)
+        self.sprinkler_active.blockSignals(False)
+
+        self.sprinkler_health.blockSignals(True)
+        self.sprinkler_health.setCurrentIndex(0)
+        self.sprinkler_health.blockSignals(False)
+
+        self.sprinkler_mode.blockSignals(True)
+        self.sprinkler_mode.setCurrentIndex(0)
+        self.sprinkler_mode.blockSignals(False)
+
+        self.sprinkler_activation_temperature.clear()
+        self.sprinkler_installation_date.clear()
+        self.sprinkler_test_temperature.clear()
+        self.sprinkler_state.setText("-")
+
+        self.sprinkler_zone.blockSignals(True)
+        self.sprinkler_zone.clear()
+        self.sprinkler_zone.blockSignals(False)
+        self.sprinkler_zone_warning.setVisible(False)
+
+        self.fire_extinguisher_x.clear()
+        self.fire_extinguisher_y.clear()
+
+        self.fire_extinguisher_active.blockSignals(True)
+        self.fire_extinguisher_active.setChecked(False)
+        self.fire_extinguisher_active.blockSignals(False)
+
+        self.fire_extinguisher_health.blockSignals(True)
+        self.fire_extinguisher_health.setCurrentIndex(0)
+        self.fire_extinguisher_health.blockSignals(False)
+
+        self.fire_extinguisher_type.blockSignals(True)
+        self.fire_extinguisher_type.setCurrentIndex(0)
+        self.fire_extinguisher_type.blockSignals(False)
+
+        self.fire_extinguisher_availability.setText("-")
+
+        self.fire_extinguisher_zone.blockSignals(True)
+        self.fire_extinguisher_zone.clear()
+        self.fire_extinguisher_zone.blockSignals(False)
+        self.fire_extinguisher_zone_warning.setVisible(False)
+
+        self.fire_hydrant_x.clear()
+        self.fire_hydrant_y.clear()
+
+        self.fire_hydrant_active.blockSignals(True)
+        self.fire_hydrant_active.setChecked(False)
+        self.fire_hydrant_active.blockSignals(False)
+
+        self.fire_hydrant_health.blockSignals(True)
+        self.fire_hydrant_health.setCurrentIndex(0)
+        self.fire_hydrant_health.blockSignals(False)
+
+        self.fire_hydrant_type.blockSignals(True)
+        self.fire_hydrant_type.setCurrentIndex(0)
+        self.fire_hydrant_type.blockSignals(False)
+
+        self.fire_hydrant_availability.setText("-")
+
+        self.fire_hydrant_zone.blockSignals(True)
+        self.fire_hydrant_zone.clear()
+        self.fire_hydrant_zone.blockSignals(False)
+        self.fire_hydrant_zone_warning.setVisible(False)
+
+        self.hose_reel_x.clear()
+        self.hose_reel_y.clear()
+
+        self.hose_reel_active.blockSignals(True)
+        self.hose_reel_active.setChecked(False)
+        self.hose_reel_active.blockSignals(False)
+
+        self.hose_reel_health.blockSignals(True)
+        self.hose_reel_health.setCurrentIndex(0)
+        self.hose_reel_health.blockSignals(False)
+
+        self.hose_reel_availability.setText("-")
+
+        self.hose_reel_zone.blockSignals(True)
+        self.hose_reel_zone.clear()
+        self.hose_reel_zone.blockSignals(False)
+        self.hose_reel_zone_warning.setVisible(False)
 
         self.assembly_x.clear()
         self.assembly_y.clear()

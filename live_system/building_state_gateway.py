@@ -17,6 +17,8 @@ from facp.models import FACPSnapshot
 
 from building_control.snapshot import ControlStateSnapshot
 
+from fire_safety_manager.snapshot import FireSafetyStatusSnapshot
+
 from building_state.estimator import BuildingStateEstimator
 from building_state.models import BuildingState
 
@@ -60,6 +62,7 @@ HeatDetectorReadingProvider = Callable[[float], Iterable[HeatDetectorReading]]
 
 FACPSnapshotProvider = Callable[[float], Optional[FACPSnapshot]]
 ControlSnapshotProvider = Callable[[float], Optional[ControlStateSnapshot]]
+FireSafetySnapshotProvider = Callable[[float], Optional[FireSafetyStatusSnapshot]]
 
 
 class BuildingStateGateway(Protocol):
@@ -103,6 +106,7 @@ class EstimatorBuildingStateGateway:
         heat_detector_reading_provider: Optional[HeatDetectorReadingProvider] = None,
         facp_snapshot_provider: Optional[FACPSnapshotProvider] = None,
         control_snapshot_provider: Optional[ControlSnapshotProvider] = None,
+        fire_safety_snapshot_provider: Optional[FireSafetySnapshotProvider] = None,
     ):
 
         self._estimator = estimator if estimator is not None else BuildingStateEstimator()
@@ -121,6 +125,7 @@ class EstimatorBuildingStateGateway:
 
         self._facp_snapshot_provider = facp_snapshot_provider
         self._control_snapshot_provider = control_snapshot_provider
+        self._fire_safety_snapshot_provider = fire_safety_snapshot_provider
 
     # =====================================================
 
@@ -165,6 +170,7 @@ class EstimatorBuildingStateGateway:
             fusion_result=fusion_result,
             facp_snapshot=self._resolve_optional(self._facp_snapshot_provider, time),
             control_snapshot=self._resolve_optional(self._control_snapshot_provider, time),
+            fire_safety_snapshot=self._resolve_optional(self._fire_safety_snapshot_provider, time),
         )
 
     # =====================================================

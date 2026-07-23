@@ -20,6 +20,10 @@ from designer.items.occupant_item import OccupantItem
 from designer.items.sign_item import SignItem
 from designer.items.manual_call_point_item import ManualCallPointItem
 from designer.items.emergency_light_item import EmergencyLightItem
+from designer.items.sprinkler_item import SprinklerItem
+from designer.items.fire_extinguisher_item import FireExtinguisherItem
+from designer.items.fire_hydrant_item import FireHydrantItem
+from designer.items.hose_reel_item import HoseReelItem
 from designer.items.smoke_detector_item import SmokeDetectorItem
 from designer.items.speaker_item import SpeakerItem
 from designer.items.stair_item import StairItem
@@ -38,6 +42,10 @@ from models.speaker import Speaker
 from models.dynamic_sign import DynamicEvacuationSign
 from models.manual_call_point import ManualCallPoint
 from models.emergency_light import EmergencyLight
+from models.sprinkler import Sprinkler
+from models.fire_extinguisher import FireExtinguisher
+from models.fire_hydrant import FireHydrant
+from models.hose_reel import HoseReel
 from models.staircase import Staircase
 from models.zone import Zone
 
@@ -361,7 +369,7 @@ class GraphicsScene(QGraphicsScene):
             if self.selected_item:
                 self.selected_item.set_selected(False)
 
-            if isinstance(item, (ZoneRectangle, ExitItem, StairItem, CameraItem, DetectorItem, SmokeDetectorItem, HeatDetectorItem, SpeakerItem, SignItem, ManualCallPointItem, EmergencyLightItem, AssemblyPointItem, ObstacleItem, DoorItem, OccupantItem)):
+            if isinstance(item, (ZoneRectangle, ExitItem, StairItem, CameraItem, DetectorItem, SmokeDetectorItem, HeatDetectorItem, SpeakerItem, SignItem, ManualCallPointItem, EmergencyLightItem, SprinklerItem, FireExtinguisherItem, FireHydrantItem, HoseReelItem, AssemblyPointItem, ObstacleItem, DoorItem, OccupantItem)):
 
                 self.selected_item = item
 
@@ -1115,6 +1123,187 @@ class GraphicsScene(QGraphicsScene):
             return
 
         # -------------------------------------------------
+        # Sprinkler Tool (Fire Suppression & Water-Based Safety Asset
+        # Digital Twin milestone) -- a point object placed with a
+        # single click, same unambiguous-zone auto-assignment as
+        # Manual Call Point/Smoke/Heat Detector above.
+        # -------------------------------------------------
+
+        if self.current_tool == "sprinkler":
+
+            if self.current_floor.locked:
+                return
+
+            x, y = self.snap(
+                event.scenePos()
+            )
+
+            sprinkler_model = Sprinkler(
+                name=f"Sprinkler {self.current_floor.sprinkler_count + 1}",
+                position=(
+                    x / self.GRID_SIZE,
+                    y / self.GRID_SIZE,
+                ),
+                floor_id=self.current_floor.id,
+            )
+
+            containing_zone = self._find_unambiguous_zone_at(
+                self.current_floor, x / self.GRID_SIZE, y / self.GRID_SIZE,
+            )
+
+            if containing_zone is not None:
+                sprinkler_model.zone_ids = (containing_zone.id,)
+
+            self.current_floor.add_sprinkler(
+                sprinkler_model
+            )
+
+            sprinkler_item = SprinklerItem(
+                x,
+                y,
+                model=sprinkler_model,
+            )
+
+            self.addItem(sprinkler_item)
+
+            return
+
+        # -------------------------------------------------
+        # Fire Extinguisher Tool (Fire Suppression & Water-Based Safety
+        # Asset Digital Twin milestone) -- same placement convention
+        # as Sprinkler above.
+        # -------------------------------------------------
+
+        if self.current_tool == "fire_extinguisher":
+
+            if self.current_floor.locked:
+                return
+
+            x, y = self.snap(
+                event.scenePos()
+            )
+
+            extinguisher_model = FireExtinguisher(
+                name=f"Fire Extinguisher {self.current_floor.fire_extinguisher_count + 1}",
+                position=(
+                    x / self.GRID_SIZE,
+                    y / self.GRID_SIZE,
+                ),
+                floor_id=self.current_floor.id,
+            )
+
+            containing_zone = self._find_unambiguous_zone_at(
+                self.current_floor, x / self.GRID_SIZE, y / self.GRID_SIZE,
+            )
+
+            if containing_zone is not None:
+                extinguisher_model.zone_ids = (containing_zone.id,)
+
+            self.current_floor.add_fire_extinguisher(
+                extinguisher_model
+            )
+
+            extinguisher_item = FireExtinguisherItem(
+                x,
+                y,
+                model=extinguisher_model,
+            )
+
+            self.addItem(extinguisher_item)
+
+            return
+
+        # -------------------------------------------------
+        # Fire Hydrant / Landing Valve Tool (Fire Suppression &
+        # Water-Based Safety Asset Digital Twin milestone) -- same
+        # placement convention as Sprinkler/Fire Extinguisher above.
+        # -------------------------------------------------
+
+        if self.current_tool == "fire_hydrant":
+
+            if self.current_floor.locked:
+                return
+
+            x, y = self.snap(
+                event.scenePos()
+            )
+
+            hydrant_model = FireHydrant(
+                name=f"Fire Hydrant {self.current_floor.fire_hydrant_count + 1}",
+                position=(
+                    x / self.GRID_SIZE,
+                    y / self.GRID_SIZE,
+                ),
+                floor_id=self.current_floor.id,
+            )
+
+            containing_zone = self._find_unambiguous_zone_at(
+                self.current_floor, x / self.GRID_SIZE, y / self.GRID_SIZE,
+            )
+
+            if containing_zone is not None:
+                hydrant_model.zone_ids = (containing_zone.id,)
+
+            self.current_floor.add_fire_hydrant(
+                hydrant_model
+            )
+
+            hydrant_item = FireHydrantItem(
+                x,
+                y,
+                model=hydrant_model,
+            )
+
+            self.addItem(hydrant_item)
+
+            return
+
+        # -------------------------------------------------
+        # Hose Reel Tool (Fire Suppression & Water-Based Safety Asset
+        # Digital Twin milestone) -- same placement convention as
+        # Sprinkler/Fire Extinguisher/Fire Hydrant above.
+        # -------------------------------------------------
+
+        if self.current_tool == "hose_reel":
+
+            if self.current_floor.locked:
+                return
+
+            x, y = self.snap(
+                event.scenePos()
+            )
+
+            hose_reel_model = HoseReel(
+                name=f"Hose Reel {self.current_floor.hose_reel_count + 1}",
+                position=(
+                    x / self.GRID_SIZE,
+                    y / self.GRID_SIZE,
+                ),
+                floor_id=self.current_floor.id,
+            )
+
+            containing_zone = self._find_unambiguous_zone_at(
+                self.current_floor, x / self.GRID_SIZE, y / self.GRID_SIZE,
+            )
+
+            if containing_zone is not None:
+                hose_reel_model.zone_ids = (containing_zone.id,)
+
+            self.current_floor.add_hose_reel(
+                hose_reel_model
+            )
+
+            hose_reel_item = HoseReelItem(
+                x,
+                y,
+                model=hose_reel_model,
+            )
+
+            self.addItem(hose_reel_item)
+
+            return
+
+        # -------------------------------------------------
         # Assembly Point Tool
         #
         # A permanent, purely geometric safe-destination marker,
@@ -1817,7 +2006,7 @@ class GraphicsScene(QGraphicsScene):
 
             if isinstance(
                 item,
-                (ZoneRectangle, ExitItem, StairItem, CameraItem, DetectorItem, SmokeDetectorItem, HeatDetectorItem, SpeakerItem, SignItem, ManualCallPointItem, EmergencyLightItem, AssemblyPointItem, ObstacleItem, DoorItem, OccupantItem),
+                (ZoneRectangle, ExitItem, StairItem, CameraItem, DetectorItem, SmokeDetectorItem, HeatDetectorItem, SpeakerItem, SignItem, ManualCallPointItem, EmergencyLightItem, SprinklerItem, FireExtinguisherItem, FireHydrantItem, HoseReelItem, AssemblyPointItem, ObstacleItem, DoorItem, OccupantItem),
             ):
                 self.removeItem(item)
 

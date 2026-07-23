@@ -48,6 +48,7 @@ class LiveRuntime:
         sign_manager=None,
         dynamic_signage_controller=None,
         emergency_light_manager=None,
+        fire_safety_asset_manager=None,
         live_occupant_manager=None,
         sensor_fusion_engine=None,
         perception_fusion_coordinator=None,
@@ -87,6 +88,12 @@ class LiveRuntime:
         # manager.SensorManager.discover_sensors(), which now discovers
         # them alongside Smoke/Heat Detector.
         self.emergency_light_manager = emergency_light_manager
+
+        # Fire Suppression & Water-Based Safety Asset Digital Twin
+        # milestone -- exactly one FireSafetyAssetManager for this live
+        # session, same shared-instance discipline as every other
+        # manager above.
+        self.fire_safety_asset_manager = fire_safety_asset_manager
 
         # Camera ingestion -- camera_id -> CameraFrameSource (Replay
         # today; RTSPFrameSource, unchanged, once physical CCTV access

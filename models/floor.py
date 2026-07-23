@@ -16,6 +16,10 @@ from models.door import Door
 from models.dynamic_sign import DynamicEvacuationSign
 from models.manual_call_point import ManualCallPoint
 from models.emergency_light import EmergencyLight
+from models.sprinkler import Sprinkler
+from models.fire_extinguisher import FireExtinguisher
+from models.fire_hydrant import FireHydrant
+from models.hose_reel import HoseReel
 
 
 @dataclass
@@ -87,6 +91,13 @@ class Floor:
     # same SensorAsset/EngineeringAsset-based conventions as above.
     manual_call_points: list[ManualCallPoint] = field(default_factory=list)
     emergency_lights: list[EmergencyLight] = field(default_factory=list)
+
+    # Fire Suppression & Water-Based Safety Asset Digital Twin
+    # milestone -- additive, same conventions as above.
+    sprinklers: list[Sprinkler] = field(default_factory=list)
+    fire_extinguishers: list[FireExtinguisher] = field(default_factory=list)
+    fire_hydrants: list[FireHydrant] = field(default_factory=list)
+    hose_reels: list[HoseReel] = field(default_factory=list)
 
     assembly_points: list[AssemblyPoint] = field(default_factory=list)
     obstacles: list[Obstacle] = field(default_factory=list)
@@ -255,6 +266,58 @@ class Floor:
             self.emergency_lights.remove(emergency_light)
 
     # =====================================================
+    # Sprinklers
+    # =====================================================
+
+    def add_sprinkler(self, sprinkler):
+
+        self.sprinklers.append(sprinkler)
+
+    def remove_sprinkler(self, sprinkler):
+
+        if sprinkler in self.sprinklers:
+            self.sprinklers.remove(sprinkler)
+
+    # =====================================================
+    # Fire Extinguishers
+    # =====================================================
+
+    def add_fire_extinguisher(self, fire_extinguisher):
+
+        self.fire_extinguishers.append(fire_extinguisher)
+
+    def remove_fire_extinguisher(self, fire_extinguisher):
+
+        if fire_extinguisher in self.fire_extinguishers:
+            self.fire_extinguishers.remove(fire_extinguisher)
+
+    # =====================================================
+    # Fire Hydrants / Landing Valves
+    # =====================================================
+
+    def add_fire_hydrant(self, fire_hydrant):
+
+        self.fire_hydrants.append(fire_hydrant)
+
+    def remove_fire_hydrant(self, fire_hydrant):
+
+        if fire_hydrant in self.fire_hydrants:
+            self.fire_hydrants.remove(fire_hydrant)
+
+    # =====================================================
+    # Hose Reels
+    # =====================================================
+
+    def add_hose_reel(self, hose_reel):
+
+        self.hose_reels.append(hose_reel)
+
+    def remove_hose_reel(self, hose_reel):
+
+        if hose_reel in self.hose_reels:
+            self.hose_reels.remove(hose_reel)
+
+    # =====================================================
     # Assembly Points
     # =====================================================
 
@@ -351,6 +414,26 @@ class Floor:
         return len(self.emergency_lights)
 
     @property
+    def sprinkler_count(self):
+
+        return len(self.sprinklers)
+
+    @property
+    def fire_extinguisher_count(self):
+
+        return len(self.fire_extinguishers)
+
+    @property
+    def fire_hydrant_count(self):
+
+        return len(self.fire_hydrants)
+
+    @property
+    def hose_reel_count(self):
+
+        return len(self.hose_reels)
+
+    @property
     def assembly_point_count(self):
 
         return len(self.assembly_points)
@@ -440,6 +523,26 @@ class Floor:
             "emergency_lights": [
                 light.to_dict()
                 for light in self.emergency_lights
+            ],
+
+            "sprinklers": [
+                sprinkler.to_dict()
+                for sprinkler in self.sprinklers
+            ],
+
+            "fire_extinguishers": [
+                fire_extinguisher.to_dict()
+                for fire_extinguisher in self.fire_extinguishers
+            ],
+
+            "fire_hydrants": [
+                fire_hydrant.to_dict()
+                for fire_hydrant in self.fire_hydrants
+            ],
+
+            "hose_reels": [
+                hose_reel.to_dict()
+                for hose_reel in self.hose_reels
             ],
 
             "assembly_points": [
@@ -571,6 +674,30 @@ class Floor:
 
             floor.emergency_lights.append(
                 EmergencyLight.from_dict(emergency_light_data)
+            )
+
+        for sprinkler_data in data.get("sprinklers", []):
+
+            floor.sprinklers.append(
+                Sprinkler.from_dict(sprinkler_data)
+            )
+
+        for fire_extinguisher_data in data.get("fire_extinguishers", []):
+
+            floor.fire_extinguishers.append(
+                FireExtinguisher.from_dict(fire_extinguisher_data)
+            )
+
+        for fire_hydrant_data in data.get("fire_hydrants", []):
+
+            floor.fire_hydrants.append(
+                FireHydrant.from_dict(fire_hydrant_data)
+            )
+
+        for hose_reel_data in data.get("hose_reels", []):
+
+            floor.hose_reels.append(
+                HoseReel.from_dict(hose_reel_data)
             )
 
         for assembly_point_data in data.get("assembly_points", []):

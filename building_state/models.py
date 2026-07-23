@@ -13,6 +13,8 @@ from facp.models import FACPSnapshot
 
 from building_control.snapshot import ControlStateSnapshot
 
+from fire_safety_manager.snapshot import FireSafetyStatusSnapshot
+
 from perception.models.camera_observation import CameraFrameObservation
 
 from multi_camera_fusion.track import FusedTrack
@@ -159,6 +161,19 @@ class BuildingState:
     # never a pending/requested one (RECOMMENDATION != COMMAND !=
     # CONFIRMED PHYSICAL ACTION).
     control_status: Optional[ControlStateSnapshot] = None
+
+    # Fire Suppression & Water-Based Safety Asset Digital Twin
+    # milestone (additive) -- the current Sprinkler/FireExtinguisher/
+    # FireHydrant/HoseReel status, see fire_safety_manager.manager.
+    # FireSafetyAssetManager.snapshot(), which produces this value;
+    # BuildingStateEstimator only ever passes it through, never
+    # computes it, same discipline as facp_status/control_status
+    # above. None when no FireSafetyAssetManager is configured for
+    # this cycle -- never fabricated. Deliberately NOT merged into
+    # facp_status: a Sprinkler is never a FACP alarm source (see
+    # models.sprinkler.Sprinkler's own docstring), so this is its own,
+    # separate additive view rather than smuggled into the FACP one.
+    fire_safety_status: Optional[FireSafetyStatusSnapshot] = None
 
     # =====================================================
 

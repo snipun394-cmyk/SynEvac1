@@ -14,6 +14,8 @@ from sign_manager.manager import SignManager
 
 from emergency_light_manager.manager import EmergencyLightManager
 
+from fire_safety_manager.manager import FireSafetyAssetManager
+
 from dynamic_signage.planner import DynamicSignagePlanner
 from dynamic_signage.controller import DynamicSignageController
 
@@ -110,6 +112,8 @@ def build_live_runtime(
     sign_manager: Optional[SignManager] = None,
     dynamic_signage_provider: Optional[object] = None,
     emergency_light_manager: Optional[EmergencyLightManager] = None,
+    fire_safety_asset_manager: Optional[FireSafetyAssetManager] = None,
+    sprinkler_temperature_provider: Optional[Callable[[float], Mapping[str, float]]] = None,
     smoke_detector_reading_provider: Optional[Callable[[float], object]] = None,
     heat_detector_reading_provider: Optional[Callable[[float], object]] = None,
     camera_manager: Optional[CameraManager] = None,
@@ -286,6 +290,27 @@ def build_live_runtime(
         emergency_light_manager if emergency_light_manager is not None else EmergencyLightManager()
     )
     emergency_light_manager.discover_lights(building)
+
+    fire_safety_asset_manager = (
+        fire_safety_asset_manager if fire_safety_asset_manager is not None else FireSafetyAssetManager()
+    )
+    fire_safety_asset_manager.discover_assets(building)
+
+    # Fire Suppression & Water-Based Safety Asset Digital Twin
+    # milestone -- sprinkler_temperature_provider stays None unless a
+    # caller explicitly supplies one (no hazard-to-sprinkler-
+    # temperature wiring exists in this codebase yet -- Phase 2's own
+    # "if suppression physics cannot be represented honestly without
+    # redesigning those systems, do not implement it" boundary). None
+    # means exactly what it means to FireSafetyAssetManager.snapshot()
+    # itself: no reading available this cycle, so every Sprinkler
+    # honestly reports NORMAL/FAULT only, never a fabricated ACTIVATED.
+    fire_safety_snapshot_provider = lambda time: fire_safety_asset_manager.snapshot(
+        sprinkler_temperatures=(
+            sprinkler_temperature_provider(time) if sprinkler_temperature_provider is not None else None
+        ),
+        time=time,
+    )
 
     # =====================================================
     # Camera ingestion (Phase 3) -- wired through CameraManager's own
@@ -472,6 +497,7 @@ def build_live_runtime(
             (lambda time: building_control_controller.snapshot())
             if building_control_controller is not None else None
         ),
+        fire_safety_snapshot_provider=fire_safety_snapshot_provider,
     )
 
     orchestrator = LiveOrchestrator(
@@ -521,6 +547,7 @@ def build_live_runtime(
         sign_manager=sign_manager,
         dynamic_signage_controller=dynamic_signage_controller,
         emergency_light_manager=emergency_light_manager,
+        fire_safety_asset_manager=fire_safety_asset_manager,
         live_occupant_manager=live_occupant_manager,
         sensor_fusion_engine=sensor_fusion_engine,
         perception_fusion_coordinator=perception_fusion_coordinator,

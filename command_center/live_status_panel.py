@@ -74,6 +74,24 @@ class LiveStatusPanel(QWidget):
 
         layout.addWidget(facp_group)
 
+        # Fire Suppression & Water-Based Safety Asset Digital Twin
+        # milestone, Phase 12 -- "avoid creating four new panels": ONE
+        # additive table, same Source/Type/Zone/State shape as
+        # facp_sources_table above, covering all four asset types
+        # (Sprinkler/FireExtinguisher/FireHydrant/HoseReel) at once.
+        # AVAILABLE/ACTIVATED here is a maintenance/status fact only --
+        # never a claim that a route is safe or that a fire will be
+        # controlled (see docs/architecture/
+        # fire_suppression_safety_assets.md).
+        fire_safety_group = QGroupBox("Fire Suppression & Safety Assets")
+        fire_safety_layout = QVBoxLayout(fire_safety_group)
+        self.fire_safety_table = QTableWidget(0, 4)
+        self.fire_safety_table.setHorizontalHeaderLabels(["Asset", "Type", "Zone", "State"])
+        self.fire_safety_table.horizontalHeader().setStretchLastSection(True)
+        self.fire_safety_table.verticalHeader().setVisible(False)
+        fire_safety_layout.addWidget(self.fire_safety_table)
+        layout.addWidget(fire_safety_group)
+
         layout.addStretch(1)
 
     # =====================================================
@@ -86,6 +104,7 @@ class LiveStatusPanel(QWidget):
             self.sensor_table.setRowCount(0)
             self.facp_state_table.setRowCount(0)
             self.facp_sources_table.setRowCount(0)
+            self.fire_safety_table.setRowCount(0)
             return
 
         cameras = list(building_state.camera_observations.values())
@@ -116,6 +135,12 @@ class LiveStatusPanel(QWidget):
             self.sensor_table.setItem(row_index, 3, QTableWidgetItem(detector_condition(asset)))
             self.sensor_table.setItem(row_index, 4, QTableWidgetItem(status.health_status or "-"))
             self.sensor_table.setItem(row_index, 5, QTableWidgetItem("Yes" if status.active else "No"))
+
+        # Independent of FACP -- a Sprinkler/FireExtinguisher/
+        # FireHydrant/HoseReel is never a FACP alarm source (see
+        # models.sprinkler.Sprinkler's own docstring), so this table is
+        # populated regardless of whether facp_status is configured.
+        self._show_fire_safety_assets(building_state.fire_safety_status)
 
         facp = building_state.facp_status
 
@@ -169,3 +194,23 @@ class LiveStatusPanel(QWidget):
             self.facp_sources_table.setItem(row_index, 1, QTableWidgetItem(source_type))
             self.facp_sources_table.setItem(row_index, 2, QTableWidgetItem(zone))
             self.facp_sources_table.setItem(row_index, 3, QTableWidgetItem(state))
+
+    # =====================================================
+
+    def _show_fire_safety_assets(self, fire_safety_status) -> None:
+
+        if fire_safety_status is None:
+
+            self.fire_safety_table.setRowCount(0)
+            return
+
+        entries = fire_safety_status.entries
+
+        self.fire_safety_table.setRowCount(len(entries))
+
+        for row_index, entry in enumerate(entries):
+
+            self.fire_safety_table.setItem(row_index, 0, QTableWidgetItem(entry.name or entry.asset_id))
+            self.fire_safety_table.setItem(row_index, 1, QTableWidgetItem(entry.asset_type))
+            self.fire_safety_table.setItem(row_index, 2, QTableWidgetItem(_dash_join(entry.zone_ids)))
+            self.fire_safety_table.setItem(row_index, 3, QTableWidgetItem(entry.state))

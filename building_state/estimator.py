@@ -20,6 +20,8 @@ from facp.models import FACPSnapshot
 
 from building_control.snapshot import ControlStateSnapshot
 
+from fire_safety_manager.snapshot import FireSafetyStatusSnapshot
+
 from building_state.models import (
     ActiveAssetsSummary,
     BuildingState,
@@ -89,6 +91,7 @@ class BuildingStateEstimator:
         fusion_result: Optional[FusionResult] = None,
         facp_snapshot: Optional[FACPSnapshot] = None,
         control_snapshot: Optional[ControlStateSnapshot] = None,
+        fire_safety_snapshot: Optional[FireSafetyStatusSnapshot] = None,
     ) -> BuildingState:
 
         # Materialized up front -- every argument is iterated more than
@@ -123,6 +126,7 @@ class BuildingStateEstimator:
             ),
             facp_status=facp_snapshot,
             control_status=control_snapshot,
+            fire_safety_status=fire_safety_snapshot,
         )
 
     # =====================================================

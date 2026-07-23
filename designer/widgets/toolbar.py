@@ -97,6 +97,14 @@ class MainToolbar(QToolBar):
         self.manual_call_point_action = QAction("Manual Call Point", self)
         self.emergency_light_action = QAction("Emergency Light", self)
 
+        # Fire Suppression & Water-Based Safety Asset Digital Twin
+        # milestone -- same "additive, alongside the existing device
+        # tools" convention.
+        self.sprinkler_action = QAction("Sprinkler", self)
+        self.fire_extinguisher_action = QAction("Fire Extinguisher", self)
+        self.fire_hydrant_action = QAction("Fire Hydrant", self)
+        self.hose_reel_action = QAction("Hose Reel", self)
+
         # =====================================================
         # Safety
         # =====================================================
@@ -166,6 +174,10 @@ class MainToolbar(QToolBar):
         self.addAction(self.sign_action)
         self.addAction(self.manual_call_point_action)
         self.addAction(self.emergency_light_action)
+        self.addAction(self.sprinkler_action)
+        self.addAction(self.fire_extinguisher_action)
+        self.addAction(self.fire_hydrant_action)
+        self.addAction(self.hose_reel_action)
 
         self.addSeparator()
 
