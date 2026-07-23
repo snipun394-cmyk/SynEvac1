@@ -22,9 +22,12 @@ from camera_calibration.camera_model import CalibrationProfile, CameraExtrinsics
 from camera_calibration.geometry import camera_basis_vectors, intersect_ray_with_floor, pixel_ray_direction
 from camera_calibration.projection import WorldProjector
 
+from behavior_recognition.metrics import compute_world_metrics
+
 
 ZONE_COUNT = 200
 CYCLE_COUNT = 2000
+REALISTIC_OCCUPANT_COUNT = 50  # Real Camera Calibration & World-Coordinate Validation milestone, Phase 15
 
 
 def _percentile(values, pct):
@@ -94,6 +97,37 @@ def benchmark_projection_with_zone_lookup() -> dict:
     }
 
 
+def benchmark_world_velocity_calculation() -> dict:
+
+    # Real Camera Calibration & World-Coordinate Validation milestone,
+    # Phase 15 -- world-velocity calculation
+    # (behavior_recognition.metrics.compute_world_metrics), benchmarked
+    # separately from YOLO/projection, at a realistic simultaneous
+    # occupant count (REALISTIC_OCCUPANT_COUNT), one call per occupant
+    # per cycle -- exactly how live_camera_pipeline.pipeline.
+    # LiveCameraPipeline's own per-track behavior-recognition step
+    # calls it in production.
+
+    per_occupant_samples = [
+        [(float(t), (float(t) * 0.3, float(t) * 0.1)) for t in range(5)]
+        for _ in range(REALISTIC_OCCUPANT_COUNT)
+    ]
+
+    per_call_ms = []
+
+    for _ in range(CYCLE_COUNT // REALISTIC_OCCUPANT_COUNT):
+        for samples in per_occupant_samples:
+
+            start = time.perf_counter()
+            compute_world_metrics(samples, stationary_velocity_threshold=0.3)
+            per_call_ms.append((time.perf_counter() - start) * 1000)
+
+    return {
+        "call_count": len(per_call_ms), "occupant_count": REALISTIC_OCCUPANT_COUNT,
+        "mean_ms": statistics.mean(per_call_ms), "p95_ms": _percentile(per_call_ms, 0.95),
+    }
+
+
 def main():
 
     basis = benchmark_basis_vectors()
@@ -109,6 +143,12 @@ def main():
     print(
         f"Full projection incl. zone lookup ({projection['zone_count']} zones): {projection['call_count']} calls, "
         f"mean {projection['mean_ms']:.5f} ms, p95 {projection['p95_ms']:.5f} ms"
+    )
+
+    velocity = benchmark_world_velocity_calculation()
+    print(
+        f"World-velocity calculation ({velocity['occupant_count']} simultaneous occupants): "
+        f"{velocity['call_count']} calls, mean {velocity['mean_ms']:.5f} ms, p95 {velocity['p95_ms']:.5f} ms"
     )
 
     print()

@@ -4,6 +4,8 @@ from PyQt6.QtWidgets import (
     QApplication,
     QWidget,
     QComboBox,
+    QDialog,
+    QFileDialog,
     QFormLayout,
     QCheckBox,
     QHBoxLayout,
@@ -11,7 +13,14 @@ from PyQt6.QtWidgets import (
     QLineEdit,
     QListWidget,
     QListWidgetItem,
+    QMessageBox,
     QPushButton,
+    QVBoxLayout,
+)
+
+from camera_calibration.calibration import CalibrationRegistry
+from camera_calibration.calibration_loader import (
+    CalibrationLoadError, calibration_from_camera, load_calibration_json, save_calibration_json,
 )
 
 from models import connectable_space
@@ -68,6 +77,23 @@ class PropertyPanel(QWidget):
         # Occupant's route when its destination type changes here.
         # Never used for anything else this panel does.
         self.sandbox_manager = None
+
+        # Real Camera Calibration & World-Coordinate Validation
+        # milestone, Phase 13 -- the minimum useful calibration
+        # visibility this milestone asks for: a per-camera_id
+        # CalibrationRegistry, exactly the same production type
+        # live_runtime/camera_calibration already establish, owned here
+        # in-memory for THIS Designer session only. Deliberately NOT
+        # yet persisted with the project file (no calibration field
+        # exists in models.camera.Camera or the project serialization
+        # format -- adding one is a genuine future extension, not done
+        # here to avoid touching project file format/versioning as part
+        # of this milestone). A calibration loaded or saved here via
+        # the "Calibrate Camera..." dialog is lost when the Designer
+        # session ends unless the operator separately saved it to a
+        # calibration JSON file on disk (scripts/calibrate_camera_scene.py
+        # produces exactly that file shape).
+        self.calibration_registry = CalibrationRegistry()
 
         # Fired after a Floor's Name/Elevation/Height is edited here,
         # so MainWindow can refresh FloorList/ProjectTree (neither of
@@ -397,6 +423,19 @@ class PropertyPanel(QWidget):
         layout.addRow("Hidden Zones", self.camera_hidden_zones)
         layout.addRow("Max Visible Distance (m)", self.camera_max_visible_distance)
 
+        # Real Camera Calibration & World-Coordinate Validation
+        # milestone, Phase 13 -- the one status line + one action this
+        # milestone asks Designer to expose: "NOT CONFIGURED" /
+        # "CONFIGURED -- UNVALIDATED" / "VALIDATED -- RMSE: X m", never
+        # raw matrices in the main panel (a dedicated dialog, opened by
+        # the button below, is where Load/Save actually happens).
+        self.camera_calibration_status = QLabel("CALIBRATION: NOT CONFIGURED")
+        self.camera_calibrate_button = QPushButton("Calibrate Camera...")
+        self.camera_calibrate_button.clicked.connect(self._open_calibration_dialog)
+
+        layout.addRow("Calibration", self.camera_calibration_status)
+        layout.addRow("", self.camera_calibrate_button)
+
         self.camera_fields = [
             self.camera_x,
             self.camera_y,
@@ -417,6 +456,8 @@ class PropertyPanel(QWidget):
             self.camera_partial_zones,
             self.camera_hidden_zones,
             self.camera_max_visible_distance,
+            self.camera_calibration_status,
+            self.camera_calibrate_button,
         ]
 
         # =====================================================
@@ -2640,6 +2681,8 @@ class PropertyPanel(QWidget):
             self.camera_resolution.setText(model.resolution)
             self.camera_fps.setText(str(model.fps))
 
+            self._refresh_calibration_status(model)
+
             mode_index = self.camera_mode.findText(model.mode)
 
             if mode_index != -1:
@@ -2668,6 +2711,131 @@ class PropertyPanel(QWidget):
         self.camera_ip.blockSignals(False)
         self.camera_username.blockSignals(False)
         self.camera_password.blockSignals(False)
+
+    # =====================================================
+
+    def _refresh_calibration_status(self, model) -> None:
+
+        # Real Camera Calibration & World-Coordinate Validation
+        # milestone, Phase 13 -- exactly the three states Phase 13
+        # names, never a fourth invented one. profile.quality is None
+        # unless a genuine camera_calibration.validation.validate_
+        # calibration() run was recorded onto it (see camera_calibration/
+        # camera_model.py's own CalibrationQuality docstring) -- this
+        # label can only ever say VALIDATED when that genuinely happened.
+
+        profile = self.calibration_registry.get(model.id)
+
+        if profile is None:
+            self.camera_calibration_status.setText("CALIBRATION: NOT CONFIGURED")
+        elif profile.quality is None:
+            self.camera_calibration_status.setText("CALIBRATION: CONFIGURED -- UNVALIDATED")
+        elif profile.quality.rmse_m is None:
+            self.camera_calibration_status.setText("CALIBRATION: CONFIGURED -- VALIDATION ATTEMPTED, NO POINTS PROJECTED")
+        else:
+            self.camera_calibration_status.setText(f"CALIBRATION: VALIDATED -- RMSE: {profile.quality.rmse_m:.3f} m")
+
+    # =====================================================
+
+    def _open_calibration_dialog(self) -> None:
+
+        # Real Camera Calibration & World-Coordinate Validation
+        # milestone, Phase 13 -- "a dedicated calibration action/dialog
+        # is preferable if the UI requires more detail" than the one
+        # status line above. Deliberately minimal: load an already-
+        # produced calibration JSON (the normal output of
+        # scripts/calibrate_camera_scene.py, run separately -- Designer
+        # is NOT where correspondence-based fitting happens, see that
+        # script's own docstring), or save a quick manual-entry
+        # calibration built directly from this Camera Asset's own
+        # existing position/mount_height/rotation/horizontal_fov (the
+        # same calibration_from_camera() bridge camera_calibration.
+        # calibration_loader already establishes) -- never a second,
+        # competing calibration UI.
+
+        if self.current_item is None or self.current_item.model is None:
+            return
+
+        model = self.current_item.model
+
+        dialog = QDialog(self)
+        dialog.setWindowTitle(f"Calibrate Camera -- {model.id}")
+
+        layout = QVBoxLayout(dialog)
+
+        status_label = QLabel()
+        layout.addWidget(status_label)
+
+        def _refresh_dialog_status():
+            profile = self.calibration_registry.get(model.id)
+            if profile is None:
+                status_label.setText("Status: NOT CONFIGURED")
+            elif profile.quality is None:
+                status_label.setText("Status: CONFIGURED -- UNVALIDATED")
+            elif profile.quality.rmse_m is None:
+                status_label.setText("Status: VALIDATION ATTEMPTED, NO POINTS PROJECTED")
+            else:
+                status_label.setText(
+                    f"Status: VALIDATED -- RMSE {profile.quality.rmse_m:.3f} m "
+                    f"({profile.quality.validated_point_count}/{profile.quality.reference_point_count} points)"
+                )
+
+        _refresh_dialog_status()
+
+        load_button = QPushButton("Load Calibration JSON...")
+        save_manual_button = QPushButton("Save Manual (angle-based) Calibration As...")
+
+        def _load():
+            path, _ = QFileDialog.getOpenFileName(dialog, "Load Calibration JSON", "", "JSON Files (*.json)")
+            if not path:
+                return
+            try:
+                profile = load_calibration_json(path)
+            except CalibrationLoadError as exc:
+                QMessageBox.critical(dialog, "Calibration Load Failed", str(exc))
+                return
+            if profile.camera_id != model.id:
+                QMessageBox.warning(
+                    dialog, "Camera ID Mismatch",
+                    f"This calibration file is for camera_id={profile.camera_id!r}, "
+                    f"not this camera ({model.id!r}). Loaded anyway under this camera's own id -- "
+                    f"verify this is the file you intended.",
+                )
+            self.calibration_registry.set(profile)
+            _refresh_dialog_status()
+            self._refresh_calibration_status(model)
+
+        def _save_manual():
+            try:
+                width, height = (int(part) for part in model.resolution.lower().split("x"))
+            except (ValueError, AttributeError):
+                width, height = 1920, 1080
+            profile = calibration_from_camera(model, image_width=width, image_height=height)
+            path, _ = QFileDialog.getSaveFileName(dialog, "Save Manual Calibration As", "", "JSON Files (*.json)")
+            if not path:
+                return
+            save_calibration_json(profile, path)
+            self.calibration_registry.set(profile)
+            _refresh_dialog_status()
+            self._refresh_calibration_status(model)
+
+        load_button.clicked.connect(_load)
+        save_manual_button.clicked.connect(_save_manual)
+
+        layout.addWidget(load_button)
+        layout.addWidget(save_manual_button)
+
+        note = QLabel(
+            "To fit calibration from measured floor reference points instead of a manual\n"
+            "angle entry, use scripts/calibrate_camera_scene.py, then load its output here."
+        )
+        layout.addWidget(note)
+
+        close_button = QPushButton("Close")
+        close_button.clicked.connect(dialog.accept)
+        layout.addWidget(close_button)
+
+        dialog.exec()
 
     # =====================================================
 

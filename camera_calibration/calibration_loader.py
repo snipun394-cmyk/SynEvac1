@@ -2,7 +2,7 @@ import json
 from pathlib import Path
 from typing import Union
 
-from camera_calibration.camera_model import CalibrationProfile, CameraExtrinsics, CameraIntrinsics
+from camera_calibration.camera_model import CalibrationProfile, CalibrationQuality, CameraExtrinsics, CameraIntrinsics
 
 
 # Camera Calibration & World Coordinate Projection milestone, Phase 5 --
@@ -101,16 +101,32 @@ def calibration_from_dict(data: dict) -> CalibrationProfile:
             roll_degrees=extrinsics_data.get("roll_degrees", 0.0),
         )
 
+        quality_data = data.get("quality")
+        quality = (
+            CalibrationQuality(
+                reference_point_count=quality_data["reference_point_count"],
+                validated_point_count=quality_data["validated_point_count"],
+                mean_error_m=quality_data["mean_error_m"],
+                median_error_m=quality_data["median_error_m"],
+                max_error_m=quality_data["max_error_m"],
+                rmse_m=quality_data["rmse_m"],
+                validation_timestamp=quality_data["validation_timestamp"],
+            )
+            if quality_data is not None else None
+        )
+
     except KeyError as exc:
 
         raise CalibrationLoadError(f"Missing required calibration field: {exc}") from exc
 
-    return CalibrationProfile(camera_id=camera_id, floor_id=floor_id, intrinsics=intrinsics, extrinsics=extrinsics)
+    return CalibrationProfile(
+        camera_id=camera_id, floor_id=floor_id, intrinsics=intrinsics, extrinsics=extrinsics, quality=quality,
+    )
 
 
 def calibration_to_dict(profile: CalibrationProfile) -> dict:
 
-    return {
+    data = {
         "camera_id": profile.camera_id,
         "floor_id": profile.floor_id,
         "intrinsics": {
@@ -129,6 +145,19 @@ def calibration_to_dict(profile: CalibrationProfile) -> dict:
             "roll_degrees": profile.extrinsics.roll_degrees,
         },
     }
+
+    if profile.quality is not None:
+        data["quality"] = {
+            "reference_point_count": profile.quality.reference_point_count,
+            "validated_point_count": profile.quality.validated_point_count,
+            "mean_error_m": profile.quality.mean_error_m,
+            "median_error_m": profile.quality.median_error_m,
+            "max_error_m": profile.quality.max_error_m,
+            "rmse_m": profile.quality.rmse_m,
+            "validation_timestamp": profile.quality.validation_timestamp,
+        }
+
+    return data
 
 
 def load_calibration_json(path: Union[str, Path]) -> CalibrationProfile:

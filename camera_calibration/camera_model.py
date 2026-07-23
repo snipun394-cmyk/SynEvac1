@@ -62,6 +62,22 @@ class CameraIntrinsics:
         # (see calibration_loader.calibration_from_camera()), before any
         # real lens datasheet/OpenCV calibration is available.
 
+        # Real Camera Calibration & World-Coordinate Validation
+        # milestone, Phase 14 -- a genuine gap this milestone's own
+        # failure-mode investigation surfaced: without this check, a
+        # FOV of 0 degrees raised an opaque ZeroDivisionError, a FOV of
+        # 180 degrees (geometrically meaningless for any pinhole model
+        # -- tan(90 degrees) diverges) silently returned a near-zero
+        # focal length, and a negative FOV silently returned a
+        # negative focal length -- three different ways to end up with
+        # nonsense CameraIntrinsics with no clear signal that the input
+        # itself was invalid. A pinhole model's horizontal FOV is only
+        # geometrically meaningful strictly between 0 and 180 degrees.
+        if not (0.0 < horizontal_fov_degrees < 180.0):
+            raise ValueError(
+                f"horizontal_fov_degrees must be strictly between 0 and 180 (got {horizontal_fov_degrees})."
+            )
+
         half_fov_radians = math.radians(horizontal_fov_degrees) / 2.0
         focal_length = (image_width / 2.0) / math.tan(half_fov_radians)
 
@@ -104,6 +120,32 @@ class CameraExtrinsics:
 
 
 @dataclass(frozen=True)
+class CalibrationQuality:
+
+    # Real Camera Calibration & World-Coordinate Validation milestone,
+    # Phase 12 -- the one thing CalibrationProfile could not honestly
+    # say before this milestone: whether its own numbers have ever been
+    # checked against a measured real-world point at all. Deliberately
+    # NOT derived from FOV/geometry alone (Phase 12's own explicit "do
+    # not invent confidence from FOV alone" instruction) -- the only
+    # way this ever gets attached to a CalibrationProfile is a caller
+    # actually running camera_calibration.validation.validate_calibration()
+    # against real measured ReferencePoints and choosing to record the
+    # result. None on CalibrationProfile.quality (the default) means
+    # exactly "never validated" -- distinguishable at a glance from a
+    # profile that HAS been checked, however good or bad that check
+    # turned out to be.
+
+    reference_point_count: int
+    validated_point_count: int
+    mean_error_m: Optional[float]
+    median_error_m: Optional[float]
+    max_error_m: Optional[float]
+    rmse_m: Optional[float]
+    validation_timestamp: str
+
+
+@dataclass(frozen=True)
 class CalibrationProfile:
 
     # One camera's complete calibration -- intrinsics + extrinsics +
@@ -115,9 +157,22 @@ class CalibrationProfile:
     # itself" convention; camera_calibration.calibration.
     # CalibrationRegistry (calibration.py) is the same pattern applied
     # here.
+    #
+    # `quality` (Real Camera Calibration & World-Coordinate Validation
+    # milestone) is purely additive -- optional, defaults to None
+    # ("never validated"), and touches no existing call site (every
+    # existing construction of this class uses keyword arguments, see
+    # camera_calibration/calibration_loader.py). A profile built by
+    # calibration_from_camera()/calibration_from_dict() alone, with no
+    # validation step ever run, stays quality=None forever -- exactly
+    # the honest "CONFIGURED -- UNVALIDATED" state Phase 12/13 require,
+    # never silently upgraded to "validated" by anything other than a
+    # genuine validate_calibration() call.
 
     camera_id: str
     floor_id: str
 
     intrinsics: CameraIntrinsics
     extrinsics: CameraExtrinsics
+
+    quality: Optional[CalibrationQuality] = None

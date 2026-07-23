@@ -50,6 +50,22 @@ Practical, fill-in-the-blanks checklist for the day physical college CCTV/NVR ac
 - [ ] Dropped frames observed
 - [ ] Reconnect behavior (what happens if the stream is interrupted — does the camera/NVR recover on its own, or does the client need to re-initiate?)
 
+## Calibration Measurements (Real Camera Calibration & World-Coordinate Validation milestone)
+
+Collect these for one test camera **in addition** to the Stream/Device sections above — this is the input `scripts/calibrate_camera_scene.py` needs to produce a real, metrically-validated `CalibrationProfile` (`docs/architecture/camera_calibration_and_world_projection.md` has the full field reference and a worked example). Bring a laptop, a tape measure or laser measure, and a way to pause/screenshot a live frame on-site.
+
+- [ ] `camera_id` (same Digital Twin id recorded above — never retyped, copy it)
+- [ ] `floor_id` (same Digital Twin floor id recorded above)
+- [ ] Actual configured stream resolution (`image_width` × `image_height`, pixels — must match the Stream section's own Resolution box exactly; a mismatch here is a genuine, previously-undetectable failure mode, see `camera_calibration.validation.resolution_mismatch()`)
+- [ ] Camera mounting height above the floor (`mount_height`, meters — tape/laser measure from the floor directly below the lens up to the lens itself; this is a GIVEN, measured input, never fitted)
+- [ ] Camera's floor-plan position (`camera_position` = (x, y) meters, in this floor's own Digital Twin coordinate system — read off the Building Designer's own placement, or measure from a known reference point already on the floor plan)
+- [ ] Horizontal field of view, if known from a datasheet (`horizontal_fov_degrees`) — OR, if unknown, plan to fit `yaw_degrees`/`pitch_degrees` from correspondences instead (below); FOV itself is still needed either way
+- [ ] **At least 3, ideally 5+, floor reference points**, each as a (pixel, world) correspondence:
+  - [ ] A paused/screenshotted real frame from this exact camera, saved locally (`scripts/calibrate_camera_scene.py --pick-points <image>` can record the pixel side by clicking)
+  - [ ] For each reference point: a real, identifiable floor mark (a tile corner, a floor-mounted sign, a doorway threshold, a wall base — anything visible in the frame AND physically measurable) — record its pixel coordinate in the paused frame AND its measured real-world (x, y) floor-plan position (tape/laser measure from the same reference point the camera's own `camera_position` was measured from)
+  - [ ] Split these into a **fitting set** (the correspondences `scripts/calibrate_camera_scene.py` solves yaw/pitch from) and a **separate, held-out validation set** (points NOT used for fitting — this is the only honest way to get a real RMSE; validating against the same points used to fit only ever proves the fit converged, not that it generalizes)
+- [ ] Camera roll, if visibly tilted in the image (`roll_degrees` — 0.0 for a normally, levelly mounted camera; only worth measuring if the image horizon is visibly not level)
+
 ## Handoff to SynEvac integration (after the above is filled in)
 
 Once every box above is checked for one camera, proceed per `docs/architecture/cctv_integration_readiness.md` §13 (steps 1-7) and §18.2 (Milestone A): match this camera to its Digital Twin `Camera` asset, configure `ConnectionInfo` in the Property Panel, save the password once (captured into `credential_store`), and only then write the one remaining piece — a real `FrameDecoderBackend` implementation behind the already-built, already-offline-tested `RTSPFrameSource` (`live_camera_pipeline/rtsp_frame_source.py`, see readiness doc §19) — against the confirmed RTSP URL/codec/transport recorded here.

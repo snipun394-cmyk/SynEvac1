@@ -1,5 +1,7 @@
 # Camera Calibration & World Coordinate Projection
 
+> See `docs/architecture/camera_calibration_and_world_projection.md` for the **Real Camera Calibration & World-Coordinate Validation** milestone built on top of this one — the practical calibration workflow, error validation/RMSE, `CalibrationQuality`, and an honest classification of what has (and has not) been validated against a real measured scene.
+
 Status as of this milestone: the geometric layer converting IMAGE-space detections into building-space (world) positions — a person's bounding box now yields a real `(x, y)` floor-plan position, a resolved zone, and (once behavior recognition runs) a world-space velocity in meters/second. No automatic calibration, no OpenCV routines, no pose estimation — "assume feet touch the floor" is the one geometric assumption this milestone makes.
 
 ## 1. Pipeline (current)
