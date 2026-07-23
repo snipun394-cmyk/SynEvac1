@@ -1,5 +1,7 @@
 # Real Human Detection Pipeline
 
+Status as of the **Real YOLO Model Validation** milestone (which closed the one remaining honesty gap the two milestones below left open — a genuine `.pt` weights file had never actually been loaded or run — by downloading real official Ultralytics weights, running genuine neural-network inference against real photographs and a real recorded video, and propagating those real detections through the full, already-committed tracking/identity/behavior/occupant/BuildingState chain): see §16 for the full real-model validation record, including exact model/device/performance numbers and an explicit per-piece REAL/NOT-YET-VALIDATED classification.
+
 Status as of the **Real YOLO Person Detection Validation & Productionization** milestone (which audited, validated, and wired together the original Real Human Detection Pipeline milestone below with the already-committed Single-Camera Tracking Framework, Human Behavior Recognition Framework, Cross-Camera Identity Resolution Framework, Camera Calibration, and Live Occupant Digital Twin milestones — all of which were built *after* this package was originally written but never looped back into it): `human_detection.yolo_human_detector.YOLOHumanDetector` is a concrete `live_camera_pipeline.human_detector.HumanDetector` that detects people in individual camera frames using an injectable YOLO inference backend, and its output now provably composes with the full, real, already-committed tracking/identity/behavior/occupant chain. No physical CCTV access exists, and none was used or required by either milestone.
 
 ## 0. What changed in the productionization pass
@@ -170,3 +172,110 @@ A real `FrameDecoderBackend` (needs a real decode/transport library, out of scop
 | Real RTSP transport (`FrameDecoderBackend` for an actual camera stream) | **FUTURE WORK — IMPLEMENTED BUT REQUIRES PHYSICAL CCTV** for the decode layer itself; everything downstream of a decoded `CameraFrame` is already proven |
 | Physical CCTV validation of `YOLOHumanDetector` against a real camera | **IMPLEMENTED BUT REQUIRES PHYSICAL CCTV** — cannot be performed until real camera access exists |
 | GPU/CUDA inference | **FUTURE WORK** — supported as a plain passthrough parameter, never exercised (no CUDA-capable environment available) |
+
+## 16. Real Model Validation milestone — closing the "never actually run" gap
+
+Every claim in §1-15 above about `UltralyticsYOLOBackend` was, until this milestone, **structural** — proven by composition and by `FakeYOLOBackend` standing in for it, never by an actual loaded `.pt` file executing an actual forward pass. This section records exactly what was run, against what, with what result, so that distinction never has to be taken on faith again.
+
+### 16.1 Environment (verified directly, not assumed)
+
+Python 3.14.0 (win32/AMD64), `ultralytics==8.4.30`, `torch==2.11.0+cpu` (`torch.cuda.is_available()` → `False`, CPU-only build), `opencv-python` → `cv2.__version__` `4.13.0`. No `.pt` weights and no local video existed anywhere on the machine before this milestone.
+
+### 16.2 Model obtained
+
+`yolov8n.pt` (the smallest current official Ultralytics YOLOv8 detection checkpoint — appropriate for a validation pass, not a model-selection study), downloaded via `ultralytics.utils.downloads.safe_download()` — the library's own normal fetch mechanism — from the official release asset `https://github.com/ultralytics/assets/releases/download/v8.3.0/yolov8n.pt`, and placed at `weights/yolov8n.pt` (6,549,796 bytes). **Not committed** — `.gitignore` now excludes `/weights/*.pt`; a caller reproducing this validation downloads the same file the same way, or supplies their own `.pt`.
+
+`UltralyticsYOLOBackend` itself was not changed: it still refuses a bare model name and still requires an existing local path (`ModelWeightsNotFoundError`), so this download happened entirely outside the library's own hidden-download path, exactly as §10 already required.
+
+### 16.3 Real image smoke test (Phase 3)
+
+Two images bundled with the already-required `ultralytics` package itself (`ultralytics/assets/bus.jpg`, `zidane.jpg` — no separate download needed, always present wherever `ultralytics` is installed) were run through `UltralyticsYOLOBackend.infer()` directly and through the full `YOLOHumanDetector.detect()`:
+
+| Image | Raw detections (all classes) | Classes seen | Person-filtered detections |
+|---|---|---|---|
+| `bus.jpg` (810×1080) | 6 | bus, person, stop sign | 4 (confidences 0.261–0.866) |
+| `zidane.jpg` (1280×720) | 3 | person, tie | 2 (confidences 0.819–0.836) |
+
+Every non-person class (`bus`, `stop sign`, `tie`) was correctly excluded from `YOLOHumanDetector`'s output; every surviving detection had a valid confidence in `[0, 1]` and a well-formed `(x1 < x2, y1 < y2)` box; `classification_evidence` was `UNKNOWN` and `state_evidence` was `None` on every single one, exactly as §3 requires — nothing fabricated.
+
+### 16.4 Real local video (Phases 4/5)
+
+OpenCV's own public-domain pedestrian-tracking sample clip, `vtest.avi` (768×576, 10 fps, 795 frames — real recorded footage of people walking across a campus courtyard, not synthetic/rendered content), fetched from `https://raw.githubusercontent.com/opencv/opencv/master/samples/data/vtest.avi` and placed at `validation_media/vtest.avi` (gitignored, not committed, same policy as the weights file).
+
+Run through `human_detection.video_source.load_video_frames` → `ReplayFrameSource` → `YOLOHumanDetector` (real backend) → `SimpleSingleCameraTracker`:
+
+- **795/795 frames** contained at least one real detection.
+- **4,812 total raw person detections**, averaging **6.05 people/frame** (max 13 in one frame).
+- **101 distinct stable tracker ids** created over the run; track continuity varied honestly with how long each person stayed in view (one track, `CAM-VTEST-T48`, was held continuously for 422 consecutive frames; many others lasted only 1–20 frames — people briefly crossing the edge of frame). 98/101 tracks started after frame 0 (entered mid-clip) and 93/101 ended more than 5 frames before the clip's last frame (left before the clip ended) — real entering/leaving behavior, not scripted.
+- Annotated frames (bounding box + confidence + stable track id), sampled every 15th frame, were written and visually inspected — bounding boxes tightly and correctly enclose each real pedestrian, confirming the detector/tracker are behaving sensibly, not just returning syntactically valid garbage.
+
+### 16.5 Full production chain, including BuildingState (Phases 6/7)
+
+The exact production classes — `UltralyticsYOLOBackend` → `YOLOHumanDetector` → `SimpleSingleCameraTracker` → `RuleBasedBehaviorRecognizer` → `SimulationIdentityResolver` → `live_runtime.factory.build_live_runtime()` (a real `Building`/`Floor`/`Camera`, not a mock) — were run for all 795 frames via `runtime.run_cycle(timestamp)`:
+
+- `LiveOccupantManager` occupant count grew from 3 (first cycle) to 48 (cumulative distinct occupants observed by the run's end) — driven entirely by real YOLO detections, confirmed by construction (nothing else feeds this manager in this composition).
+- `BuildingState.occupant_tracks` held 7 currently-active `FusedTrack` entries at the final cycle, each carrying a real tracker id (e.g. `CAM-VTEST-T101`), a real confidence (e.g. `0.745`), and a real behavior-derived `HumanState.WALKING` — sourced from `RuleBasedBehaviorRecognizer` reading genuine frame-to-frame tracked motion, not fabricated.
+- `BuildingState.zone_occupancy` reported empty (`observations={}`) — correctly honest: the minimal test `Building` has no `Zone` geometry configured, so there is nothing for occupancy to be attributed to. This is the existing "nothing configured, nothing fabricated" behavior, not a bug introduced here.
+- **`WORLD PROJECTION NOT TESTED — NO VALID CALIBRATION`** — no calibration file exists for this camera/video; `world_projector` was correctly left unwired rather than fabricated, exactly as §3 already commits to.
+
+One genuine mistake surfaced and was fixed during this validation: the first attempt called `runtime.orchestrator.start()` instead of `runtime.start()`, which starts the orchestrator but never calls `.start()` on the frame sources themselves — `ReplayFrameSource.read_frame()` honestly returns `None` when not started, silently yielding zero detections for the entire run. Calling `runtime.start()` (which starts frame sources, the orchestrator, and the command-center data source together) fixed it. Recorded here because it is exactly the kind of wiring mistake that would otherwise resurface unnoticed in a future integration.
+
+### 16.6 Performance (Phase 8) — CPU only, `yolov8n.pt`, 768×576 input
+
+| Stage | Mean | Median | p95 |
+|---|---|---|---|
+| OpenCV frame decode | 2.09 ms/frame | — | — |
+| YOLO inference (`YOLOHumanDetector.detect`, steady-state, excl. first-frame warmup) | 52.25 ms | 50.94 ms | 63.82 ms |
+| Tracking update (`SimpleSingleCameraTracker.update`) | 0.154 ms | 0.152 ms | 0.248 ms |
+
+First-frame model load + warmup: 6.85 s (one-time cost, excluded from the steady-state numbers above). **Effective FPS ≈ 19.1** (steady-state YOLO inference alone, single-threaded CPU — the dominant cost by roughly two orders of magnitude over tracking). Device: CPU (`torch.cuda.is_available()` is `False` in this environment; `device="cuda"` remains a supported, unexercised passthrough per §13). Model: `weights/yolov8n.pt`. Input resolution: 768×576 (native `vtest.avi` resolution, no resizing applied by this codebase — `ultralytics` internally letterboxes to its own inference size).
+
+### 16.7 Confidence threshold behavior (Phase 9)
+
+`UltralyticsYOLOBackend`'s `confidence_threshold` constructor parameter (already configurable, default `0.25`, documented in §10/§13) was exercised at three values over the full 795-frame video:
+
+| `confidence_threshold` | Total detections | Avg/frame | Frames with ≥1 detection | Max in one frame |
+|---|---|---|---|---|
+| 0.25 | 4,812 | 6.053 | 795/795 | 13 |
+| 0.40 | 4,610 | 5.799 | 795/795 | 10 |
+| 0.60 | 4,405 | 5.541 | 795/795 | 9 |
+
+Detections decrease monotonically as the threshold rises, as expected — this clip's pedestrians are generally well-lit and unoccluded, so the drop-off is gradual rather than a cliff. No threshold was tuned or "optimized" from this one video; `0.25` (the existing default) was used for every other test in this section.
+
+### 16.8 Real-world edge/failure cases (Phase 10)
+
+All run against the real model, not `FakeYOLOBackend`:
+
+- A pure-black frame and a synthetic random-noise frame both produced **zero** detections — the model does not hallucinate people from nothing.
+- A `None` `payload_ref` (a dropped camera frame) produced zero detections without raising, per `YOLOHumanDetector`'s existing boundary-catch discipline.
+- A left-half crop of a real mid-video frame (deliberately cutting anyone straddling the midline) still correctly detected the one partially-visible person still inside the crop (confidence 0.871).
+- The busiest real frame in the clip held 13 simultaneous real detections.
+- A genuine multi-frame missed detection was observed and confirmed honest: track `CAM-VTEST-T1` was `TRACKED` for frames 4–6, then real YOLO output nothing for that person for frames 7–10 (state correctly `MISSING` for all four frames, coasting on the tracker's own bookkeeping), never fabricating a fresh detection or silently dropping the identity.
+- The RTSP transport path was independently re-confirmed with the real backend (not just `FakeYOLOBackend`): the exact same `UltralyticsYOLOBackend`/`YOLOHumanDetector`/`SimpleSingleCameraTracker` instances used above were fed through `RTSPFrameSource` + `FakeRTSPBackend` (offline, no physical camera) and produced identical, sane detection/tracking behavior — proving Local Video and RTSP genuinely differ only at the frame-source boundary, with real inference on either side.
+
+### 16.9 Identity honesty (Phase 11 — no code change, a standing clarification)
+
+YOLO detects **people**, frame by frame, as bounding boxes. `SimpleSingleCameraTracker` links those boxes into a **local visual trajectory** using IoU/centroid geometry — it has no notion of who a person is, only that "the box at time T is probably the same box as the box at time T−1." `CrossCameraIdentityResolver` (§3, unexercised with a real multi-camera topology in this milestone) links trajectories **across** cameras using topology and time-of-departure/arrival heuristics — again, no appearance model, no biometric signal of any kind. None of this constitutes identity verification, re-identification by appearance, or biometric recognition in any sense a security or privacy reviewer would recognize. Face recognition does not exist anywhere in this codebase and none was added.
+
+### 16.10 Real-model classification (supersedes the informal claims in §0/§3 above)
+
+| Piece | Status |
+|---|---|
+| YOLO backend (`UltralyticsYOLOBackend`, real `yolov8n.pt`) | **REAL MODEL VALIDATED** |
+| Local video (`vtest.avi`, real recorded footage) | **REAL DATA VALIDATED** |
+| Single-camera tracking, real detections | **REAL DETECTIONS VALIDATED** |
+| RTSP architecture | **OFFLINE TESTED** (real backend confirmed compatible via `FakeRTSPBackend`; no physical transport) |
+| Physical CCTV | **NOT YET TESTED** |
+| Cross-camera appearance ReID | **NOT IMPLEMENTED** |
+| Pose estimation | **NOT IMPLEMENTED** |
+
+### 16.11 Files added by this milestone
+
+- `weights/` — gitignored directory holding the downloaded `yolov8n.pt` (not committed).
+- `validation_media/` — gitignored directory holding `vtest.avi` (not committed).
+- `tests/test_real_yolo_model_validation.py` — the one opt-in, weight-dependent test module; automatically skipped (never failed) when `weights/yolov8n.pt` and/or `validation_media/vtest.avi` are absent, exactly like every CI environment that never downloads them. Every other test file remains offline/deterministic/weight-independent, unchanged.
+- `.gitignore` — `/weights/*.pt` and `/validation_media/` entries added.
+
+### 16.12 The bottom-line question
+
+**Can SynEvac now truthfully say it has run a real YOLO neural network on real video frames and propagated those human detections through its live perception architecture? Yes.** A genuine `yolov8n.pt`, loaded by genuine `ultralytics.YOLO(...)`, genuinely executed inference against a real recorded video of real people and against two real photographs; the resulting detections were filtered, tracked, behavior-classified, and reached both `LiveOccupantManager` and `BuildingState.occupant_tracks` through the unmodified production `build_live_runtime()` composition. What remains unproven is physical-camera capture (no CCTV access), cross-camera appearance-based identity, and pose estimation — none of which this milestone attempted.

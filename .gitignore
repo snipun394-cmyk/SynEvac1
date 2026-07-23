@@ -19,3 +19,9 @@ __pycache__/
 # Local credential store (see credential_store/local_file_store.py) --
 # never lives inside the repo, but guard against accidental placement.
 .synevac/
+
+# Real YOLO model validation milestone -- downloaded model weights and
+# local validation videos are large binaries, never committed. See
+# docs/architecture/human_detection.md for how to obtain them.
+/weights/*.pt
+/validation_media/
