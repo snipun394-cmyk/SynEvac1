@@ -24,6 +24,10 @@ from designer.items.sprinkler_item import SprinklerItem
 from designer.items.fire_extinguisher_item import FireExtinguisherItem
 from designer.items.fire_hydrant_item import FireHydrantItem
 from designer.items.hose_reel_item import HoseReelItem
+from designer.items.fire_water_tank_item import FireWaterTankItem
+from designer.items.fire_pump_item import FirePumpItem
+from designer.items.jockey_pump_item import JockeyPumpItem
+from designer.items.fire_service_inlet_item import FireServiceInletItem
 from designer.items.smoke_detector_item import SmokeDetectorItem
 from designer.items.speaker_item import SpeakerItem
 from designer.items.stair_item import StairItem
@@ -46,6 +50,10 @@ from models.sprinkler import Sprinkler
 from models.fire_extinguisher import FireExtinguisher
 from models.fire_hydrant import FireHydrant
 from models.hose_reel import HoseReel
+from models.fire_water_tank import FireWaterTank
+from models.fire_pump import FirePump
+from models.jockey_pump import JockeyPump
+from models.fire_service_inlet import FireServiceInlet
 from models.staircase import Staircase
 from models.zone import Zone
 
@@ -369,7 +377,7 @@ class GraphicsScene(QGraphicsScene):
             if self.selected_item:
                 self.selected_item.set_selected(False)
 
-            if isinstance(item, (ZoneRectangle, ExitItem, StairItem, CameraItem, DetectorItem, SmokeDetectorItem, HeatDetectorItem, SpeakerItem, SignItem, ManualCallPointItem, EmergencyLightItem, SprinklerItem, FireExtinguisherItem, FireHydrantItem, HoseReelItem, AssemblyPointItem, ObstacleItem, DoorItem, OccupantItem)):
+            if isinstance(item, (ZoneRectangle, ExitItem, StairItem, CameraItem, DetectorItem, SmokeDetectorItem, HeatDetectorItem, SpeakerItem, SignItem, ManualCallPointItem, EmergencyLightItem, SprinklerItem, FireExtinguisherItem, FireHydrantItem, HoseReelItem, FireWaterTankItem, FirePumpItem, JockeyPumpItem, FireServiceInletItem, AssemblyPointItem, ObstacleItem, DoorItem, OccupantItem)):
 
                 self.selected_item = item
 
@@ -1304,6 +1312,185 @@ class GraphicsScene(QGraphicsScene):
             return
 
         # -------------------------------------------------
+        # Fire Water Tank Tool (Fire Water Supply & Suppression
+        # Infrastructure milestone) -- same placement convention as
+        # every other point device above.
+        # -------------------------------------------------
+
+        if self.current_tool == "fire_water_tank":
+
+            if self.current_floor.locked:
+                return
+
+            x, y = self.snap(
+                event.scenePos()
+            )
+
+            tank_model = FireWaterTank(
+                name=f"Fire Water Tank {self.current_floor.fire_water_tank_count + 1}",
+                position=(
+                    x / self.GRID_SIZE,
+                    y / self.GRID_SIZE,
+                ),
+                floor_id=self.current_floor.id,
+            )
+
+            containing_zone = self._find_unambiguous_zone_at(
+                self.current_floor, x / self.GRID_SIZE, y / self.GRID_SIZE,
+            )
+
+            if containing_zone is not None:
+                tank_model.zone_ids = (containing_zone.id,)
+
+            self.current_floor.add_fire_water_tank(
+                tank_model
+            )
+
+            tank_item = FireWaterTankItem(
+                x,
+                y,
+                model=tank_model,
+            )
+
+            self.addItem(tank_item)
+
+            return
+
+        # -------------------------------------------------
+        # Fire Pump Tool (Fire Water Supply & Suppression Infrastructure
+        # milestone) -- same placement convention as above.
+        # -------------------------------------------------
+
+        if self.current_tool == "fire_pump":
+
+            if self.current_floor.locked:
+                return
+
+            x, y = self.snap(
+                event.scenePos()
+            )
+
+            pump_model = FirePump(
+                name=f"Fire Pump {self.current_floor.fire_pump_count + 1}",
+                position=(
+                    x / self.GRID_SIZE,
+                    y / self.GRID_SIZE,
+                ),
+                floor_id=self.current_floor.id,
+            )
+
+            containing_zone = self._find_unambiguous_zone_at(
+                self.current_floor, x / self.GRID_SIZE, y / self.GRID_SIZE,
+            )
+
+            if containing_zone is not None:
+                pump_model.zone_ids = (containing_zone.id,)
+
+            self.current_floor.add_fire_pump(
+                pump_model
+            )
+
+            pump_item = FirePumpItem(
+                x,
+                y,
+                model=pump_model,
+            )
+
+            self.addItem(pump_item)
+
+            return
+
+        # -------------------------------------------------
+        # Jockey Pump Tool (Fire Water Supply & Suppression
+        # Infrastructure milestone) -- same placement convention as
+        # Fire Pump above.
+        # -------------------------------------------------
+
+        if self.current_tool == "jockey_pump":
+
+            if self.current_floor.locked:
+                return
+
+            x, y = self.snap(
+                event.scenePos()
+            )
+
+            jockey_pump_model = JockeyPump(
+                name=f"Jockey Pump {self.current_floor.jockey_pump_count + 1}",
+                position=(
+                    x / self.GRID_SIZE,
+                    y / self.GRID_SIZE,
+                ),
+                floor_id=self.current_floor.id,
+            )
+
+            containing_zone = self._find_unambiguous_zone_at(
+                self.current_floor, x / self.GRID_SIZE, y / self.GRID_SIZE,
+            )
+
+            if containing_zone is not None:
+                jockey_pump_model.zone_ids = (containing_zone.id,)
+
+            self.current_floor.add_jockey_pump(
+                jockey_pump_model
+            )
+
+            jockey_pump_item = JockeyPumpItem(
+                x,
+                y,
+                model=jockey_pump_model,
+            )
+
+            self.addItem(jockey_pump_item)
+
+            return
+
+        # -------------------------------------------------
+        # Fire Service Inlet / Breeching Inlet Tool (Fire Water Supply &
+        # Suppression Infrastructure milestone) -- same placement
+        # convention as above.
+        # -------------------------------------------------
+
+        if self.current_tool == "fire_service_inlet":
+
+            if self.current_floor.locked:
+                return
+
+            x, y = self.snap(
+                event.scenePos()
+            )
+
+            inlet_model = FireServiceInlet(
+                name=f"Fire Service Inlet {self.current_floor.fire_service_inlet_count + 1}",
+                position=(
+                    x / self.GRID_SIZE,
+                    y / self.GRID_SIZE,
+                ),
+                floor_id=self.current_floor.id,
+            )
+
+            containing_zone = self._find_unambiguous_zone_at(
+                self.current_floor, x / self.GRID_SIZE, y / self.GRID_SIZE,
+            )
+
+            if containing_zone is not None:
+                inlet_model.zone_ids = (containing_zone.id,)
+
+            self.current_floor.add_fire_service_inlet(
+                inlet_model
+            )
+
+            inlet_item = FireServiceInletItem(
+                x,
+                y,
+                model=inlet_model,
+            )
+
+            self.addItem(inlet_item)
+
+            return
+
+        # -------------------------------------------------
         # Assembly Point Tool
         #
         # A permanent, purely geometric safe-destination marker,
@@ -2006,7 +2193,7 @@ class GraphicsScene(QGraphicsScene):
 
             if isinstance(
                 item,
-                (ZoneRectangle, ExitItem, StairItem, CameraItem, DetectorItem, SmokeDetectorItem, HeatDetectorItem, SpeakerItem, SignItem, ManualCallPointItem, EmergencyLightItem, SprinklerItem, FireExtinguisherItem, FireHydrantItem, HoseReelItem, AssemblyPointItem, ObstacleItem, DoorItem, OccupantItem),
+                (ZoneRectangle, ExitItem, StairItem, CameraItem, DetectorItem, SmokeDetectorItem, HeatDetectorItem, SpeakerItem, SignItem, ManualCallPointItem, EmergencyLightItem, SprinklerItem, FireExtinguisherItem, FireHydrantItem, HoseReelItem, FireWaterTankItem, FirePumpItem, JockeyPumpItem, FireServiceInletItem, AssemblyPointItem, ObstacleItem, DoorItem, OccupantItem),
             ):
                 self.removeItem(item)
 

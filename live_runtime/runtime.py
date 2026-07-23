@@ -49,6 +49,7 @@ class LiveRuntime:
         dynamic_signage_controller=None,
         emergency_light_manager=None,
         fire_safety_asset_manager=None,
+        fire_water_infrastructure_manager=None,
         live_occupant_manager=None,
         sensor_fusion_engine=None,
         perception_fusion_coordinator=None,
@@ -94,6 +95,12 @@ class LiveRuntime:
         # session, same shared-instance discipline as every other
         # manager above.
         self.fire_safety_asset_manager = fire_safety_asset_manager
+
+        # Fire Water Supply & Suppression Infrastructure milestone --
+        # exactly one FireWaterInfrastructureManager for this live
+        # session, same shared-instance discipline as every other
+        # manager above.
+        self.fire_water_infrastructure_manager = fire_water_infrastructure_manager
 
         # Camera ingestion -- camera_id -> CameraFrameSource (Replay
         # today; RTSPFrameSource, unchanged, once physical CCTV access

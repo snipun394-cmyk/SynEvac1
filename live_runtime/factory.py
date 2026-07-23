@@ -16,6 +16,8 @@ from emergency_light_manager.manager import EmergencyLightManager
 
 from fire_safety_manager.manager import FireSafetyAssetManager
 
+from fire_water_manager.manager import FireWaterInfrastructureManager
+
 from dynamic_signage.planner import DynamicSignagePlanner
 from dynamic_signage.controller import DynamicSignageController
 
@@ -114,6 +116,7 @@ def build_live_runtime(
     emergency_light_manager: Optional[EmergencyLightManager] = None,
     fire_safety_asset_manager: Optional[FireSafetyAssetManager] = None,
     sprinkler_temperature_provider: Optional[Callable[[float], Mapping[str, float]]] = None,
+    fire_water_infrastructure_manager: Optional[FireWaterInfrastructureManager] = None,
     smoke_detector_reading_provider: Optional[Callable[[float], object]] = None,
     heat_detector_reading_provider: Optional[Callable[[float], object]] = None,
     camera_manager: Optional[CameraManager] = None,
@@ -312,6 +315,22 @@ def build_live_runtime(
         time=time,
     )
 
+    # Fire Water Supply & Suppression Infrastructure milestone --
+    # exactly one FireWaterInfrastructureManager per live session,
+    # always constructed (mirroring EmergencyLightManager/
+    # FireSafetyAssetManager above), discovering FireWaterTank/
+    # FirePump/JockeyPump/FireServiceInlet and computing FireWaterSystem
+    # status from the SAME building.fire_water_systems this factory's
+    # caller already configured -- never a second, independently
+    # constructed manager anywhere else.
+    fire_water_infrastructure_manager = (
+        fire_water_infrastructure_manager if fire_water_infrastructure_manager is not None
+        else FireWaterInfrastructureManager()
+    )
+    fire_water_infrastructure_manager.discover_assets(building)
+
+    fire_water_snapshot_provider = lambda time: fire_water_infrastructure_manager.snapshot()
+
     # =====================================================
     # Camera ingestion (Phase 3) -- wired through CameraManager's own
     # production routing (register_detection_provider/set_camera_mode/
@@ -498,6 +517,7 @@ def build_live_runtime(
             if building_control_controller is not None else None
         ),
         fire_safety_snapshot_provider=fire_safety_snapshot_provider,
+        fire_water_snapshot_provider=fire_water_snapshot_provider,
     )
 
     orchestrator = LiveOrchestrator(
@@ -548,6 +568,7 @@ def build_live_runtime(
         dynamic_signage_controller=dynamic_signage_controller,
         emergency_light_manager=emergency_light_manager,
         fire_safety_asset_manager=fire_safety_asset_manager,
+        fire_water_infrastructure_manager=fire_water_infrastructure_manager,
         live_occupant_manager=live_occupant_manager,
         sensor_fusion_engine=sensor_fusion_engine,
         perception_fusion_coordinator=perception_fusion_coordinator,

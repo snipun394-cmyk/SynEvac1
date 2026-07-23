@@ -30,6 +30,10 @@ from designer.items.sprinkler_item import SprinklerItem
 from designer.items.fire_extinguisher_item import FireExtinguisherItem
 from designer.items.fire_hydrant_item import FireHydrantItem
 from designer.items.hose_reel_item import HoseReelItem
+from designer.items.fire_water_tank_item import FireWaterTankItem
+from designer.items.fire_pump_item import FirePumpItem
+from designer.items.jockey_pump_item import JockeyPumpItem
+from designer.items.fire_service_inlet_item import FireServiceInletItem
 from designer.items.stair_item import StairItem
 from designer.items.zone_rectangle import ZoneRectangle
 from designer.scene.graphics_view import GraphicsView
@@ -39,6 +43,7 @@ from designer.widgets.camera_manager_panel import CameraManagerPanel
 from designer.widgets.speaker_manager_panel import SpeakerManagerPanel
 from designer.widgets.camera_validation_panel import CameraValidationPanel
 from designer.widgets.floor_list import FloorList
+from designer.widgets.fire_water_system_list import FireWaterSystemList
 from designer.widgets.occupant_generation_dialog import OccupantGenerationDialog
 from designer.widgets.perception_debug_panel import PerceptionDebugPanel
 from designer.widgets.project_tree import ProjectTree
@@ -227,6 +232,16 @@ class MainWindow(QMainWindow):
         self.floor_list = FloorList()
 
         # =====================================================
+        # Fire Water System List (Fire Water Supply & Suppression
+        # Infrastructure milestone) -- same dockable-list-panel
+        # authoring surface as Floor List above, for the same reason
+        # (a FireWaterSystem is a named, non-spatial entity, never
+        # drawn on the canvas).
+        # =====================================================
+
+        self.fire_water_system_list = FireWaterSystemList()
+
+        # =====================================================
         # Unsaved-Changes Tracking
         #
         # Deliberately coarse: hooks Qt's own built-in QGraphicsScene.
@@ -266,6 +281,10 @@ class MainWindow(QMainWindow):
         )
 
         self.floor_list.set_building(
+            self.canvas.scene_obj.project.building
+        )
+
+        self.fire_water_system_list.set_building(
             self.canvas.scene_obj.project.building
         )
 
@@ -512,6 +531,20 @@ class MainWindow(QMainWindow):
         self.addDockWidget(
             Qt.DockWidgetArea.LeftDockWidgetArea,
             floor_dock,
+        )
+
+        fire_water_system_dock = QDockWidget(
+            "Fire Water Systems",
+            self,
+        )
+
+        fire_water_system_dock.setWidget(
+            self.fire_water_system_list
+        )
+
+        self.addDockWidget(
+            Qt.DockWidgetArea.LeftDockWidgetArea,
+            fire_water_system_dock,
         )
 
         property_dock = QDockWidget(
@@ -800,6 +833,30 @@ class MainWindow(QMainWindow):
         self.toolbar.hose_reel_action.triggered.connect(
             lambda: self.change_tool(
                 "hose_reel"
+            )
+        )
+
+        self.toolbar.fire_water_tank_action.triggered.connect(
+            lambda: self.change_tool(
+                "fire_water_tank"
+            )
+        )
+
+        self.toolbar.fire_pump_action.triggered.connect(
+            lambda: self.change_tool(
+                "fire_pump"
+            )
+        )
+
+        self.toolbar.jockey_pump_action.triggered.connect(
+            lambda: self.change_tool(
+                "jockey_pump"
+            )
+        )
+
+        self.toolbar.fire_service_inlet_action.triggered.connect(
+            lambda: self.change_tool(
+                "fire_service_inlet"
             )
         )
 
@@ -1134,6 +1191,18 @@ class MainWindow(QMainWindow):
         elif isinstance(item, HoseReelItem):
             self.property_panel.show_hose_reel(item)
 
+        elif isinstance(item, FireWaterTankItem):
+            self.property_panel.show_fire_water_tank(item)
+
+        elif isinstance(item, FirePumpItem):
+            self.property_panel.show_fire_pump(item)
+
+        elif isinstance(item, JockeyPumpItem):
+            self.property_panel.show_jockey_pump(item)
+
+        elif isinstance(item, FireServiceInletItem):
+            self.property_panel.show_fire_service_inlet(item)
+
         elif isinstance(item, AssemblyPointItem):
             self.property_panel.show_assembly_point(item)
 
@@ -1236,6 +1305,8 @@ class MainWindow(QMainWindow):
 
         self.floor_list.set_building(self.canvas.scene_obj.project.building)
 
+        self.fire_water_system_list.set_building(self.canvas.scene_obj.project.building)
+
         self.property_panel.set_building(self.canvas.scene_obj.project.building)
 
         self.canvas.scene_obj.rebuild_scene()
@@ -1281,6 +1352,8 @@ class MainWindow(QMainWindow):
         self.project_tree.set_project(project)
 
         self.floor_list.set_building(project.building)
+
+        self.fire_water_system_list.set_building(project.building)
 
         self.property_panel.set_building(project.building)
 

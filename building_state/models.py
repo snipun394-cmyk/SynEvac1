@@ -15,6 +15,8 @@ from building_control.snapshot import ControlStateSnapshot
 
 from fire_safety_manager.snapshot import FireSafetyStatusSnapshot
 
+from fire_water_manager.snapshot import FireWaterInfrastructureSnapshot
+
 from perception.models.camera_observation import CameraFrameObservation
 
 from multi_camera_fusion.track import FusedTrack
@@ -174,6 +176,23 @@ class BuildingState:
     # models.sprinkler.Sprinkler's own docstring), so this is its own,
     # separate additive view rather than smuggled into the FACP one.
     fire_safety_status: Optional[FireSafetyStatusSnapshot] = None
+
+    # Fire Water Supply & Suppression Infrastructure milestone
+    # (additive) -- the current FireWaterTank/FirePump/JockeyPump/
+    # FireServiceInlet status and FireWaterSystem operational-state
+    # reports, see fire_water_manager.manager.FireWaterInfrastructureManager.
+    # snapshot(), which produces this value; BuildingStateEstimator only
+    # ever passes it through, never computes it, same discipline as
+    # every other additive snapshot field above. None when no
+    # FireWaterInfrastructureManager is configured for this cycle --
+    # never fabricated. A genuinely separate field from fire_safety_status
+    # (Sprinkler/FireExtinguisher/FireHydrant/HoseReel belong to a
+    # different asset family -- suppression/firefighting resources, not
+    # water-supply infrastructure) and from facp_status/control_status
+    # (this milestone's own systems have no FACP or BuildingControl
+    # representation at all -- see docs/architecture/
+    # fire_water_infrastructure.md's own FACP/BuildingControl boundary).
+    fire_water_status: Optional[FireWaterInfrastructureSnapshot] = None
 
     # =====================================================
 

@@ -21,9 +21,15 @@ from models.emergency_light import EmergencyLight, EmergencyLightAvailability
 from models.engineering_asset import DeviceMode
 from models.fire_extinguisher import FireExtinguisher
 from models.fire_hydrant import FireHydrant
+from models.fire_pump import FirePump
+from models.fire_service_inlet import FireServiceInlet
+from models.fire_water_system import MEMBERSHIP_FIELDS, assign_asset_to_system, system_containing_asset
+from models.fire_water_tank import FireWaterTank
 from models.floor import Floor
 from models.hose_reel import HoseReel
+from models.jockey_pump import JockeyPump
 from models.obstacle import Obstacle
+from models.pump_asset import PumpControlMode
 from models.sensor_asset import HealthStatus
 from models.speaker import Speaker
 from models.zone import Zone
@@ -885,6 +891,8 @@ class PropertyPanel(QWidget):
         self.sprinkler_zone_warning.setWordWrap(True)
         self.sprinkler_zone_warning.setStyleSheet("color: #b45309;")
 
+        self.sprinkler_fire_water_system = QComboBox()
+
         layout.addRow("Position X (m)", self.sprinkler_x)
         layout.addRow("Position Y (m)", self.sprinkler_y)
 
@@ -901,6 +909,7 @@ class PropertyPanel(QWidget):
 
         layout.addRow("Assigned Zone", self.sprinkler_zone)
         layout.addRow("", self.sprinkler_zone_warning)
+        layout.addRow("Fire Water System", self.sprinkler_fire_water_system)
 
         self.sprinkler_fields = [
             self.sprinkler_x,
@@ -914,6 +923,7 @@ class PropertyPanel(QWidget):
             self.sprinkler_state,
             self.sprinkler_zone,
             self.sprinkler_zone_warning,
+            self.sprinkler_fire_water_system,
         ]
 
         # =====================================================
@@ -1003,6 +1013,12 @@ class PropertyPanel(QWidget):
         self.fire_hydrant_zone_warning.setWordWrap(True)
         self.fire_hydrant_zone_warning.setStyleSheet("color: #b45309;")
 
+        # Fire Water Supply & Suppression Infrastructure milestone --
+        # which FireWaterSystem (models/fire_water_system.py) this
+        # Hydrant is traced to, same single-select combo convention as
+        # Assigned Zone above (never affects zone_ids).
+        self.fire_hydrant_fire_water_system = QComboBox()
+
         layout.addRow("Position X (m)", self.fire_hydrant_x)
         layout.addRow("Position Y (m)", self.fire_hydrant_y)
 
@@ -1014,6 +1030,7 @@ class PropertyPanel(QWidget):
 
         layout.addRow("Assigned Zone", self.fire_hydrant_zone)
         layout.addRow("", self.fire_hydrant_zone_warning)
+        layout.addRow("Fire Water System", self.fire_hydrant_fire_water_system)
 
         self.fire_hydrant_fields = [
             self.fire_hydrant_x,
@@ -1024,6 +1041,7 @@ class PropertyPanel(QWidget):
             self.fire_hydrant_availability,
             self.fire_hydrant_zone,
             self.fire_hydrant_zone_warning,
+            self.fire_hydrant_fire_water_system,
         ]
 
         # =====================================================
@@ -1053,6 +1071,8 @@ class PropertyPanel(QWidget):
         self.hose_reel_zone_warning.setWordWrap(True)
         self.hose_reel_zone_warning.setStyleSheet("color: #b45309;")
 
+        self.hose_reel_fire_water_system = QComboBox()
+
         layout.addRow("Position X (m)", self.hose_reel_x)
         layout.addRow("Position Y (m)", self.hose_reel_y)
 
@@ -1063,6 +1083,7 @@ class PropertyPanel(QWidget):
 
         layout.addRow("Assigned Zone", self.hose_reel_zone)
         layout.addRow("", self.hose_reel_zone_warning)
+        layout.addRow("Fire Water System", self.hose_reel_fire_water_system)
 
         self.hose_reel_fields = [
             self.hose_reel_x,
@@ -1072,6 +1093,249 @@ class PropertyPanel(QWidget):
             self.hose_reel_availability,
             self.hose_reel_zone,
             self.hose_reel_zone_warning,
+            self.hose_reel_fire_water_system,
+        ]
+
+        # =====================================================
+        # Fire Water Tank (Fire Water Supply & Suppression
+        # Infrastructure milestone) -- an EngineeringAsset, not a
+        # sensor/pump: no continuous reading, only capacity/level and
+        # availability (see models.fire_water_tank.FireWaterTank's own
+        # docstring).
+        # =====================================================
+
+        self.fire_water_tank_x = QLineEdit()
+        self.fire_water_tank_y = QLineEdit()
+
+        self.fire_water_tank_active = QCheckBox()
+
+        self.fire_water_tank_health = QComboBox()
+
+        for health_status in HealthStatus.ALL:
+            self.fire_water_tank_health.addItem(health_status)
+
+        self.fire_water_tank_capacity = QLineEdit()
+        self.fire_water_tank_level = QLineEdit()
+
+        self.fire_water_tank_state = QLabel("-")
+
+        self.fire_water_tank_zone = QComboBox()
+
+        self.fire_water_tank_zone_warning = QLabel(
+            "Zone assignment required for live operation."
+        )
+        self.fire_water_tank_zone_warning.setWordWrap(True)
+        self.fire_water_tank_zone_warning.setStyleSheet("color: #b45309;")
+
+        self.fire_water_tank_fire_water_system = QComboBox()
+
+        layout.addRow("Position X (m)", self.fire_water_tank_x)
+        layout.addRow("Position Y (m)", self.fire_water_tank_y)
+
+        layout.addRow("Active", self.fire_water_tank_active)
+
+        layout.addRow("Health Status", self.fire_water_tank_health)
+        layout.addRow("Capacity (L)", self.fire_water_tank_capacity)
+        layout.addRow("Current Level (L, blank = unmeasured)", self.fire_water_tank_level)
+        layout.addRow("Operational State", self.fire_water_tank_state)
+
+        layout.addRow("Assigned Zone", self.fire_water_tank_zone)
+        layout.addRow("", self.fire_water_tank_zone_warning)
+        layout.addRow("Fire Water System", self.fire_water_tank_fire_water_system)
+
+        self.fire_water_tank_fields = [
+            self.fire_water_tank_x,
+            self.fire_water_tank_y,
+            self.fire_water_tank_active,
+            self.fire_water_tank_health,
+            self.fire_water_tank_capacity,
+            self.fire_water_tank_level,
+            self.fire_water_tank_state,
+            self.fire_water_tank_zone,
+            self.fire_water_tank_zone_warning,
+            self.fire_water_tank_fire_water_system,
+        ]
+
+        # =====================================================
+        # Fire Pump (Fire Water Supply & Suppression Infrastructure
+        # milestone) -- see models.pump_asset.PumpAsset's own docstring
+        # for the run-state/control-mode semantics shared with Jockey
+        # Pump.
+        # =====================================================
+
+        self.fire_pump_x = QLineEdit()
+        self.fire_pump_y = QLineEdit()
+
+        self.fire_pump_active = QCheckBox()
+
+        self.fire_pump_health = QComboBox()
+
+        for health_status in HealthStatus.ALL:
+            self.fire_pump_health.addItem(health_status)
+
+        self.fire_pump_control_mode = QComboBox()
+
+        for control_mode in PumpControlMode.ALL:
+            self.fire_pump_control_mode.addItem(control_mode)
+
+        self.fire_pump_running = QCheckBox()
+
+        self.fire_pump_state = QLabel("-")
+
+        self.fire_pump_zone = QComboBox()
+
+        self.fire_pump_zone_warning = QLabel(
+            "Zone assignment required for live operation."
+        )
+        self.fire_pump_zone_warning.setWordWrap(True)
+        self.fire_pump_zone_warning.setStyleSheet("color: #b45309;")
+
+        self.fire_pump_fire_water_system = QComboBox()
+
+        layout.addRow("Position X (m)", self.fire_pump_x)
+        layout.addRow("Position Y (m)", self.fire_pump_y)
+
+        layout.addRow("Active", self.fire_pump_active)
+
+        layout.addRow("Health Status", self.fire_pump_health)
+        layout.addRow("Control Mode", self.fire_pump_control_mode)
+        layout.addRow("Running", self.fire_pump_running)
+        layout.addRow("Operational State", self.fire_pump_state)
+
+        layout.addRow("Assigned Zone", self.fire_pump_zone)
+        layout.addRow("", self.fire_pump_zone_warning)
+        layout.addRow("Fire Water System", self.fire_pump_fire_water_system)
+
+        self.fire_pump_fields = [
+            self.fire_pump_x,
+            self.fire_pump_y,
+            self.fire_pump_active,
+            self.fire_pump_health,
+            self.fire_pump_control_mode,
+            self.fire_pump_running,
+            self.fire_pump_state,
+            self.fire_pump_zone,
+            self.fire_pump_zone_warning,
+            self.fire_pump_fire_water_system,
+        ]
+
+        # =====================================================
+        # Jockey Pump (Fire Water Supply & Suppression Infrastructure
+        # milestone) -- same PumpAsset shape as Fire Pump above.
+        # =====================================================
+
+        self.jockey_pump_x = QLineEdit()
+        self.jockey_pump_y = QLineEdit()
+
+        self.jockey_pump_active = QCheckBox()
+
+        self.jockey_pump_health = QComboBox()
+
+        for health_status in HealthStatus.ALL:
+            self.jockey_pump_health.addItem(health_status)
+
+        self.jockey_pump_control_mode = QComboBox()
+
+        for control_mode in PumpControlMode.ALL:
+            self.jockey_pump_control_mode.addItem(control_mode)
+
+        self.jockey_pump_running = QCheckBox()
+
+        self.jockey_pump_state = QLabel("-")
+
+        self.jockey_pump_zone = QComboBox()
+
+        self.jockey_pump_zone_warning = QLabel(
+            "Zone assignment required for live operation."
+        )
+        self.jockey_pump_zone_warning.setWordWrap(True)
+        self.jockey_pump_zone_warning.setStyleSheet("color: #b45309;")
+
+        self.jockey_pump_fire_water_system = QComboBox()
+
+        layout.addRow("Position X (m)", self.jockey_pump_x)
+        layout.addRow("Position Y (m)", self.jockey_pump_y)
+
+        layout.addRow("Active", self.jockey_pump_active)
+
+        layout.addRow("Health Status", self.jockey_pump_health)
+        layout.addRow("Control Mode", self.jockey_pump_control_mode)
+        layout.addRow("Running", self.jockey_pump_running)
+        layout.addRow("Operational State", self.jockey_pump_state)
+
+        layout.addRow("Assigned Zone", self.jockey_pump_zone)
+        layout.addRow("", self.jockey_pump_zone_warning)
+        layout.addRow("Fire Water System", self.jockey_pump_fire_water_system)
+
+        self.jockey_pump_fields = [
+            self.jockey_pump_x,
+            self.jockey_pump_y,
+            self.jockey_pump_active,
+            self.jockey_pump_health,
+            self.jockey_pump_control_mode,
+            self.jockey_pump_running,
+            self.jockey_pump_state,
+            self.jockey_pump_zone,
+            self.jockey_pump_zone_warning,
+            self.jockey_pump_fire_water_system,
+        ]
+
+        # =====================================================
+        # Fire Service Inlet / Breeching Inlet (Fire Water Supply &
+        # Suppression Infrastructure milestone) -- a passive resource,
+        # same shape as Fire Extinguisher/Fire Hydrant/Hose Reel.
+        # =====================================================
+
+        self.fire_service_inlet_x = QLineEdit()
+        self.fire_service_inlet_y = QLineEdit()
+
+        self.fire_service_inlet_active = QCheckBox()
+
+        self.fire_service_inlet_health = QComboBox()
+
+        for health_status in HealthStatus.ALL:
+            self.fire_service_inlet_health.addItem(health_status)
+
+        self.fire_service_inlet_type = QComboBox()
+
+        for inlet_type in FireServiceInlet.INLET_TYPES:
+            self.fire_service_inlet_type.addItem(inlet_type)
+
+        self.fire_service_inlet_availability = QLabel("-")
+
+        self.fire_service_inlet_zone = QComboBox()
+
+        self.fire_service_inlet_zone_warning = QLabel(
+            "Zone assignment required for live operation."
+        )
+        self.fire_service_inlet_zone_warning.setWordWrap(True)
+        self.fire_service_inlet_zone_warning.setStyleSheet("color: #b45309;")
+
+        self.fire_service_inlet_fire_water_system = QComboBox()
+
+        layout.addRow("Position X (m)", self.fire_service_inlet_x)
+        layout.addRow("Position Y (m)", self.fire_service_inlet_y)
+
+        layout.addRow("Active", self.fire_service_inlet_active)
+
+        layout.addRow("Health Status", self.fire_service_inlet_health)
+        layout.addRow("Inlet Type", self.fire_service_inlet_type)
+        layout.addRow("Availability", self.fire_service_inlet_availability)
+
+        layout.addRow("Assigned Zone", self.fire_service_inlet_zone)
+        layout.addRow("", self.fire_service_inlet_zone_warning)
+        layout.addRow("Fire Water System", self.fire_service_inlet_fire_water_system)
+
+        self.fire_service_inlet_fields = [
+            self.fire_service_inlet_x,
+            self.fire_service_inlet_y,
+            self.fire_service_inlet_active,
+            self.fire_service_inlet_health,
+            self.fire_service_inlet_type,
+            self.fire_service_inlet_availability,
+            self.fire_service_inlet_zone,
+            self.fire_service_inlet_zone_warning,
+            self.fire_service_inlet_fire_water_system,
         ]
 
         # =====================================================
@@ -1663,6 +1927,9 @@ class PropertyPanel(QWidget):
         self.sprinkler_zone.currentIndexChanged.connect(
             self.update_sprinkler_zone
         )
+        self.sprinkler_fire_water_system.currentIndexChanged.connect(
+            self.update_sprinkler_fire_water_system
+        )
 
         self.fire_extinguisher_x.editingFinished.connect(
             self.update_fire_extinguisher_geometry
@@ -1701,6 +1968,9 @@ class PropertyPanel(QWidget):
         self.fire_hydrant_zone.currentIndexChanged.connect(
             self.update_fire_hydrant_zone
         )
+        self.fire_hydrant_fire_water_system.currentIndexChanged.connect(
+            self.update_fire_hydrant_fire_water_system
+        )
 
         self.hose_reel_x.editingFinished.connect(
             self.update_hose_reel_geometry
@@ -1716,6 +1986,106 @@ class PropertyPanel(QWidget):
         )
         self.hose_reel_zone.currentIndexChanged.connect(
             self.update_hose_reel_zone
+        )
+        self.hose_reel_fire_water_system.currentIndexChanged.connect(
+            self.update_hose_reel_fire_water_system
+        )
+
+        self.fire_water_tank_x.editingFinished.connect(
+            self.update_fire_water_tank_geometry
+        )
+        self.fire_water_tank_y.editingFinished.connect(
+            self.update_fire_water_tank_geometry
+        )
+        self.fire_water_tank_active.toggled.connect(
+            self.update_fire_water_tank_active
+        )
+        self.fire_water_tank_health.currentIndexChanged.connect(
+            self.update_fire_water_tank_health
+        )
+        self.fire_water_tank_capacity.editingFinished.connect(
+            self.update_fire_water_tank_capacity
+        )
+        self.fire_water_tank_level.editingFinished.connect(
+            self.update_fire_water_tank_level
+        )
+        self.fire_water_tank_zone.currentIndexChanged.connect(
+            self.update_fire_water_tank_zone
+        )
+        self.fire_water_tank_fire_water_system.currentIndexChanged.connect(
+            self.update_fire_water_tank_fire_water_system
+        )
+
+        self.fire_pump_x.editingFinished.connect(
+            self.update_fire_pump_geometry
+        )
+        self.fire_pump_y.editingFinished.connect(
+            self.update_fire_pump_geometry
+        )
+        self.fire_pump_active.toggled.connect(
+            self.update_fire_pump_active
+        )
+        self.fire_pump_health.currentIndexChanged.connect(
+            self.update_fire_pump_health
+        )
+        self.fire_pump_control_mode.currentIndexChanged.connect(
+            self.update_fire_pump_control_mode
+        )
+        self.fire_pump_running.toggled.connect(
+            self.update_fire_pump_running
+        )
+        self.fire_pump_zone.currentIndexChanged.connect(
+            self.update_fire_pump_zone
+        )
+        self.fire_pump_fire_water_system.currentIndexChanged.connect(
+            self.update_fire_pump_fire_water_system
+        )
+
+        self.jockey_pump_x.editingFinished.connect(
+            self.update_jockey_pump_geometry
+        )
+        self.jockey_pump_y.editingFinished.connect(
+            self.update_jockey_pump_geometry
+        )
+        self.jockey_pump_active.toggled.connect(
+            self.update_jockey_pump_active
+        )
+        self.jockey_pump_health.currentIndexChanged.connect(
+            self.update_jockey_pump_health
+        )
+        self.jockey_pump_control_mode.currentIndexChanged.connect(
+            self.update_jockey_pump_control_mode
+        )
+        self.jockey_pump_running.toggled.connect(
+            self.update_jockey_pump_running
+        )
+        self.jockey_pump_zone.currentIndexChanged.connect(
+            self.update_jockey_pump_zone
+        )
+        self.jockey_pump_fire_water_system.currentIndexChanged.connect(
+            self.update_jockey_pump_fire_water_system
+        )
+
+        self.fire_service_inlet_x.editingFinished.connect(
+            self.update_fire_service_inlet_geometry
+        )
+        self.fire_service_inlet_y.editingFinished.connect(
+            self.update_fire_service_inlet_geometry
+        )
+        self.fire_service_inlet_active.toggled.connect(
+            self.update_fire_service_inlet_active
+        )
+        self.fire_service_inlet_health.currentIndexChanged.connect(
+            self.update_fire_service_inlet_health
+        )
+        self.fire_service_inlet_type.currentIndexChanged.connect(
+            self.update_fire_service_inlet_type
+        )
+        self.fire_service_inlet_zone.currentIndexChanged.connect(
+            self.update_fire_service_inlet_zone
+        )
+        self.fire_service_inlet_fire_water_system.currentIndexChanged.connect(
+            self.update_fire_service_inlet_fire_water_system
         )
 
         self.assembly_x.editingFinished.connect(
@@ -1837,6 +2207,10 @@ class PropertyPanel(QWidget):
         self._set_fields_visible(self.fire_extinguisher_fields, False)
         self._set_fields_visible(self.fire_hydrant_fields, False)
         self._set_fields_visible(self.hose_reel_fields, False)
+        self._set_fields_visible(self.fire_water_tank_fields, False)
+        self._set_fields_visible(self.fire_pump_fields, False)
+        self._set_fields_visible(self.jockey_pump_fields, False)
+        self._set_fields_visible(self.fire_service_inlet_fields, False)
         self._set_fields_visible(self.assembly_fields, False)
         self._set_fields_visible(self.obstacle_fields, False)
         self._set_fields_visible(self.door_fields, False)
@@ -1894,6 +2268,10 @@ class PropertyPanel(QWidget):
         self._set_fields_visible(self.fire_extinguisher_fields, False)
         self._set_fields_visible(self.fire_hydrant_fields, False)
         self._set_fields_visible(self.hose_reel_fields, False)
+        self._set_fields_visible(self.fire_water_tank_fields, False)
+        self._set_fields_visible(self.fire_pump_fields, False)
+        self._set_fields_visible(self.jockey_pump_fields, False)
+        self._set_fields_visible(self.fire_service_inlet_fields, False)
         self._set_fields_visible(self.assembly_fields, False)
         self._set_fields_visible(self.obstacle_fields, False)
         self._set_fields_visible(self.door_fields, False)
@@ -1982,6 +2360,10 @@ class PropertyPanel(QWidget):
         self._set_fields_visible(self.fire_extinguisher_fields, False)
         self._set_fields_visible(self.fire_hydrant_fields, False)
         self._set_fields_visible(self.hose_reel_fields, False)
+        self._set_fields_visible(self.fire_water_tank_fields, False)
+        self._set_fields_visible(self.fire_pump_fields, False)
+        self._set_fields_visible(self.jockey_pump_fields, False)
+        self._set_fields_visible(self.fire_service_inlet_fields, False)
         self._set_fields_visible(self.assembly_fields, False)
         self._set_fields_visible(self.obstacle_fields, False)
         self._set_fields_visible(self.door_fields, False)
@@ -2064,6 +2446,10 @@ class PropertyPanel(QWidget):
         self._set_fields_visible(self.fire_extinguisher_fields, False)
         self._set_fields_visible(self.fire_hydrant_fields, False)
         self._set_fields_visible(self.hose_reel_fields, False)
+        self._set_fields_visible(self.fire_water_tank_fields, False)
+        self._set_fields_visible(self.fire_pump_fields, False)
+        self._set_fields_visible(self.jockey_pump_fields, False)
+        self._set_fields_visible(self.fire_service_inlet_fields, False)
         self._set_fields_visible(self.assembly_fields, False)
         self._set_fields_visible(self.obstacle_fields, False)
         self._set_fields_visible(self.door_fields, False)
@@ -2184,6 +2570,10 @@ class PropertyPanel(QWidget):
         self._set_fields_visible(self.fire_extinguisher_fields, False)
         self._set_fields_visible(self.fire_hydrant_fields, False)
         self._set_fields_visible(self.hose_reel_fields, False)
+        self._set_fields_visible(self.fire_water_tank_fields, False)
+        self._set_fields_visible(self.fire_pump_fields, False)
+        self._set_fields_visible(self.jockey_pump_fields, False)
+        self._set_fields_visible(self.fire_service_inlet_fields, False)
         self._set_fields_visible(self.assembly_fields, False)
         self._set_fields_visible(self.obstacle_fields, False)
         self._set_fields_visible(self.door_fields, False)
@@ -2331,6 +2721,10 @@ class PropertyPanel(QWidget):
         self._set_fields_visible(self.fire_extinguisher_fields, False)
         self._set_fields_visible(self.fire_hydrant_fields, False)
         self._set_fields_visible(self.hose_reel_fields, False)
+        self._set_fields_visible(self.fire_water_tank_fields, False)
+        self._set_fields_visible(self.fire_pump_fields, False)
+        self._set_fields_visible(self.jockey_pump_fields, False)
+        self._set_fields_visible(self.fire_service_inlet_fields, False)
         self._set_fields_visible(self.assembly_fields, False)
         self._set_fields_visible(self.obstacle_fields, False)
         self._set_fields_visible(self.door_fields, False)
@@ -2409,6 +2803,10 @@ class PropertyPanel(QWidget):
         self._set_fields_visible(self.fire_extinguisher_fields, False)
         self._set_fields_visible(self.fire_hydrant_fields, False)
         self._set_fields_visible(self.hose_reel_fields, False)
+        self._set_fields_visible(self.fire_water_tank_fields, False)
+        self._set_fields_visible(self.fire_pump_fields, False)
+        self._set_fields_visible(self.jockey_pump_fields, False)
+        self._set_fields_visible(self.fire_service_inlet_fields, False)
         self._set_fields_visible(self.assembly_fields, False)
         self._set_fields_visible(self.obstacle_fields, False)
         self._set_fields_visible(self.door_fields, False)
@@ -2530,6 +2928,10 @@ class PropertyPanel(QWidget):
         self._set_fields_visible(self.fire_extinguisher_fields, False)
         self._set_fields_visible(self.fire_hydrant_fields, False)
         self._set_fields_visible(self.hose_reel_fields, False)
+        self._set_fields_visible(self.fire_water_tank_fields, False)
+        self._set_fields_visible(self.fire_pump_fields, False)
+        self._set_fields_visible(self.jockey_pump_fields, False)
+        self._set_fields_visible(self.fire_service_inlet_fields, False)
         self._set_fields_visible(self.assembly_fields, False)
         self._set_fields_visible(self.obstacle_fields, False)
         self._set_fields_visible(self.door_fields, False)
@@ -2643,6 +3045,10 @@ class PropertyPanel(QWidget):
         self._set_fields_visible(self.fire_extinguisher_fields, False)
         self._set_fields_visible(self.fire_hydrant_fields, False)
         self._set_fields_visible(self.hose_reel_fields, False)
+        self._set_fields_visible(self.fire_water_tank_fields, False)
+        self._set_fields_visible(self.fire_pump_fields, False)
+        self._set_fields_visible(self.jockey_pump_fields, False)
+        self._set_fields_visible(self.fire_service_inlet_fields, False)
         self._set_fields_visible(self.assembly_fields, False)
         self._set_fields_visible(self.obstacle_fields, False)
         self._set_fields_visible(self.door_fields, False)
@@ -2731,6 +3137,10 @@ class PropertyPanel(QWidget):
         self._set_fields_visible(self.fire_extinguisher_fields, False)
         self._set_fields_visible(self.fire_hydrant_fields, False)
         self._set_fields_visible(self.hose_reel_fields, False)
+        self._set_fields_visible(self.fire_water_tank_fields, False)
+        self._set_fields_visible(self.fire_pump_fields, False)
+        self._set_fields_visible(self.jockey_pump_fields, False)
+        self._set_fields_visible(self.fire_service_inlet_fields, False)
         self._set_fields_visible(self.assembly_fields, False)
         self._set_fields_visible(self.obstacle_fields, False)
         self._set_fields_visible(self.door_fields, False)
@@ -2800,6 +3210,10 @@ class PropertyPanel(QWidget):
         self._set_fields_visible(self.fire_extinguisher_fields, False)
         self._set_fields_visible(self.fire_hydrant_fields, False)
         self._set_fields_visible(self.hose_reel_fields, False)
+        self._set_fields_visible(self.fire_water_tank_fields, False)
+        self._set_fields_visible(self.fire_pump_fields, False)
+        self._set_fields_visible(self.jockey_pump_fields, False)
+        self._set_fields_visible(self.fire_service_inlet_fields, False)
         self._set_fields_visible(self.assembly_fields, False)
         self._set_fields_visible(self.obstacle_fields, False)
         self._set_fields_visible(self.door_fields, False)
@@ -2987,6 +3401,10 @@ class PropertyPanel(QWidget):
         self._set_fields_visible(self.fire_extinguisher_fields, False)
         self._set_fields_visible(self.fire_hydrant_fields, False)
         self._set_fields_visible(self.hose_reel_fields, False)
+        self._set_fields_visible(self.fire_water_tank_fields, False)
+        self._set_fields_visible(self.fire_pump_fields, False)
+        self._set_fields_visible(self.jockey_pump_fields, False)
+        self._set_fields_visible(self.fire_service_inlet_fields, False)
         self._set_fields_visible(self.assembly_fields, False)
         self._set_fields_visible(self.obstacle_fields, False)
         self._set_fields_visible(self.door_fields, False)
@@ -3144,6 +3562,10 @@ class PropertyPanel(QWidget):
         self._set_fields_visible(self.fire_extinguisher_fields, False)
         self._set_fields_visible(self.fire_hydrant_fields, False)
         self._set_fields_visible(self.hose_reel_fields, False)
+        self._set_fields_visible(self.fire_water_tank_fields, False)
+        self._set_fields_visible(self.fire_pump_fields, False)
+        self._set_fields_visible(self.jockey_pump_fields, False)
+        self._set_fields_visible(self.fire_service_inlet_fields, False)
         self._set_fields_visible(self.assembly_fields, False)
         self._set_fields_visible(self.obstacle_fields, False)
         self._set_fields_visible(self.door_fields, False)
@@ -3196,6 +3618,8 @@ class PropertyPanel(QWidget):
                 "",
             )
             self._update_zone_warning(self.sprinkler_zone_warning, model.zone_ids)
+
+            self._populate_fire_water_system_combo(self.sprinkler_fire_water_system, model.id, "sprinkler_ids")
 
             self._refresh_sprinkler_state(sprinkler_item)
 
@@ -3327,6 +3751,17 @@ class PropertyPanel(QWidget):
         self._update_zone_warning(self.sprinkler_zone_warning, self.current_item.model.zone_ids)
 
     # =====================================================
+
+    def update_sprinkler_fire_water_system(self, index):
+
+        if self.current_item is None or self.current_item.model is None:
+            return
+
+        self._update_asset_fire_water_system(
+            self.sprinkler_fire_water_system, self.current_item.model.id, "sprinkler_ids",
+        )
+
+    # =====================================================
     # Fire Extinguisher (Fire Suppression & Water-Based Safety Asset
     # Digital Twin milestone) -- a passive resource, no current-state
     # concept, only availability (mirrors Emergency Light exactly).
@@ -3352,6 +3787,10 @@ class PropertyPanel(QWidget):
         self._set_fields_visible(self.fire_extinguisher_fields, True)
         self._set_fields_visible(self.fire_hydrant_fields, False)
         self._set_fields_visible(self.hose_reel_fields, False)
+        self._set_fields_visible(self.fire_water_tank_fields, False)
+        self._set_fields_visible(self.fire_pump_fields, False)
+        self._set_fields_visible(self.jockey_pump_fields, False)
+        self._set_fields_visible(self.fire_service_inlet_fields, False)
         self._set_fields_visible(self.assembly_fields, False)
         self._set_fields_visible(self.obstacle_fields, False)
         self._set_fields_visible(self.door_fields, False)
@@ -3509,6 +3948,10 @@ class PropertyPanel(QWidget):
         self._set_fields_visible(self.fire_extinguisher_fields, False)
         self._set_fields_visible(self.fire_hydrant_fields, True)
         self._set_fields_visible(self.hose_reel_fields, False)
+        self._set_fields_visible(self.fire_water_tank_fields, False)
+        self._set_fields_visible(self.fire_pump_fields, False)
+        self._set_fields_visible(self.jockey_pump_fields, False)
+        self._set_fields_visible(self.fire_service_inlet_fields, False)
         self._set_fields_visible(self.assembly_fields, False)
         self._set_fields_visible(self.obstacle_fields, False)
         self._set_fields_visible(self.door_fields, False)
@@ -3555,6 +3998,8 @@ class PropertyPanel(QWidget):
                 "",
             )
             self._update_zone_warning(self.fire_hydrant_zone_warning, model.zone_ids)
+
+            self._populate_fire_water_system_combo(self.fire_hydrant_fire_water_system, model.id, "hydrant_ids")
 
             self._refresh_fire_hydrant_availability(hydrant_item)
 
@@ -3642,6 +4087,17 @@ class PropertyPanel(QWidget):
         self._update_zone_warning(self.fire_hydrant_zone_warning, self.current_item.model.zone_ids)
 
     # =====================================================
+
+    def update_fire_hydrant_fire_water_system(self, index):
+
+        if self.current_item is None or self.current_item.model is None:
+            return
+
+        self._update_asset_fire_water_system(
+            self.fire_hydrant_fire_water_system, self.current_item.model.id, "hydrant_ids",
+        )
+
+    # =====================================================
     # Hose Reel (Fire Suppression & Water-Based Safety Asset Digital
     # Twin milestone)
     # =====================================================
@@ -3666,6 +4122,10 @@ class PropertyPanel(QWidget):
         self._set_fields_visible(self.fire_extinguisher_fields, False)
         self._set_fields_visible(self.fire_hydrant_fields, False)
         self._set_fields_visible(self.hose_reel_fields, True)
+        self._set_fields_visible(self.fire_water_tank_fields, False)
+        self._set_fields_visible(self.fire_pump_fields, False)
+        self._set_fields_visible(self.jockey_pump_fields, False)
+        self._set_fields_visible(self.fire_service_inlet_fields, False)
         self._set_fields_visible(self.assembly_fields, False)
         self._set_fields_visible(self.obstacle_fields, False)
         self._set_fields_visible(self.door_fields, False)
@@ -3706,6 +4166,8 @@ class PropertyPanel(QWidget):
                 "",
             )
             self._update_zone_warning(self.hose_reel_zone_warning, model.zone_ids)
+
+            self._populate_fire_water_system_combo(self.hose_reel_fire_water_system, model.id, "hose_reel_ids")
 
             self._refresh_hose_reel_availability(hose_reel_item)
 
@@ -3781,6 +4243,773 @@ class PropertyPanel(QWidget):
             (zone_id,) if zone_id else ()
         )
         self._update_zone_warning(self.hose_reel_zone_warning, self.current_item.model.zone_ids)
+
+    # =====================================================
+
+    def update_hose_reel_fire_water_system(self, index):
+
+        if self.current_item is None or self.current_item.model is None:
+            return
+
+        self._update_asset_fire_water_system(
+            self.hose_reel_fire_water_system, self.current_item.model.id, "hose_reel_ids",
+        )
+
+    # =====================================================
+    # Fire Water Tank (Fire Water Supply & Suppression Infrastructure
+    # milestone)
+    # =====================================================
+
+    def show_fire_water_tank(self, tank_item):
+
+        self.current_item = tank_item
+        self._refresh_handler = self.show_fire_water_tank
+
+        self._set_fields_visible(self.zone_fields, False)
+        self._set_fields_visible(self.exit_fields, False)
+        self._set_fields_visible(self.stair_fields, False)
+        self._set_fields_visible(self.camera_fields, False)
+        self._set_fields_visible(self.detector_fields, False)
+        self._set_fields_visible(self.smoke_detector_fields, False)
+        self._set_fields_visible(self.heat_detector_fields, False)
+        self._set_fields_visible(self.speaker_fields, False)
+        self._set_fields_visible(self.sign_fields, False)
+        self._set_fields_visible(self.mcp_fields, False)
+        self._set_fields_visible(self.emergency_light_fields, False)
+        self._set_fields_visible(self.sprinkler_fields, False)
+        self._set_fields_visible(self.fire_extinguisher_fields, False)
+        self._set_fields_visible(self.fire_hydrant_fields, False)
+        self._set_fields_visible(self.hose_reel_fields, False)
+        self._set_fields_visible(self.fire_water_tank_fields, True)
+        self._set_fields_visible(self.fire_pump_fields, False)
+        self._set_fields_visible(self.jockey_pump_fields, False)
+        self._set_fields_visible(self.fire_service_inlet_fields, False)
+        self._set_fields_visible(self.assembly_fields, False)
+        self._set_fields_visible(self.obstacle_fields, False)
+        self._set_fields_visible(self.door_fields, False)
+        self._set_fields_visible(self.floor_fields, False)
+
+        model = tank_item.model
+
+        self.object_type.setText("Fire Water Tank")
+        self.object_id.setText(tank_item.object_id)
+
+        self.object_name.blockSignals(True)
+        self.fire_water_tank_x.blockSignals(True)
+        self.fire_water_tank_y.blockSignals(True)
+        self.fire_water_tank_active.blockSignals(True)
+        self.fire_water_tank_health.blockSignals(True)
+        self.fire_water_tank_capacity.blockSignals(True)
+        self.fire_water_tank_level.blockSignals(True)
+        self.fire_water_tank_zone.blockSignals(True)
+
+        self.object_name.setText(tank_item.object_name)
+
+        if model is not None:
+
+            px, py = model.position
+
+            self.fire_water_tank_x.setText(f"{px:.2f}")
+            self.fire_water_tank_y.setText(f"{py:.2f}")
+
+            self.fire_water_tank_active.setChecked(model.active)
+
+            health_index = self.fire_water_tank_health.findText(model.health_status)
+
+            if health_index != -1:
+                self.fire_water_tank_health.setCurrentIndex(health_index)
+
+            self.fire_water_tank_capacity.setText(f"{model.capacity_liters:.2f}")
+            self.fire_water_tank_level.setText(
+                f"{model.current_level_liters:.2f}" if model.current_level_liters is not None else ""
+            )
+
+            self._populate_zone_combo(
+                self.fire_water_tank_zone,
+                model,
+                model.zone_ids[0] if model.zone_ids else "",
+                "",
+            )
+            self._update_zone_warning(self.fire_water_tank_zone_warning, model.zone_ids)
+
+            self._populate_fire_water_system_combo(self.fire_water_tank_fire_water_system, model.id, "tank_ids")
+
+            self._refresh_fire_water_tank_state(tank_item)
+
+        self.object_name.blockSignals(False)
+        self.fire_water_tank_x.blockSignals(False)
+        self.fire_water_tank_y.blockSignals(False)
+        self.fire_water_tank_active.blockSignals(False)
+        self.fire_water_tank_health.blockSignals(False)
+        self.fire_water_tank_capacity.blockSignals(False)
+        self.fire_water_tank_level.blockSignals(False)
+        self.fire_water_tank_zone.blockSignals(False)
+
+    # =====================================================
+
+    def _refresh_fire_water_tank_state(self, tank_item):
+
+        model = tank_item.model
+
+        if model is None:
+            return
+
+        state = model.compute_state()
+
+        self.fire_water_tank_state.setText(state)
+
+        tank_item.current_state = state
+        tank_item.refresh_geometry()
+
+    # =====================================================
+
+    def update_fire_water_tank_geometry(self):
+
+        if self.current_item is None:
+            return
+
+        try:
+            x = float(self.fire_water_tank_x.text())
+            y = float(self.fire_water_tank_y.text())
+        except ValueError:
+            return
+
+        self.current_item.setPos(x * self.GRID_SIZE, y * self.GRID_SIZE)
+        self.current_item.sync_to_model()
+
+    # =====================================================
+
+    def update_fire_water_tank_active(self):
+
+        if self.current_item is None or self.current_item.model is None:
+            return
+
+        self.current_item.model.active = self.fire_water_tank_active.isChecked()
+        self._refresh_fire_water_tank_state(self.current_item)
+
+    # =====================================================
+
+    def update_fire_water_tank_health(self, index):
+
+        if self.current_item is None or self.current_item.model is None:
+            return
+
+        self.current_item.model.health_status = self.fire_water_tank_health.itemText(index)
+        self._refresh_fire_water_tank_state(self.current_item)
+
+    # =====================================================
+
+    def update_fire_water_tank_capacity(self):
+
+        if self.current_item is None or self.current_item.model is None:
+            return
+
+        try:
+            capacity = float(self.fire_water_tank_capacity.text())
+        except ValueError:
+            self.refresh()
+            return
+
+        self.current_item.model.capacity_liters = capacity
+        self._refresh_fire_water_tank_state(self.current_item)
+
+    # =====================================================
+
+    def update_fire_water_tank_level(self):
+
+        if self.current_item is None or self.current_item.model is None:
+            return
+
+        text = self.fire_water_tank_level.text().strip()
+
+        if not text:
+            self.current_item.model.current_level_liters = None
+            self._refresh_fire_water_tank_state(self.current_item)
+            return
+
+        try:
+            level = float(text)
+        except ValueError:
+            self.refresh()
+            return
+
+        self.current_item.model.current_level_liters = level
+        self._refresh_fire_water_tank_state(self.current_item)
+
+    # =====================================================
+
+    def update_fire_water_tank_zone(self, index):
+
+        if self.current_item is None or self.current_item.model is None:
+            return
+
+        zone_id = self.fire_water_tank_zone.itemData(index)
+
+        self.current_item.model.zone_ids = (
+            (zone_id,) if zone_id else ()
+        )
+        self._update_zone_warning(self.fire_water_tank_zone_warning, self.current_item.model.zone_ids)
+
+    # =====================================================
+
+    def update_fire_water_tank_fire_water_system(self, index):
+
+        if self.current_item is None or self.current_item.model is None:
+            return
+
+        self._update_asset_fire_water_system(
+            self.fire_water_tank_fire_water_system, self.current_item.model.id, "tank_ids",
+        )
+
+    # =====================================================
+    # Fire Pump (Fire Water Supply & Suppression Infrastructure
+    # milestone)
+    # =====================================================
+
+    def show_fire_pump(self, pump_item):
+
+        self.current_item = pump_item
+        self._refresh_handler = self.show_fire_pump
+
+        self._set_fields_visible(self.zone_fields, False)
+        self._set_fields_visible(self.exit_fields, False)
+        self._set_fields_visible(self.stair_fields, False)
+        self._set_fields_visible(self.camera_fields, False)
+        self._set_fields_visible(self.detector_fields, False)
+        self._set_fields_visible(self.smoke_detector_fields, False)
+        self._set_fields_visible(self.heat_detector_fields, False)
+        self._set_fields_visible(self.speaker_fields, False)
+        self._set_fields_visible(self.sign_fields, False)
+        self._set_fields_visible(self.mcp_fields, False)
+        self._set_fields_visible(self.emergency_light_fields, False)
+        self._set_fields_visible(self.sprinkler_fields, False)
+        self._set_fields_visible(self.fire_extinguisher_fields, False)
+        self._set_fields_visible(self.fire_hydrant_fields, False)
+        self._set_fields_visible(self.hose_reel_fields, False)
+        self._set_fields_visible(self.fire_water_tank_fields, False)
+        self._set_fields_visible(self.fire_pump_fields, True)
+        self._set_fields_visible(self.jockey_pump_fields, False)
+        self._set_fields_visible(self.fire_service_inlet_fields, False)
+        self._set_fields_visible(self.assembly_fields, False)
+        self._set_fields_visible(self.obstacle_fields, False)
+        self._set_fields_visible(self.door_fields, False)
+        self._set_fields_visible(self.floor_fields, False)
+
+        model = pump_item.model
+
+        self.object_type.setText("Fire Pump")
+        self.object_id.setText(pump_item.object_id)
+
+        self.object_name.blockSignals(True)
+        self.fire_pump_x.blockSignals(True)
+        self.fire_pump_y.blockSignals(True)
+        self.fire_pump_active.blockSignals(True)
+        self.fire_pump_health.blockSignals(True)
+        self.fire_pump_control_mode.blockSignals(True)
+        self.fire_pump_running.blockSignals(True)
+        self.fire_pump_zone.blockSignals(True)
+
+        self.object_name.setText(pump_item.object_name)
+
+        if model is not None:
+
+            px, py = model.position
+
+            self.fire_pump_x.setText(f"{px:.2f}")
+            self.fire_pump_y.setText(f"{py:.2f}")
+
+            self.fire_pump_active.setChecked(model.active)
+
+            health_index = self.fire_pump_health.findText(model.health_status)
+
+            if health_index != -1:
+                self.fire_pump_health.setCurrentIndex(health_index)
+
+            control_mode_index = self.fire_pump_control_mode.findText(model.control_mode)
+
+            if control_mode_index != -1:
+                self.fire_pump_control_mode.setCurrentIndex(control_mode_index)
+
+            self.fire_pump_running.setChecked(model.running)
+
+            self._populate_zone_combo(
+                self.fire_pump_zone,
+                model,
+                model.zone_ids[0] if model.zone_ids else "",
+                "",
+            )
+            self._update_zone_warning(self.fire_pump_zone_warning, model.zone_ids)
+
+            self._populate_fire_water_system_combo(self.fire_pump_fire_water_system, model.id, "pump_ids")
+
+            self._refresh_fire_pump_state(pump_item)
+
+        self.object_name.blockSignals(False)
+        self.fire_pump_x.blockSignals(False)
+        self.fire_pump_y.blockSignals(False)
+        self.fire_pump_active.blockSignals(False)
+        self.fire_pump_health.blockSignals(False)
+        self.fire_pump_control_mode.blockSignals(False)
+        self.fire_pump_running.blockSignals(False)
+        self.fire_pump_zone.blockSignals(False)
+
+    # =====================================================
+
+    def _refresh_fire_pump_state(self, pump_item):
+
+        model = pump_item.model
+
+        if model is None:
+            return
+
+        state = model.compute_state()
+
+        self.fire_pump_state.setText(state)
+
+        pump_item.current_state = state
+        pump_item.refresh_geometry()
+
+    # =====================================================
+
+    def update_fire_pump_geometry(self):
+
+        if self.current_item is None:
+            return
+
+        try:
+            x = float(self.fire_pump_x.text())
+            y = float(self.fire_pump_y.text())
+        except ValueError:
+            return
+
+        self.current_item.setPos(x * self.GRID_SIZE, y * self.GRID_SIZE)
+        self.current_item.sync_to_model()
+
+    # =====================================================
+
+    def update_fire_pump_active(self):
+
+        if self.current_item is None or self.current_item.model is None:
+            return
+
+        self.current_item.model.active = self.fire_pump_active.isChecked()
+        self._refresh_fire_pump_state(self.current_item)
+
+    # =====================================================
+
+    def update_fire_pump_health(self, index):
+
+        if self.current_item is None or self.current_item.model is None:
+            return
+
+        self.current_item.model.health_status = self.fire_pump_health.itemText(index)
+        self._refresh_fire_pump_state(self.current_item)
+
+    # =====================================================
+
+    def update_fire_pump_control_mode(self, index):
+
+        if self.current_item is None or self.current_item.model is None:
+            return
+
+        self.current_item.model.control_mode = self.fire_pump_control_mode.itemText(index)
+
+    # =====================================================
+
+    def update_fire_pump_running(self):
+
+        if self.current_item is None or self.current_item.model is None:
+            return
+
+        self.current_item.model.running = self.fire_pump_running.isChecked()
+        self._refresh_fire_pump_state(self.current_item)
+
+    # =====================================================
+
+    def update_fire_pump_zone(self, index):
+
+        if self.current_item is None or self.current_item.model is None:
+            return
+
+        zone_id = self.fire_pump_zone.itemData(index)
+
+        self.current_item.model.zone_ids = (
+            (zone_id,) if zone_id else ()
+        )
+        self._update_zone_warning(self.fire_pump_zone_warning, self.current_item.model.zone_ids)
+
+    # =====================================================
+
+    def update_fire_pump_fire_water_system(self, index):
+
+        if self.current_item is None or self.current_item.model is None:
+            return
+
+        self._update_asset_fire_water_system(
+            self.fire_pump_fire_water_system, self.current_item.model.id, "pump_ids",
+        )
+
+    # =====================================================
+    # Jockey Pump (Fire Water Supply & Suppression Infrastructure
+    # milestone) -- same PumpAsset shape as Fire Pump above.
+    # =====================================================
+
+    def show_jockey_pump(self, jockey_pump_item):
+
+        self.current_item = jockey_pump_item
+        self._refresh_handler = self.show_jockey_pump
+
+        self._set_fields_visible(self.zone_fields, False)
+        self._set_fields_visible(self.exit_fields, False)
+        self._set_fields_visible(self.stair_fields, False)
+        self._set_fields_visible(self.camera_fields, False)
+        self._set_fields_visible(self.detector_fields, False)
+        self._set_fields_visible(self.smoke_detector_fields, False)
+        self._set_fields_visible(self.heat_detector_fields, False)
+        self._set_fields_visible(self.speaker_fields, False)
+        self._set_fields_visible(self.sign_fields, False)
+        self._set_fields_visible(self.mcp_fields, False)
+        self._set_fields_visible(self.emergency_light_fields, False)
+        self._set_fields_visible(self.sprinkler_fields, False)
+        self._set_fields_visible(self.fire_extinguisher_fields, False)
+        self._set_fields_visible(self.fire_hydrant_fields, False)
+        self._set_fields_visible(self.hose_reel_fields, False)
+        self._set_fields_visible(self.fire_water_tank_fields, False)
+        self._set_fields_visible(self.fire_pump_fields, False)
+        self._set_fields_visible(self.jockey_pump_fields, True)
+        self._set_fields_visible(self.fire_service_inlet_fields, False)
+        self._set_fields_visible(self.assembly_fields, False)
+        self._set_fields_visible(self.obstacle_fields, False)
+        self._set_fields_visible(self.door_fields, False)
+        self._set_fields_visible(self.floor_fields, False)
+
+        model = jockey_pump_item.model
+
+        self.object_type.setText("Jockey Pump")
+        self.object_id.setText(jockey_pump_item.object_id)
+
+        self.object_name.blockSignals(True)
+        self.jockey_pump_x.blockSignals(True)
+        self.jockey_pump_y.blockSignals(True)
+        self.jockey_pump_active.blockSignals(True)
+        self.jockey_pump_health.blockSignals(True)
+        self.jockey_pump_control_mode.blockSignals(True)
+        self.jockey_pump_running.blockSignals(True)
+        self.jockey_pump_zone.blockSignals(True)
+
+        self.object_name.setText(jockey_pump_item.object_name)
+
+        if model is not None:
+
+            px, py = model.position
+
+            self.jockey_pump_x.setText(f"{px:.2f}")
+            self.jockey_pump_y.setText(f"{py:.2f}")
+
+            self.jockey_pump_active.setChecked(model.active)
+
+            health_index = self.jockey_pump_health.findText(model.health_status)
+
+            if health_index != -1:
+                self.jockey_pump_health.setCurrentIndex(health_index)
+
+            control_mode_index = self.jockey_pump_control_mode.findText(model.control_mode)
+
+            if control_mode_index != -1:
+                self.jockey_pump_control_mode.setCurrentIndex(control_mode_index)
+
+            self.jockey_pump_running.setChecked(model.running)
+
+            self._populate_zone_combo(
+                self.jockey_pump_zone,
+                model,
+                model.zone_ids[0] if model.zone_ids else "",
+                "",
+            )
+            self._update_zone_warning(self.jockey_pump_zone_warning, model.zone_ids)
+
+            self._populate_fire_water_system_combo(self.jockey_pump_fire_water_system, model.id, "jockey_pump_ids")
+
+            self._refresh_jockey_pump_state(jockey_pump_item)
+
+        self.object_name.blockSignals(False)
+        self.jockey_pump_x.blockSignals(False)
+        self.jockey_pump_y.blockSignals(False)
+        self.jockey_pump_active.blockSignals(False)
+        self.jockey_pump_health.blockSignals(False)
+        self.jockey_pump_control_mode.blockSignals(False)
+        self.jockey_pump_running.blockSignals(False)
+        self.jockey_pump_zone.blockSignals(False)
+
+    # =====================================================
+
+    def _refresh_jockey_pump_state(self, jockey_pump_item):
+
+        model = jockey_pump_item.model
+
+        if model is None:
+            return
+
+        state = model.compute_state()
+
+        self.jockey_pump_state.setText(state)
+
+        jockey_pump_item.current_state = state
+        jockey_pump_item.refresh_geometry()
+
+    # =====================================================
+
+    def update_jockey_pump_geometry(self):
+
+        if self.current_item is None:
+            return
+
+        try:
+            x = float(self.jockey_pump_x.text())
+            y = float(self.jockey_pump_y.text())
+        except ValueError:
+            return
+
+        self.current_item.setPos(x * self.GRID_SIZE, y * self.GRID_SIZE)
+        self.current_item.sync_to_model()
+
+    # =====================================================
+
+    def update_jockey_pump_active(self):
+
+        if self.current_item is None or self.current_item.model is None:
+            return
+
+        self.current_item.model.active = self.jockey_pump_active.isChecked()
+        self._refresh_jockey_pump_state(self.current_item)
+
+    # =====================================================
+
+    def update_jockey_pump_health(self, index):
+
+        if self.current_item is None or self.current_item.model is None:
+            return
+
+        self.current_item.model.health_status = self.jockey_pump_health.itemText(index)
+        self._refresh_jockey_pump_state(self.current_item)
+
+    # =====================================================
+
+    def update_jockey_pump_control_mode(self, index):
+
+        if self.current_item is None or self.current_item.model is None:
+            return
+
+        self.current_item.model.control_mode = self.jockey_pump_control_mode.itemText(index)
+
+    # =====================================================
+
+    def update_jockey_pump_running(self):
+
+        if self.current_item is None or self.current_item.model is None:
+            return
+
+        self.current_item.model.running = self.jockey_pump_running.isChecked()
+        self._refresh_jockey_pump_state(self.current_item)
+
+    # =====================================================
+
+    def update_jockey_pump_zone(self, index):
+
+        if self.current_item is None or self.current_item.model is None:
+            return
+
+        zone_id = self.jockey_pump_zone.itemData(index)
+
+        self.current_item.model.zone_ids = (
+            (zone_id,) if zone_id else ()
+        )
+        self._update_zone_warning(self.jockey_pump_zone_warning, self.current_item.model.zone_ids)
+
+    # =====================================================
+
+    def update_jockey_pump_fire_water_system(self, index):
+
+        if self.current_item is None or self.current_item.model is None:
+            return
+
+        self._update_asset_fire_water_system(
+            self.jockey_pump_fire_water_system, self.current_item.model.id, "jockey_pump_ids",
+        )
+
+    # =====================================================
+    # Fire Service Inlet / Breeching Inlet (Fire Water Supply &
+    # Suppression Infrastructure milestone)
+    # =====================================================
+
+    def show_fire_service_inlet(self, inlet_item):
+
+        self.current_item = inlet_item
+        self._refresh_handler = self.show_fire_service_inlet
+
+        self._set_fields_visible(self.zone_fields, False)
+        self._set_fields_visible(self.exit_fields, False)
+        self._set_fields_visible(self.stair_fields, False)
+        self._set_fields_visible(self.camera_fields, False)
+        self._set_fields_visible(self.detector_fields, False)
+        self._set_fields_visible(self.smoke_detector_fields, False)
+        self._set_fields_visible(self.heat_detector_fields, False)
+        self._set_fields_visible(self.speaker_fields, False)
+        self._set_fields_visible(self.sign_fields, False)
+        self._set_fields_visible(self.mcp_fields, False)
+        self._set_fields_visible(self.emergency_light_fields, False)
+        self._set_fields_visible(self.sprinkler_fields, False)
+        self._set_fields_visible(self.fire_extinguisher_fields, False)
+        self._set_fields_visible(self.fire_hydrant_fields, False)
+        self._set_fields_visible(self.hose_reel_fields, False)
+        self._set_fields_visible(self.fire_water_tank_fields, False)
+        self._set_fields_visible(self.fire_pump_fields, False)
+        self._set_fields_visible(self.jockey_pump_fields, False)
+        self._set_fields_visible(self.fire_service_inlet_fields, True)
+        self._set_fields_visible(self.assembly_fields, False)
+        self._set_fields_visible(self.obstacle_fields, False)
+        self._set_fields_visible(self.door_fields, False)
+        self._set_fields_visible(self.floor_fields, False)
+
+        model = inlet_item.model
+
+        self.object_type.setText("Fire Service Inlet")
+        self.object_id.setText(inlet_item.object_id)
+
+        self.object_name.blockSignals(True)
+        self.fire_service_inlet_x.blockSignals(True)
+        self.fire_service_inlet_y.blockSignals(True)
+        self.fire_service_inlet_active.blockSignals(True)
+        self.fire_service_inlet_health.blockSignals(True)
+        self.fire_service_inlet_type.blockSignals(True)
+        self.fire_service_inlet_zone.blockSignals(True)
+
+        self.object_name.setText(inlet_item.object_name)
+
+        if model is not None:
+
+            px, py = model.position
+
+            self.fire_service_inlet_x.setText(f"{px:.2f}")
+            self.fire_service_inlet_y.setText(f"{py:.2f}")
+
+            self.fire_service_inlet_active.setChecked(model.active)
+
+            health_index = self.fire_service_inlet_health.findText(model.health_status)
+
+            if health_index != -1:
+                self.fire_service_inlet_health.setCurrentIndex(health_index)
+
+            type_index = self.fire_service_inlet_type.findText(model.inlet_type)
+
+            if type_index != -1:
+                self.fire_service_inlet_type.setCurrentIndex(type_index)
+
+            self._populate_zone_combo(
+                self.fire_service_inlet_zone,
+                model,
+                model.zone_ids[0] if model.zone_ids else "",
+                "",
+            )
+            self._update_zone_warning(self.fire_service_inlet_zone_warning, model.zone_ids)
+
+            self._populate_fire_water_system_combo(self.fire_service_inlet_fire_water_system, model.id, "inlet_ids")
+
+            self._refresh_fire_service_inlet_availability(inlet_item)
+
+        self.object_name.blockSignals(False)
+        self.fire_service_inlet_x.blockSignals(False)
+        self.fire_service_inlet_y.blockSignals(False)
+        self.fire_service_inlet_active.blockSignals(False)
+        self.fire_service_inlet_health.blockSignals(False)
+        self.fire_service_inlet_type.blockSignals(False)
+        self.fire_service_inlet_zone.blockSignals(False)
+
+    # =====================================================
+
+    def _refresh_fire_service_inlet_availability(self, inlet_item):
+
+        model = inlet_item.model
+
+        if model is None:
+            return
+
+        availability = model.compute_availability()
+
+        self.fire_service_inlet_availability.setText(availability)
+
+        inlet_item.current_availability = availability
+        inlet_item.refresh_geometry()
+
+    # =====================================================
+
+    def update_fire_service_inlet_geometry(self):
+
+        if self.current_item is None:
+            return
+
+        try:
+            x = float(self.fire_service_inlet_x.text())
+            y = float(self.fire_service_inlet_y.text())
+        except ValueError:
+            return
+
+        self.current_item.setPos(x * self.GRID_SIZE, y * self.GRID_SIZE)
+        self.current_item.sync_to_model()
+
+    # =====================================================
+
+    def update_fire_service_inlet_active(self):
+
+        if self.current_item is None or self.current_item.model is None:
+            return
+
+        self.current_item.model.active = self.fire_service_inlet_active.isChecked()
+        self._refresh_fire_service_inlet_availability(self.current_item)
+
+    # =====================================================
+
+    def update_fire_service_inlet_health(self, index):
+
+        if self.current_item is None or self.current_item.model is None:
+            return
+
+        self.current_item.model.health_status = self.fire_service_inlet_health.itemText(index)
+        self._refresh_fire_service_inlet_availability(self.current_item)
+
+    # =====================================================
+
+    def update_fire_service_inlet_type(self, index):
+
+        if self.current_item is None or self.current_item.model is None:
+            return
+
+        self.current_item.model.inlet_type = self.fire_service_inlet_type.itemText(index)
+
+    # =====================================================
+
+    def update_fire_service_inlet_zone(self, index):
+
+        if self.current_item is None or self.current_item.model is None:
+            return
+
+        zone_id = self.fire_service_inlet_zone.itemData(index)
+
+        self.current_item.model.zone_ids = (
+            (zone_id,) if zone_id else ()
+        )
+        self._update_zone_warning(self.fire_service_inlet_zone_warning, self.current_item.model.zone_ids)
+
+    # =====================================================
+
+    def update_fire_service_inlet_fire_water_system(self, index):
+
+        if self.current_item is None or self.current_item.model is None:
+            return
+
+        self._update_asset_fire_water_system(
+            self.fire_service_inlet_fire_water_system, self.current_item.model.id, "inlet_ids",
+        )
 
     # =====================================================
 
@@ -3947,6 +5176,10 @@ class PropertyPanel(QWidget):
         self._set_fields_visible(self.fire_extinguisher_fields, False)
         self._set_fields_visible(self.fire_hydrant_fields, False)
         self._set_fields_visible(self.hose_reel_fields, False)
+        self._set_fields_visible(self.fire_water_tank_fields, False)
+        self._set_fields_visible(self.fire_pump_fields, False)
+        self._set_fields_visible(self.jockey_pump_fields, False)
+        self._set_fields_visible(self.fire_service_inlet_fields, False)
         self._set_fields_visible(self.assembly_fields, True)
         self._set_fields_visible(self.obstacle_fields, False)
         self._set_fields_visible(self.door_fields, False)
@@ -4028,6 +5261,10 @@ class PropertyPanel(QWidget):
         self._set_fields_visible(self.fire_extinguisher_fields, False)
         self._set_fields_visible(self.fire_hydrant_fields, False)
         self._set_fields_visible(self.hose_reel_fields, False)
+        self._set_fields_visible(self.fire_water_tank_fields, False)
+        self._set_fields_visible(self.fire_pump_fields, False)
+        self._set_fields_visible(self.jockey_pump_fields, False)
+        self._set_fields_visible(self.fire_service_inlet_fields, False)
         self._set_fields_visible(self.assembly_fields, False)
         self._set_fields_visible(self.obstacle_fields, True)
         self._set_fields_visible(self.door_fields, False)
@@ -4114,6 +5351,10 @@ class PropertyPanel(QWidget):
         self._set_fields_visible(self.fire_extinguisher_fields, False)
         self._set_fields_visible(self.fire_hydrant_fields, False)
         self._set_fields_visible(self.hose_reel_fields, False)
+        self._set_fields_visible(self.fire_water_tank_fields, False)
+        self._set_fields_visible(self.fire_pump_fields, False)
+        self._set_fields_visible(self.jockey_pump_fields, False)
+        self._set_fields_visible(self.fire_service_inlet_fields, False)
         self._set_fields_visible(self.assembly_fields, False)
         self._set_fields_visible(self.obstacle_fields, False)
         self._set_fields_visible(self.door_fields, True)
@@ -4223,6 +5464,10 @@ class PropertyPanel(QWidget):
         self._set_fields_visible(self.fire_extinguisher_fields, False)
         self._set_fields_visible(self.fire_hydrant_fields, False)
         self._set_fields_visible(self.hose_reel_fields, False)
+        self._set_fields_visible(self.fire_water_tank_fields, False)
+        self._set_fields_visible(self.fire_pump_fields, False)
+        self._set_fields_visible(self.jockey_pump_fields, False)
+        self._set_fields_visible(self.fire_service_inlet_fields, False)
         self._set_fields_visible(self.assembly_fields, False)
         self._set_fields_visible(self.obstacle_fields, False)
         self._set_fields_visible(self.door_fields, False)
@@ -4373,6 +5618,10 @@ class PropertyPanel(QWidget):
         self._set_fields_visible(self.fire_extinguisher_fields, False)
         self._set_fields_visible(self.fire_hydrant_fields, False)
         self._set_fields_visible(self.hose_reel_fields, False)
+        self._set_fields_visible(self.fire_water_tank_fields, False)
+        self._set_fields_visible(self.fire_pump_fields, False)
+        self._set_fields_visible(self.jockey_pump_fields, False)
+        self._set_fields_visible(self.fire_service_inlet_fields, False)
         self._set_fields_visible(self.assembly_fields, False)
         self._set_fields_visible(self.obstacle_fields, False)
         self._set_fields_visible(self.door_fields, False)
@@ -4430,6 +5679,10 @@ class PropertyPanel(QWidget):
         self._set_fields_visible(self.fire_extinguisher_fields, False)
         self._set_fields_visible(self.fire_hydrant_fields, False)
         self._set_fields_visible(self.hose_reel_fields, False)
+        self._set_fields_visible(self.fire_water_tank_fields, False)
+        self._set_fields_visible(self.fire_pump_fields, False)
+        self._set_fields_visible(self.jockey_pump_fields, False)
+        self._set_fields_visible(self.fire_service_inlet_fields, False)
         self._set_fields_visible(self.assembly_fields, False)
         self._set_fields_visible(self.obstacle_fields, False)
         self._set_fields_visible(self.door_fields, False)
@@ -4717,6 +5970,10 @@ class PropertyPanel(QWidget):
         self.sprinkler_zone.blockSignals(False)
         self.sprinkler_zone_warning.setVisible(False)
 
+        self.sprinkler_fire_water_system.blockSignals(True)
+        self.sprinkler_fire_water_system.clear()
+        self.sprinkler_fire_water_system.blockSignals(False)
+
         self.fire_extinguisher_x.clear()
         self.fire_extinguisher_y.clear()
 
@@ -4761,6 +6018,10 @@ class PropertyPanel(QWidget):
         self.fire_hydrant_zone.blockSignals(False)
         self.fire_hydrant_zone_warning.setVisible(False)
 
+        self.fire_hydrant_fire_water_system.blockSignals(True)
+        self.fire_hydrant_fire_water_system.clear()
+        self.fire_hydrant_fire_water_system.blockSignals(False)
+
         self.hose_reel_x.clear()
         self.hose_reel_y.clear()
 
@@ -4778,6 +6039,120 @@ class PropertyPanel(QWidget):
         self.hose_reel_zone.clear()
         self.hose_reel_zone.blockSignals(False)
         self.hose_reel_zone_warning.setVisible(False)
+
+        self.hose_reel_fire_water_system.blockSignals(True)
+        self.hose_reel_fire_water_system.clear()
+        self.hose_reel_fire_water_system.blockSignals(False)
+
+        self.fire_water_tank_x.clear()
+        self.fire_water_tank_y.clear()
+
+        self.fire_water_tank_active.blockSignals(True)
+        self.fire_water_tank_active.setChecked(False)
+        self.fire_water_tank_active.blockSignals(False)
+
+        self.fire_water_tank_health.blockSignals(True)
+        self.fire_water_tank_health.setCurrentIndex(0)
+        self.fire_water_tank_health.blockSignals(False)
+
+        self.fire_water_tank_capacity.clear()
+        self.fire_water_tank_level.clear()
+        self.fire_water_tank_state.setText("-")
+
+        self.fire_water_tank_zone.blockSignals(True)
+        self.fire_water_tank_zone.clear()
+        self.fire_water_tank_zone.blockSignals(False)
+        self.fire_water_tank_zone_warning.setVisible(False)
+
+        self.fire_water_tank_fire_water_system.blockSignals(True)
+        self.fire_water_tank_fire_water_system.clear()
+        self.fire_water_tank_fire_water_system.blockSignals(False)
+
+        self.fire_pump_x.clear()
+        self.fire_pump_y.clear()
+
+        self.fire_pump_active.blockSignals(True)
+        self.fire_pump_active.setChecked(False)
+        self.fire_pump_active.blockSignals(False)
+
+        self.fire_pump_health.blockSignals(True)
+        self.fire_pump_health.setCurrentIndex(0)
+        self.fire_pump_health.blockSignals(False)
+
+        self.fire_pump_control_mode.blockSignals(True)
+        self.fire_pump_control_mode.setCurrentIndex(0)
+        self.fire_pump_control_mode.blockSignals(False)
+
+        self.fire_pump_running.blockSignals(True)
+        self.fire_pump_running.setChecked(False)
+        self.fire_pump_running.blockSignals(False)
+
+        self.fire_pump_state.setText("-")
+
+        self.fire_pump_zone.blockSignals(True)
+        self.fire_pump_zone.clear()
+        self.fire_pump_zone.blockSignals(False)
+        self.fire_pump_zone_warning.setVisible(False)
+
+        self.fire_pump_fire_water_system.blockSignals(True)
+        self.fire_pump_fire_water_system.clear()
+        self.fire_pump_fire_water_system.blockSignals(False)
+
+        self.jockey_pump_x.clear()
+        self.jockey_pump_y.clear()
+
+        self.jockey_pump_active.blockSignals(True)
+        self.jockey_pump_active.setChecked(False)
+        self.jockey_pump_active.blockSignals(False)
+
+        self.jockey_pump_health.blockSignals(True)
+        self.jockey_pump_health.setCurrentIndex(0)
+        self.jockey_pump_health.blockSignals(False)
+
+        self.jockey_pump_control_mode.blockSignals(True)
+        self.jockey_pump_control_mode.setCurrentIndex(0)
+        self.jockey_pump_control_mode.blockSignals(False)
+
+        self.jockey_pump_running.blockSignals(True)
+        self.jockey_pump_running.setChecked(False)
+        self.jockey_pump_running.blockSignals(False)
+
+        self.jockey_pump_state.setText("-")
+
+        self.jockey_pump_zone.blockSignals(True)
+        self.jockey_pump_zone.clear()
+        self.jockey_pump_zone.blockSignals(False)
+        self.jockey_pump_zone_warning.setVisible(False)
+
+        self.jockey_pump_fire_water_system.blockSignals(True)
+        self.jockey_pump_fire_water_system.clear()
+        self.jockey_pump_fire_water_system.blockSignals(False)
+
+        self.fire_service_inlet_x.clear()
+        self.fire_service_inlet_y.clear()
+
+        self.fire_service_inlet_active.blockSignals(True)
+        self.fire_service_inlet_active.setChecked(False)
+        self.fire_service_inlet_active.blockSignals(False)
+
+        self.fire_service_inlet_health.blockSignals(True)
+        self.fire_service_inlet_health.setCurrentIndex(0)
+        self.fire_service_inlet_health.blockSignals(False)
+
+        self.fire_service_inlet_type.blockSignals(True)
+        self.fire_service_inlet_type.setCurrentIndex(0)
+        self.fire_service_inlet_type.blockSignals(False)
+
+        self.fire_service_inlet_availability.setText("-")
+
+        self.fire_service_inlet_zone.blockSignals(True)
+        self.fire_service_inlet_zone.clear()
+        self.fire_service_inlet_zone.blockSignals(False)
+        self.fire_service_inlet_zone_warning.setVisible(False)
+
+        self.fire_service_inlet_fire_water_system.blockSignals(True)
+        self.fire_service_inlet_fire_water_system.clear()
+        self.fire_service_inlet_fire_water_system.blockSignals(False)
 
         self.assembly_x.clear()
         self.assembly_y.clear()
@@ -6099,6 +7474,57 @@ class PropertyPanel(QWidget):
     def _update_zone_warning(self, warning_label, zone_ids):
 
         warning_label.setVisible(not zone_ids)
+
+    # =====================================================
+    # Fire Water Supply & Suppression Infrastructure milestone -- the
+    # "Fire Water System" combo every Tank/Pump/Jockey Pump/Inlet/
+    # Sprinkler/Hydrant/Hose Reel section shares. Membership lives on
+    # FireWaterSystem itself (models/fire_water_system.py), never on
+    # the asset -- this combo's "current selection" is therefore looked
+    # up by scanning building.fire_water_systems for whichever one's
+    # own field_name tuple already contains this asset's id, the same
+    # "asset never stores a reverse-reference" discipline that keeps
+    # membership single-sourced.
+    # =====================================================
+
+    def _populate_fire_water_system_combo(self, combo, asset_id, field_name):
+
+        combo.blockSignals(True)
+
+        combo.clear()
+
+        combo.addItem("None", "")
+
+        if self.building is not None:
+
+            for system in self.building.fire_water_systems:
+                combo.addItem(system.name, system.id)
+
+        current_system = (
+            system_containing_asset(self.building, asset_id, field_name)
+            if self.building is not None else None
+        )
+        current_system_id = current_system.id if current_system is not None else ""
+
+        index = combo.findData(current_system_id)
+
+        if index == -1:
+            index = 0
+
+        combo.setCurrentIndex(index)
+
+        combo.blockSignals(False)
+
+    # =====================================================
+
+    def _update_asset_fire_water_system(self, combo, asset_id, field_name):
+
+        if self.building is None:
+            return
+
+        target_system_id = combo.itemData(combo.currentIndex()) or None
+
+        assign_asset_to_system(self.building, asset_id, field_name, target_system_id)
 
     # =====================================================
 

@@ -5,6 +5,7 @@ from datetime import datetime
 from uuid import uuid4
 
 from models.floor import Floor
+from models.fire_water_system import FireWaterSystem
 
 
 @dataclass
@@ -15,6 +16,14 @@ class Building:
     id: str = field(default_factory=lambda: str(uuid4()))
 
     floors: list[Floor] = field(default_factory=list)
+
+    # Fire Water Supply & Suppression Infrastructure milestone -- a
+    # FireWaterSystem is a purely logical grouping of asset ids (see
+    # models/fire_water_system.py's own docstring), never a spatial
+    # object, so it lives here on Building rather than scoped to one
+    # Floor's own asset lists -- a real system routinely spans several
+    # floors (a basement pump room feeding hydrants throughout).
+    fire_water_systems: list[FireWaterSystem] = field(default_factory=list)
 
     # =====================================================
 
@@ -138,6 +147,49 @@ class Building:
                     )
 
         return f"Zone {highest + 1}"
+
+    # =====================================================
+    # Fire Water System Management
+    # =====================================================
+
+    def add_fire_water_system(self, system: FireWaterSystem):
+
+        self.fire_water_systems.append(system)
+
+        return system
+
+    # =====================================================
+
+    def create_fire_water_system(self, name: str):
+
+        return self.add_fire_water_system(FireWaterSystem(name=name))
+
+    # =====================================================
+
+    def remove_fire_water_system(self, system: FireWaterSystem):
+
+        if system in self.fire_water_systems:
+            self.fire_water_systems.remove(system)
+
+    # =====================================================
+
+    def get_fire_water_system(self, system_id: str):
+
+        for system in self.fire_water_systems:
+
+            if system.id == system_id:
+                return system
+
+        return None
+
+    # =====================================================
+
+    def rename_fire_water_system(self, system: FireWaterSystem, name: str):
+
+        if system not in self.fire_water_systems:
+            return
+
+        system.name = name
 
     # =====================================================
     # Floor Management
@@ -341,6 +393,10 @@ class Building:
                 floor.to_dict()
                 for floor in self.floors
             ],
+            "fire_water_systems": [
+                system.to_dict()
+                for system in self.fire_water_systems
+            ],
         }
 
     # =====================================================
@@ -357,6 +413,12 @@ class Building:
 
             building.add_floor(
                 Floor.from_dict(floor_data)
+            )
+
+        for system_data in data.get("fire_water_systems", []):
+
+            building.add_fire_water_system(
+                FireWaterSystem.from_dict(system_data)
             )
 
         return building

@@ -90,6 +90,35 @@ class LiveStatusPanel(QWidget):
         self.fire_safety_table.horizontalHeader().setStretchLastSection(True)
         self.fire_safety_table.verticalHeader().setVisible(False)
         fire_safety_layout.addWidget(self.fire_safety_table)
+
+        # Fire Water Supply & Suppression Infrastructure milestone,
+        # Phase 13 -- "prefer extending the existing fire-safety/live-
+        # status UI rather than creating many panels": two more tables
+        # inside this SAME group/panel, never a new dockable panel or
+        # window. The asset table reuses the exact Asset/Type/Zone/State
+        # shape above (Tank/Pump/Jockey Pump/Inlet, a genuinely
+        # different asset family from Sprinkler/Extinguisher/Hydrant/
+        # Hose Reel, kept in its own table rather than merged into the
+        # one above). The system table shows each FireWaterSystem's own
+        # deliberately conservative status plus WHY it is degraded
+        # (never a bare code with no explanation) plus which supply/
+        # dependent assets it traces to -- "Operational state", never
+        # "Hydraulic capability confirmed" (hydraulics are not modeled,
+        # see docs/architecture/fire_water_infrastructure.md).
+        self.fire_water_asset_table = QTableWidget(0, 4)
+        self.fire_water_asset_table.setHorizontalHeaderLabels(["Asset", "Type", "Zone", "State"])
+        self.fire_water_asset_table.horizontalHeader().setStretchLastSection(True)
+        self.fire_water_asset_table.verticalHeader().setVisible(False)
+        fire_safety_layout.addWidget(self.fire_water_asset_table)
+
+        self.fire_water_system_table = QTableWidget(0, 5)
+        self.fire_water_system_table.setHorizontalHeaderLabels(
+            ["System", "Operational State", "Supply Assets", "Dependent Assets", "Degradation Reasons"]
+        )
+        self.fire_water_system_table.horizontalHeader().setStretchLastSection(True)
+        self.fire_water_system_table.verticalHeader().setVisible(False)
+        fire_safety_layout.addWidget(self.fire_water_system_table)
+
         layout.addWidget(fire_safety_group)
 
         layout.addStretch(1)
@@ -105,6 +134,8 @@ class LiveStatusPanel(QWidget):
             self.facp_state_table.setRowCount(0)
             self.facp_sources_table.setRowCount(0)
             self.fire_safety_table.setRowCount(0)
+            self.fire_water_asset_table.setRowCount(0)
+            self.fire_water_system_table.setRowCount(0)
             return
 
         cameras = list(building_state.camera_observations.values())
@@ -141,6 +172,7 @@ class LiveStatusPanel(QWidget):
         # models.sprinkler.Sprinkler's own docstring), so this table is
         # populated regardless of whether facp_status is configured.
         self._show_fire_safety_assets(building_state.fire_safety_status)
+        self._show_fire_water_infrastructure(building_state.fire_water_status)
 
         facp = building_state.facp_status
 
@@ -214,3 +246,39 @@ class LiveStatusPanel(QWidget):
             self.fire_safety_table.setItem(row_index, 1, QTableWidgetItem(entry.asset_type))
             self.fire_safety_table.setItem(row_index, 2, QTableWidgetItem(_dash_join(entry.zone_ids)))
             self.fire_safety_table.setItem(row_index, 3, QTableWidgetItem(entry.state))
+
+    # =====================================================
+
+    def _show_fire_water_infrastructure(self, fire_water_status) -> None:
+
+        if fire_water_status is None:
+
+            self.fire_water_asset_table.setRowCount(0)
+            self.fire_water_system_table.setRowCount(0)
+            return
+
+        entries = fire_water_status.entries
+
+        self.fire_water_asset_table.setRowCount(len(entries))
+
+        for row_index, entry in enumerate(entries):
+
+            self.fire_water_asset_table.setItem(row_index, 0, QTableWidgetItem(entry.name or entry.asset_id))
+            self.fire_water_asset_table.setItem(row_index, 1, QTableWidgetItem(entry.asset_type))
+            self.fire_water_asset_table.setItem(row_index, 2, QTableWidgetItem(_dash_join(entry.zone_ids)))
+            self.fire_water_asset_table.setItem(row_index, 3, QTableWidgetItem(entry.state))
+
+        systems = fire_water_status.systems
+
+        self.fire_water_system_table.setRowCount(len(systems))
+
+        for row_index, report in enumerate(systems):
+
+            supply_ids = report.tank_ids + report.pump_ids + report.jockey_pump_ids + report.inlet_ids
+            dependent_ids = report.sprinkler_ids + report.hydrant_ids + report.hose_reel_ids
+
+            self.fire_water_system_table.setItem(row_index, 0, QTableWidgetItem(report.name or report.system_id))
+            self.fire_water_system_table.setItem(row_index, 1, QTableWidgetItem(report.status))
+            self.fire_water_system_table.setItem(row_index, 2, QTableWidgetItem(_dash_join(supply_ids)))
+            self.fire_water_system_table.setItem(row_index, 3, QTableWidgetItem(_dash_join(dependent_ids)))
+            self.fire_water_system_table.setItem(row_index, 4, QTableWidgetItem(_dash_join(report.reasons)))

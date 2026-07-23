@@ -20,6 +20,10 @@ from models.sprinkler import Sprinkler
 from models.fire_extinguisher import FireExtinguisher
 from models.fire_hydrant import FireHydrant
 from models.hose_reel import HoseReel
+from models.fire_water_tank import FireWaterTank
+from models.fire_pump import FirePump
+from models.jockey_pump import JockeyPump
+from models.fire_service_inlet import FireServiceInlet
 
 
 @dataclass
@@ -98,6 +102,13 @@ class Floor:
     fire_extinguishers: list[FireExtinguisher] = field(default_factory=list)
     fire_hydrants: list[FireHydrant] = field(default_factory=list)
     hose_reels: list[HoseReel] = field(default_factory=list)
+
+    # Fire Water Supply & Suppression Infrastructure milestone --
+    # additive, same conventions as above.
+    fire_water_tanks: list[FireWaterTank] = field(default_factory=list)
+    fire_pumps: list[FirePump] = field(default_factory=list)
+    jockey_pumps: list[JockeyPump] = field(default_factory=list)
+    fire_service_inlets: list[FireServiceInlet] = field(default_factory=list)
 
     assembly_points: list[AssemblyPoint] = field(default_factory=list)
     obstacles: list[Obstacle] = field(default_factory=list)
@@ -318,6 +329,58 @@ class Floor:
             self.hose_reels.remove(hose_reel)
 
     # =====================================================
+    # Fire Water Tanks
+    # =====================================================
+
+    def add_fire_water_tank(self, fire_water_tank):
+
+        self.fire_water_tanks.append(fire_water_tank)
+
+    def remove_fire_water_tank(self, fire_water_tank):
+
+        if fire_water_tank in self.fire_water_tanks:
+            self.fire_water_tanks.remove(fire_water_tank)
+
+    # =====================================================
+    # Fire Pumps
+    # =====================================================
+
+    def add_fire_pump(self, fire_pump):
+
+        self.fire_pumps.append(fire_pump)
+
+    def remove_fire_pump(self, fire_pump):
+
+        if fire_pump in self.fire_pumps:
+            self.fire_pumps.remove(fire_pump)
+
+    # =====================================================
+    # Jockey Pumps
+    # =====================================================
+
+    def add_jockey_pump(self, jockey_pump):
+
+        self.jockey_pumps.append(jockey_pump)
+
+    def remove_jockey_pump(self, jockey_pump):
+
+        if jockey_pump in self.jockey_pumps:
+            self.jockey_pumps.remove(jockey_pump)
+
+    # =====================================================
+    # Fire Service Inlets
+    # =====================================================
+
+    def add_fire_service_inlet(self, fire_service_inlet):
+
+        self.fire_service_inlets.append(fire_service_inlet)
+
+    def remove_fire_service_inlet(self, fire_service_inlet):
+
+        if fire_service_inlet in self.fire_service_inlets:
+            self.fire_service_inlets.remove(fire_service_inlet)
+
+    # =====================================================
     # Assembly Points
     # =====================================================
 
@@ -434,6 +497,26 @@ class Floor:
         return len(self.hose_reels)
 
     @property
+    def fire_water_tank_count(self):
+
+        return len(self.fire_water_tanks)
+
+    @property
+    def fire_pump_count(self):
+
+        return len(self.fire_pumps)
+
+    @property
+    def jockey_pump_count(self):
+
+        return len(self.jockey_pumps)
+
+    @property
+    def fire_service_inlet_count(self):
+
+        return len(self.fire_service_inlets)
+
+    @property
     def assembly_point_count(self):
 
         return len(self.assembly_points)
@@ -543,6 +626,26 @@ class Floor:
             "hose_reels": [
                 hose_reel.to_dict()
                 for hose_reel in self.hose_reels
+            ],
+
+            "fire_water_tanks": [
+                tank.to_dict()
+                for tank in self.fire_water_tanks
+            ],
+
+            "fire_pumps": [
+                pump.to_dict()
+                for pump in self.fire_pumps
+            ],
+
+            "jockey_pumps": [
+                pump.to_dict()
+                for pump in self.jockey_pumps
+            ],
+
+            "fire_service_inlets": [
+                inlet.to_dict()
+                for inlet in self.fire_service_inlets
             ],
 
             "assembly_points": [
@@ -698,6 +801,30 @@ class Floor:
 
             floor.hose_reels.append(
                 HoseReel.from_dict(hose_reel_data)
+            )
+
+        for tank_data in data.get("fire_water_tanks", []):
+
+            floor.fire_water_tanks.append(
+                FireWaterTank.from_dict(tank_data)
+            )
+
+        for pump_data in data.get("fire_pumps", []):
+
+            floor.fire_pumps.append(
+                FirePump.from_dict(pump_data)
+            )
+
+        for jockey_pump_data in data.get("jockey_pumps", []):
+
+            floor.jockey_pumps.append(
+                JockeyPump.from_dict(jockey_pump_data)
+            )
+
+        for inlet_data in data.get("fire_service_inlets", []):
+
+            floor.fire_service_inlets.append(
+                FireServiceInlet.from_dict(inlet_data)
             )
 
         for assembly_point_data in data.get("assembly_points", []):

@@ -67,7 +67,20 @@ def validate_building_authoring(building) -> ValidationReport:
         for hose_reel in floor.hose_reels:
             _check_zone_assignment(report, floor, hose_reel, "Hose Reel", "hose_reel_missing_zone")
 
+        for tank in floor.fire_water_tanks:
+            _check_zone_assignment(report, floor, tank, "Fire Water Tank", "fire_water_tank_missing_zone")
+
+        for pump in floor.fire_pumps:
+            _check_zone_assignment(report, floor, pump, "Fire Pump", "fire_pump_missing_zone")
+
+        for jockey_pump in floor.jockey_pumps:
+            _check_zone_assignment(report, floor, jockey_pump, "Jockey Pump", "jockey_pump_missing_zone")
+
+        for inlet in floor.fire_service_inlets:
+            _check_zone_assignment(report, floor, inlet, "Fire Service Inlet", "fire_service_inlet_missing_zone")
+
     _detect_duplicate_stairs(report, building)
+    _detect_dangling_fire_water_system_references(report, building)
 
     return report
 
@@ -215,3 +228,52 @@ def _detect_duplicate_stairs(report, building):
             object_id=first_stair.id,
             floor_id=first_floor.id,
         )
+
+
+# =====================================================
+# Fire Water Supply & Suppression Infrastructure milestone -- a
+# FireWaterSystem's own *_ids fields are plain, unresolved id
+# references (models/fire_water_system.py's own docstring), never
+# validated by that class itself. This is the one place a dangling
+# reference (an id that no longer names a real asset, e.g. the asset
+# was deleted after being added to a system) is reported -- as a
+# WARNING, the same severity every other zone/system-scoped
+# completeness gap in this module already uses, never a crash.
+# =====================================================
+
+def _detect_dangling_fire_water_system_references(report, building):
+
+    if building is None:
+        return
+
+    valid_ids_by_field = {
+        "tank_ids": set(), "pump_ids": set(), "jockey_pump_ids": set(), "inlet_ids": set(),
+        "sprinkler_ids": set(), "hydrant_ids": set(), "hose_reel_ids": set(),
+    }
+
+    for floor in building.ordered_floors():
+
+        valid_ids_by_field["tank_ids"].update(tank.id for tank in floor.fire_water_tanks)
+        valid_ids_by_field["pump_ids"].update(pump.id for pump in floor.fire_pumps)
+        valid_ids_by_field["jockey_pump_ids"].update(pump.id for pump in floor.jockey_pumps)
+        valid_ids_by_field["inlet_ids"].update(inlet.id for inlet in floor.fire_service_inlets)
+        valid_ids_by_field["sprinkler_ids"].update(sprinkler.id for sprinkler in floor.sprinklers)
+        valid_ids_by_field["hydrant_ids"].update(hydrant.id for hydrant in floor.fire_hydrants)
+        valid_ids_by_field["hose_reel_ids"].update(hose_reel.id for hose_reel in floor.hose_reels)
+
+    for system in building.fire_water_systems:
+
+        for field_name, valid_ids in valid_ids_by_field.items():
+
+            for asset_id in getattr(system, field_name):
+
+                if asset_id not in valid_ids:
+
+                    report.add(
+                        "fire_water_system_dangling_reference",
+                        f"Fire Water System '{system.name}' references asset id "
+                        f"'{asset_id}' ({field_name}), which no longer exists.",
+                        severity=ValidationReport.WARNING,
+                        object_id=system.id,
+                        floor_id="",
+                    )

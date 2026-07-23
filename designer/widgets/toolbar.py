@@ -105,6 +105,14 @@ class MainToolbar(QToolBar):
         self.fire_hydrant_action = QAction("Fire Hydrant", self)
         self.hose_reel_action = QAction("Hose Reel", self)
 
+        # Fire Water Supply & Suppression Infrastructure milestone --
+        # same "additive, alongside the existing device tools"
+        # convention.
+        self.fire_water_tank_action = QAction("Fire Water Tank", self)
+        self.fire_pump_action = QAction("Fire Pump", self)
+        self.jockey_pump_action = QAction("Jockey Pump", self)
+        self.fire_service_inlet_action = QAction("Fire Service Inlet", self)
+
         # =====================================================
         # Safety
         # =====================================================
@@ -178,6 +186,10 @@ class MainToolbar(QToolBar):
         self.addAction(self.fire_extinguisher_action)
         self.addAction(self.fire_hydrant_action)
         self.addAction(self.hose_reel_action)
+        self.addAction(self.fire_water_tank_action)
+        self.addAction(self.fire_pump_action)
+        self.addAction(self.jockey_pump_action)
+        self.addAction(self.fire_service_inlet_action)
 
         self.addSeparator()
 
