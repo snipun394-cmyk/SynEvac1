@@ -1,44 +1,18 @@
-import sys
 import unittest
-
-from models.building import Building
-from models.exit import Exit
-from models.floor import Floor
-from models.zone import Zone
-
-from scenario.metadata import ScenarioMetadata
-from scenario.scenario import Scenario
-
-from ground_truth.labels import GroundTruth
-
-from decision_policy.policy import DecisionInputs
 
 from perception.models.building_observation import (
     ObservationState,
     ObservedNodeState,
     ObservedOccupancy,
-    PerceptionSeverity,
 )
 from perception.models.camera_observation import CameraFrameObservation
-from perception.models.heat_detector_observation import HeatDetectorReading
 from perception.models.smoke_detector_observation import SmokeDetectorReading
-from perception.fusion.occupancy_estimation import OccupancyEstimator
-from perception.fusion.sensor_fusion import SensorFusion
-
-from ai_inference.loader import LoadedModel, ModelProvenance
-from ai_inference.predictor import Predictor
 
 from live_system.event_bus import Event, EventBus, EventType
 from live_system.incident_manager import (
     IncidentManager,
     IncidentState,
     InvalidIncidentTransition,
-)
-from live_system.integration import (
-    DashboardCommandCenterGateway,
-    GeneratePolicyDecisionPolicyGateway,
-    PredictorAIInferenceGateway,
-    SensorFusionPerceptionGateway,
 )
 from live_system.orchestrator import (
     LiveOrchestrator,
@@ -62,32 +36,6 @@ from live_system.update_loop import UpdateLoop
 # =====================================================
 # Shared fixtures
 # =====================================================
-
-
-def make_building():
-
-    floor = Floor(
-        name="Ground", id="floor-1",
-        zones=[
-            Zone(id="zone-a", name="Zone A", x=0.0, y=0.0, width=4.0, height=4.0, floor_id="floor-1"),
-            Zone(id="zone-b", name="Zone B", x=5.0, y=0.0, width=4.0, height=4.0, floor_id="floor-1"),
-        ],
-        exits=[Exit(id="exit-1", floor_id="floor-1", zone_id="zone-b")],
-    )
-
-    return Building(name="Live Test Building", id="building-1", floors=[floor])
-
-
-def make_scenario(building):
-
-    return Scenario(
-        metadata=ScenarioMetadata(
-            scenario_id="live-scn-1", definition_id="live-def-1",
-            definition_content_hash="hash", generation_version="v1", seed=1,
-            created_at="2026-07-15T00:00:00",
-        ),
-        occupants=(),
-    )
 
 
 class _FixedSensor:
@@ -601,217 +549,22 @@ class UpdateLoopTests(unittest.TestCase):
 
 
 # =====================================================
-# Phase 7 -- Integration Layer (real composition, no mocks)
+# Live Runtime Architecture Cleanup milestone -- the "Phase 7 --
+# Integration Layer (real composition, no mocks)" test section that
+# used to live here (SensorFusionPerceptionGatewayTests,
+# PredictorAIInferenceGatewayTests, GeneratePolicyDecisionPolicyGatewayTests,
+# DashboardCommandCenterGatewayTests) was removed along with the four
+# concrete adapter classes it tested (live_system.integration.
+# SensorFusionPerceptionGateway/PredictorAIInferenceGateway/
+# GeneratePolicyDecisionPolicyGateway/DashboardCommandCenterGateway) --
+# zero production callers, superseded by build_live_runtime()'s own
+# newer composition (see docs/architecture/
+# live_runtime_architecture_cleanup.md). LiveOrchestrator's own generic
+# dispatch behavior for these optional stages (still current,
+# unmodified) remains fully covered below via hand-written stubs
+# (_StubPerceptionGateway etc.), which never depended on the deleted
+# classes in the first place.
 # =====================================================
-
-
-class SensorFusionPerceptionGatewayTests(unittest.TestCase):
-
-    def test_collects_real_readings_into_a_real_building_observation(self):
-
-        sensor_fusion = SensorFusion(
-            smoke_detector_zone_assignments={"smoke-1": "zone-a"},
-            heat_detector_zone_assignments={},
-            camera_zone_assignments={"cam-1": "zone-a"},
-        )
-        occupancy_estimator = OccupancyEstimator(camera_zone_assignments={"cam-1": "zone-a"})
-
-        gateway = SensorFusionPerceptionGateway(sensor_fusion, occupancy_estimator)
-
-        registry = SensorRegistry()
-        registry.register(_FixedCCTVSensor(
-            "cam-1", CameraFrameObservation(camera_id="cam-1", timestamp=5.0, estimated_occupant_count=4.0),
-        ))
-        registry.register(_FixedSmokeDetectorSensor(
-            "smoke-1", SmokeDetectorReading(detector_id="smoke-1", timestamp=5.0, alarm_active=True),
-        ))
-
-        readings = registry.read_all(5.0)
-        observation = gateway.collect(readings, time=5.0)
-
-        self.assertEqual(observation.occupancy_observation("zone-a").estimated_count, 4.0)
-        self.assertTrue(observation.node_observation("zone-a").alarm_active)
-        self.assertEqual(observation.node_observation("zone-a").estimated_severity, PerceptionSeverity.HIGH)
-
-    def test_no_occupancy_estimator_configured_yields_no_occupancy_observations(self):
-
-        sensor_fusion = SensorFusion(
-            smoke_detector_zone_assignments={}, heat_detector_zone_assignments={},
-            camera_zone_assignments={},
-        )
-        gateway = SensorFusionPerceptionGateway(sensor_fusion, occupancy_estimator=None)
-
-        registry = SensorRegistry()
-        observation = gateway.collect(registry.read_all(0.0), time=0.0)
-
-        self.assertEqual(dict(observation.occupancy_observations), {})
-
-    def test_no_human_observation_provider_configured_yields_no_human_observations(self):
-
-        sensor_fusion = SensorFusion(
-            smoke_detector_zone_assignments={}, heat_detector_zone_assignments={},
-            camera_zone_assignments={},
-        )
-        gateway = SensorFusionPerceptionGateway(sensor_fusion, human_observation_provider=None)
-
-        observation = gateway.collect(SensorRegistry().read_all(0.0), time=0.0)
-
-        self.assertEqual(dict(observation.human_observations), {})
-
-    def test_human_observation_provider_is_queried_and_threaded_through(self):
-
-        from perception.models.human_observation import HumanObservation, HumanState
-
-        class _StubHumanObservationProvider:
-
-            def __init__(self):
-                self.calls = []
-
-            def observations_at(self, time):
-                self.calls.append(time)
-                return {"p1": HumanObservation(person_id="p1", zone_id="zone-a", state=HumanState.WALKING)}
-
-        sensor_fusion = SensorFusion(
-            smoke_detector_zone_assignments={}, heat_detector_zone_assignments={},
-            camera_zone_assignments={},
-        )
-        provider = _StubHumanObservationProvider()
-        gateway = SensorFusionPerceptionGateway(sensor_fusion, human_observation_provider=provider)
-
-        observation = gateway.collect(SensorRegistry().read_all(7.0), time=7.0)
-
-        self.assertEqual(provider.calls, [7.0])
-        self.assertEqual(observation.human_observation("p1").zone_id, "zone-a")
-        self.assertEqual(observation.human_observation("p1").state, HumanState.WALKING)
-
-
-class _FakeRegressionModel:
-
-    # A minimal, in-memory stand-in for an ai_training.models.base.
-    # BaseModel subclass -- avoids needing a real joblib/manifest.json
-    # artifact on disk (ai_inference.loader.load_model()'s own job,
-    # deliberately not exercised here) just to prove Predictor.predict_all()
-    # actually gets invoked with this gateway's feature row.
-
-    is_classifier = False
-
-    def predict(self, X_rows):
-        return [len(X_rows[0]) for _ in X_rows]  # deterministic, input-derived
-
-
-class PredictorAIInferenceGatewayTests(unittest.TestCase):
-
-    def test_predict_invokes_the_real_predictor_with_the_built_feature_row(self):
-
-        loaded_model = LoadedModel(
-            model=_FakeRegressionModel(),
-            provenance=ModelProvenance(
-                experiment_name="exp-1", model_name="evacuation_time", algorithm="dummy",
-                model_version="v1", generated_at="2026-07-15T00:00:00",
-                train_size=1, test_size=1, metrics={},
-            ),
-            directory="in-memory",
-        )
-        predictor = Predictor([loaded_model])
-
-        built_rows = []
-
-        def feature_row_builder(snapshot):
-            row = {"zone_a_occupancy": snapshot.occupancy_for("zone-a").estimated_count or 0.0}
-            built_rows.append(row)
-            return row
-
-        gateway = PredictorAIInferenceGateway(predictor, feature_row_builder)
-
-        snapshot = StateManager().update_perception(_make_observation(zone_a_count=3.0), time=0.0)
-        predictions = gateway.predict(snapshot)
-
-        self.assertEqual(built_rows, [{"zone_a_occupancy": 3.0}])
-        self.assertIn("evacuation_time", predictions)
-        self.assertEqual(predictions["evacuation_time"].value, 1)  # len({"zone_a_occupancy": ...}) == 1
-
-
-class GeneratePolicyDecisionPolicyGatewayTests(unittest.TestCase):
-
-    def test_evaluate_invokes_the_real_generate_policy(self):
-
-        building = make_building()
-        scenario = make_scenario(building)
-        ground_truth = GroundTruth(scenario_id="live-incident-1", definition_id="live")
-
-        def decision_inputs_builder(snapshot):
-            return DecisionInputs(building=building, scenario=scenario, ground_truth=ground_truth)
-
-        gateway = GeneratePolicyDecisionPolicyGateway(decision_inputs_builder)
-
-        policy = gateway.evaluate(StateManager().current())
-
-        self.assertIsNotNone(policy)
-        self.assertEqual(policy.scenario_id, "live-incident-1")
-
-    def test_evaluate_returns_none_when_the_builder_has_insufficient_information(self):
-
-        gateway = GeneratePolicyDecisionPolicyGateway(lambda snapshot: None)
-
-        self.assertIsNone(gateway.evaluate(StateManager().current()))
-
-
-class DashboardCommandCenterGatewayTests(unittest.TestCase):
-
-    # Exercises the real command_center.dashboard.Dashboard (a PyQt6
-    # QWidget) exactly the way tests/test_command_center.py already
-    # does -- one shared QApplication instance, per that file's own
-    # established convention.
-
-    @classmethod
-    def setUpClass(cls):
-
-        from PyQt6.QtWidgets import QApplication
-
-        cls._app = QApplication.instance() or QApplication(sys.argv)
-
-    def test_notify_pushes_a_live_frame_into_the_real_dashboard(self):
-
-        from command_center.dashboard import Dashboard
-
-        building = make_building()
-        scenario = make_scenario(building)
-        dashboard = Dashboard()
-
-        gateway = DashboardCommandCenterGateway(dashboard, building, scenario)
-
-        observation = _make_observation(zone_a_count=7.0, zone_a_alarm=True)
-        snapshot = StateManager().update_perception(observation, time=12.0)
-
-        gateway.notify(snapshot)
-
-        self.assertEqual(dashboard.building_view._building, building)
-        self.assertIn("zone-a", dashboard.building_view._frame.current_fire_zone_ids)
-        self.assertEqual(dashboard.building_view._frame.zone_occupancy.get("zone-a"), 7.0)
-
-    def test_notify_pushes_human_observations_through_to_the_human_panel(self):
-
-        from command_center.dashboard import Dashboard
-        from perception.models.building_observation import BuildingObservation
-        from perception.models.human_observation import HumanObservation, HumanState
-
-        building = make_building()
-        scenario = make_scenario(building)
-        dashboard = Dashboard()
-
-        gateway = DashboardCommandCenterGateway(dashboard, building, scenario)
-
-        person = HumanObservation(
-            person_id="person-42", zone_id="zone-a", state=HumanState.WAITING, confidence=0.6,
-        )
-        observation = BuildingObservation(human_observations={"person-42": person})
-        snapshot = StateManager().update_perception(observation, time=3.0)
-
-        gateway.notify(snapshot)
-
-        self.assertIn("person-42", dashboard.human_panel._frame.human_observations)
-        self.assertEqual(dashboard.human_panel.people_table.rowCount(), 1)
-        self.assertEqual(dashboard.human_panel.people_table.item(0, 0).text(), "person-42")
 
 
 # =====================================================
@@ -1162,23 +915,18 @@ class LiveOrchestratorContinuousUpdateLoopTests(unittest.TestCase):
 
     def test_repeated_runs_over_identical_mocked_input_are_deterministic(self):
 
+        # Reexpressed against a stub perception gateway (Live Runtime
+        # Architecture Cleanup milestone) -- this test's own behavioral
+        # claim is UpdateLoop/LiveOrchestrator determinism itself, never
+        # specifically about live_system.integration.
+        # SensorFusionPerceptionGateway (deleted, zero production
+        # callers). _StubPerceptionGateway.collect() is deterministic by
+        # construction, exactly as needed here.
+
         def build_and_run():
 
-            registry = SensorRegistry()
-            registry.register(_FixedCCTVSensor(
-                "cam-1",
-                CameraFrameObservation(camera_id="cam-1", timestamp=0.0, estimated_occupant_count=6.0),
-            ))
-
-            sensor_fusion = SensorFusion(
-                smoke_detector_zone_assignments={}, heat_detector_zone_assignments={},
-                camera_zone_assignments={"cam-1": "zone-a"},
-            )
-            occupancy_estimator = OccupancyEstimator(camera_zone_assignments={"cam-1": "zone-a"})
-
             orchestrator = LiveOrchestrator(
-                sensor_registry=registry,
-                perception_gateway=SensorFusionPerceptionGateway(sensor_fusion, occupancy_estimator),
+                perception_gateway=_StubPerceptionGateway(),
                 interval_seconds=1.0,
             )
             orchestrator.start()

@@ -36,15 +36,9 @@ from live_system.incident_manager import (
 from live_system.integration import (
     AIInferenceGateway,
     CommandCenterGateway,
-    DashboardCommandCenterGateway,
-    DecisionInputsBuilder,
     DecisionPolicyGateway,
-    FeatureRowBuilder,
-    GeneratePolicyDecisionPolicyGateway,
     PerceptionGateway,
-    PredictorAIInferenceGateway,
     RecommendationBuilder,
-    SensorFusionPerceptionGateway,
 )
 from live_system.orchestrator import (
     LiveOrchestrator,
@@ -117,18 +111,18 @@ __all__ = [
     "IncidentState",
     "IncidentTransition",
     "InvalidIncidentTransition",
-    # integration
+    # integration -- LEGACY extension-point typing only, kept because
+    # live_system.orchestrator.LiveOrchestrator's own constructor
+    # signature still type-annotates against these (LiveOrchestrator is
+    # out of scope for the Live Runtime Architecture Cleanup milestone).
+    # Never populated by live_runtime.factory.build_live_runtime() in
+    # production -- see live_system/integration.py's own module
+    # docstring and docs/architecture/live_runtime_architecture_cleanup.md.
     "PerceptionGateway",
     "AIInferenceGateway",
     "DecisionPolicyGateway",
     "CommandCenterGateway",
-    "SensorFusionPerceptionGateway",
-    "PredictorAIInferenceGateway",
-    "FeatureRowBuilder",
-    "GeneratePolicyDecisionPolicyGateway",
-    "DecisionInputsBuilder",
     "RecommendationBuilder",
-    "DashboardCommandCenterGateway",
     # update_loop
     "UpdateLoop",
     # orchestrator
