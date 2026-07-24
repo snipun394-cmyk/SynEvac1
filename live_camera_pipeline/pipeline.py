@@ -278,6 +278,7 @@ class LiveCameraPipeline:
                     classification_confidence=pending["classification_confidence"],
                     state_evidence=pending["state_evidence"],
                     state_confidence=pending["state_confidence"],
+                    world_position_provenance=detection.world_position_provenance,
                 )
                 seen_occupant_ids.add(detection.occupant_id)
 
@@ -362,6 +363,7 @@ class LiveCameraPipeline:
             zone_id = projection.zone_id if projection is not None else detection.zone_id
             world_position = projection.world_position if projection is not None else None
             projection_confidence = projection.projection_confidence if projection is not None else None
+            world_position_provenance = projection.provenance if projection is not None else None
 
             results.append(
                 dataclasses.replace(
@@ -373,6 +375,7 @@ class LiveCameraPipeline:
                     world_position=world_position,
                     world_velocity=world_velocity,
                     projection_confidence=projection_confidence,
+                    world_position_provenance=world_position_provenance,
                 )
             )
 

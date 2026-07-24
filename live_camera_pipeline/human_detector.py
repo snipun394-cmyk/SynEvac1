@@ -71,6 +71,16 @@ class RawHumanDetection:
     world_velocity: Optional[float] = None
     projection_confidence: Optional[float] = None
 
+    # CCTV Connection & Calibration Readiness milestone, Phase 8 -- one
+    # of camera_calibration.camera_model.WORLD_POSITION_PROVENANCE_
+    # {NONE,UNVALIDATED,VALIDATED}, set by the pipeline glue from
+    # camera_calibration.projection.WorldProjection.provenance whenever
+    # a WorldProjector is configured (None otherwise -- no world
+    # projection was attempted at all this cycle). Distinct from
+    # world_position itself being None or not: a None world_position
+    # still carries an honest provenance (NONE, if never calibrated).
+    world_position_provenance: Optional[str] = None
+
     is_false_positive: bool = False
 
 

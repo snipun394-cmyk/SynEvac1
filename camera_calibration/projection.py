@@ -3,7 +3,7 @@ from typing import Mapping, Optional, Sequence, Tuple
 
 from visibility.geometry import point_in_polygon
 
-from camera_calibration.camera_model import CalibrationProfile
+from camera_calibration.camera_model import CalibrationProfile, WORLD_POSITION_PROVENANCE_NONE, calibration_provenance
 from camera_calibration.geometry import intersect_ray_with_floor, pixel_ray_direction
 
 
@@ -26,6 +26,19 @@ class WorldProjection:
     floor_id: Optional[str]
     zone_id: Optional[str]
     projection_confidence: Optional[float]
+
+    # CCTV Connection & Calibration Readiness milestone, Phase 7/8 --
+    # additive, always set (never left to a default -- every return
+    # path in project() below supplies it explicitly). One of
+    # camera_calibration.camera_model.WORLD_POSITION_PROVENANCE_{NONE,
+    # UNVALIDATED,VALIDATED}. This is what lets a downstream consumer
+    # (LiveOccupant, Command Center) tell "no honest basis to project
+    # at all" apart from "projected using a calibration nobody has ever
+    # checked against a measured point" apart from "projected using a
+    # calibration with a genuinely measured RMSE" -- three previously-
+    # indistinguishable cases that produced identical-looking
+    # world_position tuples before this milestone.
+    provenance: str = WORLD_POSITION_PROVENANCE_NONE
 
 
 class WorldProjector:
@@ -66,12 +79,16 @@ class WorldProjector:
     ) -> WorldProjection:
 
         calibration = self._calibrations.get(camera_id)
+        provenance = calibration_provenance(calibration)
 
         if calibration is None or bounding_box is None:
             # No honest basis to project at all -- an uncalibrated
             # camera, or a detection with no geometry (Phase 7's own
             # "never fabricate values").
-            return WorldProjection(world_position=None, floor_id=None, zone_id=None, projection_confidence=None)
+            return WorldProjection(
+                world_position=None, floor_id=None, zone_id=None, projection_confidence=None,
+                provenance=WORLD_POSITION_PROVENANCE_NONE,
+            )
 
         ground_pixel = self._ground_contact_point(bounding_box)
 
@@ -94,6 +111,7 @@ class WorldProjector:
             # position/zone/confidence.
             return WorldProjection(
                 world_position=None, floor_id=calibration.floor_id, zone_id=None, projection_confidence=None,
+                provenance=provenance,
             )
 
         zone_id = self._lookup_zone(calibration.floor_id, world_position)
@@ -102,6 +120,7 @@ class WorldProjector:
         return WorldProjection(
             world_position=world_position, floor_id=calibration.floor_id,
             zone_id=zone_id, projection_confidence=confidence,
+            provenance=provenance,
         )
 
     # =====================================================

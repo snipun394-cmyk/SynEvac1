@@ -47,6 +47,16 @@ application -- a single cv2 window, click to record a pixel, no other
 UI) is also provided for building the scene file's own `correspondences`
 pixel coordinates directly off a paused real frame:
     python scripts/calibrate_camera_scene.py --pick-points frame.png --points-out clicked_pixels.json
+
+CCTV Connection & Calibration Readiness milestone, Phase 6 -- a second,
+equally lightweight helper for the step BEFORE point-picking: capturing
+that paused real frame off an actual configured camera (RTSP endpoint,
+or a local video file for a dry run) in the first place, using the
+SAME production RTSPFrameSource + real decoder backend the rest of this
+codebase's live path uses -- never a second, competing frame-acquisition
+mechanism:
+    python scripts/calibrate_camera_scene.py --capture-frame rtsp://192.168.1.50:554/stream1 --capture-out frame.png
+    python scripts/calibrate_camera_scene.py --capture-frame validation_media/vtest.avi --capture-out frame.png
 """
 
 import argparse
@@ -228,6 +238,64 @@ def pick_points(image_path: str, points_out: str) -> None:
           f"measured real-world (x, y) to build a scene file's `correspondences` list.")
 
 
+def capture_frame(endpoint: str, out_path: str, *, timeout_seconds: float = 10.0) -> None:
+
+    # CCTV Connection & Calibration Readiness milestone, Phase 6 -- the
+    # one missing link in the on-site calibration workflow: getting a
+    # real paused frame off a real camera onto disk, so --pick-points
+    # (above) and the operator's own tape-measure work have something
+    # to work from. Deliberately reuses the SAME production
+    # RTSPFrameSource + OpenCVFrameDecoderBackend the rest of the live
+    # path uses (human_detection.opencv_decoder_backend, Phase 2/3) --
+    # never a second, ad-hoc cv2.VideoCapture call living only here.
+    # No credentials are handled by this helper -- an endpoint with
+    # embedded rtsp://user:pass@host is the operator's own choice (same
+    # as any RTSP client); nothing here reads credential_store, and
+    # nothing here logs the endpoint unredacted beyond what the
+    # underlying RTSPFrameSource itself already redacts in its own
+    # status/error reporting.
+
+    import time as time_module
+
+    import cv2
+
+    from human_detection.opencv_decoder_backend import OpenCVFrameDecoderBackend
+    from live_camera_pipeline.rtsp_frame_source import RTSPFrameSource, redact_endpoint
+
+    backend = OpenCVFrameDecoderBackend(open_timeout_ms=int(timeout_seconds * 1000))
+    source = RTSPFrameSource(camera_id="CALIBRATION-CAPTURE", endpoint=endpoint, decoder_backend=backend)
+
+    print(f"Connecting to {redact_endpoint(endpoint)!r} ...")
+    source.start()
+
+    if source.status != "Online":
+        source.stop()
+        raise SystemExit(f"Could not connect: {source.status} -- {source.last_error}")
+
+    deadline = time_module.monotonic() + timeout_seconds
+    frame = None
+
+    while time_module.monotonic() < deadline:
+        frame = source.read_frame()
+        if frame is not None:
+            break
+        time_module.sleep(0.02)
+
+    source.stop()
+
+    if frame is None or frame.payload_ref is None:
+        raise SystemExit("Connected, but no frame was received within the timeout -- nothing saved.")
+
+    ok = cv2.imwrite(out_path, frame.payload_ref)
+    if not ok:
+        raise SystemExit(f"Failed to write frame to {out_path!r}.")
+
+    resolution = f"{frame.width}x{frame.height}" if frame.width and frame.height else "(resolution not reported)"
+    print(f"Saved one frame ({resolution}) to {out_path}")
+    print("Next: python scripts/calibrate_camera_scene.py --pick-points "
+          f"{out_path} --points-out clicked_pixels.json")
+
+
 def main():
 
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -242,14 +310,25 @@ def main():
         help="Open a lightweight point-picking window on IMAGE instead of running calibration.",
     )
     parser.add_argument("--points-out", default="clicked_pixels.json", help="Where --pick-points writes clicked pixel coordinates.")
+    parser.add_argument(
+        "--capture-frame", default=None, metavar="ENDPOINT",
+        help="Capture one real frame from ENDPOINT (an RTSP URL, or a local video file for a dry run) "
+             "instead of running calibration.",
+    )
+    parser.add_argument("--capture-out", default="calibration_frame.png", help="Where --capture-frame saves the captured frame.")
+    parser.add_argument("--capture-timeout", type=float, default=10.0, help="Seconds to wait for --capture-frame to connect and receive a frame.")
     args = parser.parse_args()
+
+    if args.capture_frame is not None:
+        capture_frame(args.capture_frame, args.capture_out, timeout_seconds=args.capture_timeout)
+        return
 
     if args.pick_points is not None:
         pick_points(args.pick_points, args.points_out)
         return
 
     if args.scene is None:
-        parser.error("a scene JSON file is required unless --pick-points is used")
+        parser.error("a scene JSON file is required unless --pick-points/--capture-frame is used")
 
     if args.out is None and not args.validate_only:
         parser.error("--out is required unless --validate-only is used")

@@ -345,5 +345,71 @@ class SimulationNeverTouchesCredentialStoreTests(unittest.TestCase):
         capture_and_clear_camera_credentials(project, raising_store)
 
 
+class RealDecoderBackendCredentialSafetyTests(unittest.TestCase):
+
+    # CCTV Connection & Calibration Readiness milestone, Phase 12 --
+    # re-audits the ONE new real-network code path this milestone added
+    # (human_detection.opencv_decoder_backend.OpenCVFrameDecoderBackend)
+    # against the exact same "a real-looking password never appears
+    # unredacted anywhere" discipline this file already established for
+    # ConnectionInfo/Camera/project JSON, now including a REAL (not
+    # faked) decoder backend actually attempting a connection with a
+    # real password.
+
+    def test_password_never_leaks_through_rtsp_frame_source_repr_with_the_real_backend(self):
+
+        from human_detection.opencv_decoder_backend import OpenCVFrameDecoderBackend
+        from live_camera_pipeline.rtsp_frame_source import RTSPFrameSource
+
+        secret = "hunter2-super-secret"
+
+        backend = OpenCVFrameDecoderBackend(open_timeout_ms=1500)
+        source = RTSPFrameSource(
+            camera_id="CAM-SECRET-TEST", endpoint="rtsp://192.0.2.1:554/stream",
+            decoder_backend=backend, username="admin", password=secret,
+            max_retries=0, sleep_fn=lambda _seconds: None,
+        )
+
+        source.start()  # will fail (unreachable TEST-NET-1 address) -- that IS the point
+
+        self.assertNotIn(secret, repr(source))
+        self.assertNotIn(secret, str(source.last_error or ""))
+
+        source.stop()
+        self.assertNotIn(secret, repr(source))
+
+    def test_build_authenticated_url_result_is_never_exposed_in_any_raised_error(self):
+
+        from human_detection.opencv_decoder_backend import OpenCVFrameDecoderBackend
+
+        secret = "another-super-secret-pw"
+
+        backend = OpenCVFrameDecoderBackend(open_timeout_ms=1500)
+
+        try:
+            backend.open("rtsp://192.0.2.1:554/stream", "admin", secret)
+        except Exception as exc:
+            self.assertNotIn(secret, str(exc))
+        else:
+            self.fail("expected a connection failure against an unreachable TEST-NET-1 address")
+
+    def test_diagnostic_script_source_never_prints_a_resolved_password_variable(self):
+
+        # Static, mechanical guard (same "scan the source text" style as
+        # tests/test_no_cv_dependencies.py) against a future edit to
+        # scripts/test_camera_connection.py accidentally adding a
+        # print()/log line that includes the resolved `password` value
+        # -- the script's own docstring promises this never happens.
+        import pathlib
+
+        script_path = pathlib.Path(__file__).resolve().parent.parent / "scripts" / "test_camera_connection.py"
+        source = script_path.read_text(encoding="utf-8")
+
+        self.assertNotIn("print(password", source)
+        self.assertNotIn("print(f\"{password", source)
+        self.assertNotIn("{password}", source)
+        self.assertNotIn("{password!r}", source)
+
+
 if __name__ == "__main__":
     unittest.main()

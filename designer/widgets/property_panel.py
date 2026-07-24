@@ -22,6 +22,7 @@ from camera_calibration.calibration import CalibrationRegistry
 from camera_calibration.calibration_loader import (
     CalibrationLoadError, calibration_from_camera, load_calibration_json, save_calibration_json,
 )
+from camera_calibration.camera_model import calibration_status_text
 
 from models import connectable_space
 from models.detector import Detector
@@ -2725,15 +2726,7 @@ class PropertyPanel(QWidget):
         # label can only ever say VALIDATED when that genuinely happened.
 
         profile = self.calibration_registry.get(model.id)
-
-        if profile is None:
-            self.camera_calibration_status.setText("CALIBRATION: NOT CONFIGURED")
-        elif profile.quality is None:
-            self.camera_calibration_status.setText("CALIBRATION: CONFIGURED -- UNVALIDATED")
-        elif profile.quality.rmse_m is None:
-            self.camera_calibration_status.setText("CALIBRATION: CONFIGURED -- VALIDATION ATTEMPTED, NO POINTS PROJECTED")
-        else:
-            self.camera_calibration_status.setText(f"CALIBRATION: VALIDATED -- RMSE: {profile.quality.rmse_m:.3f} m")
+        self.camera_calibration_status.setText(f"CALIBRATION: {calibration_status_text(profile)}")
 
     # =====================================================
 

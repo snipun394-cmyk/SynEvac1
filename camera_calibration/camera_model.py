@@ -145,6 +145,80 @@ class CalibrationQuality:
     validation_timestamp: str
 
 
+# CCTV Connection & Calibration Readiness milestone, Phase 7/8 -- the
+# runtime policy this milestone's own investigation found missing:
+# downstream code (WorldProjector.project(), and everything it feeds --
+# RawHumanDetection/Detection/LiveOccupant) previously had NO way to
+# tell an UNVALIDATED calibration's world_position apart from a
+# VALIDATED one, or from "no calibration at all" -- all three produced
+# an identical-looking (x, y) tuple. Deliberately three plain string
+# constants, not a new enum type living in a different package (the
+# same "plain strings for cross-package status vocabulary, no forced
+# import" convention live_camera_pipeline.rtsp_frame_source.
+# RTSPFrameSource.status already established for STATUS_ONLINE etc.).
+#
+# This does NOT introduce a pass/fail accuracy threshold -- no
+# engineering justification exists yet for one (see docs/architecture/
+# camera_calibration_and_world_projection.md §7). It only makes the
+# existing, already-computed CalibrationQuality distinction (§8 there)
+# reach every consumer of a world_position, not just a human reading
+# the Designer's own calibration status label.
+WORLD_POSITION_PROVENANCE_NONE = "no_calibration"
+WORLD_POSITION_PROVENANCE_UNVALIDATED = "unvalidated"
+WORLD_POSITION_PROVENANCE_VALIDATED = "validated"
+
+
+def calibration_provenance(profile: "Optional[CalibrationProfile]") -> str:
+
+    # The one place this three-way decision is made -- WorldProjector
+    # (projection.py) is the only caller, so every world_position this
+    # codebase ever produces is honestly labeled by the SAME rule
+    # CalibrationQuality's own docstring already establishes: quality is
+    # None means never validated (CONFIGURED -- UNVALIDATED, or NOT
+    # CONFIGURED if there is no profile at all); quality.rmse_m is not
+    # None means genuinely checked against measured reference points
+    # (VALIDATED). A quality object that exists but whose rmse_m is
+    # still None (validation attempted, but zero reference points
+    # projected) is honestly UNVALIDATED, not VALIDATED -- an attempted-
+    # but-failed check earns no more trust than never having checked at
+    # all.
+
+    if profile is None:
+        return WORLD_POSITION_PROVENANCE_NONE
+
+    if profile.quality is not None and profile.quality.rmse_m is not None:
+        return WORLD_POSITION_PROVENANCE_VALIDATED
+
+    return WORLD_POSITION_PROVENANCE_UNVALIDATED
+
+
+def calibration_status_text(profile: "Optional[CalibrationProfile]") -> str:
+
+    # CCTV Connection & Calibration Readiness milestone, Phase 9 -- the
+    # ONE formatter for this exact four-way status message, factored out
+    # of designer/widgets/property_panel.py where it previously existed
+    # as two near-identical, independently-maintained copies (its own
+    # calibration status label, and its calibration dialog's own status
+    # label). designer.widgets.camera_manager_panel.CameraManagerPanel's
+    # new Calibration column (Phase 9) reuses this exact same function --
+    # a camera's calibration status must read identically wherever it is
+    # shown, never subtly reworded per screen. Deliberately still no
+    # invented accuracy threshold/PASS-FAIL verdict (§7 of docs/
+    # architecture/camera_calibration_and_world_projection.md) -- RMSE
+    # is reported, never judged.
+
+    if profile is None:
+        return "NOT CONFIGURED"
+
+    if profile.quality is None:
+        return "CONFIGURED -- UNVALIDATED"
+
+    if profile.quality.rmse_m is None:
+        return "CONFIGURED -- VALIDATION ATTEMPTED, NO POINTS PROJECTED"
+
+    return f"VALIDATED -- RMSE: {profile.quality.rmse_m:.3f} m"
+
+
 @dataclass(frozen=True)
 class CalibrationProfile:
 

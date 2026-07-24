@@ -108,3 +108,17 @@ class LiveOccupant:
     human_state_confidence: Optional[float] = None
     human_state_source: Optional[str] = None
     human_state_last_observed_at: Optional[float] = None
+
+    # CCTV Connection & Calibration Readiness milestone, Phase 8 -- one
+    # of camera_calibration.camera_model.WORLD_POSITION_PROVENANCE_
+    # {NONE,UNVALIDATED,VALIDATED} (the string constant), mirroring
+    # world_position's own CURRENT-cycle-only convention (not history-
+    # tracked). The Python default None here means something different
+    # from the WORLD_POSITION_PROVENANCE_NONE *string* -- None means "no
+    # provenance information was ever supplied to update() at all" (a
+    # caller not wired through world projection at all, including every
+    # existing test/demo that predates this field); the string
+    # WORLD_POSITION_PROVENANCE_NONE means "world projection was
+    # attempted and honestly found no calibration for this camera" --
+    # both are distinguishable by the caller if it matters.
+    world_position_provenance: Optional[str] = None

@@ -103,6 +103,7 @@ class LiveOccupantManager:
         classification_confidence: Optional[float] = None,
         state_evidence: Optional[HumanState] = None,
         state_confidence: Optional[float] = None,
+        world_position_provenance: Optional[str] = None,
     ) -> LiveOccupant:
 
         existing = self._occupants.get(occupant_id)
@@ -151,6 +152,7 @@ class LiveOccupantManager:
                 human_classification_last_observed_at=classification_seen_at,
                 human_state=human_state, human_state_confidence=state_conf,
                 human_state_source=state_source, human_state_last_observed_at=state_seen_at,
+                world_position_provenance=world_position_provenance,
             )
 
             self._store(occupant, near_exit)
@@ -235,6 +237,7 @@ class LiveOccupantManager:
             human_classification_last_observed_at=classification_seen_at,
             human_state=human_state, human_state_confidence=state_conf,
             human_state_source=state_source, human_state_last_observed_at=state_seen_at,
+            world_position_provenance=world_position_provenance,
         )
 
         self._store(updated, near_exit)

@@ -68,20 +68,50 @@ Collect these for one test camera **in addition** to the Stream/Device sections 
 
 ## Handoff to SynEvac integration (after the above is filled in)
 
-Once every box above is checked for one camera, proceed per `docs/architecture/cctv_integration_readiness.md` §13 (steps 1-7) and §18.2 (Milestone A): match this camera to its Digital Twin `Camera` asset, configure `ConnectionInfo` in the Property Panel, save the password once (captured into `credential_store`), and only then write the one remaining piece — a real `FrameDecoderBackend` implementation behind the already-built, already-offline-tested `RTSPFrameSource` (`live_camera_pipeline/rtsp_frame_source.py`, see readiness doc §19) — against the confirmed RTSP URL/codec/transport recorded here.
+Once every box above is checked for one camera, proceed per `docs/architecture/cctv_integration_readiness.md` §13 (steps 1-7) and §18.2 (Milestone A): match this camera to its Digital Twin `Camera` asset, configure `ConnectionInfo` in the Property Panel, save the password once (captured into `credential_store`), and connect using `human_detection.opencv_decoder_backend.OpenCVFrameDecoderBackend` — the real `FrameDecoderBackend` implementation built by the CCTV Connection & Calibration Readiness milestone (see `docs/architecture/cctv_connection_and_calibration_readiness.md`) — behind the already-built, already-offline-tested `RTSPFrameSource` (`live_camera_pipeline/rtsp_frame_source.py`, see readiness doc §19).
 
-## First physical test procedure (Milestone A only — stop here)
+**IMPORTANT, verified directly against a real closed local port during this milestone:** the FFMPEG-backed RTSP client this backend uses does NOT fail fast on a refused connection the way a raw TCP connect would — it waits out the full configured `open_timeout_ms` regardless. Set a short timeout (2-5 seconds is enough for a genuinely reachable camera) and, per the Tests section above, always confirm reachability with `ping`/VLC/an equivalent RTSP client FIRST — do not rely on SynEvac itself to fail fast on a wrong IP/path.
 
-`RTSPFrameSource` itself is implemented and fully offline-tested (readiness doc §19); the only missing piece is a real `FrameDecoderBackend`. Once that backend exists and every box above is filled in for one test camera, run exactly this sequence and no further:
+## Literal physical-access-day procedure
 
-1. Camera Asset `CAM-001` already exists in the Digital Twin (or create it).
-2. Configure the real endpoint (`ConnectionInfo.rtsp_address`/`ip_address`/`username`) in the Property Panel.
-3. Configure the credential reference (save the password once — captured into `credential_store`, never written to the project file).
-4. Construct `RTSPFrameSource(camera_id="CAM-001", endpoint=..., decoder_backend=<the new real backend>, credential_ref=..., credential_store=...)` and call `start()`.
-5. Confirm the source reaches status `Online` (directly, or via a wired `status_callback` reporting `CameraManager.connection_status("CAM-001") == CameraConnectionState.ONLINE`).
-6. Call `read_frame()` once.
-7. Confirm `CameraFrame.camera_id == "CAM-001"` — the one non-negotiable check (readiness doc §19.6).
-8. Confirm whatever resolution/frame metadata (`width`/`height`/`codec`) the real backend reports, if any — `None` for anything it genuinely cannot report, never a fabricated value.
-9. Call `stop()`.
+This is the exact, ordered sequence to follow standing in front of the real CCTV/NVR system. Each step is marked with what tool to use.
 
-**STOP THERE.** Do not, in this same test, wire a real `HumanDetector` (YOLO or equivalent — Milestone B, per readiness doc §18.2) or attempt cross-camera identity resolution (Milestone C). This first test proves exactly one claim: *SynEvac can receive and identify frames from one physical CCTV camera while preserving the Digital Twin Camera Asset identity* — nothing more.
+1. **Identify recorder/camera/network topology.** Determine whether this is a direct-to-camera setup or an NVR-mediated one (see Network section above).
+2. **Determine whether the SynEvac laptop can reach the camera/NVR.** `ping <camera or NVR IP>` from the SynEvac machine, outside SynEvac.
+3. **Record the camera IP/device identity** into the Network/Device sections above — never a credential value.
+4. **Determine the RTSP endpoint** (URL/path) — check the camera/NVR's own documentation or admin UI; record into the Stream section above.
+5. **Test the stream outside SynEvac first** — VLC (`Media > Open Network Stream`) or `ffplay rtsp://...` against the real endpoint. If this doesn't work, nothing below will either — debug at this layer, not inside SynEvac.
+6. **Configure the Camera Asset** in the Building Designer: `Mode = Live`, `ConnectionInfo.rtsp_address`/`ip_address`/`username` in the Property Panel; type the password once (captured into `credential_store`, never written to the project file — see readiness doc §7).
+7. **Run SynEvac's own connection diagnostic:**
+   ```
+   python scripts/test_camera_connection.py --camera-id <CAM-ID> --endpoint <rtsp URL> \
+       --username <username> --credential-ref <CAM-ID> --open-timeout-ms 3000
+   ```
+   Confirms: connection status, frame resolution, measured FPS, reconnect behavior — all without touching YOLO. A sanitized failure reason is printed if this fails; the password is never printed.
+8. **Confirm real frames** — the diagnostic's own `RESULT: Connection OK` line, plus a sane, non-zero `Frame resolution`/`Measured FPS`.
+9. **Run YOLO against the real stream** — re-run step 7 with `--detect --weights weights/yolov8n.pt` and confirm plausible detection counts (0 is honest if nobody is in frame; a crash or an exception is not).
+10. **Measure camera mounting geometry** — mount height, floor-plan position (see Calibration Measurements section above).
+11. **Measure floor reference points** — at least 3, ideally 5+, split into a fitting set and a held-out validation set.
+12. **Capture a calibration frame:**
+    ```
+    python scripts/calibrate_camera_scene.py --capture-frame <rtsp URL or endpoint> --capture-out frame.png
+    ```
+13. **Pick pixel points** off the captured frame:
+    ```
+    python scripts/calibrate_camera_scene.py --pick-points frame.png --points-out clicked_pixels.json
+    ```
+14. **Fit calibration** — build a scene JSON (camera_id, floor_id, resolution, FOV, camera_position, mount_height, correspondences, validation_points — see `docs/architecture/camera_calibration_and_world_projection.md` §4 for the full field reference) and run:
+    ```
+    python scripts/calibrate_camera_scene.py scene.json --out calibration.json
+    ```
+15. **Validate against the held-out points** — the same command above already reports RMSE if `validation_points` were supplied; record the RMSE here, do not treat any specific number as pass/fail (no accuracy threshold is established yet — see camera_calibration_and_world_projection.md §7).
+16. **Run world projection** — load `calibration.json` into the Property Panel's "Calibrate Camera..." dialog (or pass `--calibration calibration.json` to `scripts/dry_run_physical_cctv.py`) and confirm non-`None` `world_position` values for real detections.
+17. **Confirm zone localization** — projected positions resolve to the expected `zone_id` for known real locations in the frame.
+18. **Run the full `LiveRuntime` for ONE camera** — wire the real `RTSPFrameSource`/`OpenCVFrameDecoderBackend`/`YOLOHumanDetector`/calibration into `live_runtime.factory.build_live_runtime()` and confirm `BuildingState.occupant_tracks` reflects the one real camera correctly in Command Center.
+19. **Only then consider a second camera / cross-camera ReID** — per readiness doc §18.2 Milestone C, not before.
+
+**Rehearse this whole sequence offline first** with:
+```
+python scripts/dry_run_physical_cctv.py --weights weights/yolov8n.pt
+```
+This runs steps 6-18 above (minus the physical network/measurement parts) against a local video file, using the exact same production code, and reports which stages are `READY NOW` versus `REQUIRES PHYSICAL CCTV ACCESS`.

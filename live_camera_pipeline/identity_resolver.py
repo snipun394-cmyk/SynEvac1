@@ -139,4 +139,5 @@ def _to_detection(raw: RawHumanDetection, occupant_id: str) -> Detection:
         is_false_positive=raw.is_false_positive,
         world_velocity=raw.world_velocity,
         projection_confidence=raw.projection_confidence,
+        world_position_provenance=raw.world_position_provenance,
     )

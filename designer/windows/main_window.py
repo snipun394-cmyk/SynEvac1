@@ -179,7 +179,7 @@ class MainWindow(QMainWindow):
         # each one's current mode.)
         # =====================================================
 
-        self.camera_manager_panel = CameraManagerPanel()
+        self.camera_manager_panel = CameraManagerPanel(calibration_registry=self.property_panel.calibration_registry)
 
         self.camera_manager_panel.on_camera_changed = self._on_camera_manager_changed
 

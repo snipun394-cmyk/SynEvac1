@@ -56,11 +56,29 @@ class HumanDetectionArchitectureGuardTests(unittest.TestCase):
         # RawHumanDetection) -- never .identity_resolver, .pipeline, or
         # .detection_provider (those would be a sign this package is
         # reaching beyond its own detection responsibility).
+        #
+        # CCTV Connection & Calibration Readiness milestone, Phase 2 --
+        # human_detection/opencv_decoder_backend.py is a deliberate,
+        # narrow exception: it implements live_camera_pipeline.
+        # rtsp_backend.FrameDecoderBackend (the real transport/decode
+        # seam, not identity/pipeline/detection-provider), the same
+        # "the seam's interface lives in live_camera_pipeline/, the real
+        # implementation lives in human_detection/ (the one package
+        # allowed to import cv2)" pattern yolo_backend.py already
+        # established for YOLOInferenceBackend/human_detector.py. Every
+        # OTHER file in this package remains forbidden from importing
+        # rtsp_backend/rtsp_frame_source -- only the module whose entire
+        # job is decoding actually needs it.
         forbidden_submodule_pattern = (
             r"^\s*(from|import)\s+live_camera_pipeline\.(identity_resolver|pipeline|detection_provider|rtsp_frame_source|rtsp_backend)\b"
         )
 
+        exempted_files = {"opencv_decoder_backend.py"}
+
         for path in sorted(HUMAN_DETECTION_PACKAGE.glob("*.py")):
+
+            if path.name in exempted_files:
+                continue
 
             text = path.read_text(encoding="utf-8")
             match = re.search(forbidden_submodule_pattern, text, re.MULTILINE)
@@ -70,6 +88,25 @@ class HumanDetectionArchitectureGuardTests(unittest.TestCase):
                 f"{path.relative_to(REPO_ROOT)} imports {match.group(0).strip() if match else ''!r} -- "
                 f"human_detection/ may only depend on live_camera_pipeline.frame_source/human_detector.",
             )
+
+    def test_opencv_decoder_backend_only_imports_the_decoder_seam_not_pipeline_layers(self):
+
+        # The exemption above is narrow: opencv_decoder_backend.py may
+        # import live_camera_pipeline.rtsp_backend (the seam it
+        # implements) but still must never reach into identity_resolver/
+        # pipeline/detection_provider -- those remain a genuine
+        # architecture violation for ANY file in this package, no
+        # exceptions.
+        forbidden = r"^\s*(from|import)\s+live_camera_pipeline\.(identity_resolver|pipeline|detection_provider)\b"
+
+        text = (HUMAN_DETECTION_PACKAGE / "opencv_decoder_backend.py").read_text(encoding="utf-8")
+        match = re.search(forbidden, text, re.MULTILINE)
+
+        self.assertIsNone(
+            match,
+            f"opencv_decoder_backend.py imports {match.group(0).strip() if match else ''!r} -- "
+            f"it may only depend on live_camera_pipeline.rtsp_backend, nothing higher-level.",
+        )
 
     def test_human_detection_never_imports_tracking_or_identity_layers(self):
 

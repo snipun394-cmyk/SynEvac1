@@ -77,6 +77,15 @@ class Detection:
     world_velocity: Optional[float] = None
     projection_confidence: Optional[float] = None
 
+    # CCTV Connection & Calibration Readiness milestone, Phase 8 --
+    # pass-through of live_camera_pipeline.human_detector.
+    # RawHumanDetection.world_position_provenance (see that field's own
+    # docstring); always None for Simulation's own Detection
+    # construction (virtual_camera/camera.py never sets it -- Simulation
+    # has no "calibration" concept, its position is exact ground truth,
+    # not a projection with a provenance to report).
+    world_position_provenance: Optional[str] = None
+
     # =====================================================
 
     def __post_init__(self):

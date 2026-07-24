@@ -13,6 +13,9 @@ from PyQt6.QtWidgets import (
 
 from models.engineering_asset import DeviceMode
 
+from camera_calibration.calibration import CalibrationRegistry
+from camera_calibration.camera_model import calibration_status_text
+
 from camera_manager.connection_status import CameraConnectionState
 from camera_manager.manager import CameraManager
 
@@ -46,11 +49,24 @@ class CameraManagerPanel(QWidget):
     # Perception Debug Panel's own Hazard Injector already uses --
     # simpler and safer than partially patching table rows in place.
 
-    def __init__(self):
+    def __init__(self, calibration_registry=None):
 
         super().__init__()
 
         self.manager = CameraManager()
+
+        # CCTV Connection & Calibration Readiness milestone, Phase 9 --
+        # the same CalibrationRegistry instance the Property Panel's own
+        # "Calibrate Camera..." dialog already writes into (shared by
+        # MainWindow -- see designer/windows/main_window.py), so a
+        # calibration loaded/saved there is immediately reflected here
+        # too, never a second, independently-populated registry. A
+        # caller-less construction (every existing test, and any other
+        # standalone use) still works with its own empty registry --
+        # every camera honestly shows NOT CONFIGURED, never a crash.
+        self.calibration_registry = (
+            calibration_registry if calibration_registry is not None else CalibrationRegistry()
+        )
 
         self._last_building = None
 
@@ -85,9 +101,9 @@ class CameraManagerPanel(QWidget):
         layout.addLayout(filter_row)
 
         self.camera_table = QTableWidget()
-        self.camera_table.setColumnCount(7)
+        self.camera_table.setColumnCount(8)
         self.camera_table.setHorizontalHeaderLabels(
-            ["Name", "ID", "Floor", "Zone(s)", "Active", "Mode", "Status"],
+            ["Name", "ID", "Floor", "Zone(s)", "Active", "Mode", "Status", "Calibration"],
         )
         self.camera_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.camera_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
@@ -253,6 +269,9 @@ class CameraManagerPanel(QWidget):
 
         status = self.manager.camera_status(camera.id)
         self.camera_table.setItem(row, 6, QTableWidgetItem(self._status_text(camera, status)))
+
+        profile = self.calibration_registry.get(camera.id)
+        self.camera_table.setItem(row, 7, QTableWidgetItem(calibration_status_text(profile)))
 
     # =====================================================
 

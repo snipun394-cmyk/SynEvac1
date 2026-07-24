@@ -268,5 +268,64 @@ class CameraManagerPanelModeDetailStatusTests(unittest.TestCase):
         self.assertIn("Online", self._status_text())
 
 
+class CameraManagerPanelCalibrationColumnTests(unittest.TestCase):
+
+    # CCTV Connection & Calibration Readiness milestone, Phase 9 --
+    # proves the new Calibration column reads from whatever
+    # CalibrationRegistry it was constructed with (the shared instance
+    # a real MainWindow passes from its own PropertyPanel -- see
+    # designer/windows/main_window.py), never a second independently-
+    # populated registry.
+
+    def setUp(self):
+
+        from camera_calibration.calibration import CalibrationRegistry
+        from camera_calibration.camera_model import CalibrationProfile, CalibrationQuality, CameraExtrinsics, CameraIntrinsics
+
+        self.building = Building(name="B")
+        self.floor = self.building.create_floor(name="Ground Floor")
+        self.camera = Camera(id="CAM-CAL-1", name="Cam 1", floor_id=self.floor.id)
+        self.floor.add_camera(self.camera)
+
+        self.registry = CalibrationRegistry()
+        self.panel = CameraManagerPanel(calibration_registry=self.registry)
+
+        self._make_profile = lambda quality=None: CalibrationProfile(
+            camera_id=self.camera.id, floor_id=self.floor.id,
+            intrinsics=CameraIntrinsics(image_width=640, image_height=480, focal_length_x=500.0, focal_length_y=500.0),
+            extrinsics=CameraExtrinsics(position=(0.0, 0.0), mount_height=3.0, yaw_degrees=0.0, pitch_degrees=45.0),
+            quality=quality,
+        )
+        self._quality_cls = CalibrationQuality
+
+    def test_no_profile_registered_shows_not_configured(self):
+
+        self.panel.refresh(self.building)
+        self.assertEqual(self.panel.camera_table.item(0, 7).text(), "NOT CONFIGURED")
+
+    def test_profile_with_no_quality_shows_unvalidated(self):
+
+        self.registry.set(self._make_profile(quality=None))
+        self.panel.refresh(self.building)
+        self.assertEqual(self.panel.camera_table.item(0, 7).text(), "CONFIGURED -- UNVALIDATED")
+
+    def test_profile_with_rmse_shows_validated(self):
+
+        quality = self._quality_cls(
+            reference_point_count=5, validated_point_count=5,
+            mean_error_m=0.1, median_error_m=0.1, max_error_m=0.2, rmse_m=0.061,
+            validation_timestamp="2026-01-01T00:00:00",
+        )
+        self.registry.set(self._make_profile(quality=quality))
+        self.panel.refresh(self.building)
+        self.assertEqual(self.panel.camera_table.item(0, 7).text(), "VALIDATED -- RMSE: 0.061 m")
+
+    def test_constructed_without_a_registry_defaults_to_not_configured(self):
+
+        panel = CameraManagerPanel()
+        panel.refresh(self.building)
+        self.assertEqual(panel.camera_table.item(0, 7).text(), "NOT CONFIGURED")
+
+
 if __name__ == "__main__":
     unittest.main()
