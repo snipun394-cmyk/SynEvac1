@@ -148,6 +148,36 @@ class MainToolbar(QToolBar):
 
         # =====================================================
         # Toolbar Layout
+        #
+        # SynEvac Designer Simplification & Product-Boundary Cleanup
+        # milestone -- the main toolbar is now grouped around the
+        # assets that actually participate in evacuation intelligence
+        # (docs/architecture/designer_asset_connectivity_audit.md is
+        # the authoritative source for this grouping), rather than one
+        # long undifferentiated list of every asset ever added.
+        #
+        # Three groups of actions are DELIBERATELY constructed above
+        # but never added to this toolbar's own visible layout below:
+        #   - the generic "Detector" tool (superseded by Smoke/Heat for
+        #     any type that has real behavior; Flame/Gas do nothing at
+        #     all -- see models/detector_migration.py) is not offered
+        #     for new authoring at all, in any menu;
+        #   - "Elevator" was already disabled/unconnected before this
+        #     milestone (no authoring tool backs it -- see its own
+        #     comment above) and stays exactly that way;
+        #   - the nine fire-safety/water-infrastructure asset actions
+        #     (Emergency Light through Fire Service Inlet) are moved to
+        #     a secondary surface -- MainWindow adds them to an
+        #     "Advanced Fire-Safety Tools" submenu (Insert menu) instead
+        #     of this toolbar, via the SAME QAction objects constructed
+        #     here (a QAction is not tied to one widget -- adding it to
+        #     a menu instead of a toolbar changes nothing about how it
+        #     is triggered or what it is connected to).
+        # Nothing is deleted: every QAction above still exists, is still
+        # constructed the same way, and is still wired to the same
+        # MainWindow.change_tool() handler in connect_toolbar() --
+        # existing/legacy projects containing any of these asset types
+        # still load, render, and remain editable in the Property Panel.
         # =====================================================
 
         self.addAction(self.new_action)
@@ -165,43 +195,37 @@ class MainToolbar(QToolBar):
 
         self.addSeparator()
 
+        # ---- Building ----
         self.addAction(self.zone_action)
-        self.addAction(self.exit_action)
         self.addAction(self.door_action)
+        self.addAction(self.exit_action)
         self.addAction(self.stair_action)
-        self.addAction(self.elevator_action)
         self.addAction(self.obstacle_action)
-
-        self.addSeparator()
-
-        self.addAction(self.camera_action)
-        self.addAction(self.detector_action)
-        self.addAction(self.smoke_detector_action)
-        self.addAction(self.heat_detector_action)
-        self.addAction(self.speaker_action)
-        self.addAction(self.sign_action)
-        self.addAction(self.manual_call_point_action)
-        self.addAction(self.emergency_light_action)
-        self.addAction(self.sprinkler_action)
-        self.addAction(self.fire_extinguisher_action)
-        self.addAction(self.fire_hydrant_action)
-        self.addAction(self.hose_reel_action)
-        self.addAction(self.fire_water_tank_action)
-        self.addAction(self.fire_pump_action)
-        self.addAction(self.jockey_pump_action)
-        self.addAction(self.fire_service_inlet_action)
-
-        self.addSeparator()
-
         self.addAction(self.assembly_point_action)
 
         self.addSeparator()
 
+        # ---- Perception & Alarm ----
+        self.addAction(self.camera_action)
+        self.addAction(self.smoke_detector_action)
+        self.addAction(self.heat_detector_action)
+        self.addAction(self.manual_call_point_action)
+
+        self.addSeparator()
+
+        # ---- Guidance & Output ----
+        self.addAction(self.speaker_action)
+        self.addAction(self.sign_action)
+
+        self.addSeparator()
+
+        # ---- Simulation ----
         self.addAction(self.occupant_action)
         self.addAction(self.simulation_action)
 
         self.addSeparator()
 
+        # ---- View ----
         self.addAction(self.zoom_in_action)
         self.addAction(self.zoom_out_action)
         self.addAction(self.reset_view_action)

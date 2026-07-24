@@ -2447,6 +2447,163 @@ class GraphicsScene(QGraphicsScene):
 
             self.addItem(light_item)
 
+        # SynEvac Designer Simplification & Product-Boundary Cleanup
+        # milestone, Phase 8 -- a genuine, pre-existing gap this
+        # milestone's own backward-compatibility testing surfaced:
+        # every one of these eight fire-safety/water-infrastructure
+        # asset types is placed correctly (click-to-place already
+        # constructs the matching *Item below, see this method's own
+        # mousePressEvent branches) and serializes/deserializes
+        # correctly (Floor.sprinklers etc. round-trip via to_dict/
+        # from_dict, unchanged), but rebuild_scene() itself -- the one
+        # method that reconstructs every graphics item from the model
+        # after a project load or a floor switch -- never iterated
+        # these eight lists at all. A loaded project containing a
+        # Sprinkler (or any of its seven siblings below) would
+        # therefore silently vanish from the canvas on open/floor-
+        # switch, despite remaining fully present, editable, and
+        # save-able in the underlying model. Fixed here, following the
+        # exact same per-item construction pattern EmergencyLight
+        # (immediately above) already establishes -- no new behavior,
+        # no new model, only restoring the same rendering every other
+        # asset type already had.
+
+        for sprinkler_obj in self.current_floor.sprinklers:
+
+            x, y = sprinkler_obj.position
+
+            sprinkler_item = SprinklerItem(
+                x * self.GRID_SIZE,
+                y * self.GRID_SIZE,
+                model=sprinkler_obj,
+            )
+
+            sprinkler_item.setFlag(
+                QGraphicsItem.GraphicsItemFlag.ItemIsMovable,
+                movable,
+            )
+
+            self.addItem(sprinkler_item)
+
+        for fire_extinguisher_obj in self.current_floor.fire_extinguishers:
+
+            x, y = fire_extinguisher_obj.position
+
+            fire_extinguisher_item = FireExtinguisherItem(
+                x * self.GRID_SIZE,
+                y * self.GRID_SIZE,
+                model=fire_extinguisher_obj,
+            )
+
+            fire_extinguisher_item.setFlag(
+                QGraphicsItem.GraphicsItemFlag.ItemIsMovable,
+                movable,
+            )
+
+            self.addItem(fire_extinguisher_item)
+
+        for fire_hydrant_obj in self.current_floor.fire_hydrants:
+
+            x, y = fire_hydrant_obj.position
+
+            fire_hydrant_item = FireHydrantItem(
+                x * self.GRID_SIZE,
+                y * self.GRID_SIZE,
+                model=fire_hydrant_obj,
+            )
+
+            fire_hydrant_item.setFlag(
+                QGraphicsItem.GraphicsItemFlag.ItemIsMovable,
+                movable,
+            )
+
+            self.addItem(fire_hydrant_item)
+
+        for hose_reel_obj in self.current_floor.hose_reels:
+
+            x, y = hose_reel_obj.position
+
+            hose_reel_item = HoseReelItem(
+                x * self.GRID_SIZE,
+                y * self.GRID_SIZE,
+                model=hose_reel_obj,
+            )
+
+            hose_reel_item.setFlag(
+                QGraphicsItem.GraphicsItemFlag.ItemIsMovable,
+                movable,
+            )
+
+            self.addItem(hose_reel_item)
+
+        for fire_water_tank_obj in self.current_floor.fire_water_tanks:
+
+            x, y = fire_water_tank_obj.position
+
+            fire_water_tank_item = FireWaterTankItem(
+                x * self.GRID_SIZE,
+                y * self.GRID_SIZE,
+                model=fire_water_tank_obj,
+            )
+
+            fire_water_tank_item.setFlag(
+                QGraphicsItem.GraphicsItemFlag.ItemIsMovable,
+                movable,
+            )
+
+            self.addItem(fire_water_tank_item)
+
+        for fire_pump_obj in self.current_floor.fire_pumps:
+
+            x, y = fire_pump_obj.position
+
+            fire_pump_item = FirePumpItem(
+                x * self.GRID_SIZE,
+                y * self.GRID_SIZE,
+                model=fire_pump_obj,
+            )
+
+            fire_pump_item.setFlag(
+                QGraphicsItem.GraphicsItemFlag.ItemIsMovable,
+                movable,
+            )
+
+            self.addItem(fire_pump_item)
+
+        for jockey_pump_obj in self.current_floor.jockey_pumps:
+
+            x, y = jockey_pump_obj.position
+
+            jockey_pump_item = JockeyPumpItem(
+                x * self.GRID_SIZE,
+                y * self.GRID_SIZE,
+                model=jockey_pump_obj,
+            )
+
+            jockey_pump_item.setFlag(
+                QGraphicsItem.GraphicsItemFlag.ItemIsMovable,
+                movable,
+            )
+
+            self.addItem(jockey_pump_item)
+
+        for fire_service_inlet_obj in self.current_floor.fire_service_inlets:
+
+            x, y = fire_service_inlet_obj.position
+
+            fire_service_inlet_item = FireServiceInletItem(
+                x * self.GRID_SIZE,
+                y * self.GRID_SIZE,
+                model=fire_service_inlet_obj,
+            )
+
+            fire_service_inlet_item.setFlag(
+                QGraphicsItem.GraphicsItemFlag.ItemIsMovable,
+                movable,
+            )
+
+            self.addItem(fire_service_inlet_item)
+
         for assembly_point_obj in self.current_floor.assembly_points:
 
             x, y = assembly_point_obj.position

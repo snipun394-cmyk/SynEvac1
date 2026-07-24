@@ -262,9 +262,14 @@ class MainWindow(QMainWindow):
 
         self.create_actions()
 
-        self.create_menu()
-
+        # SynEvac Designer Simplification & Product-Boundary Cleanup
+        # milestone -- create_toolbar() must run before create_menu()
+        # now: the "Advanced Fire-Safety Tools" submenu (Insert menu)
+        # reuses the SAME QAction objects MainToolbar already
+        # constructs, rather than creating a second, competing set.
         self.create_toolbar()
+
+        self.create_menu()
 
         self.create_docks()
 
@@ -449,7 +454,34 @@ class MainWindow(QMainWindow):
             self.toggle_camera_validation_panel_action
         )
 
-        menubar.addMenu("Insert")
+        insert_menu = menubar.addMenu("Insert")
+
+        # SynEvac Designer Simplification & Product-Boundary Cleanup
+        # milestone -- the nine fire-safety/water-infrastructure asset
+        # actions (constructed in MainToolbar exactly as before, still
+        # wired to change_tool() in connect_toolbar() exactly as
+        # before) are no longer added to the main toolbar's own visible
+        # layout (see toolbar.py's own comment). They remain fully
+        # authorable, just through this explicitly secondary surface --
+        # an advanced user opens Insert > Advanced Fire-Safety Tools >
+        # <asset> to place one, same click-to-place behavior as any
+        # other tool. Nothing about the asset models, managers,
+        # snapshots, or Command Center display changes; this is a UI
+        # prominence change only.
+        advanced_fire_safety_menu = insert_menu.addMenu("Advanced Fire-Safety Tools")
+
+        for action in (
+            self.toolbar.emergency_light_action,
+            self.toolbar.sprinkler_action,
+            self.toolbar.fire_extinguisher_action,
+            self.toolbar.fire_hydrant_action,
+            self.toolbar.hose_reel_action,
+            self.toolbar.fire_water_tank_action,
+            self.toolbar.fire_pump_action,
+            self.toolbar.jockey_pump_action,
+            self.toolbar.fire_service_inlet_action,
+        ):
+            advanced_fire_safety_menu.addAction(action)
 
         simulation_menu = menubar.addMenu("Simulation")
 
