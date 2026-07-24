@@ -138,13 +138,27 @@ class EmergencyResponseIntelligenceEngine:
         # optional so every existing positional caller keeps working
         # unchanged.
 
+        # Canonical Live Occupancy Source of Truth milestone -- zone
+        # MEMBERSHIP is decided once, by LiveOccupantManager.
+        # canonical_occupancy() (the SAME grouping crowd_intelligence/
+        # evacuation_progress/live_perception all read -- docs/
+        # architecture/canonical_live_occupancy.md), never independently
+        # re-decided here. This engine still needs the full LiveOccupant
+        # objects (assistance-signal/classification evidence is
+        # genuinely this engine's own concern, not a duplicated
+        # headcount), so canonical occupant ids are resolved back to
+        # objects via a lookup built from active_occupants() -- one
+        # fetch, not a second independent grouping decision.
+        facts = self.live_occupant_manager.canonical_occupancy(time)
         active_occupants = self.live_occupant_manager.active_occupants()
         human_state_by_occupant_id = human_state_by_occupant_id or {}
 
-        occupants_by_zone: Dict[str, list] = {}
-        for occupant in active_occupants:
-            if occupant.current_zone_id is not None:
-                occupants_by_zone.setdefault(occupant.current_zone_id, []).append(occupant)
+        occupants_by_id = {occupant.occupant_id: occupant for occupant in active_occupants}
+
+        occupants_by_zone: Dict[str, list] = {
+            zone_id: [occupants_by_id[oid] for oid in occupant_ids if oid in occupants_by_id]
+            for zone_id, occupant_ids in facts.occupant_ids_by_zone.items()
+        }
 
         alarm_sources_by_zone = self._alarm_sources_by_zone(building_state)
 

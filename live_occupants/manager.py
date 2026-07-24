@@ -24,6 +24,7 @@ from live_occupants.lifecycle import (
     DEFAULT_EXIT_PROXIMITY_THRESHOLD, DEFAULT_EXPIRE_AFTER_SECONDS,
     is_expired, is_near_exit, next_status_on_missing, next_status_on_update,
 )
+from live_occupants.occupancy import OccupancyFacts, compute_occupancy_facts
 from live_occupants.occupant import LiveOccupant
 from live_occupants.state import OccupantStatus
 
@@ -81,6 +82,20 @@ class LiveOccupantManager:
         self._by_floor: Dict[str, Set[str]] = {}
         self._by_behavior: Dict[RecognizedBehavior, Set[str]] = {}
         self._by_camera: Dict[str, Set[str]] = {}
+
+        # Canonical Live Occupancy Source of Truth milestone -- a
+        # version counter bumped on every store/remove (the two sole
+        # mutation choke points, see _store()/_remove() below), so
+        # canonical_occupancy() below can memoize per (timestamp,
+        # version) exactly like live_perception.coordinator.
+        # LivePerceptionFusionCoordinator.collect() already memoizes
+        # per timestamp alone -- the extra version key here additionally
+        # guards against two distinct update()/sweep_missing() calls
+        # that happen to share the same timestamp (e.g. in tests),
+        # which a pure timestamp-only cache would incorrectly treat as
+        # identical.
+        self._version = 0
+        self._occupancy_cache: Optional[Tuple[float, int, OccupancyFacts]] = None
 
     # =====================================================
     # Update (Phase 4/6/9)
@@ -405,6 +420,8 @@ class LiveOccupantManager:
 
     def _store(self, occupant: LiveOccupant, near_exit: bool) -> None:
 
+        self._version += 1
+
         previous = self._occupants.get(occupant.occupant_id)
 
         if previous is not None:
@@ -418,6 +435,8 @@ class LiveOccupantManager:
     # =====================================================
 
     def _remove(self, occupant_id: str) -> None:
+
+        self._version += 1
 
         occupant = self._occupants.pop(occupant_id, None)
         self._near_exit.pop(occupant_id, None)
@@ -511,6 +530,38 @@ class LiveOccupantManager:
     def occupants_on_camera(self, camera_id: str) -> Tuple[LiveOccupant, ...]:
 
         return tuple(self._occupants[occupant_id] for occupant_id in self._by_camera.get(camera_id, ()))
+
+    # =====================================================
+    # Canonical Live Occupancy Source of Truth milestone -- the ONE
+    # method every production consumer that needs a "current live
+    # occupancy, grouped by zone/floor" answer must call, instead of
+    # each independently filtering/grouping active_occupants() itself
+    # (Phase 3's own "LiveOccupantManager already owns persistent global
+    # live occupant identity and lifecycle" reasoning -- this is the
+    # correct, and only, layer that can honestly answer "who currently
+    # counts," since it alone owns the NEW/ACTIVE/TEMPORARILY_LOST/
+    # EXITED/EXPIRED lifecycle those consumers must never re-decide for
+    # themselves). Memoized per (timestamp, internal mutation version) --
+    # every consumer calling this with the SAME `time` value within one
+    # orchestrator cycle (the live_perception occupancy provider, Crowd
+    # Intelligence, Evacuation Progress, Emergency Response all do, see
+    # docs/architecture/canonical_live_occupancy.md) gets back the exact
+    # same OccupancyFacts instance, computed only once.
+    # =====================================================
+
+    def canonical_occupancy(self, timestamp: float) -> OccupancyFacts:
+
+        if self._occupancy_cache is not None:
+
+            cached_timestamp, cached_version, cached_facts = self._occupancy_cache
+
+            if cached_timestamp == timestamp and cached_version == self._version:
+                return cached_facts
+
+        facts = compute_occupancy_facts(self.active_occupants(), timestamp)
+        self._occupancy_cache = (timestamp, self._version, facts)
+
+        return facts
 
     # =====================================================
 

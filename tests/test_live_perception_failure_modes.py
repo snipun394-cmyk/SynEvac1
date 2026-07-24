@@ -24,11 +24,12 @@ from live_perception.providers import (
 
 class FakeOccupant:
 
-    def __init__(self, occupant_id, current_zone_id, behavior, confidence):
+    def __init__(self, occupant_id, current_zone_id, behavior, confidence, current_floor_id=None):
         self.occupant_id = occupant_id
         self.current_zone_id = current_zone_id
         self.behavior = behavior
         self.confidence = confidence
+        self.current_floor_id = current_floor_id
 
 
 class FakeOccupantManager:
@@ -38,6 +39,12 @@ class FakeOccupantManager:
 
     def active_occupants(self):
         return self._occupants
+
+    def canonical_occupancy(self, timestamp):
+
+        from live_occupants.occupancy import compute_occupancy_facts
+
+        return compute_occupancy_facts(self._occupants, timestamp)
 
 
 class FakeSensorStatus:

@@ -70,12 +70,24 @@ class CrowdIntelligenceEngine:
 
     def compute(self, time: float) -> CrowdIntelligenceSnapshot:
 
+        # Canonical Live Occupancy Source of Truth milestone -- the ONE
+        # per-cycle canonical grouping (memoized by LiveOccupantManager
+        # itself, shared with the BuildingState occupancy provider,
+        # Evacuation Progress, and Emergency Response -- see docs/
+        # architecture/canonical_live_occupancy.md), fetched once here
+        # and threaded through compute_zone_metrics()/_compute_building_
+        # summary() below instead of either independently re-grouping
+        # active_occupants() by zone.
+        facts = self.live_occupant_manager.canonical_occupancy(time)
+
         active_occupants = self.live_occupant_manager.active_occupants()
         all_occupants = self.live_occupant_manager.all_occupants()
 
         zone_areas = {zone.id: (zone.area if zone.area > 0 else None) for zone in self._zones}
 
-        zone_metrics = compute_zone_metrics(active_occupants, all_occupants, zone_areas, self.density_thresholds)
+        zone_metrics = compute_zone_metrics(
+            facts.occupant_ids_by_zone, active_occupants, all_occupants, zone_areas, self.density_thresholds,
+        )
 
         zone_metrics = {
             zone_id: dataclasses.replace(
@@ -105,7 +117,9 @@ class CrowdIntelligenceEngine:
             for stair in self._stairs
         }
 
-        building_summary = self._compute_building_summary(zone_metrics, door_metrics, exit_metrics, stair_metrics, all_occupants)
+        building_summary = self._compute_building_summary(
+            zone_metrics, door_metrics, exit_metrics, stair_metrics, active_occupants, facts,
+        )
 
         return CrowdIntelligenceSnapshot(
             timestamp=time, zone_metrics=zone_metrics, door_metrics=door_metrics,
@@ -159,13 +173,17 @@ class CrowdIntelligenceEngine:
     # =====================================================
 
     def _compute_building_summary(
-        self, zone_metrics, door_metrics, exit_metrics, stair_metrics, all_occupants,
+        self, zone_metrics, door_metrics, exit_metrics, stair_metrics, active_occupants, facts,
     ) -> BuildingCrowdSummary:
 
-        total_observed_occupants = len(self.live_occupant_manager.active_occupants())
-        calibrated_occupant_count = sum(
-            1 for o in self.live_occupant_manager.active_occupants() if o.world_position is not None
-        )
+        # Canonical Live Occupancy Source of Truth milestone -- both the
+        # total headcount and the already-fetched active_occupants list
+        # are reused here, never re-queried from live_occupant_manager a
+        # second/third time within the same compute() call (a genuine,
+        # if minor, redundant-work fix alongside the main duplication
+        # removal -- see Phase 17's own performance goal).
+        total_observed_occupants = facts.total_observed_count
+        calibrated_occupant_count = sum(1 for o in active_occupants if o.world_position is not None)
         position_coverage_fraction = (
             (calibrated_occupant_count / total_observed_occupants) if total_observed_occupants > 0 else None
         )

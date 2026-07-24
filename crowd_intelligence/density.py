@@ -16,6 +16,19 @@ from crowd_intelligence.models import DensityThresholds, IntensityLevel, ZoneCro
 # (moving/stationary/running/mean_speed/position coverage) is computed
 # here too, in the same single pass over active_occupants(), since both
 # need the identical "group by current_zone_id" step.
+#
+# Canonical Live Occupancy Source of Truth milestone -- WHO belongs to
+# which zone is no longer decided here at all: `occupant_ids_by_zone`
+# (live_occupants.occupancy.OccupancyFacts, built once per cycle by
+# LiveOccupantManager.canonical_occupancy()) is the single source of
+# zone membership; this function only ever RESOLVES those already-
+# decided ids back to full LiveOccupant objects (via `active_occupants`,
+# still needed for the per-occupant crowd-specific breakdown this
+# milestone explicitly keeps here -- moving/stationary/running/
+# mean_speed/position coverage are genuinely Crowd Intelligence's own
+# concern, never duplicated elsewhere). `occupant_count` is therefore
+# STRUCTURALLY tied to the canonical grouping, not a second,
+# independently-incremented tally.
 # =====================================================
 
 
@@ -35,6 +48,7 @@ def compute_zone_density(occupant_count: int, zone_area: Optional[float]) -> Opt
 
 
 def compute_zone_metrics(
+    occupant_ids_by_zone: Dict[str, Sequence[str]],
     active_occupants: Sequence[LiveOccupant],
     all_occupants: Sequence[LiveOccupant],
     zone_areas: Dict[str, Optional[float]],
@@ -43,18 +57,16 @@ def compute_zone_metrics(
 
     # `all_occupants` is used ONLY to find TEMPORARILY_LOST occupants for
     # temporarily_lost_count (Phase 3) -- active_occupants (NEW/ACTIVE)
-    # remains the sole source for occupant_count/density/moving/
-    # stationary/running/mean_speed/position coverage, so the two counts
-    # can never be conflated (Phase 12).
+    # remains the sole source for density/moving/stationary/running/
+    # mean_speed/position coverage, so the two counts can never be
+    # conflated (Phase 12).
 
-    by_zone: Dict[str, list] = {}
+    occupants_by_id = {occupant.occupant_id: occupant for occupant in active_occupants}
 
-    for occupant in active_occupants:
-
-        if occupant.current_zone_id is None:
-            continue
-
-        by_zone.setdefault(occupant.current_zone_id, []).append(occupant)
+    by_zone: Dict[str, list] = {
+        zone_id: [occupants_by_id[oid] for oid in occupant_ids if oid in occupants_by_id]
+        for zone_id, occupant_ids in occupant_ids_by_zone.items()
+    }
 
     lost_by_zone: Dict[str, int] = {}
 
@@ -75,7 +87,12 @@ def compute_zone_metrics(
     for zone_id in zone_ids:
 
         occupants = by_zone.get(zone_id, ())
-        occupant_count = len(occupants)
+
+        # Canonical Live Occupancy Source of Truth milestone -- read
+        # directly off occupant_ids_by_zone (the canonical grouping),
+        # not len(occupants) -- structurally the same value in the
+        # well-formed case, but this is the literal, traceable source.
+        occupant_count = len(occupant_ids_by_zone.get(zone_id, ()))
 
         zone_area = zone_areas.get(zone_id)
         density = compute_zone_density(occupant_count, zone_area)

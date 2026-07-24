@@ -44,10 +44,23 @@ class LiveOccupantObservationProvider(ObservationProvider):
     # SensorFusionEngine) always agree on the same physical headcount --
     # never two independently-invented numbers.
     #
-    # Only occupants with a known current_zone_id contribute (Phase 7's
-    # own "zone localization is honestly uncertain" convention, applied
-    # here too -- an occupant with no resolved zone has nowhere honest
-    # to report an OCCUPANCY observation against).
+    # Canonical Live Occupancy Source of Truth milestone -- the per-zone
+    # COUNT fed into each OCCUPANCY Observation now comes directly from
+    # live_occupant_manager.canonical_occupancy(time).occupant_ids_by_zone
+    # (Phase 5's own "must no longer independently reconstruct the same
+    # zone headcount through a separate logic path" requirement) instead
+    # of a second, independently-incremented counter -- this is the
+    # SAME grouping crowd_intelligence/evacuation_progress/
+    # emergency_response now all read too (see docs/architecture/
+    # canonical_live_occupancy.md), memoized once per cycle. Only
+    # occupants with a known current_zone_id contribute (Phase 7's own
+    # "zone localization is honestly uncertain" convention, applied here
+    # too -- an occupant with no resolved zone has nowhere honest to
+    # report an OCCUPANCY observation against); confidence-averaging and
+    # per-occupant BEHAVIOR observations still require the full
+    # LiveOccupant objects, so a single pass over active_occupants()
+    # remains here for that (genuinely provider-specific, not a
+    # duplicated headcount).
 
     def __init__(self, live_occupant_manager, source_name: str = "live-occupants"):
 
@@ -58,9 +71,9 @@ class LiveOccupantObservationProvider(ObservationProvider):
 
     def collect(self, time: float) -> Tuple[Observation, ...]:
 
-        observations = []
+        facts = self.live_occupant_manager.canonical_occupancy(time)
 
-        counts: Dict[str, int] = {}
+        observations = []
         confidence_sums: Dict[str, float] = {}
 
         for occupant in self.live_occupant_manager.active_occupants():
@@ -68,7 +81,6 @@ class LiveOccupantObservationProvider(ObservationProvider):
             if occupant.current_zone_id is None:
                 continue
 
-            counts[occupant.current_zone_id] = counts.get(occupant.current_zone_id, 0) + 1
             confidence_sums[occupant.current_zone_id] = confidence_sums.get(occupant.current_zone_id, 0.0) + occupant.confidence
 
             if occupant.behavior is not None:
@@ -84,7 +96,9 @@ class LiveOccupantObservationProvider(ObservationProvider):
                     )
                 )
 
-        for zone_id, count in counts.items():
+        for zone_id, occupant_ids in facts.occupant_ids_by_zone.items():
+
+            count = len(occupant_ids)
 
             observations.append(
                 Observation(

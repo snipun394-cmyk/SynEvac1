@@ -133,9 +133,16 @@ class EvacuationProgressEngine:
 
     def compute(self, time: float, building_state, crowd_snapshot=None) -> EvacuationProgressSnapshot:
 
-        active_occupants = self.live_occupant_manager.active_occupants()
+        # Canonical Live Occupancy Source of Truth milestone -- the
+        # SAME per-cycle canonical grouping crowd_intelligence/live_
+        # perception/emergency_response all read (docs/architecture/
+        # canonical_live_occupancy.md), replacing this engine's own
+        # previously-independent "filter active_occupants() by
+        # current_zone_id" loop. known_active/active_by_zone below are
+        # now both read straight off `facts`, never recomputed.
+        facts = self.live_occupant_manager.canonical_occupancy(time)
 
-        known_active = len(active_occupants)
+        known_active = facts.total_observed_count
         known_exited_ids = self._ledger.known_exited_occupant_ids()
         known_exited = len(known_exited_ids)
         known_total_observed = len(self._ledger.ever_seen_ids())
@@ -144,10 +151,9 @@ class EvacuationProgressEngine:
         raw_overall_trend = self._trend_tracker.observe("overall_progress", time, progress_fraction)
         overall_trend = _map_overall_trend(raw_overall_trend, progress_fraction)
 
-        active_by_zone: Dict[str, int] = {}
-        for occupant in active_occupants:
-            if occupant.current_zone_id is not None:
-                active_by_zone[occupant.current_zone_id] = active_by_zone.get(occupant.current_zone_id, 0) + 1
+        active_by_zone: Dict[str, int] = {
+            zone_id: len(occupant_ids) for zone_id, occupant_ids in facts.occupant_ids_by_zone.items()
+        }
 
         camera_covered_zone_ids = self._camera_covered_zone_ids(building_state)
 
