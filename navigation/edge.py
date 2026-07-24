@@ -1,5 +1,7 @@
-from dataclasses import dataclass
-from typing import Any
+from dataclasses import dataclass, field
+from typing import Any, Tuple
+
+from navigation.obstacle_geometry import segment_blocked_by_obstacles
 
 
 @dataclass
@@ -33,14 +35,34 @@ class Edge:
     # None means "not derivable" (e.g. an endpoint has no geometry).
     walking_distance: float = None
 
-    # Deliberately no dynamic-state field here (blocked, smoke, fire,
+    # Obstacle -> Navigation & Evacuation Connectivity milestone --
+    # LIVE references to the same Obstacle objects Floor.obstacles
+    # already owns (populated once by NavigationGraphGenerator for
+    # Door/Exit edges, the two edge types with an actual line-segment
+    # geometry co-located with one floor's obstacle list -- Stair's
+    # cross-floor point-to-point connection is deliberately out of
+    # scope, see docs/architecture/obstacle_navigation_integration.md).
+    # NOT a snapshot/copy of obstacle state at build time -- exactly
+    # like `reference` itself, these are the SAME live Obstacle
+    # instances, so traversable (below) always reflects an obstacle's
+    # CURRENT position/active/traversability with no graph rebuild
+    # required, the same "no dynamic state baked into Edge, always
+    # read live from the real engineering object" discipline
+    # Door.locked/Exit.is_blocked already established one property
+    # down. An empty tuple (the default) means "no obstacles were on
+    # this edge's floor at build time" -- Stair edges, and any Door/
+    # Exit edge built before this milestone's own tests supply one,
+    # simply never have anything to check, never a fabricated block.
+    blocking_obstacles: Tuple[Any, ...] = field(default_factory=tuple)
+
+    # Deliberately no other dynamic-state field here (smoke, fire,
     # congestion, ...) -- same reasoning as Node: rebuilding the graph
     # replaces every Edge instance, so nothing stored on one would
-    # survive the next rebuild. Smoke/Fire/Congestion/Obstacle
-    # penalties belong to a future Simulation/Dynamic Hazard layer
-    # that keeps its own store keyed by Edge.id and supplies penalised
-    # costs through a CostModel (see navigation/cost.py) that wraps
-    # DefaultCostModel -- not through fields added to Edge.
+    # survive the next rebuild. Smoke/Fire/Congestion penalties belong
+    # to a future Simulation/Dynamic Hazard layer that keeps its own
+    # store keyed by Edge.id and supplies penalised costs through a
+    # CostModel (see navigation/cost.py) that wraps DefaultCostModel --
+    # not through fields added to Edge.
 
     DOOR = "Door"
     EXIT = "Exit"
@@ -96,12 +118,37 @@ class Edge:
             return (
                 bool(getattr(self.reference, "active", True))
                 and not getattr(self.reference, "locked", False)
+                and not self._blocked_by_obstacle()
             )
 
         if self.edge_type == self.EXIT:
-            return not getattr(self.reference, "is_blocked", False)
+
+            return (
+                not getattr(self.reference, "is_blocked", False)
+                and not self._blocked_by_obstacle()
+            )
 
         return True
+
+    # =====================================================
+
+    def _blocked_by_obstacle(self) -> bool:
+
+        # Obstacle -> Navigation & Evacuation Connectivity milestone --
+        # Door/Exit both expose the identical start_point/end_point
+        # shape (models/door.py, models/exit.py), read here via
+        # getattr so this stays duck-typed rather than importing
+        # either model. Live geometry check against LIVE obstacle
+        # references (see blocking_obstacles' own field comment above)
+        # -- never cached, never requiring a graph rebuild.
+
+        if not self.blocking_obstacles:
+            return False
+
+        seg_start = getattr(self.reference, "start_point", None)
+        seg_end = getattr(self.reference, "end_point", None)
+
+        return segment_blocked_by_obstacles(seg_start, seg_end, self.blocking_obstacles)
 
     # =====================================================
 

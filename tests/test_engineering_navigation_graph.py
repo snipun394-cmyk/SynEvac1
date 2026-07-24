@@ -243,6 +243,17 @@ class EdgeEngineeringPropertyTests(unittest.TestCase):
         # Edge instance. Those penalties belong to a future CostModel
         # that wraps DefaultCostModel and consults its own external
         # state (see navigation/cost.py), not to fields on Edge.
+        #
+        # Obstacle -> Navigation & Evacuation Connectivity milestone --
+        # `blocking_obstacles` is a deliberate, narrow exception, not a
+        # violation of this rule: it holds LIVE references to the same
+        # Obstacle objects Floor.obstacles already owns (exactly like
+        # `reference` itself holds a live Door/Exit/Stair reference,
+        # never a cached snapshot of its state) -- Edge.traversable
+        # reads an obstacle's CURRENT active/traversability/position
+        # fresh on every access, never a value baked in at build time.
+        # See navigation/edge.py's own field comment for the full
+        # reasoning.
         field_names = {f.name for f in fields(Edge)}
 
         self.assertNotIn("dynamic_state", field_names)
@@ -255,6 +266,7 @@ class EdgeEngineeringPropertyTests(unittest.TestCase):
                 "to_node",
                 "reference",
                 "walking_distance",
+                "blocking_obstacles",
             },
         )
 

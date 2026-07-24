@@ -176,6 +176,7 @@ class NavigationGraphGenerator:
                         door,
                         endpoint_b,
                     ),
+                    blocking_obstacles=tuple(floor.obstacles),
                 )
             )
 
@@ -213,6 +214,7 @@ class NavigationGraphGenerator:
                         zone,
                         exit_obj,
                     ),
+                    blocking_obstacles=tuple(floor.obstacles),
                 )
             )
 
