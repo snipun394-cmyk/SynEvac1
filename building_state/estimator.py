@@ -12,6 +12,7 @@ from sensor_manager.status import SensorStatus
 
 from perception.models.camera_observation import CameraFrameObservation
 from perception.models.heat_detector_observation import HeatDetectorReading
+from perception.models.manual_call_point_observation import ManualCallPointReading
 from perception.models.smoke_detector_observation import SmokeDetectorReading
 
 from multi_camera_fusion.track import FusionResult
@@ -90,6 +91,8 @@ class BuildingStateEstimator:
         smoke_detector_readings: Iterable[SmokeDetectorReading] = (),
         heat_detector_statuses: Iterable[SensorStatus] = (),
         heat_detector_readings: Iterable[HeatDetectorReading] = (),
+        manual_call_point_statuses: Iterable[SensorStatus] = (),
+        manual_call_point_readings: Iterable[ManualCallPointReading] = (),
         fusion_result: Optional[FusionResult] = None,
         facp_snapshot: Optional[FACPSnapshot] = None,
         control_snapshot: Optional[ControlStateSnapshot] = None,
@@ -104,10 +107,12 @@ class BuildingStateEstimator:
         camera_statuses = tuple(camera_statuses)
         smoke_detector_statuses = tuple(smoke_detector_statuses)
         heat_detector_statuses = tuple(heat_detector_statuses)
+        manual_call_point_statuses = tuple(manual_call_point_statuses)
 
         camera_states = self._build_camera_states(camera_statuses, camera_observations)
         smoke_states = self._build_detector_states(smoke_detector_statuses, smoke_detector_readings)
         heat_states = self._build_detector_states(heat_detector_statuses, heat_detector_readings)
+        mcp_states = self._build_detector_states(manual_call_point_statuses, manual_call_point_readings)
 
         occupant_tracks = (
             {track.track_id: track for track in fusion_result.tracks}
@@ -122,10 +127,11 @@ class BuildingStateEstimator:
             camera_observations=camera_states,
             smoke_detector_states=smoke_states,
             heat_detector_states=heat_states,
+            manual_call_point_states=mcp_states,
             hazard_summary=self._summarize_hazard(hazard_snapshot),
-            building_alarm_status=self._aggregate_alarm_status(smoke_states, heat_states),
+            building_alarm_status=self._aggregate_alarm_status(smoke_states, heat_states, mcp_states),
             active_assets=self._summarize_active_assets(
-                camera_statuses, smoke_detector_statuses, heat_detector_statuses,
+                camera_statuses, smoke_detector_statuses, heat_detector_statuses, manual_call_point_statuses,
             ),
             facp_status=facp_snapshot,
             control_status=control_snapshot,
@@ -192,16 +198,20 @@ class BuildingStateEstimator:
 
     # =====================================================
 
-    def _aggregate_alarm_status(self, smoke_states, heat_states) -> DetectorState:
+    def _aggregate_alarm_status(self, smoke_states, heat_states, mcp_states) -> DetectorState:
 
         # Same ALARM > FAULT > NORMAL priority SensorManager.
         # aggregate_alarm_state() already establishes, restated here
         # (never imported -- see that method's own docstring on why
         # SensorManager never computes a hazard-driven state itself)
         # over BuildingState's own asset states instead of a caller-
-        # supplied DetectorState mapping.
+        # supplied DetectorState mapping. Manual Call Points now
+        # included -- a manually-reported emergency is exactly as
+        # honest a contributor to the building-wide alarm status as an
+        # automatic detector alarm; excluding it would silently
+        # understate a real, human-confirmed report.
 
-        all_states = tuple(smoke_states.values()) + tuple(heat_states.values())
+        all_states = tuple(smoke_states.values()) + tuple(heat_states.values()) + tuple(mcp_states.values())
 
         if any(asset.reading is not None and asset.reading.alarm_active for asset in all_states):
             return DetectorState.ALARM
@@ -214,10 +224,10 @@ class BuildingStateEstimator:
     # =====================================================
 
     def _summarize_active_assets(
-        self, camera_statuses, smoke_detector_statuses, heat_detector_statuses,
+        self, camera_statuses, smoke_detector_statuses, heat_detector_statuses, manual_call_point_statuses=(),
     ) -> ActiveAssetsSummary:
 
-        sensor_statuses = smoke_detector_statuses + heat_detector_statuses
+        sensor_statuses = smoke_detector_statuses + heat_detector_statuses + tuple(manual_call_point_statuses)
 
         return ActiveAssetsSummary(
             active_camera_ids=tuple(sorted(s.camera_id for s in camera_statuses if s.active)),

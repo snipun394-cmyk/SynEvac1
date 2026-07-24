@@ -47,9 +47,9 @@ class LiveEmergencyResponsePanel(QWidget):
 
         queue_group = QGroupBox("Response Priority Queue (highest first)")
         queue_layout = QVBoxLayout(queue_group)
-        self.queue_table = QTableWidget(0, 8)
+        self.queue_table = QTableWidget(0, 9)
         self.queue_table.setHorizontalHeaderLabels(
-            ["Rank", "Priority", "Zone", "Floor", "Occupants", "Assistance", "Clearance", "Hazard"]
+            ["Rank", "Priority", "Zone", "Floor", "Occupants", "Assistance", "Clearance", "Hazard", "Alarm Sources"]
         )
         self.queue_table.horizontalHeader().setStretchLastSection(True)
         self.queue_table.verticalHeader().setVisible(False)
@@ -97,6 +97,7 @@ class LiveEmergencyResponsePanel(QWidget):
             )
             self.queue_table.setItem(row_index, 6, QTableWidgetItem(priority.clearance_status or "-"))
             self.queue_table.setItem(row_index, 7, QTableWidgetItem(priority.hazard_severity or "-"))
+            self.queue_table.setItem(row_index, 8, QTableWidgetItem(_format_alarm_sources_summary(priority.alarm_sources)))
 
     # =====================================================
 
@@ -116,7 +117,11 @@ class LiveEmergencyResponsePanel(QWidget):
             self.detail_label.setText("-")
             return
 
-        self.detail_label.setText(f"{priority.explanation}\n\n{_format_occupant_evidence(priority.occupant_evidence)}")
+        self.detail_label.setText(
+            f"{priority.explanation}\n\n"
+            f"{_format_alarm_sources_detail(priority.alarm_sources)}\n\n"
+            f"{_format_occupant_evidence(priority.occupant_evidence)}"
+        )
 
 
 # =====================================================
@@ -127,6 +132,55 @@ class LiveEmergencyResponsePanel(QWidget):
 # -- explicit wording only ("classification unknown", never "UNKNOWN"
 # printed bare as if it were a real classification).
 # =====================================================
+
+
+# =====================================================
+# Manual Call Point -> Live Emergency Response Integration milestone --
+# an operator must be able to see, without reading source code, that a
+# Manual Call Point activation is a DIFFERENT kind of evidence from an
+# automatic Smoke/Heat Detector alarm -- never merged into one
+# undifferentiated "Alarm" label. Both helpers read only
+# ZoneResponsePriority.alarm_sources (already structured, plain-value
+# AlarmSourceEvidence entries) -- no reason-code string parsing.
+# =====================================================
+
+
+def _format_alarm_sources_summary(alarm_sources) -> str:
+
+    if not alarm_sources:
+        return "-"
+
+    manual_ids = sorted(s.source_id for s in alarm_sources if s.source_type == "ManualCallPoint")
+    automatic_ids = sorted(s.source_id for s in alarm_sources if s.source_type != "ManualCallPoint")
+
+    parts = []
+
+    if manual_ids:
+        parts.append(f"Manual: {', '.join(manual_ids)}")
+
+    if automatic_ids:
+        parts.append(f"Auto: {', '.join(automatic_ids)}")
+
+    return "; ".join(parts) if parts else "-"
+
+
+def _format_alarm_sources_detail(alarm_sources) -> str:
+
+    if not alarm_sources:
+        return "Alarm sources: none currently active."
+
+    manual_sources = [s for s in alarm_sources if s.source_type == "ManualCallPoint"]
+    automatic_sources = [s for s in alarm_sources if s.source_type != "ManualCallPoint"]
+
+    lines = ["Alarm sources:"]
+
+    for source in sorted(manual_sources, key=lambda s: s.source_id):
+        lines.append(f"  - Manual Call Point {source.source_id} -- manual emergency report (human-reported, not a confirmed hazard)")
+
+    for source in sorted(automatic_sources, key=lambda s: s.source_id):
+        lines.append(f"  - {source.source_type} {source.source_id} -- automatic detector alarm")
+
+    return "\n".join(lines)
 
 
 def _format_occupant_evidence(occupant_evidence) -> str:

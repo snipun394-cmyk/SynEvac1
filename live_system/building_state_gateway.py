@@ -9,6 +9,7 @@ from sensor_manager.status import SensorStatus
 
 from perception.models.camera_observation import CameraFrameObservation
 from perception.models.heat_detector_observation import HeatDetectorReading
+from perception.models.manual_call_point_observation import ManualCallPointReading
 from perception.models.smoke_detector_observation import SmokeDetectorReading
 
 from multi_camera_fusion.track import FusionResult
@@ -61,6 +62,8 @@ SmokeDetectorStatusProvider = Callable[[float], Iterable[SensorStatus]]
 SmokeDetectorReadingProvider = Callable[[float], Iterable[SmokeDetectorReading]]
 HeatDetectorStatusProvider = Callable[[float], Iterable[SensorStatus]]
 HeatDetectorReadingProvider = Callable[[float], Iterable[HeatDetectorReading]]
+ManualCallPointStatusProvider = Callable[[float], Iterable[SensorStatus]]
+ManualCallPointReadingProvider = Callable[[float], Iterable[ManualCallPointReading]]
 
 FACPSnapshotProvider = Callable[[float], Optional[FACPSnapshot]]
 ControlSnapshotProvider = Callable[[float], Optional[ControlStateSnapshot]]
@@ -107,6 +110,8 @@ class EstimatorBuildingStateGateway:
         smoke_detector_reading_provider: Optional[SmokeDetectorReadingProvider] = None,
         heat_detector_status_provider: Optional[HeatDetectorStatusProvider] = None,
         heat_detector_reading_provider: Optional[HeatDetectorReadingProvider] = None,
+        manual_call_point_status_provider: Optional[ManualCallPointStatusProvider] = None,
+        manual_call_point_reading_provider: Optional[ManualCallPointReadingProvider] = None,
         facp_snapshot_provider: Optional[FACPSnapshotProvider] = None,
         control_snapshot_provider: Optional[ControlSnapshotProvider] = None,
         fire_safety_snapshot_provider: Optional[FireSafetySnapshotProvider] = None,
@@ -126,6 +131,8 @@ class EstimatorBuildingStateGateway:
         self._smoke_detector_reading_provider = smoke_detector_reading_provider
         self._heat_detector_status_provider = heat_detector_status_provider
         self._heat_detector_reading_provider = heat_detector_reading_provider
+        self._manual_call_point_status_provider = manual_call_point_status_provider
+        self._manual_call_point_reading_provider = manual_call_point_reading_provider
 
         self._facp_snapshot_provider = facp_snapshot_provider
         self._control_snapshot_provider = control_snapshot_provider
@@ -172,6 +179,8 @@ class EstimatorBuildingStateGateway:
             smoke_detector_readings=self._resolve_iterable(self._smoke_detector_reading_provider, time),
             heat_detector_statuses=self._resolve_iterable(self._heat_detector_status_provider, time),
             heat_detector_readings=self._resolve_iterable(self._heat_detector_reading_provider, time),
+            manual_call_point_statuses=self._resolve_iterable(self._manual_call_point_status_provider, time),
+            manual_call_point_readings=self._resolve_iterable(self._manual_call_point_reading_provider, time),
             fusion_result=fusion_result,
             facp_snapshot=self._resolve_optional(self._facp_snapshot_provider, time),
             control_snapshot=self._resolve_optional(self._control_snapshot_provider, time),

@@ -1,6 +1,9 @@
 from typing import Callable, Mapping, Optional
 
 from models.engineering_asset import DeviceMode
+from models.sensor_asset import DetectorState
+
+from perception.models.manual_call_point_observation import ManualCallPointReading
 
 from camera_manager.manager import CameraManager
 
@@ -411,6 +414,45 @@ def build_live_runtime(
     def heat_detector_status_provider(time: float):
         return tuple(s for s in sensor_manager.all_statuses() if s.sensor_type == "HeatDetector")
 
+    # Manual Call Point -> Live Emergency Response Integration
+    # milestone -- an MCP has no external hazard-reading provider seam
+    # (see live_system.facp_gateway.EngineFACPGateway._mcp_state()'s own
+    # identical reasoning): ManualCallPoint.compute_state(time) is
+    # already the complete, self-contained answer, read directly off
+    # the real registered object via sensor_manager.get_sensor(), never
+    # re-derived or duplicated. Both provider closures are built here,
+    # entirely from sensor_manager already in scope -- no new
+    # constructor parameter needed, mirroring smoke/heat's own status
+    # provider (which also needs nothing beyond sensor_manager).
+
+    def manual_call_point_status_provider(time: float):
+        return tuple(s for s in sensor_manager.all_statuses() if s.sensor_type == "ManualCallPoint")
+
+    def manual_call_point_reading_provider(time: float):
+
+        readings = []
+
+        for status in sensor_manager.all_statuses():
+
+            if status.sensor_type != "ManualCallPoint":
+                continue
+
+            mcp = sensor_manager.get_sensor(status.sensor_id)
+
+            if mcp is None:
+                continue
+
+            state = mcp.compute_state(time)
+
+            readings.append(
+                ManualCallPointReading(
+                    detector_id=status.sensor_id, timestamp=time,
+                    alarm_active=(state == DetectorState.ALARM),
+                )
+            )
+
+        return tuple(readings)
+
     # =====================================================
     # Voice Evacuation / Building Control (Phase 4/6) -- exactly one
     # VoiceEvacuationController/BuildingControlController per live
@@ -512,6 +554,8 @@ def build_live_runtime(
         smoke_detector_reading_provider=smoke_detector_reading_provider,
         heat_detector_status_provider=heat_detector_status_provider,
         heat_detector_reading_provider=heat_detector_reading_provider,
+        manual_call_point_status_provider=manual_call_point_status_provider,
+        manual_call_point_reading_provider=manual_call_point_reading_provider,
         control_snapshot_provider=(
             (lambda time: building_control_controller.snapshot())
             if building_control_controller is not None else None

@@ -73,6 +73,18 @@ class ResponseReason:
     FACP_ALARM_ACTIVE = "FACP_ALARM_ACTIVE"
     OBSERVED_CLEAR = "OBSERVED_CLEAR"
 
+    # Manual Call Point -> Live Emergency Response Integration
+    # milestone -- a DISTINCT reason from FACP_ALARM_ACTIVE (which
+    # remains, exactly as before, driven only by automatic Smoke/Heat
+    # Detector alarm sources). A human manually reporting an emergency
+    # is not the same evidentiary claim as an automatic sensor
+    # threshold crossing, and must never be collapsed into one
+    # generic "alarm=True" reason -- see docs/architecture/
+    # manual_call_point_emergency_response_integration.md's own
+    # "MANUAL REPORT vs AUTOMATIC DETECTOR ALARM vs CONFIRMED HAZARD"
+    # distinction.
+    MANUAL_EMERGENCY_REPORTED = "MANUAL_EMERGENCY_REPORTED"
+
     # Live Occupant Trajectory, Movement Anomaly & Route-Deviation
     # Intelligence milestone, Phase 21 -- additive. Deliberately a
     # SINGLE, conservative reason covering every severe trajectory
@@ -120,6 +132,18 @@ class ResponseWeights:
     congestion_restricting_weight: float = 0.15
     uncertainty_weight: float = 0.20
     facp_alarm_weight: float = 0.15
+
+    # Manual Call Point -> Live Emergency Response Integration
+    # milestone -- deliberately its OWN, disclosed, configurable
+    # weight, independent of facp_alarm_weight (Phase 4's own explicit
+    # "use a disclosed configurable weight... do NOT make MCP dominate
+    # all other evidence" requirement). Chosen comparable to
+    # stalled_weight/facp_alarm_weight -- a genuine human-reported
+    # emergency is meaningful evidence, but this engine's own scoring
+    # ladder still combines it additively with every other signal
+    # (occupants/assistance/hazard/congestion/etc.), never letting it
+    # alone dominate a zone's priority score.
+    manual_report_weight: float = 0.20
 
     # Live Occupant Trajectory, Movement Anomaly & Route-Deviation
     # Intelligence milestone, Phase 21 -- additive, deliberately modest
@@ -182,6 +206,25 @@ class OccupantAssistanceSignal:
 
 
 @dataclass(frozen=True)
+class AlarmSourceEvidence:
+
+    # Manual Call Point -> Live Emergency Response Integration
+    # milestone, Phase 3 -- structured, per-source FACP alarm evidence,
+    # reused as-is by ZoneResponsePriority.alarm_sources below. Every
+    # field here already exists, structured, on facp.models.
+    # DetectorConditionReport/PanelEvent/sensor_manager.status.
+    # SensorStatus -- this is a small, plain-value reduction of
+    # whichever of those a caller already has, never a new parallel
+    # FACP model. source_type is the asset's own object_type string
+    # ("SmokeDetector"/"HeatDetector"/"ManualCallPoint") -- a caller
+    # never needs to parse a reason-code string to tell them apart.
+
+    source_id: str
+    source_type: str
+    zone_ids: Tuple[str, ...] = field(default_factory=tuple)
+
+
+@dataclass(frozen=True)
 class ZoneResponsePriority:
 
     zone_id: str
@@ -206,6 +249,18 @@ class ZoneResponsePriority:
 
     reason_codes: Tuple[str, ...] = field(default_factory=tuple)
     explanation: str = ""
+
+    # Manual Call Point -> Live Emergency Response Integration
+    # milestone, Phase 3/5/7 -- structured FACP alarm evidence for this
+    # zone, one entry per currently-active/faulted source (Smoke/Heat/
+    # ManualCallPoint alike), never collapsed into a single boolean.
+    # manual_emergency_reported is a small, explicit convenience flag
+    # (true iff any entry in alarm_sources has source_type ==
+    # "ManualCallPoint") -- Phase 2's own "MANUAL EMERGENCY REPORT"
+    # terminology surfaced directly, not buried inside a generic list a
+    # caller would otherwise have to filter itself.
+    alarm_sources: Tuple[AlarmSourceEvidence, ...] = field(default_factory=tuple)
+    manual_emergency_reported: bool = False
 
     # Phase 18/19's own "explain human evidence per zone" requirement --
     # one entry per occupant currently in this zone who carries ANY

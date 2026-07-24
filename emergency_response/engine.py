@@ -11,8 +11,9 @@ from crowd_intelligence.models import IntensityLevel
 from evacuation_progress.models import ZoneClearanceStatus
 
 from emergency_response.models import (
-    EmergencyResponseSnapshot, FloorResponseSummary, OccupantAssistanceSignal, OccupantEvidenceSummary,
-    ResponsePriorityLevel, ResponsePriorityThresholds, ResponseReason, ResponseWeights, ZoneResponsePriority,
+    AlarmSourceEvidence, EmergencyResponseSnapshot, FloorResponseSummary, OccupantAssistanceSignal,
+    OccupantEvidenceSummary, ResponsePriorityLevel, ResponsePriorityThresholds, ResponseReason, ResponseWeights,
+    ZoneResponsePriority,
 )
 
 
@@ -145,7 +146,7 @@ class EmergencyResponseIntelligenceEngine:
             if occupant.current_zone_id is not None:
                 occupants_by_zone.setdefault(occupant.current_zone_id, []).append(occupant)
 
-        zone_alarm_ids = self._zone_alarm_ids(building_state)
+        alarm_sources_by_zone = self._alarm_sources_by_zone(building_state)
 
         zones = {}
         for zone, floor_id in self._zones:
@@ -156,7 +157,7 @@ class EmergencyResponseIntelligenceEngine:
                 building_state=building_state, crowd_snapshot=crowd_snapshot,
                 evacuation_progress_snapshot=evacuation_progress_snapshot,
                 human_state_by_occupant_id=human_state_by_occupant_id,
-                alarm_active=zone.id in zone_alarm_ids,
+                alarm_sources=alarm_sources_by_zone.get(zone.id, ()),
                 trajectory_snapshot=trajectory_snapshot,
                 time=time,
             )
@@ -168,35 +169,76 @@ class EmergencyResponseIntelligenceEngine:
 
     # =====================================================
 
-    def _zone_alarm_ids(self, building_state) -> set:
+    def _alarm_sources_by_zone(self, building_state) -> Dict[str, tuple]:
 
-        # Phase 6 item 8 -- FACP/detector alarm evidence, read directly
-        # from BuildingState (the already-established live evidence
+        # Phase 6 item 8 (original) / Manual Call Point -> Live
+        # Emergency Response Integration milestone, Phase 3 (extended)
+        # -- FACP/detector alarm evidence, read directly from
+        # BuildingState (the already-established live evidence
         # boundary), never a second, independent FACP/SensorManager
-        # query. smoke_detector_states/heat_detector_states are keyed by
-        # sensor_id, each carrying the SAME SensorStatus.zone_ids
-        # convention every other perception-facing provider in this
-        # codebase already reads (see live_perception.providers).
+        # query. smoke_detector_states/heat_detector_states/
+        # manual_call_point_states are each keyed by sensor_id, all
+        # three carrying the SAME SensorStatus.zone_ids convention
+        # every other perception-facing provider in this codebase
+        # already reads (see live_perception.providers). Manual Call
+        # Point is now included as a THIRD, structurally-distinguished
+        # source type -- previously silently excluded (an MCP-only
+        # alarm was invisible to this method, and therefore to
+        # Emergency Response entirely, despite being a genuine active
+        # FACP alarm source; see docs/architecture/
+        # designer_asset_connectivity_audit.md's own finding).
+        #
+        # Returns {zone_id: (AlarmSourceEvidence, ...)} -- every zone a
+        # currently-alarming source is assigned to gets its own
+        # structured entry per source, never a collapsed boolean.
+        # source_type comes straight from SensorStatus.sensor_type, so
+        # a caller (or this engine's own scoring below) never needs to
+        # parse a reason-code string to tell Smoke/Heat/MCP apart.
 
         if building_state is None or building_state.facp_status is None:
-            return set()
+            return {}
 
         active_source_ids = set(building_state.facp_status.active_alarm_source_ids)
 
-        zone_ids = set()
-        for detector_states in (building_state.smoke_detector_states, building_state.heat_detector_states):
-            for sensor_id, asset in detector_states.items():
-                if sensor_id in active_source_ids:
-                    zone_ids.update(asset.status.zone_ids)
+        by_zone: Dict[str, list] = {}
 
-        return zone_ids
+        for detector_states in (
+            building_state.smoke_detector_states,
+            building_state.heat_detector_states,
+            building_state.manual_call_point_states,
+        ):
+            for sensor_id, asset in detector_states.items():
+
+                if sensor_id not in active_source_ids:
+                    continue
+
+                evidence = AlarmSourceEvidence(
+                    source_id=sensor_id, source_type=asset.status.sensor_type, zone_ids=asset.status.zone_ids,
+                )
+
+                for zone_id in asset.status.zone_ids:
+                    by_zone.setdefault(zone_id, []).append(evidence)
+
+        return {zone_id: tuple(sources) for zone_id, sources in by_zone.items()}
 
     # =====================================================
 
     def _compute_zone_priority(
         self, *, zone_id, floor_id, occupants, building_state, crowd_snapshot, evacuation_progress_snapshot,
-        human_state_by_occupant_id, alarm_active, trajectory_snapshot, time,
+        human_state_by_occupant_id, alarm_sources, trajectory_snapshot, time,
     ) -> ZoneResponsePriority:
+
+        # Manual Call Point -> Live Emergency Response Integration
+        # milestone -- automatic detector evidence and manual human-
+        # reported evidence are kept as two INDEPENDENT booleans, never
+        # collapsed into one. A zone with both an automatic Smoke
+        # Detector alarm AND an MCP activation gets BOTH contributions
+        # (Phase 7's own explicit "MCP evidence must not overwrite
+        # detector evidence; detector evidence must not overwrite MCP
+        # evidence" requirement) -- neither can ever silently mask the
+        # other.
+        automatic_alarm_active = any(source.source_type != "ManualCallPoint" for source in alarm_sources)
+        manual_emergency_reported = any(source.source_type == "ManualCallPoint" for source in alarm_sources)
 
         known_occupant_count = len(occupants)
 
@@ -264,12 +306,13 @@ class EmergencyResponseIntelligenceEngine:
             known_occupant_count=known_occupant_count, possible_count=possible_count, confirmed_count=confirmed_count,
             being_assisted_count=being_assisted_count, vulnerable_person_observed=vulnerable_person_observed,
             evacuation_stalled=evacuation_stalled, hazard_severity=hazard_severity,
-            congestion_restricting=congestion_restricting, clearance_status=clearance_status, alarm_active=alarm_active,
+            congestion_restricting=congestion_restricting, clearance_status=clearance_status,
+            automatic_alarm_active=automatic_alarm_active, manual_emergency_reported=manual_emergency_reported,
             severe_route_anomaly=severe_route_anomaly,
         )
 
         priority_level = self.thresholds.classify(score)
-        explanation = self._explain(zone_id, priority_level, reason_codes)
+        explanation = self._explain(zone_id, priority_level, reason_codes, alarm_sources)
 
         return ZoneResponsePriority(
             zone_id=zone_id, floor_id=floor_id,
@@ -283,6 +326,8 @@ class EmergencyResponseIntelligenceEngine:
             observability_fraction=observability_fraction,
             reason_codes=reason_codes,
             occupant_evidence=occupant_evidence,
+            alarm_sources=alarm_sources,
+            manual_emergency_reported=manual_emergency_reported,
             explanation=explanation,
             timestamp=time,
         )
@@ -344,7 +389,7 @@ class EmergencyResponseIntelligenceEngine:
     def _score_zone(
         self, *, known_occupant_count, possible_count, confirmed_count, being_assisted_count,
         vulnerable_person_observed, evacuation_stalled, hazard_severity, congestion_restricting,
-        clearance_status, alarm_active, severe_route_anomaly,
+        clearance_status, automatic_alarm_active, manual_emergency_reported, severe_route_anomaly,
     ):
 
         # Phase 7's own explicit transparency requirement -- every
@@ -368,7 +413,8 @@ class EmergencyResponseIntelligenceEngine:
         has_any_evidence = (
             known_occupant_count > 0 or possible_count > 0 or confirmed_count > 0 or being_assisted_count > 0
             or vulnerable_person_observed or evacuation_stalled
-            or hazard_severity is not None or clearance_status is not None or alarm_active or severe_route_anomaly
+            or hazard_severity is not None or clearance_status is not None
+            or automatic_alarm_active or manual_emergency_reported or severe_route_anomaly
         )
 
         if not has_any_evidence:
@@ -432,10 +478,21 @@ class EmergencyResponseIntelligenceEngine:
 
             reasons.append(ResponseReason.OBSERVED_CLEAR)
 
-        if alarm_active:
+        if automatic_alarm_active:
 
             score += w.facp_alarm_weight
             reasons.append(ResponseReason.FACP_ALARM_ACTIVE)
+
+        # Manual Call Point -> Live Emergency Response Integration
+        # milestone -- an INDEPENDENT contribution from automatic_alarm_
+        # active above (Phase 7's own "neither may overwrite the other"
+        # requirement): a zone with both an automatic detector alarm
+        # AND an MCP activation receives both FACP_ALARM_ACTIVE and
+        # MANUAL_EMERGENCY_REPORTED, each with its own disclosed weight.
+        if manual_emergency_reported:
+
+            score += w.manual_report_weight
+            reasons.append(ResponseReason.MANUAL_EMERGENCY_REPORTED)
 
         if severe_route_anomaly:
 
@@ -446,14 +503,29 @@ class EmergencyResponseIntelligenceEngine:
 
     # =====================================================
 
-    def _explain(self, zone_id: str, priority_level: str, reason_codes) -> str:
+    def _explain(self, zone_id: str, priority_level: str, reason_codes, alarm_sources=()) -> str:
 
         if not reason_codes:
             return f"Zone {zone_id}: no evidence currently available."
 
         readable = ", ".join(code.replace("_", " ").title() for code in reason_codes)
 
-        return f"Zone {zone_id} -- {priority_level}. Evidence: {readable}."
+        explanation = f"Zone {zone_id} -- {priority_level}. Evidence: {readable}."
+
+        # Manual Call Point -> Live Emergency Response Integration
+        # milestone, Phase 5 -- names the specific source id, matching
+        # the milestone's own worked example ("Manual emergency report
+        # received from MCP-1 in Zone Z3") rather than leaving an
+        # operator to infer which device from a generic reason code
+        # alone. Never claims what the person who activated it
+        # observed -- purely "a report was received from this device."
+        manual_sources = tuple(source.source_id for source in alarm_sources if source.source_type == "ManualCallPoint")
+
+        if manual_sources:
+            names = ", ".join(sorted(manual_sources))
+            explanation += f" Manual emergency report received from {names} in Zone {zone_id}."
+
+        return explanation
 
     # =====================================================
 

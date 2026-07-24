@@ -39,6 +39,17 @@ class ZoneResponseDetail:
     being_assisted_count: int = 0
     reason_codes: Tuple[str, ...] = field(default_factory=tuple)
 
+    # Manual Call Point -> Live Emergency Response Integration
+    # milestone -- a plain-value reduction of emergency_response.
+    # models.ZoneResponsePriority.manual_emergency_reported/alarm_sources
+    # (a caller-facing (source_id, source_type) pair, never the whole
+    # AlarmSourceEvidence object -- this module imports NOTHING from
+    # emergency_response/, same discipline as every other field here).
+    # manual_call_point_ids is empty whenever no MCP alarm exists this
+    # cycle for this zone -- never fabricated.
+    manual_emergency_reported: bool = False
+    manual_call_point_ids: Tuple[str, ...] = field(default_factory=tuple)
+
     def to_dict(self) -> Dict[str, Any]:
 
         return {
@@ -48,6 +59,8 @@ class ZoneResponseDetail:
             "confirmed_assistance_count": self.confirmed_assistance_count,
             "being_assisted_count": self.being_assisted_count,
             "reason_codes": list(self.reason_codes),
+            "manual_emergency_reported": self.manual_emergency_reported,
+            "manual_call_point_ids": list(self.manual_call_point_ids),
         }
 
 
@@ -74,6 +87,14 @@ class EmergencyResponseEvidence:
     being_assisted_zone_ids: Tuple[str, ...] = field(default_factory=tuple)
     vulnerable_person_observed_zone_ids: Tuple[str, ...] = field(default_factory=tuple)
 
+    # Manual Call Point -> Live Emergency Response Integration
+    # milestone -- an additive, informational id set mirroring the
+    # pattern above exactly: every zone with at least one currently-
+    # active Manual Call Point report this cycle. A DISTINCT concept
+    # from any hazard/detector-alarm zone set -- a manual report is
+    # human-sourced evidence, never inferred fire/smoke confirmation.
+    manual_emergency_report_zone_ids: Tuple[str, ...] = field(default_factory=tuple)
+
     highest_priority_zone_id: Optional[str] = None
     highest_priority_reason_codes: Tuple[str, ...] = field(default_factory=tuple)
 
@@ -97,6 +118,7 @@ class EmergencyResponseEvidence:
             "observed_clear_zone_ids": list(self.observed_clear_zone_ids),
             "being_assisted_zone_ids": list(self.being_assisted_zone_ids),
             "vulnerable_person_observed_zone_ids": list(self.vulnerable_person_observed_zone_ids),
+            "manual_emergency_report_zone_ids": list(self.manual_emergency_report_zone_ids),
             "highest_priority_zone_id": self.highest_priority_zone_id,
             "highest_priority_reason_codes": list(self.highest_priority_reason_codes),
             "zone_details": {k: v.to_dict() for k, v in self.zone_details.items()},

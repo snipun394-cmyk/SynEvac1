@@ -330,9 +330,24 @@ def emergency_response_evidence_from_snapshot(
         zone_id for zone_id, priority in snapshot.zones.items() if priority.vulnerable_person_observed
     ))
 
+    # Manual Call Point -> Live Emergency Response Integration
+    # milestone -- reads ZoneResponsePriority.manual_emergency_reported/
+    # alarm_sources directly (both already structured, plain-value
+    # fields); reduces each zone's alarm_sources to just the bare MCP
+    # id strings this evidence type exposes, never the whole
+    # AlarmSourceEvidence object (this module already imports
+    # EmergencyResponseSnapshot itself, so importing the sibling
+    # AlarmSourceEvidence type here would be free architecturally, but
+    # is deliberately avoided anyway -- advisory_system's own
+    # ZoneResponseDetail must stay a plain reduction, not a second
+    # place that understands emergency_response's own internal shape).
+    manual_emergency_report_ids = tuple(sorted(
+        zone_id for zone_id, priority in snapshot.zones.items() if priority.manual_emergency_reported
+    ))
+
     flagged_zone_ids = (
         set(critical_ids) | set(high_ids) | set(possible_assistance_ids) | set(uncertain_ids)
-        | set(being_assisted_ids) | set(vulnerable_person_observed_ids)
+        | set(being_assisted_ids) | set(vulnerable_person_observed_ids) | set(manual_emergency_report_ids)
     )
     zone_details = {
         zone_id: ZoneResponseDetail(
@@ -342,6 +357,10 @@ def emergency_response_evidence_from_snapshot(
             confirmed_assistance_count=priority.confirmed_assistance_count,
             being_assisted_count=priority.being_assisted_count,
             reason_codes=priority.reason_codes,
+            manual_emergency_reported=priority.manual_emergency_reported,
+            manual_call_point_ids=tuple(sorted(
+                source.source_id for source in priority.alarm_sources if source.source_type == "ManualCallPoint"
+            )),
         )
         for zone_id, priority in snapshot.zones.items()
         if zone_id in flagged_zone_ids
@@ -365,6 +384,7 @@ def emergency_response_evidence_from_snapshot(
         observed_clear_zone_ids=observed_clear_ids,
         being_assisted_zone_ids=being_assisted_ids,
         vulnerable_person_observed_zone_ids=vulnerable_person_observed_ids,
+        manual_emergency_report_zone_ids=manual_emergency_report_ids,
         highest_priority_zone_id=highest_priority_zone_id,
         highest_priority_reason_codes=highest_priority_reason_codes,
         zone_details=zone_details,

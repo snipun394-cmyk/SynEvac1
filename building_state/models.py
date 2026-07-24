@@ -134,6 +134,17 @@ class BuildingState:
     smoke_detector_states: Mapping[str, DetectorAssetState] = field(default_factory=dict)
     heat_detector_states: Mapping[str, DetectorAssetState] = field(default_factory=dict)
 
+    # Manual Call Point -> Live Emergency Response Integration milestone
+    # (additive) -- same DetectorAssetState shape smoke/heat already
+    # use (status: SensorStatus, reading: Optional[object] -- here a
+    # perception.models.manual_call_point_observation.ManualCallPointReading).
+    # Deliberately its own mapping, never merged into smoke_detector_states/
+    # heat_detector_states -- a Manual Call Point is a distinct alarm
+    # SOURCE TYPE (a human-reported emergency, never an automatic
+    # sensor reading; see facp/models.py's own DetectorConditionReport,
+    # which already treats it as a peer, not a subtype, of Smoke/Heat).
+    manual_call_point_states: Mapping[str, DetectorAssetState] = field(default_factory=dict)
+
     hazard_summary: HazardSummary = field(default_factory=HazardSummary)
 
     building_alarm_status: DetectorState = DetectorState.NORMAL
@@ -202,6 +213,7 @@ class BuildingState:
         object.__setattr__(self, "camera_observations", MappingProxyType(dict(self.camera_observations)))
         object.__setattr__(self, "smoke_detector_states", MappingProxyType(dict(self.smoke_detector_states)))
         object.__setattr__(self, "heat_detector_states", MappingProxyType(dict(self.heat_detector_states)))
+        object.__setattr__(self, "manual_call_point_states", MappingProxyType(dict(self.manual_call_point_states)))
 
     # =====================================================
     # Total accessors. occupant_track/camera_observation/
@@ -228,6 +240,10 @@ class BuildingState:
     def heat_detector_state(self, sensor_id: str) -> Optional[DetectorAssetState]:
 
         return self.heat_detector_states.get(sensor_id)
+
+    def manual_call_point_state(self, sensor_id: str) -> Optional[DetectorAssetState]:
+
+        return self.manual_call_point_states.get(sensor_id)
 
     def zone_severity(self, zone_id: str) -> HazardSeverity:
 
