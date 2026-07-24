@@ -95,8 +95,10 @@ class AIAuthorityGuardTests(unittest.TestCase):
     _FORBIDDEN = (
         r"^\s*(from|import)\s+"
         r"(voice_evacuation|speaker_manager|building_control\.controller|"
-        r"building_control\.providers|command_center\.live_operator_action_gateway|"
-        r"command_center\.building_controls_panel|command_center\.recommendation_center)\b"
+        r"building_control\.providers|dynamic_signage\.controller|dynamic_signage\.provider|"
+        r"command_center\.live_operator_action_gateway|"
+        r"command_center\.building_controls_panel|command_center\.recommendation_center|"
+        r"command_center\.live_dynamic_signage_panel)\b"
     )
 
     def _assert_file_clean(self, path: pathlib.Path):

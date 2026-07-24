@@ -122,6 +122,14 @@ class CommandCenterSnapshot:
     # evacuation_recommendation's own convention exactly.
     evacuation_guidance: Optional[Any] = None
 
+    # Live Dynamic Sign Operator Approval & Dispatch Completion milestone --
+    # dynamic_signage.models.DynamicSignageSnapshot, mirroring
+    # evacuation_guidance's own convention exactly. Always None in Replay
+    # mode -- Dynamic Signage has no Replay/IncidentData equivalent (it
+    # is recomputed fresh every live cycle from the current Evacuation
+    # Guidance, never a stored per-frame replay artifact).
+    dynamic_signage: Optional[Any] = None
+
     # Phase 14 -- per-component as-of timestamps, honestly reported.
     # None means that component has never been populated at all (not
     # "populated at time 0.0"). Always None/CURRENT in Replay mode,
@@ -135,6 +143,7 @@ class CommandCenterSnapshot:
     trajectory_intelligence_timestamp: Optional[float] = None
     evacuation_recommendation_timestamp: Optional[float] = None
     evacuation_guidance_timestamp: Optional[float] = None
+    dynamic_signage_timestamp: Optional[float] = None
     consistency: SnapshotConsistency = SnapshotConsistency.CURRENT
 
     # Phase 15 -- a bounded, most-recent-last list of human-readable

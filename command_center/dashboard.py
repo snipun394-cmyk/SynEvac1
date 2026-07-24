@@ -14,6 +14,7 @@ from command_center.live_emergency_response_panel import LiveEmergencyResponsePa
 from command_center.live_trajectory_intelligence_panel import LiveMovementIntelligencePanel
 from command_center.live_evacuation_recommendation_panel import LiveEvacuationRecommendationPanel
 from command_center.live_evacuation_guidance_panel import LiveEvacuationGuidancePanel
+from command_center.live_dynamic_signage_panel import LiveDynamicSignagePanel
 from command_center.live_status_panel import LiveStatusPanel
 from command_center.occupancy_panel import OccupancyPanel
 from command_center.recommendation_center import RecommendationCenter
@@ -92,6 +93,7 @@ class Dashboard(QWidget):
         self.live_movement_intelligence_panel = LiveMovementIntelligencePanel()
         self.live_evacuation_recommendation_panel = LiveEvacuationRecommendationPanel()
         self.live_evacuation_guidance_panel = LiveEvacuationGuidancePanel()
+        self.live_dynamic_signage_panel = LiveDynamicSignagePanel()
         self.live_events_panel = LiveEventsPanel()
 
         self.side_tabs = QTabWidget()
@@ -109,6 +111,7 @@ class Dashboard(QWidget):
         self.side_tabs.addTab(self.live_movement_intelligence_panel, "Live Movement Intelligence")
         self.side_tabs.addTab(self.live_evacuation_recommendation_panel, "Live Evacuation Recommendations")
         self.side_tabs.addTab(self.live_evacuation_guidance_panel, "Live Evacuation Guidance")
+        self.side_tabs.addTab(self.live_dynamic_signage_panel, "Live Dynamic Signage")
         self.side_tabs.addTab(self.live_events_panel, "Live Events")
 
         # Tabs that only make sense against a completed-run IncidentData
@@ -120,7 +123,9 @@ class Dashboard(QWidget):
             self.recommendation_timeline_panel, self.incident_panel,
             self.occupancy_panel, self.hazard_panel, self.recommendation_panel,
         )
-        self._live_only_tabs = (self.live_status_panel, self.live_ai_panel, self.live_events_panel)
+        self._live_only_tabs = (
+            self.live_status_panel, self.live_ai_panel, self.live_events_panel, self.live_dynamic_signage_panel,
+        )
 
         for widget in self._live_only_tabs:
             self.side_tabs.setTabVisible(self.side_tabs.indexOf(widget), False)
@@ -298,6 +303,9 @@ class Dashboard(QWidget):
         self.live_evacuation_recommendation_panel.show_recommendations(snapshot.evacuation_recommendation)
         self.live_evacuation_guidance_panel.show_guidance(
             snapshot.evacuation_guidance, self._operator_action_gateway, snapshot.timestamp,
+        )
+        self.live_dynamic_signage_panel.show_live(
+            snapshot.dynamic_signage, snapshot.evacuation_guidance, self._operator_action_gateway, snapshot.timestamp,
         )
         self.live_events_panel.show_recent_events(snapshot.recent_events)
 

@@ -11,6 +11,7 @@ from building_control.history import ControlEvent
 from building_control.requests import ControlRequest
 from building_control.snapshot import ControlStateEntry
 
+from dynamic_signage.consistency import instruction_inconsistencies
 from dynamic_signage.controller import DynamicSignageController, SignageControlEvent, SignageRequestStatus
 from dynamic_signage.models import SignageInstruction, SignageStatus
 
@@ -103,6 +104,24 @@ class OperatorActionUnavailable(Exception):
     # but reports failure (that is ControlResult.confirmed=False /
     # BroadcastStatus.NO_SPEAKERS_AVAILABLE, an honest execution
     # outcome, not an unavailable-action error).
+
+    pass
+
+
+class SignageApprovalBlocked(Exception):
+
+    # Live Dynamic Sign Operator Approval & Dispatch Completion milestone,
+    # Phase 7 -- raised only by approve_signage_instruction() when a
+    # caller supplies the current guidance_snapshot and this exact
+    # instruction disagrees with it (SIGNAGE_GUIDANCE_MISMATCH/
+    # STALE_SIGNAGE_REVISION/VOICE_SIGNAGE_EXIT_MISMATCH -- see
+    # dynamic_signage.consistency.instruction_inconsistencies()). A
+    # provider IS configured and the instruction IS otherwise
+    # PENDING_APPROVAL -- this is never OperatorActionUnavailable's own
+    # "nothing to approve through" case, it is "this specific approval
+    # would dispatch a sign instruction that no longer agrees with the
+    # current recommended route," which must fail honestly rather than
+    # silently dispatch a stale/inconsistent direction.
 
     pass
 
@@ -607,13 +626,46 @@ class LiveOperatorActionGateway:
 
     # =====================================================
 
-    def approve_signage_instruction(self, instruction: SignageInstruction, time: float) -> SignageInstruction:
+    def approve_signage_instruction(
+        self, instruction: SignageInstruction, time: float, guidance_snapshot=None,
+    ) -> SignageInstruction:
 
         if self._signage_controller is None:
 
             raise OperatorActionUnavailable(
                 "No dynamic signage provider is configured -- cannot approve this sign instruction."
             )
+
+        # Phase 7 -- an OPTIONAL, additive guard: a caller (the real
+        # Command Center panel, always) that has the current
+        # EvacuationGuidanceSnapshot in hand passes it here, and this
+        # exact instruction is re-checked against it one last time,
+        # right at the one seam that can actually reach a provider --
+        # never trusted merely because it was PENDING_APPROVAL. Callers
+        # that don't have one (every pre-existing test in
+        # tests/test_dynamic_signage_command_center.py and tests/
+        # test_dynamic_signage_e2e.py) keep their prior behavior exactly.
+        #
+        # Only checked while the instruction is still genuinely
+        # PENDING_APPROVAL -- an already-resolved (CONFIRMED/REJECTED/
+        # SUPERSEDED/FAILED) request fails for the more fundamentally
+        # correct reason (DynamicSignageController.approve()'s own
+        # "not PENDING_APPROVAL" error below), never relabeled as a
+        # guidance mismatch merely because a since-superseded
+        # instruction's own recommended_exit_id no longer agrees with
+        # the CURRENT cycle's Guidance.
+        if guidance_snapshot is not None and self._signage_controller.status_of(
+            instruction.sign_id, instruction.signage_revision,
+        ) == SignageRequestStatus.PENDING_APPROVAL:
+
+            codes = instruction_inconsistencies(guidance_snapshot, instruction)
+
+            if codes:
+
+                raise SignageApprovalBlocked(
+                    f"cannot approve signage instruction for sign {instruction.sign_id!r}: "
+                    f"disagrees with current Evacuation Guidance ({', '.join(codes)})."
+                )
 
         result = self._signage_controller.approve(
             instruction.sign_id, instruction.signage_revision, time, actor=OPERATOR_ACTOR,

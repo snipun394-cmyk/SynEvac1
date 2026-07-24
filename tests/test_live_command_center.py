@@ -672,6 +672,7 @@ class CommandCenterLiveIntegrationGuardTests(unittest.TestCase):
         ("command_center", "main_window.py"),
         ("command_center", "recommendation_center.py"),
         ("command_center", "building_controls_panel.py"),
+        ("command_center", "live_dynamic_signage_panel.py"),
         ("command_center", "incident_status_bar.py"),
         ("live_system", "live_command_center_gateway.py"),
     )
@@ -745,7 +746,8 @@ class CommandCenterLiveIntegrationGuardTests(unittest.TestCase):
         forbidden = (
             r"^\s*(from|import)\s+"
             r"(voice_evacuation\.controller|voice_evacuation\.provider|speaker_manager|"
-            r"building_control\.controller|building_control\.providers)\b"
+            r"building_control\.controller|building_control\.providers|"
+            r"dynamic_signage\.controller|dynamic_signage\.provider)\b"
         )
 
         for package, filename in self._LIVE_INTEGRATION_FILES:
@@ -754,7 +756,9 @@ class CommandCenterLiveIntegrationGuardTests(unittest.TestCase):
             self.assertIsNone(
                 re.search(forbidden, text, re.MULTILINE),
                 f"{package}/{filename} imports an execution-capable Voice Evacuation/Building "
-                f"Control module -- Live mode must remain display-only (Phase 11/12).",
+                f"Control/Dynamic Signage module -- Live mode must remain display-only, every "
+                f"operator action routed through LiveOperatorActionGateway instead (Phase 11/12; "
+                f"Live Dynamic Sign Operator Approval & Dispatch Completion Phase 14).",
             )
 
     def test_live_status_and_ai_panels_expose_no_control_methods(self):

@@ -22,6 +22,40 @@ from dynamic_signage.models import DynamicSignageSnapshot, SignageInconsistency,
 # =====================================================
 
 
+def instruction_inconsistencies(guidance_snapshot: EvacuationGuidanceSnapshot, instruction) -> Tuple[str, ...]:
+
+    # Single-instruction version of the same check -- the ONE body
+    # detect_inconsistencies() below loops over, extracted so a caller
+    # that already has one specific instruction in hand (Live Dynamic
+    # Evacuation Signage milestone's own operator-approval gate,
+    # command_center.live_operator_action_gateway.LiveOperatorActionGateway.
+    # approve_signage_instruction()) can reuse the exact same rule
+    # rather than re-deriving it or scanning a whole snapshot for one
+    # sign_id.
+
+    if instruction.status != SignageStatus.ACTIVE or instruction.zone_id is None:
+        return ()
+
+    codes = []
+
+    plan = guidance_snapshot.zone(instruction.zone_id)
+
+    if plan is not None:
+
+        if instruction.recommended_exit_id != plan.recommended_exit_id:
+            codes.append(SignageInconsistency.SIGNAGE_GUIDANCE_MISMATCH)
+
+        if instruction.guidance_revision != plan.revision:
+            codes.append(SignageInconsistency.STALE_SIGNAGE_REVISION)
+
+    voice_plan = guidance_snapshot.voice_plan(instruction.zone_id)
+
+    if voice_plan is not None and instruction.recommended_exit_id != voice_plan.recommended_exit_id:
+        codes.append(SignageInconsistency.VOICE_SIGNAGE_EXIT_MISMATCH)
+
+    return tuple(codes)
+
+
 def detect_inconsistencies(
     guidance_snapshot: EvacuationGuidanceSnapshot, signage_snapshot: DynamicSignageSnapshot,
 ) -> Dict[str, Tuple[str, ...]]:
@@ -30,27 +64,9 @@ def detect_inconsistencies(
 
     for sign_id, instruction in signage_snapshot.instructions.items():
 
-        if instruction.status != SignageStatus.ACTIVE or instruction.zone_id is None:
-            continue
-
-        codes = []
-
-        plan = guidance_snapshot.zone(instruction.zone_id)
-
-        if plan is not None:
-
-            if instruction.recommended_exit_id != plan.recommended_exit_id:
-                codes.append(SignageInconsistency.SIGNAGE_GUIDANCE_MISMATCH)
-
-            if instruction.guidance_revision != plan.revision:
-                codes.append(SignageInconsistency.STALE_SIGNAGE_REVISION)
-
-        voice_plan = guidance_snapshot.voice_plan(instruction.zone_id)
-
-        if voice_plan is not None and instruction.recommended_exit_id != voice_plan.recommended_exit_id:
-            codes.append(SignageInconsistency.VOICE_SIGNAGE_EXIT_MISMATCH)
+        codes = instruction_inconsistencies(guidance_snapshot, instruction)
 
         if codes:
-            result[sign_id] = tuple(codes)
+            result[sign_id] = codes
 
     return result
