@@ -42,6 +42,8 @@ from designer.widgets.building_state_debug_panel import BuildingStateDebugPanel
 from designer.widgets.camera_manager_panel import CameraManagerPanel
 from designer.widgets.speaker_manager_panel import SpeakerManagerPanel
 from designer.widgets.camera_validation_panel import CameraValidationPanel
+from designer.widgets.live_runtime_panel import LiveRuntimePanel
+from designer.live_runtime_controller import LiveRuntimeController
 from designer.widgets.floor_list import FloorList
 from designer.widgets.fire_water_system_list import FireWaterSystemList
 from designer.widgets.occupant_generation_dialog import OccupantGenerationDialog
@@ -218,6 +220,29 @@ class MainWindow(QMainWindow):
 
         self.campaign_window = None
         self.campaign_controller = None
+
+        # =====================================================
+        # Application Live Runtime Launcher -- the Designer-facing
+        # surface for explicitly entering LIVE/OFFLINE_DEMO application
+        # mode against the currently loaded project (see
+        # designer/widgets/live_runtime_panel.py, designer/
+        # live_runtime_controller.py, live_runtime_launcher/session.py).
+        # Same "dumb widget, dedicated controller mediates" pattern as
+        # Campaign Studio above; unlike Campaign Studio this panel is
+        # built up front (a lightweight dock, not a heavy tool window)
+        # but stays hidden by default -- entering Live/Offline-Demo mode
+        # is always an explicit operator action (its own Start button),
+        # never something that happens merely by launching Designer or
+        # opening a project (Safe Startup Semantics milestone
+        # requirement).
+        # =====================================================
+
+        self.live_runtime_panel = LiveRuntimePanel()
+
+        self.live_runtime_controller = LiveRuntimeController(
+            self.live_runtime_panel,
+            lambda: self.canvas.scene_obj.project.building,
+        )
 
         # =====================================================
         # Project Tree
@@ -422,6 +447,15 @@ class MainWindow(QMainWindow):
             self.open_campaign_studio
         )
 
+        self.toggle_live_runtime_panel_action = QAction(
+            "Live Runtime Panel",
+            self,
+        )
+
+        self.toggle_live_runtime_panel_action.triggered.connect(
+            self.toggle_live_runtime_panel
+        )
+
     # =====================================================
 
     def create_menu(self):
@@ -452,6 +486,10 @@ class MainWindow(QMainWindow):
 
         view_menu.addAction(
             self.toggle_camera_validation_panel_action
+        )
+
+        view_menu.addAction(
+            self.toggle_live_runtime_panel_action
         )
 
         insert_menu = menubar.addMenu("Insert")
@@ -727,6 +765,30 @@ class MainWindow(QMainWindow):
         # Hidden by default, same opt-in convention as the other
         # bottom docks -- not part of the default Designer layout.
         self.camera_validation_dock.hide()
+
+        self.live_runtime_dock = QDockWidget(
+            "Live Runtime",
+            self,
+        )
+
+        self.live_runtime_dock.setWidget(
+            self.live_runtime_panel
+        )
+
+        self.addDockWidget(
+            Qt.DockWidgetArea.BottomDockWidgetArea,
+            self.live_runtime_dock,
+        )
+
+        self.tabifyDockWidget(
+            self.camera_validation_dock,
+            self.live_runtime_dock,
+        )
+
+        # Hidden by default, same opt-in convention as the other
+        # bottom docks -- not part of the default Designer layout;
+        # entering Live/Offline-Demo mode is always an explicit action.
+        self.live_runtime_dock.hide()
 
     # =====================================================
 
@@ -1323,6 +1385,13 @@ class MainWindow(QMainWindow):
 
         self.stop_simulation()
 
+        # A running LiveRuntime session points at the Building instance
+        # about to be replaced -- stopped and discarded here for the
+        # same reason stop_simulation() above halts the Manual
+        # Simulation Sandbox first (no in-flight cycle may touch a
+        # Building that is about to disappear).
+        self.live_runtime_controller.stop_and_reset()
+
         self.canvas.scene_obj.sandbox_manager.clear()
 
         self.canvas.scene_obj.project = Project.new_default()
@@ -1370,6 +1439,10 @@ class MainWindow(QMainWindow):
         # the simulation loop first means no in-flight tick can touch
         # an occupant belonging to the project about to disappear.
         self.stop_simulation()
+
+        # Same reasoning, applied to a running LiveRuntime session --
+        # see new_project() above.
+        self.live_runtime_controller.stop_and_reset()
 
         self.canvas.scene_obj.sandbox_manager.clear()
 
@@ -1497,6 +1570,14 @@ class MainWindow(QMainWindow):
             self.camera_validation_panel.refresh(
                 self.canvas.scene_obj.project.building
             )
+
+    # =====================================================
+
+    def toggle_live_runtime_panel(self):
+
+        self.live_runtime_dock.setVisible(
+            not self.live_runtime_dock.isVisible()
+        )
 
     # =====================================================
     # Scenario Campaign Studio -- the graphical orchestration layer
@@ -1743,5 +1824,11 @@ class MainWindow(QMainWindow):
         if not self._confirm_discard_unsaved_changes():
             event.ignore()
             return
+
+        # Application Startup/Shutdown Lifecycle milestone requirement
+        # (Phase 11) -- stops any running LiveRuntime and closes any
+        # open Command Center window so neither survives as a zombie
+        # background timer/orchestrator after Designer itself closes.
+        self.live_runtime_controller.shutdown()
 
         event.accept()
