@@ -85,8 +85,12 @@ def main():
 
             simulation_wall_seconds += time.perf_counter() - sim_start
 
+            # context.building (the scenario-initialized copy), not the shared
+            # template `building` -- see scripts/run_predictive_dataset_campaign_v1.py's
+            # own comment here for why: only context.building has this
+            # scenario's actual door/exit blocked/locked state applied.
             timeline_run = TimelineRun(
-                scenario=scenario, building=building,
+                scenario=scenario, building=context.building,
                 movement_result=runtime.movement_result, tick_results=tick_results,
             )
 

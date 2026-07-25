@@ -127,14 +127,20 @@ CANDIDATE_CONTEXT_SCHEMA: Tuple[AIFeatureField, ...] = (
     AIFeatureField(
         name="candidate_approaching_count",
         dtype="int",
-        semantic_meaning="Count of occupants currently committed to / approaching this candidate.",
-        source="SIM: occupants whose fixed Route's final edge is this candidate and who have "
-               "departed but not yet arrived by observation time (whole-route commitment, a "
-               "long-range demand signal known from route assignment at scenario start -- see "
-               "target_generator.py's leakage note, this is NOT a future-outcome read). "
-               "LIVE: crowd_intelligence.models.AssetApproachMetrics.approaching_count "
+        semantic_meaning="Count of occupants whose remaining (not-yet-reached) route includes this candidate.",
+        source="SIM: occupants whose fixed Route still includes this candidate at or after their "
+               "current position (any not-yet-reached edge, not just the immediate next one -- two "
+               "narrower definitions were tried and both proved structurally, permanently zero "
+               "empirically: 'final edge only' for Door/Stair, and 'immediate next hop only' for "
+               "every candidate, since this simulator's occupant movement model has no observable "
+               "gap between finishing/departing and joining the next queue -- see "
+               "predictive_dataset/simulation_extractor.py's own BUG HISTORY comment and "
+               "docs/architecture/predictive_dataset_campaign_v1.md for the full story), who have "
+               "departed but not yet arrived by observation time. Still a plan-derived, causally-"
+               "prior-to-`time` fact, never a future-outcome read (see target_generator.py's own "
+               "leakage note). LIVE: crowd_intelligence.models.AssetApproachMetrics.approaching_count "
                "(short-range, ~3m geometric proximity + heading). Both answer 'how much demand "
-               "is headed for this candidate', at different look-ahead ranges -- disclosed, not "
+               "is headed for this candidate', via different mechanisms -- disclosed, not "
                "papered over.",
         availability=FeatureAvailability.LIVE_ESTIMABLE,
         nullable=True,

@@ -32,3 +32,10 @@ __pycache__/
 # docs/architecture/localized_predictive_ai_dataset.md for the campaign
 # numbers this produced.
 /data/predictive_dataset_campaign/
+
+# Large-Scale Predictive Dataset Campaign & Validation milestone --
+# generated 2000-scenario campaign dataset/report (scripts/
+# run_predictive_dataset_campaign_v1.py), regenerable from source
+# (deterministic master seed), never committed. See
+# docs/architecture/predictive_dataset_campaign_v1.md for the numbers.
+/data/predictive_dataset_campaign_v1/
