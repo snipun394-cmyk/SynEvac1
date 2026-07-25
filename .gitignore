@@ -39,3 +39,10 @@ __pycache__/
 # (deterministic master seed), never committed. See
 # docs/architecture/predictive_dataset_campaign_v1.md for the numbers.
 /data/predictive_dataset_campaign_v1/
+
+# First Localized Predictive Congestion Model milestone -- exported
+# model artifact/metadata/training report (scripts/
+# train_localized_predictive_model_v1.py), regenerable from the
+# (also-gitignored) predictive_dataset_campaign_v1 CSV, never committed.
+# See docs/architecture/localized_predictive_model_v1.md for the numbers.
+/data/localized_predictive_model_v1/
