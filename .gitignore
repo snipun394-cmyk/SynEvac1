@@ -25,3 +25,10 @@ __pycache__/
 # docs/architecture/human_detection.md for how to obtain them.
 /weights/*.pt
 /validation_media/
+
+# Per-Candidate Predictive AI Data Foundation milestone -- generated
+# campaign dataset/report (scripts/generate_predictive_dataset_campaign.py),
+# regenerable from source, never committed. See
+# docs/architecture/localized_predictive_ai_dataset.md for the campaign
+# numbers this produced.
+/data/predictive_dataset_campaign/
