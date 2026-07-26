@@ -61,13 +61,38 @@ def operational_coverage_report(
         "single_bottleneck_scenarios": single_bottleneck_scenarios,
         "multiple_bottleneck_scenarios": multiple_bottleneck_scenarios,
         "candidate_type_row_counts": candidate_type_counts,
-        "building_topology_note": (
-            "Every scenario in this campaign uses the SAME fixed Building "
-            "(ai_registry.training_scenario.make_training_building(): 2 exits, 2 doors, 1 stair). "
-            "Single-exit and single-candidate-of-a-type building topologies are NOT represented at "
-            "all in this campaign -- see Phase 12 documentation's known-limitations section."
-        ),
+        "building_topology_note": _building_topology_note(scenario_metadata),
     }
+
+
+def _building_topology_note(scenario_metadata: Sequence[Dict[str, Any]]) -> str:
+    """Predictive Dataset V2 milestone -- this note used to be a single
+    hardcoded string asserting "every scenario uses the SAME fixed
+    Building... single-exit topologies are NOT represented", written
+    when this function only ever saw V1's one-Building campaign. Called
+    on a V2 campaign (multiple distinct topology_family values,
+    including single_exit_lowrise), that hardcoded claim is simply
+    false -- a real reporting bug, not a hypothetical one, caught by
+    actually running this function against V2 data. Derived from the
+    scenario_metadata actually passed in instead, so it stays accurate
+    for whichever campaign calls it."""
+
+    topology_families = sorted({
+        entry["topology_family"] for entry in scenario_metadata if entry.get("topology_family")
+    })
+    single_exit_present = any(entry.get("exit_count") == 1 for entry in scenario_metadata)
+
+    if len(topology_families) <= 1:
+        return (
+            "Every scenario in this campaign uses the SAME fixed Building. "
+            f"Single-exit building topologies are {'' if single_exit_present else 'NOT '}represented."
+        )
+
+    return (
+        f"This campaign draws from {len(topology_families)} distinct topology families "
+        f"({', '.join(topology_families)}), not a single fixed Building. "
+        f"Single-exit building topologies are {'' if single_exit_present else 'NOT '}represented."
+    )
 
 
 def _distinct_congested_candidates_by_scenario(rows: Sequence[Dict[str, Any]]) -> Dict[str, int]:

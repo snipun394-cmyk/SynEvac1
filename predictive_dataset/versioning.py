@@ -47,11 +47,22 @@ class DatasetVersion:
         }
 
 
-def dataset_version(recommended_horizon_seconds: float) -> DatasetVersion:
+def dataset_version(recommended_horizon_seconds: float, campaign_version: str = CAMPAIGN_VERSION) -> DatasetVersion:
+
+    # campaign_version defaults to V1's own CAMPAIGN_VERSION so every
+    # existing V1 call site (scripts/run_predictive_dataset_campaign_v1.py,
+    # its own tests) is completely unaffected -- Predictive Dataset V2
+    # milestone's campaign script passes its own campaign_version
+    # explicitly (predictive_dataset.campaign_config_v2.CAMPAIGN_VERSION_V2)
+    # instead. schema_version/feature_version/target_version are NOT
+    # parameterized here: V2 reuses the exact same schema/feature/target
+    # definitions as V1 (same 9 input features, same congestion-threshold-2
+    # target semantics) -- only the campaign (which scenarios/topologies
+    # produced the rows) differs.
 
     return DatasetVersion(
         schema_version=SCHEMA_VERSION,
-        campaign_version=CAMPAIGN_VERSION,
+        campaign_version=campaign_version,
         feature_version=FEATURE_VERSION,
         target_version=TARGET_VERSION,
         prediction_horizon_seconds=recommended_horizon_seconds,

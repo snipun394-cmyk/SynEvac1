@@ -1,6 +1,6 @@
 import unittest
 
-from predictive_dataset.quality_checks import duplicate_scenario_ids, run_quality_checks
+from predictive_dataset.quality_checks import duplicate_scenario_ids, run_quality_checks, zero_walking_distance_candidates
 
 
 def make_row(**overrides):
@@ -102,6 +102,45 @@ class DuplicateScenarioIdTests(unittest.TestCase):
         metadata = [{"scenario_id": "scn-1"}, {"scenario_id": "scn-2"}]
 
         self.assertEqual(duplicate_scenario_ids(metadata), 0)
+
+
+class ZeroWalkingDistanceCandidateTests(unittest.TestCase):
+    """Predictive Dataset V2 milestone, Phase 1/16 -- the mechanical
+    guard that would have caught V1's Stair from_floor_id bug."""
+
+    def test_candidate_with_all_zero_distance_rows_is_flagged(self):
+
+        rows = [
+            make_row(candidate_id="stair-1", candidate_walking_distance=0.0),
+            make_row(candidate_id="stair-1", candidate_walking_distance=0.0),
+        ]
+
+        report = zero_walking_distance_candidates(rows)
+
+        self.assertEqual(report["flagged_zero_distance_candidate_ids"], ["stair-1"])
+
+    def test_candidate_with_positive_distance_is_not_flagged(self):
+
+        rows = [make_row(candidate_id="exit-1", candidate_walking_distance=8.0)]
+
+        report = zero_walking_distance_candidates(rows)
+
+        self.assertEqual(report["flagged_zero_distance_candidate_ids"], [])
+        self.assertIn("exit-1", report["candidates_checked"])
+
+    def test_candidate_with_mixed_zero_and_nonzero_is_not_flagged(self):
+        # Should never actually happen for a real structural distance
+        # (same building, same candidate -> same geometry every row) --
+        # but the check must not falsely flag it if it somehow did.
+
+        rows = [
+            make_row(candidate_id="door-1", candidate_walking_distance=0.0),
+            make_row(candidate_id="door-1", candidate_walking_distance=5.0),
+        ]
+
+        report = zero_walking_distance_candidates(rows)
+
+        self.assertEqual(report["flagged_zero_distance_candidate_ids"], [])
 
 
 if __name__ == "__main__":

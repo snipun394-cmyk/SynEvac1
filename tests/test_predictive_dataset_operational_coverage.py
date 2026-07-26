@@ -75,5 +75,44 @@ class OperationalCoverageTests(unittest.TestCase):
         self.assertEqual(report["fire_severity_scenario_counts"], {"FAST_GROWTH_MORE_SEVERE": 1})
 
 
+class BuildingTopologyNoteTests(unittest.TestCase):
+    """Predictive Dataset V2 milestone -- this note used to hardcode a
+    single-Building, no-single-exit-coverage claim that was true for V1
+    but became false the moment this same function ran against a real
+    V2 (multi-topology-family) campaign -- a genuine reporting bug,
+    caught by running the actual analysis, not a hypothetical."""
+
+    def test_single_topology_family_without_single_exit_reports_v1_style_note(self):
+
+        metadata = [make_meta(scenario_id="scn-1", exit_count=2, topology_family="v1_topology_fixed")]
+        report = operational_coverage_report([], metadata, {})
+
+        self.assertIn("SAME fixed Building", report["building_topology_note"])
+        self.assertIn("NOT represented", report["building_topology_note"])
+
+    def test_multiple_topology_families_with_single_exit_reports_accurately(self):
+
+        metadata = [
+            make_meta(scenario_id="scn-1", exit_count=1, topology_family="single_exit_lowrise"),
+            make_meta(scenario_id="scn-2", exit_count=3, topology_family="multi_exit_wide"),
+        ]
+        report = operational_coverage_report([], metadata, {})
+
+        note = report["building_topology_note"]
+        self.assertNotIn("SAME fixed Building", note)
+        self.assertIn("single_exit_lowrise", note)
+        self.assertIn("multi_exit_wide", note)
+        self.assertNotIn("NOT represented", note)
+
+    def test_no_topology_family_key_falls_back_gracefully(self):
+        # V1's scenario_metadata never had a topology_family key at all --
+        # must not KeyError, must fall back to the single-family branch.
+
+        metadata = [make_meta(scenario_id="scn-1", exit_count=2)]
+        report = operational_coverage_report([], metadata, {})
+
+        self.assertIn("SAME fixed Building", report["building_topology_note"])
+
+
 if __name__ == "__main__":
     unittest.main()

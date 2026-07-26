@@ -46,3 +46,9 @@ __pycache__/
 # (also-gitignored) predictive_dataset_campaign_v1 CSV, never committed.
 # See docs/architecture/localized_predictive_model_v1.md for the numbers.
 /data/localized_predictive_model_v1/
+
+# Predictive Dataset V2 milestone -- generated multi-topology campaign
+# dataset/report (scripts/run_predictive_dataset_campaign_v2.py),
+# regenerable from source (deterministic master seed), never committed.
+# See docs/architecture/predictive_dataset_campaign_v2.md for the numbers.
+/data/predictive_dataset_campaign_v2/
