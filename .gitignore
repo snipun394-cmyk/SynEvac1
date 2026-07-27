@@ -93,3 +93,13 @@ __pycache__/
 # from source (deterministic seeds), never committed. See
 # docs/architecture/localized_predictive_model_v3.md for the numbers.
 /data/localized_predictive_model_v3/
+
+# Localized Predictive Model V3.1 milestone -- duplicate-structure/
+# temporal-redundancy audit, shuffle-battery, unique-state, topology-
+# representation, holdout-failure, topology-diversity, relational-
+# feature, and generalization-comparison reports, plus the raw
+# structural-variant scenario datasets and memory watchdog/run logs --
+# all regenerable from source (deterministic seeds), never committed.
+# See docs/architecture/localized_predictive_model_v3_1_robustness.md
+# for the numbers.
+/data/localized_predictive_model_v3_1/
