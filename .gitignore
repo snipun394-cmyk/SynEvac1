@@ -52,3 +52,10 @@ __pycache__/
 # regenerable from source (deterministic master seed), never committed.
 # See docs/architecture/predictive_dataset_campaign_v2.md for the numbers.
 /data/predictive_dataset_campaign_v2/
+
+# Localized Predictive Model V2 milestone -- exported model/calibrator
+# artifacts/metadata/training report (scripts/
+# train_localized_predictive_model_v2.py), regenerable from the
+# (also-gitignored) predictive_dataset_campaign_v2 CSV, never committed.
+# See docs/architecture/localized_predictive_model_v2.md for the numbers.
+/data/localized_predictive_model_v2/

@@ -50,13 +50,24 @@ class RandomForestModel:
 
     name = "random_forest"
 
-    def __init__(self, seed: int = 20260726, class_weight: Optional[str] = "balanced", n_estimators: int = 300) -> None:
+    def __init__(
+        self, seed: int = 20260726, class_weight: Optional[str] = "balanced", n_estimators: int = 300,
+        n_jobs: int = -1, max_depth: Optional[int] = None,
+    ) -> None:
+        # n_jobs/max_depth are exposed (defaults -1/None, V1's original
+        # hardcoded values) so a resource-constrained environment
+        # (Localized Predictive Model V2 milestone: ~7.3GB total RAM
+        # development machine) can reduce parallelism/tree size to
+        # control peak memory without editing this shared, dataset-
+        # version-agnostic module's default behavior -- V1's own script
+        # never passes either argument, so it is completely unaffected.
+        # V2's own script discloses exactly what it overrides and why.
         self._model = RandomForestClassifier(
             n_estimators=n_estimators,
-            max_depth=None,
+            max_depth=max_depth,
             min_samples_leaf=5,
             class_weight=class_weight,
-            n_jobs=-1,
+            n_jobs=n_jobs,
             random_state=seed,
         )
 
@@ -103,11 +114,12 @@ class XGBoostModel:
 
     name = "xgboost"
 
-    def __init__(self, seed: int = 20260726, n_estimators: int = 300) -> None:
+    def __init__(self, seed: int = 20260726, n_estimators: int = 300, n_jobs: int = -1) -> None:
         if not XGBOOST_AVAILABLE:
             raise ImportError("xgboost is not installed in this environment.")
         self._n_estimators = n_estimators
         self._seed = seed
+        self._n_jobs = n_jobs  # see RandomForestModel's docstring note on why this is exposed
         self._model = None
 
     def fit(self, X: np.ndarray, y: np.ndarray, sample_weight: Optional[np.ndarray] = None) -> "XGBoostModel":
@@ -128,7 +140,7 @@ class XGBoostModel:
             eval_metric="logloss",
             scale_pos_weight=scale_pos_weight if sample_weight is None else 1.0,
             random_state=self._seed,
-            n_jobs=-1,
+            n_jobs=self._n_jobs,
         )
         self._model.fit(X, y, sample_weight=sample_weight)
         return self
@@ -145,15 +157,15 @@ class XGBoostModel:
         return self._model
 
 
-def build_tree_models(seed: int = 20260726) -> Dict[str, object]:
+def build_tree_models(seed: int = 20260726, n_jobs: int = -1, random_forest_max_depth: Optional[int] = None) -> Dict[str, object]:
 
     models = {
-        "random_forest": RandomForestModel(seed=seed),
+        "random_forest": RandomForestModel(seed=seed, n_jobs=n_jobs, max_depth=random_forest_max_depth),
         "gradient_boosting": HistGradientBoostingModel(seed=seed),
     }
 
     if XGBOOST_AVAILABLE:
-        models["xgboost"] = XGBoostModel(seed=seed)
+        models["xgboost"] = XGBoostModel(seed=seed, n_jobs=n_jobs)
 
     return models
 
