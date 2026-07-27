@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Dict, Optional, Sequence
 
 import numpy as np
 from sklearn.linear_model import LogisticRegression
@@ -114,6 +114,73 @@ class DecisionTreeBaseline:
 
     def predict_proba(self, X: np.ndarray) -> np.ndarray:
         return self._model.predict_proba(X)[:, 1]
+
+
+class DeterministicCurrentStateBaseline:
+    """Localized Predictive Model V3 milestone, Phase 29 -- SynEvac
+    already has deterministic live intelligence (crowd_intelligence's
+    own congestion_level classification and trend direction). This
+    baseline answers "how well would an operator do using ONLY that
+    already-existing current-state read, with no learning at all" --
+    the real bar Model V3 must clear, not just beating a trivial
+    majority-class/random baseline. Purely a fixed RULE over two
+    already-one-hot-encoded feature columns (candidate_congestion_level,
+    candidate_congestion_trend) -- fit() does nothing (no parameters are
+    ever learned from data), and NO new intelligence engine is created:
+    this reads the exact same categorical fields simulation_extractor.py/
+    live_extractor.py already produce from crowd_intelligence's own
+    congestion_level/trend computation.
+
+    score = congestion_level_rank(0-4) + 1.0 if trend==RISING else
+            (+0.5 if trend==UNKNOWN else +0.0), normalized to [0, 1] by
+    dividing by the maximum possible score (5.0) -- a simple, fully
+    transparent, monotonic ordinal score usable for ROC-AUC/PR-AUC
+    exactly like any real classifier's predict_proba() output, without
+    ever being fit to labels."""
+
+    name = "deterministic_current_state"
+
+    _CONGESTION_LEVEL_RANK: Dict[str, int] = {"LOW": 0, "MODERATE": 1, "HIGH": 2, "VERY_HIGH": 3, "CRITICAL": 4}
+    _MAX_SCORE = 5.0  # CRITICAL (4) + RISING (1)
+
+    def __init__(self, feature_names: Sequence[str]) -> None:
+
+        feature_names = list(feature_names)
+
+        self._level_column_indices = {
+            level: feature_names.index(f"candidate_congestion_level={level}")
+            for level in self._CONGESTION_LEVEL_RANK
+            if f"candidate_congestion_level={level}" in feature_names
+        }
+        self._trend_rising_index = (
+            feature_names.index("candidate_congestion_trend=RISING")
+            if "candidate_congestion_trend=RISING" in feature_names else None
+        )
+        self._trend_unknown_index = (
+            feature_names.index("candidate_congestion_trend=UNKNOWN")
+            if "candidate_congestion_trend=UNKNOWN" in feature_names else None
+        )
+
+    def fit(self, X: np.ndarray, y: np.ndarray, sample_weight: Optional[np.ndarray] = None) -> "DeterministicCurrentStateBaseline":
+        # Deliberately a no-op -- every parameter of this rule is fixed
+        # in advance from existing feature semantics, never learned.
+        return self
+
+    def predict_proba(self, X: np.ndarray) -> np.ndarray:
+
+        score = np.zeros(len(X), dtype=float)
+
+        for level, rank in self._CONGESTION_LEVEL_RANK.items():
+            column = self._level_column_indices.get(level)
+            if column is not None:
+                score += X[:, column] * rank
+
+        if self._trend_rising_index is not None:
+            score += X[:, self._trend_rising_index] * 1.0
+        if self._trend_unknown_index is not None:
+            score += X[:, self._trend_unknown_index] * 0.5
+
+        return np.clip(score / self._MAX_SCORE, 0.0, 1.0)
 
 
 def build_baselines(seed: int = 20260726):

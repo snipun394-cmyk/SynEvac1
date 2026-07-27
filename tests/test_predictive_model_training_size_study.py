@@ -116,6 +116,37 @@ class TrainingSizeStudyTests(unittest.TestCase):
         baseline_feat = build_feature_matrix(self.train_trainable)
         self.assertEqual(result["1.0"]["train_row_count"], len(baseline_feat.y))
 
+    def test_progress_fn_called_once_per_fraction_with_matching_results(self):
+        """Localized Predictive Model V3 milestone -- progress_fn (added
+        so the V3 script could log memory usage per training-size-study
+        fraction, after a real OOM crash occurred silently mid-study with
+        no visibility into which fraction was running) must be invoked
+        exactly once per fraction, in order, with that fraction's own
+        result dict -- and must not change the study's own return value."""
+
+        seen = []
+
+        def _progress(key, result):
+            seen.append((key, result))
+
+        result = training_size_study(
+            self.train_trainable, self.val_feat, self._factory,
+            fractions=(0.25, 0.5, 1.0), seed=1, progress_fn=_progress,
+        )
+
+        self.assertEqual([key for key, _ in seen], ["0.25", "0.5", "1.0"])
+        for key, reported_result in seen:
+            self.assertEqual(reported_result, result[key])
+
+    def test_progress_fn_defaults_to_none_and_is_optional(self):
+        """Every pre-existing call site (V1/V2/V2.2 scripts) omits
+        progress_fn entirely -- must keep working unchanged."""
+
+        result = training_size_study(
+            self.train_trainable, self.val_feat, self._factory, fractions=(1.0,), seed=1,
+        )
+        self.assertEqual(result["1.0"]["train_scenario_count"], 40)
+
     def test_feature_builder_override_matches_val_feat_schema(self):
         """The bug's actual fix: passing feature_builder=<the same
         builder val_feat was built with> must produce a subset feature

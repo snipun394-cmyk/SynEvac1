@@ -86,3 +86,10 @@ __pycache__/
 # See docs/architecture/predictive_congestion_target_v2.md for the
 # numbers.
 /data/predictive_congestion_target_v2/
+
+# Localized Predictive Model V3 milestone -- training report, exported
+# model/calibrator/metadata, specialization/horizon-sensitivity
+# experiment reports, and memory watchdog/run logs, all regenerable
+# from source (deterministic seeds), never committed. See
+# docs/architecture/localized_predictive_model_v3.md for the numbers.
+/data/localized_predictive_model_v3/

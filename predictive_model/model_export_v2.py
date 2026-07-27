@@ -1,6 +1,6 @@
 import json
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Dict, Sequence, Tuple
 
 import joblib
@@ -46,6 +46,27 @@ class ExtendedModelMetadataV2:
     known_limitations: Tuple[str, ...]
     git_commit: str
 
+    # Localized Predictive Model V3 milestone -- additive, optional
+    # fields (defaults keep every pre-existing V1/V2/V2.2 call site
+    # valid unchanged) covering metadata this milestone's own export
+    # requirements list that V2/V2.2 had no field for yet: the feature
+    # SCHEMA's own version (distinct from dataset_schema_version, which
+    # names the campaign/relabeling artifact, not the feature contract
+    # itself), the target's minimum-persistence-duration parameter
+    # (Target V2's own MIN_PERSISTENCE_SECONDS, so a future reader never
+    # has to cross-reference target_generator_v2.py to know what
+    # "onset" meant for this exact model), how many scenarios actually
+    # went into training, a human-readable calibration status summary,
+    # and metrics broken out by candidate type / topology family (so a
+    # reader auditing an exported model doesn't have to also find the
+    # training_report_v3.json that produced it).
+    feature_schema_version: str = ""
+    minimum_congestion_duration_seconds: float = 0.0
+    training_scenario_count: int = 0
+    calibration_status: str = ""
+    metrics_by_candidate_type: Dict[str, Any] = field(default_factory=dict)
+    metrics_by_topology_family: Dict[str, Any] = field(default_factory=dict)
+
     def to_dict(self) -> Dict[str, Any]:
         return {
             "model_version": self.model_version,
@@ -67,6 +88,12 @@ class ExtendedModelMetadataV2:
             "known_limitations": list(self.known_limitations),
             "git_commit": self.git_commit,
             "not_wired_into_live_inference": True,
+            "feature_schema_version": self.feature_schema_version,
+            "minimum_congestion_duration_seconds": self.minimum_congestion_duration_seconds,
+            "training_scenario_count": self.training_scenario_count,
+            "calibration_status": self.calibration_status,
+            "metrics_by_candidate_type": self.metrics_by_candidate_type,
+            "metrics_by_topology_family": self.metrics_by_topology_family,
         }
 
 

@@ -1,5 +1,6 @@
+import gc
 import random
-from typing import Any, Callable, Dict, Sequence, Tuple
+from typing import Any, Callable, Dict, Optional, Sequence, Tuple
 
 import pandas as pd
 
@@ -29,6 +30,7 @@ def training_size_study(
     fractions: Sequence[float] = (0.10, 0.25, 0.50, 1.00),
     seed: int = 20260726,
     feature_builder: Callable[[pd.DataFrame], PreparedFeatures] = build_feature_matrix,
+    progress_fn: Optional[Callable[[str, Dict[str, Any]], None]] = None,
 ) -> Dict[str, Any]:
     """feature_builder defaults to the frozen V1/V2 9-field
     build_feature_matrix (V2's own call sites are completely unaffected)
@@ -73,5 +75,11 @@ def training_size_study(
             "val_roc_auc": val_metrics.roc_auc,
             "val_pr_auc": val_metrics.pr_auc,
         }
+
+        if progress_fn is not None:
+            progress_fn(str(fraction), results[str(fraction)])
+
+        del subset_frame, subset_feat, model, val_prob, sample_weight
+        gc.collect()
 
     return results
