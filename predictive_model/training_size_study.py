@@ -28,7 +28,15 @@ def training_size_study(
     *,
     fractions: Sequence[float] = (0.10, 0.25, 0.50, 1.00),
     seed: int = 20260726,
+    feature_builder: Callable[[pd.DataFrame], PreparedFeatures] = build_feature_matrix,
 ) -> Dict[str, Any]:
+    """feature_builder defaults to the frozen V1/V2 9-field
+    build_feature_matrix (V2's own call sites are completely unaffected)
+    -- exposed so a caller using a different, still-schema-consistent
+    feature matrix (e.g. predictive_model.feature_prep_v2_1.
+    build_experimental_feature_matrix, whatever `val_feat` itself was
+    already built with) can pass it through instead of silently
+    building val/train feature matrices with two DIFFERENT schemas."""
 
     train_scenario_ids = sorted(train_trainable["scenario_id"].astype(str).unique())
 
@@ -45,7 +53,7 @@ def training_size_study(
         subset_ids = set(shuffled[:n_scenarios])
 
         subset_frame = train_trainable[train_trainable["scenario_id"].astype(str).isin(subset_ids)]
-        subset_feat = build_feature_matrix(subset_frame)
+        subset_feat = feature_builder(subset_frame)
 
         class_weight_map = compute_class_weight_map(subset_feat.y)
         sample_weight = sample_weights_from_class_weight(subset_feat.y, class_weight_map)

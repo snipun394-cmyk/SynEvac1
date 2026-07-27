@@ -67,3 +67,14 @@ __pycache__/
 # docs/architecture/localized_predictive_model_v2_exit_generalization_investigation.md
 # for the numbers.
 /data/predictive_dataset_campaign_v2_1_experiment/
+
+# Localized Predictive Model V2.2 milestone -- full-scale (2,500
+# scenario) experimental-schema campaign, target-semantics audit
+# report, and exported model/calibrator artifacts (scripts/
+# run_predictive_dataset_campaign_v2_2_fullscale.py, run_target_
+# semantics_audit_v2_2.py, train_localized_predictive_model_v2_2.py),
+# all regenerable from source (deterministic master seed), never
+# committed. See docs/architecture/localized_predictive_model_v2_2.md
+# for the numbers.
+/data/predictive_dataset_campaign_v2_2/
+/data/localized_predictive_model_v2_2/

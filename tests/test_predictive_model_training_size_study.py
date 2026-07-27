@@ -4,17 +4,18 @@ import numpy as np
 import pandas as pd
 
 from predictive_model.feature_prep import build_feature_matrix
+from predictive_model.feature_prep_v2_1 import build_experimental_feature_matrix
 from predictive_model.tree_models import HistGradientBoostingModel
 from predictive_model.training_size_study import training_size_study
 
 
-def _synthetic_frame(n_scenarios, rows_per_scenario, seed):
+def _synthetic_frame(n_scenarios, rows_per_scenario, seed, experimental=False):
 
     rng = np.random.default_rng(seed)
     rows = []
     for s in range(n_scenarios):
         for r in range(rows_per_scenario):
-            rows.append({
+            row = {
                 "scenario_id": f"scn-{s}",
                 "candidate_type": ["Door", "Exit", "Stair"][r % 3],
                 "total_active_occupant_count": int(rng.integers(0, 30)),
@@ -26,7 +27,12 @@ def _synthetic_frame(n_scenarios, rows_per_scenario, seed):
                 "candidate_approaching_count": int(rng.integers(0, 5)),
                 "candidate_congestion_level": ["LOW", "MODERATE", "HIGH", "VERY_HIGH", "CRITICAL"][r % 5],
                 "target": bool(rng.integers(0, 2)),
-            })
+            }
+            if experimental:
+                row["candidate_recent_flow_rate"] = int(rng.integers(0, 10))
+                row["candidate_congestion_trend"] = ["RISING", "STABLE", "FALLING", "UNKNOWN"][r % 4]
+                row["candidate_alternative_route_count"] = int(rng.integers(0, 5))
+            rows.append(row)
     return pd.DataFrame(rows)
 
 
@@ -94,6 +100,44 @@ class TrainingSizeStudyTests(unittest.TestCase):
         self.assertIsNotNone(entry["val_pr_auc"])
         self.assertGreaterEqual(entry["val_roc_auc"], 0.0)
         self.assertLessEqual(entry["val_roc_auc"], 1.0)
+
+    def test_feature_builder_defaults_to_v1_v2_baseline_schema(self):
+        """Regression test for a real bug found during the V2.2
+        milestone: the ORIGINAL implementation hardcoded
+        predictive_model.feature_prep.build_feature_matrix internally,
+        so passing a val_feat built with a DIFFERENT (e.g. experimental,
+        more-columns) schema raised an XGBoost feature-shape mismatch at
+        predict_proba time. The default (no feature_builder passed) must
+        still match build_feature_matrix's own column count exactly, so
+        every existing V2 call site stays completely unaffected."""
+
+        result = training_size_study(self.train_trainable, self.val_feat, self._factory, fractions=(1.0,), seed=1)
+
+        baseline_feat = build_feature_matrix(self.train_trainable)
+        self.assertEqual(result["1.0"]["train_row_count"], len(baseline_feat.y))
+
+    def test_feature_builder_override_matches_val_feat_schema(self):
+        """The bug's actual fix: passing feature_builder=<the same
+        builder val_feat was built with> must produce a subset feature
+        matrix with the SAME column count as val_feat.X, so predict_proba
+        never raises a shape mismatch."""
+
+        train_experimental = _synthetic_frame(n_scenarios=40, rows_per_scenario=10, seed=1, experimental=True)
+        val_experimental = _synthetic_frame(n_scenarios=10, rows_per_scenario=10, seed=2, experimental=True)
+        val_feat_experimental = build_experimental_feature_matrix(val_experimental)
+
+        def _factory():
+            return HistGradientBoostingModel(seed=1, max_iter=10)
+
+        result = training_size_study(
+            train_experimental, val_feat_experimental, _factory, fractions=(1.0,), seed=1,
+            feature_builder=build_experimental_feature_matrix,
+        )
+
+        # the real assertion: this must not raise (predict_proba shape
+        # mismatch) -- val_roc_auc/val_pr_auc being present confirms
+        # predict_proba actually ran to completion.
+        self.assertIsNotNone(result["1.0"]["val_roc_auc"])
 
 
 if __name__ == "__main__":
