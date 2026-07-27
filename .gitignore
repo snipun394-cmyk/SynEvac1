@@ -103,3 +103,12 @@ __pycache__/
 # See docs/architecture/localized_predictive_model_v3_1_robustness.md
 # for the numbers.
 /data/localized_predictive_model_v3_1/
+
+# Predictive Dataset V3 milestone -- structural-diversity campaign
+# (pilot + full-scale), the exploratory generalization proxy experiment,
+# and all generated CSV/report artifacts -- all regenerable from source
+# (deterministic seeds), never committed. See
+# docs/architecture/predictive_dataset_campaign_v3.md.
+/data/predictive_dataset_campaign_v3_pilot/
+/data/predictive_dataset_campaign_v3/
+/data/predictive_dataset_campaign_v3_generalization/
