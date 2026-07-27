@@ -59,3 +59,11 @@ __pycache__/
 # (also-gitignored) predictive_dataset_campaign_v2 CSV, never committed.
 # See docs/architecture/localized_predictive_model_v2.md for the numbers.
 /data/localized_predictive_model_v2/
+
+# Localized Predictive Model V2.1 milestone -- small, targeted
+# hypothesis-test campaign (scripts/
+# run_predictive_dataset_campaign_v2_1_experiment.py), regenerable from
+# source (deterministic master seed), never committed. See
+# docs/architecture/localized_predictive_model_v2_exit_generalization_investigation.md
+# for the numbers.
+/data/predictive_dataset_campaign_v2_1_experiment/
