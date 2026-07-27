@@ -78,3 +78,11 @@ __pycache__/
 # for the numbers.
 /data/predictive_dataset_campaign_v2_2/
 /data/localized_predictive_model_v2_2/
+
+# Predictive Congestion Target V2 milestone -- full-scale relabeled
+# dataset (V1 + V2 targets side by side) and exploratory-model
+# artifacts (scripts/run_predictive_congestion_target_v2_relabel.py),
+# regenerable from source (deterministic master seed), never committed.
+# See docs/architecture/predictive_congestion_target_v2.md for the
+# numbers.
+/data/predictive_congestion_target_v2/
