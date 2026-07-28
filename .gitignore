@@ -112,3 +112,12 @@ __pycache__/
 /data/predictive_dataset_campaign_v3_pilot/
 /data/predictive_dataset_campaign_v3/
 /data/predictive_dataset_campaign_v3_generalization/
+
+# Cross-Topology Generalization Investigation -- the single JSON
+# investigation report (family-holdout reproduction, distribution-shift/
+# identifiability, conditional-target, failure-region, candidate-type,
+# normalization, graph-context, family-ID-diagnostic, multi-family-
+# holdout, model-robustness, and Target V2 stability results), fully
+# regenerable from source (deterministic seed), never committed. See
+# docs/architecture/cross_topology_generalization_investigation.md.
+/data/cross_topology_generalization_investigation/
