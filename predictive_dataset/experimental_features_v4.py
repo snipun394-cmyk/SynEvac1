@@ -1,11 +1,9 @@
 from dataclasses import dataclass
-from typing import Dict, Tuple
+from typing import Tuple
 
-import networkx as nx
 import pandas as pd
 
-from navigation.node import Node
-from predictive_dataset.candidate import edges_by_candidate_id, enumerate_candidates
+from predictive_dataset.graph_context_v4 import compute_graph_context_for_building
 from predictive_dataset.topologies_v3 import StructuralVariant, all_structural_variants_v3
 from predictive_dataset.topology_signature import compute_all_signatures
 
@@ -130,36 +128,6 @@ class GraphContextRow:
     graph_upstream_catchment_count: int
 
 
-def _build_undirected_graph(building) -> Tuple[nx.Graph, Dict[Tuple[str, str], list]]:
-    """One undirected nx.Graph node per zone + the single shared OUTSIDE
-    node, one edge per DISTINCT (zone, zone) pair. When two or more
-    candidates connect the exact same pair of nodes (parallel routes,
-    e.g. two doors between the same two zones), they collapse onto one
-    graph edge and share that edge's centrality/bridge/catchment value
-    -- a documented simplification: they are topologically redundant
-    alternatives to each other, not distinguishable by pure graph shape."""
-
-    candidates = enumerate_candidates(building)
-    edges = edges_by_candidate_id(building)
-
-    graph = nx.Graph()
-    edge_to_candidate_ids: Dict[Tuple[str, str], list] = {}
-
-    for candidate in candidates:
-
-        edge_obj = edges[candidate.candidate_id]
-        key = tuple(sorted((edge_obj.from_node, edge_obj.to_node)))
-        distance = edge_obj.walking_distance if edge_obj.walking_distance else 1.0
-
-        if graph.has_edge(*key):
-            edge_to_candidate_ids[key].append(candidate.candidate_id)
-        else:
-            graph.add_edge(*key, distance=distance)
-            edge_to_candidate_ids[key] = [candidate.candidate_id]
-
-    return graph, edge_to_candidate_ids
-
-
 def compute_graph_context_for_variant(variant: StructuralVariant) -> Tuple[GraphContextRow, ...]:
     """Physical meaning of each descriptor (Phase 7 audit answers inline):
 
@@ -190,43 +158,24 @@ def compute_graph_context_for_variant(variant: StructuralVariant) -> Tuple[Graph
         Same live/sim parity and non-leakage properties as above.
     """
 
-    graph, edge_to_candidate_ids = _build_undirected_graph(variant.topology.building)
+    # Predictive Dataset V4 milestone -- delegates to the now-PROMOTED,
+    # canonical implementation (predictive_dataset.graph_context_v4,
+    # Phase 1's shared sim/live computation) rather than duplicating the
+    # algorithm. Output is unchanged: same values, same field names on
+    # this module's own GraphContextRow, so every pre-existing caller/
+    # test of this investigation module keeps working unmodified.
+    per_candidate = compute_graph_context_for_building(variant.topology.building)
 
-    if graph.number_of_nodes() == 0 or graph.number_of_edges() == 0:
-        return ()
-
-    betweenness = nx.edge_betweenness_centrality(graph, weight="distance")
-    bridge_keys = {tuple(sorted(edge)) for edge in nx.bridges(graph)}
-
-    catchment_count: Dict[Tuple[str, str], int] = {key: 0 for key in edge_to_candidate_ids}
-    outside = Node.OUTSIDE_NODE_ID
-
-    for zone in graph.nodes():
-
-        if zone == outside or not nx.has_path(graph, zone, outside):
-            continue
-
-        path = nx.shortest_path(graph, zone, outside, weight="distance")
-        for a, b in zip(path[:-1], path[1:]):
-            catchment_count[tuple(sorted((a, b)))] += 1
-
-    rows = []
-    for key, candidate_ids in edge_to_candidate_ids.items():
-
-        bw = float(betweenness.get(key, 0.0))
-        is_bridge = key in bridge_keys
-        catch = int(catchment_count.get(key, 0))
-
-        for candidate_id in candidate_ids:
-            rows.append(GraphContextRow(
-                structural_variant_id=variant.variant_id,
-                candidate_id=candidate_id,
-                graph_edge_betweenness_centrality=bw,
-                graph_is_bridge=is_bridge,
-                graph_upstream_catchment_count=catch,
-            ))
-
-    return tuple(rows)
+    return tuple(
+        GraphContextRow(
+            structural_variant_id=variant.variant_id,
+            candidate_id=context.candidate_id,
+            graph_edge_betweenness_centrality=context.betweenness_centrality,
+            graph_is_bridge=context.is_bridge,
+            graph_upstream_catchment_count=context.upstream_catchment_count,
+        )
+        for context in per_candidate.values()
+    )
 
 
 def build_graph_context_table() -> pd.DataFrame:

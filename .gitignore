@@ -121,3 +121,12 @@ __pycache__/
 # regenerable from source (deterministic seed), never committed. See
 # docs/architecture/cross_topology_generalization_investigation.md.
 /data/cross_topology_generalization_investigation/
+
+# Predictive Dataset V4 milestone -- cross-family structural-
+# generalization campaign (pilot + full-scale, 6 families/24 variants),
+# pilot diagnostics, structural comparison, and generalization-
+# evaluation reports -- all regenerable from source (deterministic
+# seeds), never committed. See
+# docs/architecture/predictive_dataset_campaign_v4.md.
+/data/predictive_dataset_campaign_v4_pilot/
+/data/predictive_dataset_campaign_v4/
