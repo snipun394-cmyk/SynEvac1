@@ -45,6 +45,20 @@ class OccupancyFacts:
     occupant_ids_by_zone: Mapping[str, Tuple[str, ...]] = field(default_factory=dict)
     occupant_ids_by_floor: Mapping[str, Tuple[str, ...]] = field(default_factory=dict)
 
+    # Observable Stair Perception milestone -- a THIRD, independent
+    # grouping alongside occupant_ids_by_zone/occupant_ids_by_floor,
+    # computed in the exact SAME single pass over occupants below (Phase
+    # 10's own "do not reintroduce duplicate occupancy computations"
+    # requirement). An occupant_id can legitimately appear here AND in
+    # occupant_ids_by_zone (a point can genuinely satisfy both a Zone
+    # polygon and a Stair observable region -- see camera_calibration.
+    # projection.WorldProjection.stair_id's own docstring) or here alone
+    # while ABSENT from every zone (the common case: a stair's observable
+    # region typically covers ground no Zone polygon reaches) -- neither
+    # case inflates total_observed_occupant_ids, which is keyed by
+    # occupant_id membership, never by summing across these groupings.
+    occupant_ids_by_stair: Mapping[str, Tuple[str, ...]] = field(default_factory=dict)
+
     # Canonical Live Occupancy Source of Truth milestone, Phase 13 --
     # an occupant currently NEW/ACTIVE but with no resolved
     # current_zone_id (no reliable zone localization this cycle) is
@@ -76,6 +90,10 @@ class OccupancyFacts:
             self, "occupant_ids_by_floor",
             MappingProxyType({floor_id: tuple(ids) for floor_id, ids in self.occupant_ids_by_floor.items()}),
         )
+        object.__setattr__(
+            self, "occupant_ids_by_stair",
+            MappingProxyType({stair_id: tuple(ids) for stair_id, ids in self.occupant_ids_by_stair.items()}),
+        )
 
     # =====================================================
 
@@ -103,6 +121,12 @@ class OccupancyFacts:
 
         return len(self.occupant_ids_by_floor.get(floor_id, ()))
 
+    # =====================================================
+
+    def stair_count(self, stair_id: str) -> int:
+
+        return len(self.occupant_ids_by_stair.get(stair_id, ()))
+
 
 # =====================================================
 
@@ -122,6 +146,7 @@ def compute_occupancy_facts(occupants: Sequence[LiveOccupant], timestamp: float)
 
     by_zone: Dict[str, list] = {}
     by_floor: Dict[str, list] = {}
+    by_stair: Dict[str, list] = {}
     unlocalized: list = []
     total_ids: list = []
 
@@ -137,10 +162,30 @@ def compute_occupancy_facts(occupants: Sequence[LiveOccupant], timestamp: float)
         if occupant.current_floor_id is not None:
             by_floor.setdefault(occupant.current_floor_id, []).append(occupant.occupant_id)
 
+        # Observable Stair Perception milestone -- same single pass,
+        # never a second scan over `occupants`. An occupant with no
+        # current_stair_id simply contributes nothing here -- they are
+        # NOT added to `unlocalized` on this account (current_zone_id
+        # alone still governs that bucket; "not on a stair" is the
+        # overwhelmingly common, entirely unremarkable case, not a
+        # localization failure). getattr(..., None) -- not a direct
+        # attribute access -- because this function's own contract
+        # (see its docstring/callers) accepts any occupant-SHAPED object,
+        # not strictly live_occupants.occupant.LiveOccupant; several
+        # existing pre-milestone test doubles (e.g. tests/test_canonical_
+        # live_occupancy.py::_FakeOccupant, tests/test_live_perception.py::
+        # FakeOccupant) duck-type only current_zone_id/current_floor_id
+        # and must keep working unchanged.
+        current_stair_id = getattr(occupant, "current_stair_id", None)
+
+        if current_stair_id is not None:
+            by_stair.setdefault(current_stair_id, []).append(occupant.occupant_id)
+
     return OccupancyFacts(
         timestamp=timestamp,
         occupant_ids_by_zone={zone_id: tuple(ids) for zone_id, ids in by_zone.items()},
         occupant_ids_by_floor={floor_id: tuple(ids) for floor_id, ids in by_floor.items()},
+        occupant_ids_by_stair={stair_id: tuple(ids) for stair_id, ids in by_stair.items()},
         unlocalized_occupant_ids=tuple(unlocalized),
         total_observed_occupant_ids=tuple(total_ids),
     )

@@ -86,6 +86,16 @@ class Detection:
     # not a projection with a provenance to report).
     world_position_provenance: Optional[str] = None
 
+    # Observable Stair Perception milestone -- pass-through of
+    # live_camera_pipeline.human_detector.RawHumanDetection.stair_id (see
+    # that field's own docstring); always None for Simulation's own
+    # Detection construction (virtual_camera/camera.py never sets it --
+    # Simulation has no Staircase observable-region/WorldProjector
+    # concept at all, the same reason world_position_provenance stays
+    # None there too).
+    stair_id: Optional[str] = None
+    stair_localization_ambiguous: bool = False
+
     # =====================================================
 
     def __post_init__(self):

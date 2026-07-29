@@ -42,6 +42,7 @@ from models.obstacle import Obstacle
 from models.pump_asset import PumpControlMode
 from models.sensor_asset import HealthStatus
 from models.speaker import Speaker
+from models.staircase import StairObservableRegion
 from models.zone import Zone
 
 from navigation.node import Node
@@ -303,16 +304,41 @@ class PropertyPanel(QWidget):
         self.stair_from_zone = QComboBox()
         self.stair_to_zone = QComboBox()
 
+        # =====================================================
+        # Observable Stair Perception milestone -- the smallest Designer
+        # authoring support for the OPTIONAL, per-floor-side observable
+        # region a calibrated stair camera needs (models.staircase.
+        # StairObservableRegion). Deliberately reuses the existing Stair
+        # workflow's own From/To split rather than a new tool: an axis-
+        # aligned rectangle CENTERED on that side's already-placed
+        # from_position/to_position anchor, with an explicit width/depth
+        # the operator types in. Left blank (either field empty or <= 0),
+        # the region stays None -- STAIR LOCALIZATION UNAVAILABLE for
+        # that side, never a fabricated default (the audit's own Phase 2
+        # requirement). Existing Stair placement/geometry fields above
+        # are completely unaffected -- purely additive.
+        # =====================================================
+
+        self.stair_from_region_width = QLineEdit()
+        self.stair_from_region_depth = QLineEdit()
+
+        self.stair_to_region_width = QLineEdit()
+        self.stair_to_region_depth = QLineEdit()
+
         layout.addRow("From Floor", self.stair_from_floor)
         layout.addRow("From Position X (m)", self.stair_from_x)
         layout.addRow("From Position Y (m)", self.stair_from_y)
         layout.addRow("From Zone", self.stair_from_zone)
+        layout.addRow("From Observable Region Width (m)", self.stair_from_region_width)
+        layout.addRow("From Observable Region Depth (m)", self.stair_from_region_depth)
 
         layout.addRow("To Floor", self.to_floor_combo)
         layout.addRow("To Floor ID", to_floor_id_row)
         layout.addRow("To Position X (m)", self.stair_to_x)
         layout.addRow("To Position Y (m)", self.stair_to_y)
         layout.addRow("To Zone", self.stair_to_zone)
+        layout.addRow("To Observable Region Width (m)", self.stair_to_region_width)
+        layout.addRow("To Observable Region Depth (m)", self.stair_to_region_depth)
 
         layout.addRow("Stair Width (m)", self.stair_width)
 
@@ -331,11 +357,15 @@ class PropertyPanel(QWidget):
             self.stair_from_x,
             self.stair_from_y,
             self.stair_from_zone,
+            self.stair_from_region_width,
+            self.stair_from_region_depth,
             self.to_floor_combo,
             to_floor_id_row,
             self.stair_to_x,
             self.stair_to_y,
             self.stair_to_zone,
+            self.stair_to_region_width,
+            self.stair_to_region_depth,
             self.stair_width,
             self.vertical_height,
             self.travel_distance,
@@ -1677,6 +1707,22 @@ class PropertyPanel(QWidget):
             self.update_stair_geometry
         )
 
+        self.stair_from_region_width.editingFinished.connect(
+            self.update_stair_geometry
+        )
+
+        self.stair_from_region_depth.editingFinished.connect(
+            self.update_stair_geometry
+        )
+
+        self.stair_to_region_width.editingFinished.connect(
+            self.update_stair_geometry
+        )
+
+        self.stair_to_region_depth.editingFinished.connect(
+            self.update_stair_geometry
+        )
+
         self.to_floor_combo.currentIndexChanged.connect(
             self.update_stair_to_floor
         )
@@ -2509,6 +2555,10 @@ class PropertyPanel(QWidget):
         self.stair_to_y.blockSignals(True)
         self.stair_width.blockSignals(True)
         self.to_floor_combo.blockSignals(True)
+        self.stair_from_region_width.blockSignals(True)
+        self.stair_from_region_depth.blockSignals(True)
+        self.stair_to_region_width.blockSignals(True)
+        self.stair_to_region_depth.blockSignals(True)
 
         # stair_from_zone/stair_to_zone are populated further below via
         # _populate_stair_zone_combo(), which already blocks/unblocks
@@ -2530,6 +2580,24 @@ class PropertyPanel(QWidget):
             self.stair_width.setText(
                 f"{model.width:.2f}"
             )
+
+            # Observable Stair Perception milestone -- blank means
+            # "no observable region authored for this side" (None),
+            # never a fabricated 0.00 (which would look like a
+            # deliberately zero-sized region rather than "not set").
+            if model.from_observable_region is not None:
+                self.stair_from_region_width.setText(f"{model.from_observable_region.width:.2f}")
+                self.stair_from_region_depth.setText(f"{model.from_observable_region.depth:.2f}")
+            else:
+                self.stair_from_region_width.setText("")
+                self.stair_from_region_depth.setText("")
+
+            if model.to_observable_region is not None:
+                self.stair_to_region_width.setText(f"{model.to_observable_region.width:.2f}")
+                self.stair_to_region_depth.setText(f"{model.to_observable_region.depth:.2f}")
+            else:
+                self.stair_to_region_width.setText("")
+                self.stair_to_region_depth.setText("")
 
             if self.building is not None:
 
@@ -2587,6 +2655,10 @@ class PropertyPanel(QWidget):
         self.stair_to_y.blockSignals(False)
         self.stair_width.blockSignals(False)
         self.to_floor_combo.blockSignals(False)
+        self.stair_from_region_width.blockSignals(False)
+        self.stair_from_region_depth.blockSignals(False)
+        self.stair_to_region_width.blockSignals(False)
+        self.stair_to_region_depth.blockSignals(False)
 
     # =====================================================
     # Camera
@@ -6586,6 +6658,39 @@ class PropertyPanel(QWidget):
 
     # =====================================================
 
+    def _parse_optional_stair_region(self, width_field, depth_field, center_x, center_y):
+
+        # Observable Stair Perception milestone -- BOTH width and depth
+        # must be present and > 0 for a region to exist at all; either
+        # field blank (or non-positive) means "not authored", the region
+        # stays None -- never a fabricated default. Center always tracks
+        # this side's CURRENT from_position/to_position (passed in
+        # freshly parsed by the caller), so moving the stair marker later
+        # keeps an already-authored region correctly anchored without the
+        # operator having to retype width/depth.
+
+        width_text = width_field.text().strip()
+        depth_text = depth_field.text().strip()
+
+        if not width_text and not depth_text:
+            return None, True
+
+        try:
+
+            width = float(width_text)
+            depth = float(depth_text)
+
+        except ValueError:
+
+            return None, False
+
+        if width <= 0.0 or depth <= 0.0:
+            return None, True
+
+        return StairObservableRegion(center_x=center_x, center_y=center_y, width=width, depth=depth), True
+
+    # =====================================================
+
     def update_stair_geometry(self):
 
         if self.current_item is None:
@@ -6607,6 +6712,19 @@ class PropertyPanel(QWidget):
 
             return
 
+        from_region, from_region_ok = self._parse_optional_stair_region(
+            self.stair_from_region_width, self.stair_from_region_depth, fx, fy,
+        )
+        to_region, to_region_ok = self._parse_optional_stair_region(
+            self.stair_to_region_width, self.stair_to_region_depth, tx, ty,
+        )
+
+        if not from_region_ok or not to_region_ok:
+
+            self.refresh()
+
+            return
+
         model = self.current_item.model
 
         if model is not None:
@@ -6620,6 +6738,8 @@ class PropertyPanel(QWidget):
             model.from_position = (fx, fy)
             model.to_position = (tx, ty)
             model.width = width
+            model.from_observable_region = from_region
+            model.to_observable_region = to_region
 
         # Only the marker actually being displayed gets its
         # on-canvas position moved.

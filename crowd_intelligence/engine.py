@@ -68,7 +68,29 @@ class CrowdIntelligenceEngine:
 
     # =====================================================
 
-    def compute(self, time: float) -> CrowdIntelligenceSnapshot:
+    def compute(
+        self, time: float, observed_stair_occupancy: Optional[Dict[str, Optional[int]]] = None,
+    ) -> CrowdIntelligenceSnapshot:
+
+        # Observable Stair Perception milestone -- OPTIONAL, additive.
+        # `observed_stair_occupancy`: stair_id -> observed occupant count
+        # (or None, meaning "not measured this cycle" -- see
+        # AssetApproachMetrics.observed_on_stair_count's own docstring).
+        # Deliberately a plain Dict[str, Optional[int]], never a
+        # stair_perception.models.StairOccupancySnapshot import here --
+        # this package's own architecture guard
+        # (tests/test_crowd_intelligence_architecture_guards.py) keeps a
+        # deliberately short, documented import allow-list, and a caller
+        # (e.g. live_system's own orchestration glue) already has
+        # everything needed to reduce a StairOccupancySnapshot to this
+        # simple shape before calling compute() -- see
+        # docs/architecture/live_stair_perception.md Sec 11. None (the
+        # default) means "not supplied at all" -- every existing caller
+        # keeps its exact pre-milestone behavior, every Stair's
+        # observed_on_stair_count simply stays None (honestly
+        # "not measured"), identical to how a Door/Exit's own
+        # observed_on_stair_count already always does.
+        observed_stair_occupancy = observed_stair_occupancy or {}
 
         # Canonical Live Occupancy Source of Truth milestone -- the ONE
         # per-cycle canonical grouping (memoized by LiveOccupantManager
@@ -113,6 +135,7 @@ class CrowdIntelligenceEngine:
         stair_metrics = {
             stair.id: self._compute_asset_metrics(
                 "Stair", stair.id, stair_sides(stair), active_occupants, stair_capacity(stair, self.building), time,
+                observed_on_stair_count=observed_stair_occupancy.get(stair.id),
             )
             for stair in self._stairs
         }
@@ -130,6 +153,7 @@ class CrowdIntelligenceEngine:
 
     def _compute_asset_metrics(
         self, asset_type: str, asset_id: str, sides, active_occupants, simulation_style_capacity, time: float,
+        observed_on_stair_count: Optional[int] = None,
     ) -> AssetApproachMetrics:
 
         # position_available is False only when there is at least one
@@ -151,6 +175,7 @@ class CrowdIntelligenceEngine:
                 asset_id=asset_id, asset_type=asset_type, position_available=False,
                 simulation_style_capacity=simulation_style_capacity,
                 trend=self._trend_tracker.observe(f"asset_congestion:{asset_id}", time, None),
+                observed_on_stair_count=observed_on_stair_count,
             )
 
         queue_metrics = compute_queue_metrics(active_occupants, sides, self.approach_region_depth)
@@ -168,6 +193,7 @@ class CrowdIntelligenceEngine:
             simulation_style_capacity=simulation_style_capacity,
             congestion_level=congestion_level,
             trend=trend,
+            observed_on_stair_count=observed_on_stair_count,
         )
 
     # =====================================================

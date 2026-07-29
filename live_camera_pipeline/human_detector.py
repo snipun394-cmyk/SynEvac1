@@ -81,6 +81,18 @@ class RawHumanDetection:
     # still carries an honest provenance (NONE, if never calibrated).
     world_position_provenance: Optional[str] = None
 
+    # Observable Stair Perception milestone -- a SEPARATE spatial match
+    # alongside zone_id (never merged into it, see camera_calibration.
+    # projection.WorldProjection.stair_id's own docstring for the full
+    # "Zone and Stair are independent, both-or-neither-or-either" reasoning).
+    # Set by the SAME live_camera_pipeline.pipeline.LiveCameraPipeline glue
+    # that already populates zone_id, whenever a WorldProjector configured
+    # with stair geometry is present -- None whenever it is not, or when
+    # this cycle's point genuinely matched no Staircase (or matched more
+    # than one -- see stair_localization_ambiguous).
+    stair_id: Optional[str] = None
+    stair_localization_ambiguous: bool = False
+
     is_false_positive: bool = False
 
 

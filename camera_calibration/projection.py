@@ -1,10 +1,11 @@
 from dataclasses import dataclass
-from typing import Mapping, Optional, Sequence, Tuple
+from typing import FrozenSet, Mapping, Optional, Sequence, Tuple
 
 from visibility.geometry import point_in_polygon
 
 from camera_calibration.camera_model import CalibrationProfile, WORLD_POSITION_PROVENANCE_NONE, calibration_provenance
 from camera_calibration.geometry import intersect_ray_with_floor, pixel_ray_direction
+from camera_calibration.stair_lookup import locate_stair
 
 
 DEFAULT_GRAZING_ANGLE_RATIO = 0.15  # minimum |direction.z| / |direction| for full-confidence projection
@@ -26,6 +27,23 @@ class WorldProjection:
     floor_id: Optional[str]
     zone_id: Optional[str]
     projection_confidence: Optional[float]
+
+    # Observable Stair Perception milestone -- a SEPARATE, independently-
+    # computed spatial match, alongside zone_id, never instead of it and
+    # never merged into it (the audit's own explicit "do NOT place Stair
+    # IDs into zone IDs" requirement). A world point can honestly match a
+    # Zone, a Stair, both (overlapping authored geometry -- e.g. a "Stair
+    # Lobby" Zone drawn over part of a Staircase's landing region), or
+    # neither; each field is resolved independently from the SAME already-
+    # computed world_position/floor_id, never a second projection. None
+    # whenever no Staircase's observable region contains this point (the
+    # overwhelmingly common case: most detections are not on a stair).
+    # stair_localization_ambiguous is True only when more than one
+    # Staircase's region matched -- stair_id stays None in that case too
+    # (never an arbitrary pick), so a caller can distinguish "definitely
+    # not on any stair" from "matched more than one, genuinely unresolved."
+    stair_id: Optional[str] = None
+    stair_localization_ambiguous: bool = False
 
     # CCTV Connection & Calibration Readiness milestone, Phase 7/8 --
     # additive, always set (never left to a default -- every return
@@ -56,6 +74,7 @@ class WorldProjector:
         calibrations: Mapping[str, CalibrationProfile],
         zones_by_floor: Mapping[str, Sequence[object]],
         grazing_angle_ratio: float = DEFAULT_GRAZING_ANGLE_RATIO,
+        stairs_by_floor: Optional[Mapping[str, Sequence[object]]] = None,
     ):
 
         # zones_by_floor: floor_id -> a sequence of zone-shaped objects
@@ -65,8 +84,30 @@ class WorldProjector:
         # never re-derived from a Building here -- a caller supplies
         # whatever it already has.
 
+        # Observable Stair Perception milestone -- stairs_by_floor:
+        # floor_id -> a sequence of Staircase-shaped objects (models.
+        # staircase.Staircase, or anything exposing `.id` and
+        # `.contains_world_point(floor_id, world_position)` -- same
+        # duck-typed "building geometry" convention as zones_by_floor
+        # above; see camera_calibration.stair_lookup.build_stairs_by_floor()
+        # for the standard way to build this mapping from a Building).
+        # OPTIONAL and defaults to empty -- an existing caller that never
+        # passes it keeps this projector's exact pre-milestone behavior
+        # (stair_id/stair_localization_ambiguous simply stay at their
+        # honest None/False defaults on every WorldProjection it returns).
+        # Zone lookup and Stair lookup are deliberately two independent
+        # dicts/lookups reusing the SAME zone-lookup pattern (Phase 6's
+        # own "do not duplicate projection math" -- both consult the
+        # SAME already-computed world_position/floor_id, neither
+        # re-projects anything), not a merged "assets_by_floor" -- Phase
+        # 7's own "do not conflate Zone and Stair identity" applies here
+        # too.
+
         self._calibrations = dict(calibrations)
         self._zones_by_floor = {floor_id: tuple(zones) for floor_id, zones in zones_by_floor.items()}
+        self._stairs_by_floor = {
+            floor_id: tuple(stairs) for floor_id, stairs in (stairs_by_floor or {}).items()
+        }
         self.grazing_angle_ratio = grazing_angle_ratio
 
     # =====================================================
@@ -115,11 +156,13 @@ class WorldProjector:
             )
 
         zone_id = self._lookup_zone(calibration.floor_id, world_position)
+        stair_match = self._lookup_stair(calibration.floor_id, world_position)
         confidence = self._projection_confidence(direction, detection_confidence)
 
         return WorldProjection(
             world_position=world_position, floor_id=calibration.floor_id,
             zone_id=zone_id, projection_confidence=confidence,
+            stair_id=stair_match.stair_id, stair_localization_ambiguous=stair_match.ambiguous,
             provenance=provenance,
         )
 
@@ -158,6 +201,27 @@ class WorldProjector:
                 return zone.id
 
         return None
+
+    # =====================================================
+
+    def _lookup_stair(self, floor_id: str, world_position: Tuple[float, float]):
+
+        stairs = self._stairs_by_floor.get(floor_id, ())
+
+        return locate_stair(stairs, floor_id, world_position)
+
+    # =====================================================
+    # Observable Stair Perception milestone, Phase 19 -- which floors
+    # this projector actually has a calibrated camera on this cycle,
+    # straight from the calibrations it was constructed with (never a
+    # second, independent camera query) -- the necessary-condition input
+    # camera_calibration.stair_lookup.covered_stair_ids() needs to
+    # distinguish OBSERVED (possibly zero) from UNKNOWN stair occupancy.
+    # =====================================================
+
+    def calibrated_floor_ids(self) -> FrozenSet[str]:
+
+        return frozenset(calibration.floor_id for calibration in self._calibrations.values())
 
     # =====================================================
 

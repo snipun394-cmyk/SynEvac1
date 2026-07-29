@@ -21,6 +21,36 @@ def _distance(a: Tuple[float, float], b: Tuple[float, float]) -> float:
     return math.hypot(a[0] - b[0], a[1] - b[1])
 
 
+def _confirmed_floor_change(a_floor_id: Optional[str], b_floor_id: Optional[str]) -> bool:
+
+    # Observable Stair Perception milestone -- the smallest fix that
+    # keeps this module's own documented boundary intact ("no Navigation
+    # Graph, no BuildingState here at all"): PositionSample now carries
+    # an OPTIONAL per-sample floor_id (live_occupants.history.
+    # PositionSample), itself already-available positional/geometric
+    # metadata, not a graph query. A CONFIRMED floor change (both known,
+    # and different) means the raw Euclidean distance between these two
+    # samples is being computed across two floors' own, UNRELATED local
+    # coordinate spaces (see models.staircase.Staircase's own docstring
+    # on why from_position/to_position never share one coordinate
+    # system) -- physically meaningless, the exact artifact the prior
+    # audit's Trajectory Intelligence section found (compute_movement_
+    # facts() was floor-blind while route_progress.py's own
+    # _floor_transition_uncertain()/_has_direct_stair_edge() already
+    # correctly recognizes a legitimate Zone-A -> Stair -> Zone-B
+    # crossing at the ROUTE layer). Returns False (i.e. "treat as safe
+    # to compute") whenever floor context is not confirmed different --
+    # either genuinely the same floor, or floor_id simply unavailable
+    # (a pre-milestone caller, or a test object built without it) --
+    # never suppressing legitimate same-floor movement data just because
+    # floor context happens to be missing.
+
+    if a_floor_id is None or b_floor_id is None:
+        return False
+
+    return a_floor_id != b_floor_id
+
+
 def compute_movement_facts(occupant, config: TrajectoryConfig):
 
     # Returns a dict of the plain MovementFacts fields TrajectoryResult
@@ -43,22 +73,34 @@ def compute_movement_facts(occupant, config: TrajectoryConfig):
 
     if len(samples) >= 2:
 
+        # Observable Stair Perception milestone -- a pair straddling a
+        # CONFIRMED floor change (see _confirmed_floor_change() above)
+        # contributes 0 to distance_travelled rather than a physically
+        # meaningless cross-floor Euclidean jump; every other pair is
+        # summed exactly as before.
         distance_travelled = sum(
             _distance(samples[i - 1].world_position, samples[i].world_position)
             for i in range(1, len(samples))
+            if not _confirmed_floor_change(samples[i - 1].floor_id, samples[i].floor_id)
         )
-        net_displacement = _distance(samples[0].world_position, samples[-1].world_position)
         trajectory_duration = samples[-1].timestamp - samples[0].timestamp
+
+        # net_displacement compares the WINDOW's own endpoints (first vs.
+        # last sample), so it must be guarded by THEIR floor identity,
+        # not the last consecutive pair's -- a genuinely different check
+        # from the one below, even though both use the same helper.
+        if not _confirmed_floor_change(samples[0].floor_id, samples[-1].floor_id):
+            net_displacement = _distance(samples[0].world_position, samples[-1].world_position)
 
         last = samples[-1].world_position
         prior = samples[-2].world_position
 
-        if last != prior:
+        if last != prior and not _confirmed_floor_change(samples[-2].floor_id, samples[-1].floor_id):
             movement_direction = math.atan2(last[1] - prior[1], last[0] - prior[0])
 
     current_speed = occupant.world_velocity
 
-    if current_speed is None and len(samples) >= 2:
+    if current_speed is None and len(samples) >= 2 and not _confirmed_floor_change(samples[-2].floor_id, samples[-1].floor_id):
 
         dt = samples[-1].timestamp - samples[-2].timestamp
 

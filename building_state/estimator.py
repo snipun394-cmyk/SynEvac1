@@ -25,6 +25,8 @@ from fire_safety_manager.snapshot import FireSafetyStatusSnapshot
 
 from fire_water_manager.snapshot import FireWaterInfrastructureSnapshot
 
+from stair_perception.models import StairOccupancySnapshot
+
 from building_state.models import (
     ActiveAssetsSummary,
     BuildingState,
@@ -98,6 +100,7 @@ class BuildingStateEstimator:
         control_snapshot: Optional[ControlStateSnapshot] = None,
         fire_safety_snapshot: Optional[FireSafetyStatusSnapshot] = None,
         fire_water_snapshot: Optional[FireWaterInfrastructureSnapshot] = None,
+        stair_occupancy_snapshot: Optional[StairOccupancySnapshot] = None,
     ) -> BuildingState:
 
         # Materialized up front -- every argument is iterated more than
@@ -137,6 +140,7 @@ class BuildingStateEstimator:
             control_status=control_snapshot,
             fire_safety_status=fire_safety_snapshot,
             fire_water_status=fire_water_snapshot,
+            stair_occupancy=stair_occupancy_snapshot,
         )
 
     # =====================================================

@@ -82,6 +82,7 @@ class LiveOccupantManager:
         self._by_floor: Dict[str, Set[str]] = {}
         self._by_behavior: Dict[RecognizedBehavior, Set[str]] = {}
         self._by_camera: Dict[str, Set[str]] = {}
+        self._by_stair: Dict[str, Set[str]] = {}
 
         # Canonical Live Occupancy Source of Truth milestone -- a
         # version counter bumped on every store/remove (the two sole
@@ -119,6 +120,7 @@ class LiveOccupantManager:
         state_evidence: Optional[HumanState] = None,
         state_confidence: Optional[float] = None,
         world_position_provenance: Optional[str] = None,
+        stair_id: Optional[str] = None,
     ) -> LiveOccupant:
 
         existing = self._occupants.get(occupant_id)
@@ -130,12 +132,13 @@ class LiveOccupantManager:
             history = OccupantHistory(max_length=self.history_length)
             history = history.with_camera_transition(timestamp, None, camera_id)
             history = history.with_zone_transition(timestamp, None, zone_id)
+            history = history.with_stair_transition(timestamp, None, stair_id)
 
             if behavior is not None:
                 history = history.with_behavior_change(timestamp, None, behavior)
 
             if world_position is not None:
-                history = history.with_position_sample(timestamp, world_position)
+                history = history.with_position_sample(timestamp, world_position, floor_id)
 
             if world_velocity is not None:
                 history = history.with_velocity_sample(timestamp, world_velocity)
@@ -168,6 +171,7 @@ class LiveOccupantManager:
                 human_state=human_state, human_state_confidence=state_conf,
                 human_state_source=state_source, human_state_last_observed_at=state_seen_at,
                 world_position_provenance=world_position_provenance,
+                current_stair_id=stair_id,
             )
 
             self._store(occupant, near_exit)
@@ -195,11 +199,14 @@ class LiveOccupantManager:
         if zone_id != existing.current_zone_id:
             history = history.with_zone_transition(timestamp, existing.current_zone_id, zone_id)
 
+        if stair_id != existing.current_stair_id:
+            history = history.with_stair_transition(timestamp, existing.current_stair_id, stair_id)
+
         if behavior != existing.behavior:
             history = history.with_behavior_change(timestamp, existing.behavior, behavior)
 
         if world_position is not None:
-            history = history.with_position_sample(timestamp, world_position)
+            history = history.with_position_sample(timestamp, world_position, floor_id)
 
         if world_velocity is not None:
             history = history.with_velocity_sample(timestamp, world_velocity)
@@ -253,6 +260,7 @@ class LiveOccupantManager:
             human_state=human_state, human_state_confidence=state_conf,
             human_state_source=state_source, human_state_last_observed_at=state_seen_at,
             world_position_provenance=world_position_provenance,
+            current_stair_id=stair_id,
         )
 
         self._store(updated, near_exit)
@@ -460,6 +468,9 @@ class LiveOccupantManager:
         if occupant.current_camera_id is not None:
             self._by_camera.setdefault(occupant.current_camera_id, set()).add(occupant.occupant_id)
 
+        if occupant.current_stair_id is not None:
+            self._by_stair.setdefault(occupant.current_stair_id, set()).add(occupant.occupant_id)
+
     # =====================================================
 
     def _unindex(self, occupant: LiveOccupant) -> None:
@@ -469,6 +480,7 @@ class LiveOccupantManager:
             (self._by_floor, occupant.current_floor_id),
             (self._by_behavior, occupant.behavior),
             (self._by_camera, occupant.current_camera_id),
+            (self._by_stair, occupant.current_stair_id),
         ):
 
             if key is None:
@@ -530,6 +542,17 @@ class LiveOccupantManager:
     def occupants_on_camera(self, camera_id: str) -> Tuple[LiveOccupant, ...]:
 
         return tuple(self._occupants[occupant_id] for occupant_id in self._by_camera.get(camera_id, ()))
+
+    # =====================================================
+
+    def occupants_on_stair(self, stair_id: str) -> Tuple[LiveOccupant, ...]:
+
+        # Observable Stair Perception milestone -- mirrors
+        # occupants_in_zone() exactly, O(1) via the same secondary-index
+        # convention every other occupants_on_*()/occupants_with_*()
+        # query already uses.
+
+        return tuple(self._occupants[occupant_id] for occupant_id in self._by_stair.get(stair_id, ()))
 
     # =====================================================
     # Canonical Live Occupancy Source of Truth milestone -- the ONE

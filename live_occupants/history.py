@@ -35,6 +35,16 @@ class ZoneTransitionRecord:
 
 
 @dataclass(frozen=True)
+class StairTransitionRecord:
+    # Observable Stair Perception milestone -- mirrors ZoneTransitionRecord
+    # exactly, one genuine current_stair_id change per record (never one
+    # per cycle regardless of whether it changed).
+    timestamp: float
+    from_stair_id: Optional[str]
+    to_stair_id: Optional[str]
+
+
+@dataclass(frozen=True)
 class BehaviorChangeRecord:
     timestamp: float
     from_behavior: Optional[RecognizedBehavior]
@@ -60,6 +70,21 @@ class PositionSample:
     timestamp: float
     world_position: Tuple[float, float]
 
+    # Observable Stair Perception milestone -- OPTIONAL, additive
+    # (appended after world_position, never inserted before it, so every
+    # existing positional PositionSample(timestamp, world_position) call
+    # site keeps working unchanged). Lets trajectory_intelligence.
+    # trajectory.compute_movement_facts() detect a CONFIRMED floor
+    # crossing between two consecutive samples using only per-sample
+    # data already available here -- no Navigation Graph/Building access,
+    # preserving that module's own documented "purely geometric, no
+    # Navigation Graph, no BuildingState" boundary. None means "floor
+    # context not supplied" (e.g. a pre-milestone caller, or a test
+    # object built without it) -- never treated as a confirmed same-
+    # floor OR confirmed different-floor fact, see trajectory.py's own
+    # _confirmed_floor_change() guard.
+    floor_id: Optional[str] = None
+
 
 @dataclass(frozen=True)
 class VelocitySample:
@@ -84,6 +109,7 @@ class OccupantHistory:
 
     camera_transitions: Tuple[CameraTransitionRecord, ...] = field(default_factory=tuple)
     zone_transitions: Tuple[ZoneTransitionRecord, ...] = field(default_factory=tuple)
+    stair_transitions: Tuple[StairTransitionRecord, ...] = field(default_factory=tuple)
     behavior_changes: Tuple[BehaviorChangeRecord, ...] = field(default_factory=tuple)
     position_samples: Tuple[PositionSample, ...] = field(default_factory=tuple)
     velocity_samples: Tuple[VelocitySample, ...] = field(default_factory=tuple)
@@ -120,6 +146,23 @@ class OccupantHistory:
 
     # =====================================================
 
+    def with_stair_transition(self, timestamp: float, from_stair_id: Optional[str], to_stair_id: Optional[str]) -> "OccupantHistory":
+
+        # Observable Stair Perception milestone -- mirrors
+        # with_zone_transition() exactly. This is what Phase 12's honest
+        # entry/exit-event derivation reads (a `to_stair_id is not None`
+        # record is an entry, a `from_stair_id is not None` record is an
+        # exit), the same way trajectory_intelligence.trajectory.
+        # compute_movement_facts() already reads zone_transitions for its
+        # own zone_transition_history field.
+
+        record = StairTransitionRecord(timestamp, from_stair_id, to_stair_id)
+        transitions = (*self.stair_transitions, record)[-self.max_length:]
+
+        return dataclasses.replace(self, stair_transitions=transitions)
+
+    # =====================================================
+
     def with_behavior_change(
         self, timestamp: float, from_behavior: Optional[RecognizedBehavior], to_behavior: Optional[RecognizedBehavior],
     ) -> "OccupantHistory":
@@ -131,9 +174,11 @@ class OccupantHistory:
 
     # =====================================================
 
-    def with_position_sample(self, timestamp: float, world_position: Tuple[float, float]) -> "OccupantHistory":
+    def with_position_sample(
+        self, timestamp: float, world_position: Tuple[float, float], floor_id: Optional[str] = None,
+    ) -> "OccupantHistory":
 
-        sample = PositionSample(timestamp, world_position)
+        sample = PositionSample(timestamp, world_position, floor_id)
         samples = (*self.position_samples, sample)[-self.max_length:]
 
         return dataclasses.replace(self, position_samples=samples)

@@ -177,6 +177,27 @@ class AssetApproachMetrics:
 
     trend: TrendDirection = TrendDirection.UNKNOWN
 
+    # Observable Stair Perception milestone -- a SEPARATE, DISTINCT
+    # measurement from approaching_count/queue_candidate_count above,
+    # never a replacement for either: those describe occupants NEAR this
+    # asset (landing-proximity, world_position-based); this describes
+    # occupants PHYSICALLY WITHIN a Stair's own observable region (see
+    # camera_calibration.projection.WorldProjection.stair_id and
+    # live_occupants.occupant.LiveOccupant.current_stair_id). Only ever
+    # populated for asset_type == "Stair" today -- CrowdIntelligenceEngine
+    # has no equivalent observable-region concept for Door/Exit yet (the
+    # prior audit's own "do not generalize prematurely" instruction).
+    # None means "not measured" -- either this asset is a Door/Exit (no
+    # such measurement exists for those types at all yet), or it IS a
+    # Stair but no calibrated camera covers its observable region this
+    # cycle (see stair_perception.models.StairObservationStatus.UNKNOWN)
+    # -- an int (including honestly 0) means a calibrated camera DOES
+    # cover it and this is what it currently sees. Same "None means no
+    # reading, never a fabricated zero" convention as occupancy.
+    # observation.OccupancyObservation.occupant_count already establishes
+    # elsewhere in this codebase.
+    observed_on_stair_count: Optional[int] = None
+
 
 @dataclass(frozen=True)
 class BuildingCrowdSummary:

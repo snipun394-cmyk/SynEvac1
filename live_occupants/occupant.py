@@ -122,3 +122,32 @@ class LiveOccupant:
     # attempted and honestly found no calibration for this camera" --
     # both are distinguishable by the caller if it matters.
     world_position_provenance: Optional[str] = None
+
+    # Observable Stair Perception milestone -- a SEPARATE, independently-
+    # resolved spatial fact alongside current_zone_id, never a conflation
+    # of the two (see camera_calibration.projection.WorldProjection.
+    # stair_id's own docstring for the full reasoning this field mirrors).
+    # Deliberately named current_stair_id, not a generic
+    # current_traversal_asset_id -- Stair is the only traversal asset
+    # type this milestone gives an observable region and a spatial
+    # lookup; a generic name would overclaim a generality the mechanism
+    # does not actually have yet (the prior audit's own explicit "do not
+    # generalize prematurely to every Door/Exit" instruction).
+    #
+    # Follows current_zone_id's own convention exactly, NOT human_
+    # classification/human_state's separate staleness-decay mechanism:
+    # unconditionally overwritten every update() cycle (even to None) by
+    # whatever this cycle's spatial lookup produced, no per-field
+    # evidence timestamp, no reconciliation against a prior value. This
+    # is deliberate -- current_stair_id is a per-cycle GEOMETRIC fact
+    # ("is this world point inside Stair S1's region right now"), not
+    # evidence from possibly-disagreeing sources that needs reconciling
+    # (there is exactly one spatial lookup per occupant per cycle, unlike
+    # classification/state which can be reported by multiple detectors).
+    # Temporary detection loss is handled the SAME way it already is for
+    # current_zone_id: LiveOccupantManager.sweep_missing() does not call
+    # update() at all for a camera that simply missed a frame, so
+    # current_stair_id (like current_zone_id) simply stays frozen at its
+    # last value while status becomes TEMPORARILY_LOST -- see
+    # docs/architecture/live_stair_perception.md Sec 9.
+    current_stair_id: Optional[str] = None

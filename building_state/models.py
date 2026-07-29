@@ -17,6 +17,8 @@ from fire_safety_manager.snapshot import FireSafetyStatusSnapshot
 
 from fire_water_manager.snapshot import FireWaterInfrastructureSnapshot
 
+from stair_perception.models import StairOccupancySnapshot
+
 from perception.models.camera_observation import CameraFrameObservation
 
 from multi_camera_fusion.track import FusedTrack
@@ -204,6 +206,20 @@ class BuildingState:
     # representation at all -- see docs/architecture/
     # fire_water_infrastructure.md's own FACP/BuildingControl boundary).
     fire_water_status: Optional[FireWaterInfrastructureSnapshot] = None
+
+    # Observable Stair Perception milestone (additive) -- the current
+    # per-Stair OBSERVED/UNKNOWN occupancy truth, see stair_perception.
+    # facts.compute_stair_occupancy_snapshot(), which produces this
+    # value; BuildingStateEstimator only ever passes it through, never
+    # computes it, same discipline as facp_status/control_status/
+    # fire_safety_status/fire_water_status above. None when no stair
+    # occupancy computation was configured for this cycle -- never
+    # fabricated. Deliberately NOT folded into zone_occupancy: Stair is
+    # not, and must not become, a Navigation Graph node (see
+    # docs/architecture/stair_camera_perception_audit.md and
+    # docs/architecture/live_stair_perception.md) -- zone_occupancy
+    # stays exactly what it always was, node-keyed occupancy only.
+    stair_occupancy: Optional[StairOccupancySnapshot] = None
 
     # =====================================================
 
