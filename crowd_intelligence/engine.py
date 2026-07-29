@@ -11,6 +11,8 @@ from crowd_intelligence.models import (
 from crowd_intelligence.queue import DEFAULT_APPROACH_REGION_DEPTH, compute_queue_metrics
 from crowd_intelligence.trends import TrendConfig, TrendTracker
 
+from observable_assets.models import ObservableAssetSnapshot, ObservationStatus
+
 
 # =====================================================
 # Live Occupancy, Crowd Density & Congestion Intelligence milestone,
@@ -69,28 +71,34 @@ class CrowdIntelligenceEngine:
     # =====================================================
 
     def compute(
-        self, time: float, observed_stair_occupancy: Optional[Dict[str, Optional[int]]] = None,
+        self, time: float, observable_assets: Optional[ObservableAssetSnapshot] = None,
     ) -> CrowdIntelligenceSnapshot:
 
-        # Observable Stair Perception milestone -- OPTIONAL, additive.
-        # `observed_stair_occupancy`: stair_id -> observed occupant count
-        # (or None, meaning "not measured this cycle" -- see
-        # AssetApproachMetrics.observed_on_stair_count's own docstring).
-        # Deliberately a plain Dict[str, Optional[int]], never a
-        # stair_perception.models.StairOccupancySnapshot import here --
-        # this package's own architecture guard
-        # (tests/test_crowd_intelligence_architecture_guards.py) keeps a
-        # deliberately short, documented import allow-list, and a caller
-        # (e.g. live_system's own orchestration glue) already has
-        # everything needed to reduce a StairOccupancySnapshot to this
-        # simple shape before calling compute() -- see
-        # docs/architecture/live_stair_perception.md Sec 11. None (the
-        # default) means "not supplied at all" -- every existing caller
-        # keeps its exact pre-milestone behavior, every Stair's
-        # observed_on_stair_count simply stays None (honestly
-        # "not measured"), identical to how a Door/Exit's own
-        # observed_on_stair_count already always does.
-        observed_stair_occupancy = observed_stair_occupancy or {}
+        # Observable Asset Perception Framework milestone -- OPTIONAL,
+        # additive, and now consuming the GENERIC abstraction directly
+        # (Phase 5's own explicit instruction), superseding the
+        # Observable Stair Perception milestone's own plain
+        # Dict[str, Optional[int]] parameter: `observable_assets` is an
+        # observable_assets.models.ObservableAssetSnapshot -- the exact
+        # same type produced by observable_assets.facts.
+        # compute_asset_occupancy_snapshot() and exposed on
+        # BuildingState.observable_assets (see building_state/models.py).
+        # A caller (e.g. live_system's own orchestration glue) passes the
+        # SAME snapshot object it already built for BuildingState, no
+        # reduction step required. None (the default) means "not
+        # supplied at all" -- every existing caller keeps its exact
+        # pre-milestone behavior, every asset's observed_occupant_count
+        # simply stays None (honestly "not measured").
+        #
+        # observable_assets is a pure value-object/enum package (no
+        # action-execution capability of any kind -- see its own
+        # architecture guard test), the same category of dependency
+        # this package's own allow-list already grants navigation.edge/
+        # models/behavior_recognition.observation, so importing it here
+        # does not weaken crowd_intelligence/'s existing guarantees (see
+        # tests/test_crowd_intelligence_architecture_guards.py, updated
+        # this milestone to reflect this one additional, deliberate
+        # entry).
 
         # Canonical Live Occupancy Source of Truth milestone -- the ONE
         # per-cycle canonical grouping (memoized by LiveOccupantManager
@@ -135,7 +143,7 @@ class CrowdIntelligenceEngine:
         stair_metrics = {
             stair.id: self._compute_asset_metrics(
                 "Stair", stair.id, stair_sides(stair), active_occupants, stair_capacity(stair, self.building), time,
-                observed_on_stair_count=observed_stair_occupancy.get(stair.id),
+                observed_occupant_count=self._observed_occupant_count(observable_assets, stair.id),
             )
             for stair in self._stairs
         }
@@ -153,7 +161,7 @@ class CrowdIntelligenceEngine:
 
     def _compute_asset_metrics(
         self, asset_type: str, asset_id: str, sides, active_occupants, simulation_style_capacity, time: float,
-        observed_on_stair_count: Optional[int] = None,
+        observed_occupant_count: Optional[int] = None,
     ) -> AssetApproachMetrics:
 
         # position_available is False only when there is at least one
@@ -175,7 +183,7 @@ class CrowdIntelligenceEngine:
                 asset_id=asset_id, asset_type=asset_type, position_available=False,
                 simulation_style_capacity=simulation_style_capacity,
                 trend=self._trend_tracker.observe(f"asset_congestion:{asset_id}", time, None),
-                observed_on_stair_count=observed_on_stair_count,
+                observed_occupant_count=observed_occupant_count,
             )
 
         queue_metrics = compute_queue_metrics(active_occupants, sides, self.approach_region_depth)
@@ -193,8 +201,30 @@ class CrowdIntelligenceEngine:
             simulation_style_capacity=simulation_style_capacity,
             congestion_level=congestion_level,
             trend=trend,
-            observed_on_stair_count=observed_on_stair_count,
+            observed_occupant_count=observed_occupant_count,
         )
+
+    # =====================================================
+
+    def _observed_occupant_count(self, observable_assets: Optional[ObservableAssetSnapshot], asset_id: str) -> Optional[int]:
+
+        # Reduces a (possibly absent) generic ObservableAssetSnapshot
+        # down to the one Optional[int] this asset's own
+        # AssetApproachMetrics.observed_occupant_count needs -- None
+        # whenever no snapshot was supplied at all, or the snapshot
+        # honestly reports this asset as ObservationStatus.UNKNOWN;
+        # AssetObservation.occupant_count (never None itself) only when
+        # the snapshot reports OBSERVED.
+
+        if observable_assets is None:
+            return None
+
+        observation = observable_assets.observation_for(asset_id)
+
+        if observation.status != ObservationStatus.OBSERVED:
+            return None
+
+        return observation.occupant_count
 
     # =====================================================
 

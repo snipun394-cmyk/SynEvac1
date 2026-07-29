@@ -1,16 +1,20 @@
-"""Observable Stair Perception milestone, Phase 27 performance benchmark.
+"""Observable Stair Perception milestone, Phase 27 performance benchmark
+(updated by the Observable Asset Perception Framework milestone to
+exercise the now-generic lookup/snapshot code the Stair adapter routes
+through).
 
-Benchmarks the spatial world-position -> Stair lookup and the Stair
-occupancy derivation SEPARATELY, at the milestone's own required scale:
-50 zones, 20 stairs, 20 cameras, 100 occupants.
+Benchmarks the spatial world-position -> asset lookup and the observable-
+asset occupancy derivation SEPARATELY, at the milestone's own required
+scale: 50 zones, 20 stairs, 20 cameras, 100 occupants.
 
 Every occupant/geometry input here is synthetic and hand-built -- this
 file does NOT run YOLOHumanDetector, a tracker, or RTSP of any kind, so
 its numbers say nothing about real per-camera perception speed (mirrors
 scripts/benchmark_crowd_intelligence.py's own disclosure). Reported
-here: only this milestone's own new computation cost --
-camera_calibration.stair_lookup.locate_stair()/covered_stair_ids() and
-stair_perception.facts.compute_stair_occupancy_snapshot().
+here: only the generic framework's own computation cost --
+camera_calibration.asset_lookup.locate_asset()/covered_asset_ids() and
+observable_assets.facts.compute_asset_occupancy_snapshot() -- driven
+with Stair as the framework's first, currently only, registered kind.
 
 Not a pytest test: timing assertions in CI are flaky by nature. Run
 manually (`python scripts/benchmark_stair_perception.py`) and read the
@@ -29,12 +33,13 @@ from models.floor import Floor
 from models.staircase import Staircase, StairObservableRegion
 from models.zone import Zone
 
+from camera_calibration.asset_lookup import build_assets_by_floor, covered_asset_ids, locate_asset
 from camera_calibration.camera_model import CalibrationProfile, CameraExtrinsics, CameraIntrinsics
-from camera_calibration.stair_lookup import build_stairs_by_floor, covered_stair_ids, locate_stair
+from camera_calibration.stair_lookup import DEFAULT_OBSERVABLE_ASSET_KINDS
 
 from live_occupants.manager import LiveOccupantManager
 
-from stair_perception.facts import compute_stair_occupancy_snapshot
+from observable_assets.facts import compute_asset_occupancy_snapshot
 
 
 ZONE_COUNT = 50
@@ -118,7 +123,7 @@ def main():
 
     building, floor, stairs = build_building()
     calibrations = build_calibrations(floor.id)
-    stairs_by_floor = build_stairs_by_floor(building)
+    assets_by_floor = build_assets_by_floor(building, DEFAULT_OBSERVABLE_ASSET_KINDS)
     manager = build_occupant_manager(floor.id, stairs)
 
     calibrated_floor_ids = frozenset(c.floor_id for c in calibrations.values())
@@ -128,36 +133,38 @@ def main():
         f"{OCCUPANT_COUNT} occupants\n"
     )
 
-    # World-position -> Stair lookup, one call per occupant per cycle
-    # (the same cost live_camera_pipeline.pipeline.LiveCameraPipeline
-    # pays inside camera_calibration.projection.WorldProjector.project()).
+    # World-position -> observable-asset lookup, one call per occupant
+    # per cycle (the same cost live_camera_pipeline.pipeline.
+    # LiveCameraPipeline pays inside camera_calibration.projection.
+    # WorldProjector.project()) -- driven with Stair as the only
+    # registered kind today.
     world_position = (float(STAIR_COUNT * 10), 100.0)
     timed(
-        "World-position -> Stair lookup (locate_stair, single occupant)",
-        lambda: locate_stair(stairs_by_floor[floor.id], floor.id, world_position),
+        "World-position -> observable-asset lookup (locate_asset, single occupant)",
+        lambda: locate_asset(assets_by_floor[floor.id], floor.id, world_position),
     )
 
     timed(
-        "Stair coverage derivation (covered_stair_ids, whole building)",
-        lambda: covered_stair_ids(stairs_by_floor, calibrated_floor_ids),
+        "Observable-asset coverage derivation (covered_asset_ids, whole building)",
+        lambda: covered_asset_ids(assets_by_floor, calibrated_floor_ids),
     )
 
-    coverage = covered_stair_ids(stairs_by_floor, calibrated_floor_ids)
-    stair_ids = [stair.id for stair in stairs]
+    coverage = covered_asset_ids(assets_by_floor, calibrated_floor_ids)
+    asset_ids_by_type = {"Stair": [stair.id for stair in stairs]}
 
     def occupancy_cycle():
 
         facts = manager.canonical_occupancy(0.0)
-        return compute_stair_occupancy_snapshot(stair_ids, facts.occupant_ids_by_stair, coverage, 0.0)
+        return compute_asset_occupancy_snapshot(asset_ids_by_type, facts.occupant_ids_by_stair, coverage, 0.0)
 
     timed(
-        "Full Stair occupancy derivation (canonical_occupancy + compute_stair_occupancy_snapshot)",
+        "Full observable-asset occupancy derivation (canonical_occupancy + compute_asset_occupancy_snapshot)",
         occupancy_cycle,
     )
 
     print("\nDone. No performance regression to any existing zone/crowd/trajectory computation -- this")
-    print("milestone's own cost is entirely additive (a single extra pass already folded into the")
-    print("existing occupant loop, plus this new, independent Stair-specific derivation).")
+    print("framework's own cost is entirely additive (a single extra pass already folded into the")
+    print("existing occupant loop, plus this new, independent observable-asset derivation).")
 
 
 if __name__ == "__main__":

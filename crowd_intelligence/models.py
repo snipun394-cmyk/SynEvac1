@@ -177,26 +177,29 @@ class AssetApproachMetrics:
 
     trend: TrendDirection = TrendDirection.UNKNOWN
 
-    # Observable Stair Perception milestone -- a SEPARATE, DISTINCT
-    # measurement from approaching_count/queue_candidate_count above,
-    # never a replacement for either: those describe occupants NEAR this
-    # asset (landing-proximity, world_position-based); this describes
-    # occupants PHYSICALLY WITHIN a Stair's own observable region (see
-    # camera_calibration.projection.WorldProjection.stair_id and
-    # live_occupants.occupant.LiveOccupant.current_stair_id). Only ever
-    # populated for asset_type == "Stair" today -- CrowdIntelligenceEngine
-    # has no equivalent observable-region concept for Door/Exit yet (the
-    # prior audit's own "do not generalize prematurely" instruction).
-    # None means "not measured" -- either this asset is a Door/Exit (no
-    # such measurement exists for those types at all yet), or it IS a
-    # Stair but no calibrated camera covers its observable region this
-    # cycle (see stair_perception.models.StairObservationStatus.UNKNOWN)
-    # -- an int (including honestly 0) means a calibrated camera DOES
-    # cover it and this is what it currently sees. Same "None means no
-    # reading, never a fabricated zero" convention as occupancy.
-    # observation.OccupancyObservation.occupant_count already establishes
-    # elsewhere in this codebase.
-    observed_on_stair_count: Optional[int] = None
+    # Observable Asset Perception Framework milestone (generalized from
+    # the Observable Stair Perception milestone's own observed_on_
+    # stair_count, which had no Stair-specific logic behind it at all) --
+    # a SEPARATE, DISTINCT measurement from approaching_count/
+    # queue_candidate_count above, never a replacement for either: those
+    # describe occupants NEAR this asset (landing-proximity, world_
+    # position-based); this describes occupants PHYSICALLY WITHIN the
+    # asset's own observable region (see camera_calibration.projection.
+    # WorldProjection.asset_id and observable_assets.models.
+    # AssetObservation). Only ever populated for asset_type == "Stair"
+    # today -- CrowdIntelligenceEngine's own building index
+    # (_index_building()) still only walks floor.stairs; a future Door/
+    # Exit integration would extend that same index, not this field's
+    # shape, which is already type-agnostic. None means "not measured" --
+    # either this asset's type has no such measurement wired up yet, or
+    # it does but no calibrated camera covers its observable region this
+    # cycle (see observable_assets.models.ObservationStatus.UNKNOWN) --
+    # an int (including honestly 0) means a calibrated camera DOES cover
+    # it and this is what it currently sees. Same "None means no reading,
+    # never a fabricated zero" convention as occupancy.observation.
+    # OccupancyObservation.occupant_count already establishes elsewhere
+    # in this codebase.
+    observed_occupant_count: Optional[int] = None
 
 
 @dataclass(frozen=True)

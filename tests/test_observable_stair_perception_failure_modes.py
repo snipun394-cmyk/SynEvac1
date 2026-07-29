@@ -7,16 +7,17 @@ from models.floor import Floor
 from models.project import Project
 from models.staircase import Staircase, StairObservableRegion
 
+from camera_calibration.asset_lookup import build_assets_by_floor, covered_asset_ids, locate_asset
 from camera_calibration.camera_model import CalibrationProfile, CameraExtrinsics, CameraIntrinsics
 from camera_calibration.projection import WorldProjector
-from camera_calibration.stair_lookup import build_stairs_by_floor, covered_stair_ids, locate_stair
+from camera_calibration.stair_lookup import DEFAULT_OBSERVABLE_ASSET_KINDS, build_stairs_by_floor
 
 from live_occupants.manager import LiveOccupantManager
 
 from serialization.serializer import Serializer
 
-from stair_perception.facts import compute_stair_occupancy_snapshot
-from stair_perception.models import StairObservationStatus
+from observable_assets.facts import compute_asset_occupancy_snapshot
+from observable_assets.models import ObservationStatus
 
 
 # =====================================================
@@ -72,16 +73,16 @@ class MissingOrInvalidCalibrationTests(unittest.TestCase):
         stair = Staircase(id="s1", from_floor_id="floor-1", to_floor_id="floor-2")
         stair.from_observable_region = StairObservableRegion(center_x=3.0, center_y=0.0, width=2.0, depth=2.0)
 
-        by_floor = {"floor-1": (stair,)}
+        assets_by_floor = {"floor-1": (("Stair", stair),)}
 
         # No calibrated camera on floor-1 at all this cycle.
-        covered = covered_stair_ids(by_floor, frozenset())
+        covered = covered_asset_ids(assets_by_floor, frozenset())
 
-        snapshot = compute_stair_occupancy_snapshot(
-            stair_ids=["s1"], occupant_ids_by_stair={}, covered_stair_ids=covered, timestamp=0.0,
+        snapshot = compute_asset_occupancy_snapshot(
+            asset_ids_by_type={"Stair": ["s1"]}, occupant_ids_by_asset={}, covered_asset_ids=covered, timestamp=0.0,
         )
 
-        self.assertEqual(snapshot.observation_for("s1").status, StairObservationStatus.UNKNOWN)
+        self.assertEqual(snapshot.observation_for("s1").status, ObservationStatus.UNKNOWN)
 
 
 class EmptyBuildingTests(unittest.TestCase):
@@ -95,11 +96,14 @@ class EmptyBuildingTests(unittest.TestCase):
         by_floor = build_stairs_by_floor(building)
         self.assertEqual(by_floor, {})
 
-        covered = covered_stair_ids(by_floor, frozenset({floor.id}))
+        assets_by_floor = build_assets_by_floor(building, DEFAULT_OBSERVABLE_ASSET_KINDS)
+        self.assertEqual(assets_by_floor, {})
+
+        covered = covered_asset_ids(assets_by_floor, frozenset({floor.id}))
         self.assertEqual(covered, frozenset())
 
-        snapshot = compute_stair_occupancy_snapshot(
-            stair_ids=[], occupant_ids_by_stair={}, covered_stair_ids=covered, timestamp=0.0,
+        snapshot = compute_asset_occupancy_snapshot(
+            asset_ids_by_type={}, occupant_ids_by_asset={}, covered_asset_ids=covered, timestamp=0.0,
         )
         self.assertEqual(snapshot.observations, {})
 
@@ -123,15 +127,15 @@ class DeletedAndOverlappingStairTests(unittest.TestCase):
         stair.from_observable_region = StairObservableRegion(center_x=3.0, center_y=0.0, width=2.0, depth=2.0)
         floor.add_stair(stair)
 
-        by_floor_before = build_stairs_by_floor(building)
-        self.assertEqual(locate_stair(by_floor_before[floor.id], floor.id, (3.0, 0.0)).stair_id, stair.id)
+        assets_by_floor_before = build_assets_by_floor(building, DEFAULT_OBSERVABLE_ASSET_KINDS)
+        self.assertEqual(locate_asset(assets_by_floor_before[floor.id], floor.id, (3.0, 0.0)).asset_id, stair.id)
 
         floor.remove_stair(stair)
 
-        by_floor_after = build_stairs_by_floor(building)
-        result = locate_stair(by_floor_after.get(floor.id, ()), floor.id, (3.0, 0.0))
+        assets_by_floor_after = build_assets_by_floor(building, DEFAULT_OBSERVABLE_ASSET_KINDS)
+        result = locate_asset(assets_by_floor_after.get(floor.id, ()), floor.id, (3.0, 0.0))
 
-        self.assertIsNone(result.stair_id)
+        self.assertIsNone(result.asset_id)
         self.assertFalse(result.ambiguous)
 
     def test_7_overlapping_regions_across_two_stairs_stay_unresolved(self):
@@ -148,10 +152,10 @@ class DeletedAndOverlappingStairTests(unittest.TestCase):
         floor.add_stair(stair_a)
         floor.add_stair(stair_b)
 
-        by_floor = build_stairs_by_floor(building)
-        result = locate_stair(by_floor[floor.id], floor.id, (3.0, 0.0))
+        assets_by_floor = build_assets_by_floor(building, DEFAULT_OBSERVABLE_ASSET_KINDS)
+        result = locate_asset(assets_by_floor[floor.id], floor.id, (3.0, 0.0))
 
-        self.assertIsNone(result.stair_id)
+        self.assertIsNone(result.asset_id)
         self.assertTrue(result.ambiguous)
 
 

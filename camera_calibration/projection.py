@@ -1,11 +1,11 @@
 from dataclasses import dataclass
-from typing import FrozenSet, Mapping, Optional, Sequence, Tuple
+from typing import Dict, FrozenSet, Mapping, Optional, Sequence, Tuple
 
 from visibility.geometry import point_in_polygon
 
+from camera_calibration.asset_lookup import locate_asset
 from camera_calibration.camera_model import CalibrationProfile, WORLD_POSITION_PROVENANCE_NONE, calibration_provenance
 from camera_calibration.geometry import intersect_ray_with_floor, pixel_ray_direction
-from camera_calibration.stair_lookup import locate_stair
 
 
 DEFAULT_GRAZING_ANGLE_RATIO = 0.15  # minimum |direction.z| / |direction| for full-confidence projection
@@ -28,20 +28,37 @@ class WorldProjection:
     zone_id: Optional[str]
     projection_confidence: Optional[float]
 
-    # Observable Stair Perception milestone -- a SEPARATE, independently-
-    # computed spatial match, alongside zone_id, never instead of it and
-    # never merged into it (the audit's own explicit "do NOT place Stair
-    # IDs into zone IDs" requirement). A world point can honestly match a
-    # Zone, a Stair, both (overlapping authored geometry -- e.g. a "Stair
-    # Lobby" Zone drawn over part of a Staircase's landing region), or
-    # neither; each field is resolved independently from the SAME already-
-    # computed world_position/floor_id, never a second projection. None
-    # whenever no Staircase's observable region contains this point (the
-    # overwhelmingly common case: most detections are not on a stair).
-    # stair_localization_ambiguous is True only when more than one
-    # Staircase's region matched -- stair_id stays None in that case too
-    # (never an arbitrary pick), so a caller can distinguish "definitely
-    # not on any stair" from "matched more than one, genuinely unresolved."
+    # Observable Asset Perception Framework milestone -- the GENERIC
+    # spatial-asset match, alongside zone_id, never instead of it and
+    # never merged into it (the prior audit's own explicit "do NOT place
+    # Stair IDs into zone IDs" requirement, generalized: no observable
+    # asset id ever gets merged into zone_id either). A world point can
+    # honestly match a Zone, an observable asset, both (overlapping
+    # authored geometry -- e.g. a "Stair Lobby" Zone drawn over part of a
+    # Staircase's landing region), or neither; each field is resolved
+    # independently from the SAME already-computed world_position/
+    # floor_id, never a second projection. asset_id/asset_type are None
+    # whenever no registered asset's observable region contains this
+    # point (the overwhelmingly common case). asset_localization_ambiguous
+    # is True only when more than one asset's region matched -- asset_id/
+    # asset_type stay None in that case too (never an arbitrary pick), so
+    # a caller can distinguish "definitely not on any observable asset"
+    # from "matched more than one, genuinely unresolved."
+    asset_id: Optional[str] = None
+    asset_type: Optional[str] = None
+    asset_localization_ambiguous: bool = False
+
+    # Observable Stair Perception milestone -- kept as a THIN, backward-
+    # compatible convenience view over asset_id/asset_type above, never a
+    # second independent computation: stair_id is simply asset_id
+    # whenever asset_type == "Stair", None otherwise (see project()
+    # below). Existing callers/tests written against this field before
+    # the Observable Asset Perception Framework milestone continue to
+    # work completely unchanged. A future Door/Exit/etc. integration
+    # reads asset_id/asset_type directly instead -- no analogous
+    # `door_id` field is added here, and none should be; that would be
+    # exactly the per-type field duplication this milestone exists to
+    # prevent.
     stair_id: Optional[str] = None
     stair_localization_ambiguous: bool = False
 
@@ -75,6 +92,7 @@ class WorldProjector:
         zones_by_floor: Mapping[str, Sequence[object]],
         grazing_angle_ratio: float = DEFAULT_GRAZING_ANGLE_RATIO,
         stairs_by_floor: Optional[Mapping[str, Sequence[object]]] = None,
+        assets_by_floor: Optional[Mapping[str, Sequence[Tuple[str, object]]]] = None,
     ):
 
         # zones_by_floor: floor_id -> a sequence of zone-shaped objects
@@ -84,30 +102,45 @@ class WorldProjector:
         # never re-derived from a Building here -- a caller supplies
         # whatever it already has.
 
-        # Observable Stair Perception milestone -- stairs_by_floor:
-        # floor_id -> a sequence of Staircase-shaped objects (models.
-        # staircase.Staircase, or anything exposing `.id` and
-        # `.contains_world_point(floor_id, world_position)` -- same
-        # duck-typed "building geometry" convention as zones_by_floor
-        # above; see camera_calibration.stair_lookup.build_stairs_by_floor()
-        # for the standard way to build this mapping from a Building).
-        # OPTIONAL and defaults to empty -- an existing caller that never
-        # passes it keeps this projector's exact pre-milestone behavior
-        # (stair_id/stair_localization_ambiguous simply stay at their
-        # honest None/False defaults on every WorldProjection it returns).
-        # Zone lookup and Stair lookup are deliberately two independent
-        # dicts/lookups reusing the SAME zone-lookup pattern (Phase 6's
-        # own "do not duplicate projection math" -- both consult the
-        # SAME already-computed world_position/floor_id, neither
-        # re-projects anything), not a merged "assets_by_floor" -- Phase
-        # 7's own "do not conflate Zone and Stair identity" applies here
-        # too.
+        # Observable Asset Perception Framework milestone -- the
+        # GENERIC spatial-asset registry this projector consults, floor_id
+        # -> a sequence of (asset_type, asset-shaped-object) pairs (see
+        # camera_calibration.asset_lookup.build_assets_by_floor(), which
+        # produces exactly this shape from a Building + a sequence of
+        # registered ObservableAssetKind). `stairs_by_floor` (Observable
+        # Stair Perception milestone) is kept as a backward-compatible
+        # convenience alias for the common single-kind case -- passing it
+        # is exactly equivalent to passing `assets_by_floor` pre-tagged
+        # "Stair", and an existing caller that only ever knew about
+        # stairs_by_floor keeps working completely unchanged. If BOTH are
+        # supplied they are merged (stairs_by_floor's entries added
+        # alongside assets_by_floor's own). Neither is required -- an
+        # existing caller that supplies neither keeps this projector's
+        # exact pre-Observable-Stair-Perception-milestone behavior (every
+        # asset/stair field simply stays at its honest None/False
+        # default). Zone lookup and asset lookup are deliberately two
+        # independent dicts/lookups reusing the SAME zone-lookup pattern
+        # (Phase 6 of the prior milestone's own "do not duplicate
+        # projection math" -- both consult the SAME already-computed
+        # world_position/floor_id, neither re-projects anything) -- Zone
+        # and observable-asset identity are never conflated into one
+        # dict.
 
         self._calibrations = dict(calibrations)
         self._zones_by_floor = {floor_id: tuple(zones) for floor_id, zones in zones_by_floor.items()}
-        self._stairs_by_floor = {
-            floor_id: tuple(stairs) for floor_id, stairs in (stairs_by_floor or {}).items()
+
+        merged_assets_by_floor: Dict[str, list] = {}
+
+        for floor_id, assets in (assets_by_floor or {}).items():
+            merged_assets_by_floor.setdefault(floor_id, []).extend(assets)
+
+        for floor_id, stairs in (stairs_by_floor or {}).items():
+            merged_assets_by_floor.setdefault(floor_id, []).extend(("Stair", stair) for stair in stairs)
+
+        self._assets_by_floor = {
+            floor_id: tuple(assets) for floor_id, assets in merged_assets_by_floor.items()
         }
+
         self.grazing_angle_ratio = grazing_angle_ratio
 
     # =====================================================
@@ -156,13 +189,20 @@ class WorldProjector:
             )
 
         zone_id = self._lookup_zone(calibration.floor_id, world_position)
-        stair_match = self._lookup_stair(calibration.floor_id, world_position)
+        asset_match = self._lookup_asset(calibration.floor_id, world_position)
         confidence = self._projection_confidence(direction, detection_confidence)
+
+        # stair_id/stair_localization_ambiguous are a thin, backward-
+        # compatible view over the generic match -- see WorldProjection's
+        # own docstring.
+        stair_id = asset_match.asset_id if asset_match.asset_type == "Stair" else None
 
         return WorldProjection(
             world_position=world_position, floor_id=calibration.floor_id,
             zone_id=zone_id, projection_confidence=confidence,
-            stair_id=stair_match.stair_id, stair_localization_ambiguous=stair_match.ambiguous,
+            asset_id=asset_match.asset_id, asset_type=asset_match.asset_type,
+            asset_localization_ambiguous=asset_match.ambiguous,
+            stair_id=stair_id, stair_localization_ambiguous=asset_match.ambiguous,
             provenance=provenance,
         )
 
@@ -204,19 +244,19 @@ class WorldProjector:
 
     # =====================================================
 
-    def _lookup_stair(self, floor_id: str, world_position: Tuple[float, float]):
+    def _lookup_asset(self, floor_id: str, world_position: Tuple[float, float]):
 
-        stairs = self._stairs_by_floor.get(floor_id, ())
+        candidates = self._assets_by_floor.get(floor_id, ())
 
-        return locate_stair(stairs, floor_id, world_position)
+        return locate_asset(candidates, floor_id, world_position)
 
     # =====================================================
-    # Observable Stair Perception milestone, Phase 19 -- which floors
+    # Observable Asset Perception Framework milestone -- which floors
     # this projector actually has a calibrated camera on this cycle,
     # straight from the calibrations it was constructed with (never a
     # second, independent camera query) -- the necessary-condition input
-    # camera_calibration.stair_lookup.covered_stair_ids() needs to
-    # distinguish OBSERVED (possibly zero) from UNKNOWN stair occupancy.
+    # camera_calibration.asset_lookup.covered_asset_ids() needs to
+    # distinguish OBSERVED (possibly zero) from UNKNOWN asset occupancy.
     # =====================================================
 
     def calibrated_floor_ids(self) -> FrozenSet[str]:

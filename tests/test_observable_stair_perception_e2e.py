@@ -7,9 +7,10 @@ from models.floor import Floor
 from models.staircase import Staircase, StairObservableRegion
 from models.zone import Zone
 
+from camera_calibration.asset_lookup import build_assets_by_floor, covered_asset_ids
 from camera_calibration.camera_model import CalibrationProfile, CameraExtrinsics, CameraIntrinsics
 from camera_calibration.projection import WorldProjector
-from camera_calibration.stair_lookup import build_stairs_by_floor, covered_stair_ids
+from camera_calibration.stair_lookup import DEFAULT_OBSERVABLE_ASSET_KINDS, build_stairs_by_floor
 
 from live_camera_pipeline.detection_provider import LiveCameraPipelineDetectionProvider
 from live_camera_pipeline.frame_source import CameraFrame, CameraFrameSource
@@ -21,13 +22,17 @@ from live_occupants.manager import LiveOccupantManager
 
 from tracking.simple_tracker import SimpleSingleCameraTracker
 
-from stair_perception.facts import compute_stair_occupancy_snapshot
-from stair_perception.models import StairObservationStatus
+from observable_assets.facts import compute_asset_occupancy_snapshot
+from observable_assets.models import ObservationStatus
 
 
 # =====================================================
-# Observable Stair Perception milestone, Phase 22/23/24 -- realistic,
-# offline end-to-end tests driving the REAL production chain:
+# Observable Stair Perception milestone, Phase 22/23/24 (updated by the
+# Observable Asset Perception Framework milestone: the snapshot layer
+# below is now the generic observable_assets package, Stair exercised
+# as its first concrete asset type -- see docs/architecture/
+# observable_asset_perception.md) -- realistic, offline end-to-end
+# tests driving the REAL production chain:
 #
 #   RawHumanDetection bounding box
 #     -> tracking.SimpleSingleCameraTracker (real)
@@ -36,7 +41,7 @@ from stair_perception.models import StairObservationStatus
 #     -> live_camera_pipeline.identity_resolver (real)
 #     -> live_occupants.manager.LiveOccupantManager (real)
 #     -> LiveOccupantManager.canonical_occupancy() (real)
-#     -> stair_perception.facts.compute_stair_occupancy_snapshot() (real)
+#     -> observable_assets.facts.compute_asset_occupancy_snapshot() (real)
 #
 # Mirrors tests/test_live_camera_pipeline.py's own "CameraFrame all the
 # way through, zero real camera, zero Simulation ground truth" fake/
@@ -283,16 +288,16 @@ class BasicStairCrossingE2ETests(unittest.TestCase):
         pipeline.run_cycle(2.0)
 
         facts = manager.canonical_occupancy(2.0)
-        stairs_by_floor = build_stairs_by_floor(building)
-        coverage = covered_stair_ids(stairs_by_floor, frozenset({floor.id}))
+        assets_by_floor = build_assets_by_floor(building, DEFAULT_OBSERVABLE_ASSET_KINDS)
+        coverage = covered_asset_ids(assets_by_floor, frozenset({floor.id}))
 
-        snapshot = compute_stair_occupancy_snapshot(
-            stair_ids=[stair.id], occupant_ids_by_stair=facts.occupant_ids_by_stair,
-            covered_stair_ids=coverage, timestamp=2.0,
+        snapshot = compute_asset_occupancy_snapshot(
+            asset_ids_by_type={"Stair": [stair.id]}, occupant_ids_by_asset=facts.occupant_ids_by_stair,
+            covered_asset_ids=coverage, timestamp=2.0,
         )
 
         observation = snapshot.observation_for(stair.id)
-        self.assertEqual(observation.status, StairObservationStatus.OBSERVED)
+        self.assertEqual(observation.status, ObservationStatus.OBSERVED)
         self.assertEqual(observation.occupant_count, 1)
 
 

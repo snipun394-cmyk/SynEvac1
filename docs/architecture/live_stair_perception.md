@@ -5,6 +5,20 @@ Status: implemented (foundation only, per this milestone's own scope). Builds di
 implements Stage 1 of). No predictive model, Recommendation scoring, Voice/Signage dispatch,
 Building Control execution, or NavigationGraph redesign is touched by this milestone.
 
+**Superseded by `docs/architecture/observable_asset_perception.md`.** The Observable Asset Perception
+Framework milestone found that nearly everything below named `stair_perception`/`StairMatch`/
+`locate_stair`/`covered_stair_ids`/`StairObservationStatus`/`StairObservation`/
+`StairOccupancySnapshot`/`compute_stair_occupancy_snapshot`/`BuildingState.stair_occupancy`/
+`AssetApproachMetrics.observed_on_stair_count` had zero Stair-specific logic behind it, and generalized
+those names to `camera_calibration.asset_lookup`/`observable_assets` (`AssetMatch`/`locate_asset`/
+`covered_asset_ids`/`ObservationStatus`/`AssetObservation`/`ObservableAssetSnapshot`/
+`compute_asset_occupancy_snapshot`/`BuildingState.observable_assets`/
+`AssetApproachMetrics.observed_occupant_count`), with Stair as that framework's first registered kind.
+The `stair_perception/` package described below no longer exists. This document is kept for the
+sections that remain accurate as-is (models/staircase.py geometry, Designer authoring, LiveOccupant.
+current_stair_id, the trajectory floor-guard, and the overall problem/motivation) — for the current
+names of anything lookup/snapshot-related, read the superseding document instead.
+
 ---
 
 ## 1. Problem discovered from the real laboratory CCTV layout

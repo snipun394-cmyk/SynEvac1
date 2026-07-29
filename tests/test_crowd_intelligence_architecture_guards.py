@@ -82,9 +82,19 @@ class CrowdIntelligenceArchitectureGuardTests(unittest.TestCase):
         # crowd_intelligence.capacity's own module docstring for why this
         # is safely reusable, never a MultiAgentSimulation dependency),
         # behavior_recognition (RecognizedBehavior enum only), and time.
+        #
+        # Observable Asset Perception Framework milestone -- one
+        # deliberate addition: observable_assets (a pure value-object +
+        # pure-function package, the same "no action-execution
+        # capability of any kind" category this allow-list already
+        # grants navigation.edge/models/behavior_recognition.observation).
+        # CrowdIntelligenceEngine.compute() now takes an
+        # observable_assets.models.ObservableAssetSnapshot directly (see
+        # crowd_intelligence/engine.py's own docstring for compute()),
+        # superseding an earlier plain-dict-only design.
         allowed_prefixes = (
             "live_occupants", "models", "navigation.edge", "simulator.capacity",
-            "behavior_recognition.observation", "crowd_intelligence",
+            "behavior_recognition.observation", "crowd_intelligence", "observable_assets",
         )
 
         project_package_pattern = r"^\s*(from|import)\s+([a-z_][a-z0-9_.]*)"

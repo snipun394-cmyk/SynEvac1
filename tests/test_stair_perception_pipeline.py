@@ -15,8 +15,8 @@ from building_state.estimator import BuildingStateEstimator
 from hazard.snapshot import HazardSnapshot
 from occupancy.snapshot import OccupancySnapshot
 
-from stair_perception.facts import compute_stair_occupancy_snapshot
-from stair_perception.models import StairObservationStatus
+from observable_assets.facts import compute_asset_occupancy_snapshot
+from observable_assets.models import ObservationStatus
 
 
 # =====================================================
@@ -238,46 +238,58 @@ class OccupancyFactsStairGroupingTests(unittest.TestCase):
 
 class StairOccupancySnapshotTests(unittest.TestCase):
 
+    # Observable Asset Perception Framework milestone -- these tests
+    # were originally written against stair_perception.facts.
+    # compute_stair_occupancy_snapshot()/StairObservationStatus, which
+    # had zero Stair-specific logic and have since been generalized/
+    # moved (unchanged in behavior) to observable_assets.facts.
+    # compute_asset_occupancy_snapshot()/observable_assets.models.
+    # ObservationStatus -- Stair is exercised here as this framework's
+    # first concrete asset type, via the same asset_ids_by_type={"Stair": [...]}
+    # shape a real caller (e.g. live_system's own orchestration glue)
+    # would use.
+
     def test_14_covered_stair_reports_observed_status(self):
 
-        snapshot = compute_stair_occupancy_snapshot(
-            stair_ids=["STAIR-1"], occupant_ids_by_stair={"STAIR-1": ("OCC-1", "OCC-2")},
-            covered_stair_ids=frozenset({"STAIR-1"}), timestamp=0.0,
+        snapshot = compute_asset_occupancy_snapshot(
+            asset_ids_by_type={"Stair": ["STAIR-1"]}, occupant_ids_by_asset={"STAIR-1": ("OCC-1", "OCC-2")},
+            covered_asset_ids=frozenset({"STAIR-1"}), timestamp=0.0,
         )
 
         observation = snapshot.observation_for("STAIR-1")
-        self.assertEqual(observation.status, StairObservationStatus.OBSERVED)
+        self.assertEqual(observation.status, ObservationStatus.OBSERVED)
+        self.assertEqual(observation.asset_type, "Stair")
         self.assertEqual(observation.occupant_count, 2)
 
     def test_15_covered_stair_with_zero_occupants_is_observed_zero_not_unknown(self):
 
-        snapshot = compute_stair_occupancy_snapshot(
-            stair_ids=["STAIR-1"], occupant_ids_by_stair={}, covered_stair_ids=frozenset({"STAIR-1"}), timestamp=0.0,
+        snapshot = compute_asset_occupancy_snapshot(
+            asset_ids_by_type={"Stair": ["STAIR-1"]}, occupant_ids_by_asset={}, covered_asset_ids=frozenset({"STAIR-1"}), timestamp=0.0,
         )
 
         observation = snapshot.observation_for("STAIR-1")
-        self.assertEqual(observation.status, StairObservationStatus.OBSERVED)
+        self.assertEqual(observation.status, ObservationStatus.OBSERVED)
         self.assertEqual(observation.occupant_count, 0)
 
     def test_16_uncovered_stair_is_unknown_never_a_fabricated_zero(self):
 
-        snapshot = compute_stair_occupancy_snapshot(
-            stair_ids=["STAIR-2"], occupant_ids_by_stair={}, covered_stair_ids=frozenset(), timestamp=0.0,
+        snapshot = compute_asset_occupancy_snapshot(
+            asset_ids_by_type={"Stair": ["STAIR-2"]}, occupant_ids_by_asset={}, covered_asset_ids=frozenset(), timestamp=0.0,
         )
 
         observation = snapshot.observation_for("STAIR-2")
-        self.assertEqual(observation.status, StairObservationStatus.UNKNOWN)
+        self.assertEqual(observation.status, ObservationStatus.UNKNOWN)
         self.assertEqual(observation.occupant_count, 0)
         self.assertEqual(observation.occupant_ids, ())
 
     def test_17_entirely_absent_stair_id_also_defaults_unknown(self):
 
-        snapshot = compute_stair_occupancy_snapshot(
-            stair_ids=[], occupant_ids_by_stair={}, covered_stair_ids=frozenset(), timestamp=0.0,
+        snapshot = compute_asset_occupancy_snapshot(
+            asset_ids_by_type={}, occupant_ids_by_asset={}, covered_asset_ids=frozenset(), timestamp=0.0,
         )
 
         observation = snapshot.observation_for("NEVER-SEEN")
-        self.assertEqual(observation.status, StairObservationStatus.UNKNOWN)
+        self.assertEqual(observation.status, ObservationStatus.UNKNOWN)
 
 
 class BuildingStateStairOccupancyPassthroughTests(unittest.TestCase):
@@ -290,27 +302,27 @@ class BuildingStateStairOccupancyPassthroughTests(unittest.TestCase):
             0.0, hazard_snapshot=HazardSnapshot(), occupancy_snapshot=OccupancySnapshot(),
         )
 
-        self.assertIsNone(state.stair_occupancy)
+        self.assertIsNone(state.observable_assets)
 
     def test_19_pure_passthrough_when_supplied(self):
 
         estimator = BuildingStateEstimator()
 
-        stair_snapshot = compute_stair_occupancy_snapshot(
-            stair_ids=["STAIR-1"], occupant_ids_by_stair={"STAIR-1": ("OCC-1",)},
-            covered_stair_ids=frozenset({"STAIR-1"}), timestamp=0.0,
+        asset_snapshot = compute_asset_occupancy_snapshot(
+            asset_ids_by_type={"Stair": ["STAIR-1"]}, occupant_ids_by_asset={"STAIR-1": ("OCC-1",)},
+            covered_asset_ids=frozenset({"STAIR-1"}), timestamp=0.0,
         )
 
         state = estimator.estimate(
             0.0, hazard_snapshot=HazardSnapshot(), occupancy_snapshot=OccupancySnapshot(),
-            stair_occupancy_snapshot=stair_snapshot,
+            observable_asset_snapshot=asset_snapshot,
         )
 
-        self.assertIs(state.stair_occupancy, stair_snapshot)
-        self.assertEqual(state.stair_occupancy.observation_for("STAIR-1").occupant_count, 1)
+        self.assertIs(state.observable_assets, asset_snapshot)
+        self.assertEqual(state.observable_assets.observation_for("STAIR-1").occupant_count, 1)
 
-        # zone_occupancy stays exactly what it always was -- Stair
-        # occupancy is a genuinely separate sibling, never folded in.
+        # zone_occupancy stays exactly what it always was -- observable-
+        # asset occupancy is a genuinely separate sibling, never folded in.
         self.assertIsInstance(state.zone_occupancy, OccupancySnapshot)
 
 

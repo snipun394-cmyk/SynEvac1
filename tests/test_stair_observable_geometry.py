@@ -4,7 +4,8 @@ from models.building import Building
 from models.floor import Floor
 from models.staircase import Staircase, StairObservableRegion
 
-from camera_calibration.stair_lookup import build_stairs_by_floor, covered_stair_ids, locate_stair
+from camera_calibration.asset_lookup import build_assets_by_floor, covered_asset_ids, locate_asset
+from camera_calibration.stair_lookup import DEFAULT_OBSERVABLE_ASSET_KINDS, build_stairs_by_floor
 
 
 # =====================================================
@@ -130,22 +131,32 @@ class StaircaseObservableRegionLookupTests(unittest.TestCase):
 
 class LocateStairTests(unittest.TestCase):
 
+    # Observable Asset Perception Framework milestone -- these tests were
+    # originally written against camera_calibration.stair_lookup.
+    # locate_stair(), which had zero Stair-specific logic and has since
+    # been generalized/moved (unchanged in behavior) to camera_
+    # calibration.asset_lookup.locate_asset(). Stair is exercised here as
+    # this framework's first concrete asset type, via the same
+    # `[(asset_type, asset), ...]` candidate shape a real WorldProjector
+    # already consumes internally.
+
     def test_10_no_match_returns_none_not_ambiguous(self):
 
         building, floor_1, floor_2, stair = make_building_with_stair()
 
-        result = locate_stair([stair], floor_1.id, (500.0, 500.0))
+        result = locate_asset([("Stair", stair)], floor_1.id, (500.0, 500.0))
 
-        self.assertIsNone(result.stair_id)
+        self.assertIsNone(result.asset_id)
         self.assertFalse(result.ambiguous)
 
     def test_11_exactly_one_match(self):
 
         building, floor_1, floor_2, stair = make_building_with_stair()
 
-        result = locate_stair([stair], floor_1.id, (10.0, 10.0))
+        result = locate_asset([("Stair", stair)], floor_1.id, (10.0, 10.0))
 
-        self.assertEqual(result.stair_id, stair.id)
+        self.assertEqual(result.asset_id, stair.id)
+        self.assertEqual(result.asset_type, "Stair")
         self.assertFalse(result.ambiguous)
 
     def test_12_ambiguous_overlap_never_arbitrarily_resolved(self):
@@ -161,9 +172,9 @@ class LocateStairTests(unittest.TestCase):
 
         # (10.2, 10.2) genuinely falls inside BOTH stairs' overlapping
         # from_observable_regions.
-        result = locate_stair([stair_a, stair_b], floor_1.id, (10.2, 10.2))
+        result = locate_asset([("Stair", stair_a), ("Stair", stair_b)], floor_1.id, (10.2, 10.2))
 
-        self.assertIsNone(result.stair_id)
+        self.assertIsNone(result.asset_id)
         self.assertTrue(result.ambiguous)
 
     def test_13_deleted_stair_reference_cannot_leak_a_stale_match(self):
@@ -172,9 +183,9 @@ class LocateStairTests(unittest.TestCase):
 
         # Simulates deletion: the caller's CURRENT stairs list no longer
         # contains `stair` at all.
-        result = locate_stair([], floor_1.id, (10.0, 10.0))
+        result = locate_asset([], floor_1.id, (10.0, 10.0))
 
-        self.assertIsNone(result.stair_id)
+        self.assertIsNone(result.asset_id)
         self.assertFalse(result.ambiguous)
 
     def test_14_boundary_point_matches(self):
@@ -182,12 +193,20 @@ class LocateStairTests(unittest.TestCase):
         building, floor_1, floor_2, stair = make_building_with_stair()
 
         # Exact edge of the 4x4 region centered at (10, 10).
-        result = locate_stair([stair], floor_1.id, (12.0, 10.0))
+        result = locate_asset([("Stair", stair)], floor_1.id, (12.0, 10.0))
 
-        self.assertEqual(result.stair_id, stair.id)
+        self.assertEqual(result.asset_id, stair.id)
 
 
 class BuildStairsByFloorTests(unittest.TestCase):
+
+    # build_stairs_by_floor() is the one piece of the Observable Stair
+    # Perception milestone's original lookup code that a Phase 1 audit
+    # confirmed IS genuinely Stair-specific (it alone knows Staircase
+    # lives in Floor.stairs and spans from_floor_id/to_floor_id) -- it
+    # stays in camera_calibration.stair_lookup, untouched, and is tested
+    # here on its own, UNTAGGED shape (a plain floor_id -> stairs
+    # mapping, not the generic (asset_type, asset) tuple shape).
 
     def test_15_stair_appears_under_both_floor_ids(self):
 
@@ -198,19 +217,31 @@ class BuildStairsByFloorTests(unittest.TestCase):
         self.assertIn(stair, by_floor[floor_1.id])
         self.assertIn(stair, by_floor[floor_2.id])
 
-    def test_16_lookup_via_prebuilt_mapping_resolves_correct_side(self):
+
+class BuildAssetsByFloorTests(unittest.TestCase):
+
+    # Observable Asset Perception Framework milestone -- proves the
+    # GENERIC registry-building function correctly merges the (currently
+    # sole) registered Stair kind, tagging each entry "Stair" and
+    # resolving the correct floor side exactly as the old, now-removed
+    # locate_stair()-over-build_stairs_by_floor() combination did.
+
+    def test_16_lookup_via_registry_built_mapping_resolves_correct_side(self):
 
         building, floor_1, floor_2, stair = make_building_with_stair()
 
-        by_floor = build_stairs_by_floor(building)
+        assets_by_floor = build_assets_by_floor(building, DEFAULT_OBSERVABLE_ASSET_KINDS)
 
-        from_match = locate_stair(by_floor[floor_1.id], floor_1.id, (10.0, 10.0))
-        to_match = locate_stair(by_floor[floor_2.id], floor_2.id, (50.0, 50.0))
-        cross_match = locate_stair(by_floor[floor_1.id], floor_1.id, (50.0, 50.0))  # to-side coords on from-floor
+        self.assertIn(("Stair", stair), assets_by_floor[floor_1.id])
+        self.assertIn(("Stair", stair), assets_by_floor[floor_2.id])
 
-        self.assertEqual(from_match.stair_id, stair.id)
-        self.assertEqual(to_match.stair_id, stair.id)
-        self.assertIsNone(cross_match.stair_id)
+        from_match = locate_asset(assets_by_floor[floor_1.id], floor_1.id, (10.0, 10.0))
+        to_match = locate_asset(assets_by_floor[floor_2.id], floor_2.id, (50.0, 50.0))
+        cross_match = locate_asset(assets_by_floor[floor_1.id], floor_1.id, (50.0, 50.0))  # to-side coords on from-floor
+
+        self.assertEqual(from_match.asset_id, stair.id)
+        self.assertEqual(to_match.asset_id, stair.id)
+        self.assertIsNone(cross_match.asset_id)
 
 
 class CoveredStairIdsTests(unittest.TestCase):
@@ -218,27 +249,27 @@ class CoveredStairIdsTests(unittest.TestCase):
     def test_17_stair_with_region_and_calibrated_floor_is_covered(self):
 
         building, floor_1, floor_2, stair = make_building_with_stair()
-        by_floor = build_stairs_by_floor(building)
+        assets_by_floor = build_assets_by_floor(building, DEFAULT_OBSERVABLE_ASSET_KINDS)
 
-        covered = covered_stair_ids(by_floor, frozenset({floor_1.id}))
+        covered = covered_asset_ids(assets_by_floor, frozenset({floor_1.id}))
 
         self.assertIn(stair.id, covered)
 
     def test_18_stair_with_region_but_no_calibrated_floor_is_not_covered(self):
 
         building, floor_1, floor_2, stair = make_building_with_stair()
-        by_floor = build_stairs_by_floor(building)
+        assets_by_floor = build_assets_by_floor(building, DEFAULT_OBSERVABLE_ASSET_KINDS)
 
-        covered = covered_stair_ids(by_floor, frozenset())  # no calibrated cameras at all
+        covered = covered_asset_ids(assets_by_floor, frozenset())  # no calibrated cameras at all
 
         self.assertNotIn(stair.id, covered)
 
     def test_19_stair_without_any_region_is_never_covered_even_if_calibrated(self):
 
         building, floor_1, floor_2, stair = make_building_with_stair(with_regions=False)
-        by_floor = build_stairs_by_floor(building)
+        assets_by_floor = build_assets_by_floor(building, DEFAULT_OBSERVABLE_ASSET_KINDS)
 
-        covered = covered_stair_ids(by_floor, frozenset({floor_1.id, floor_2.id}))
+        covered = covered_asset_ids(assets_by_floor, frozenset({floor_1.id, floor_2.id}))
 
         self.assertNotIn(stair.id, covered)
 

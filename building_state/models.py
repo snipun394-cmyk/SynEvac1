@@ -17,7 +17,7 @@ from fire_safety_manager.snapshot import FireSafetyStatusSnapshot
 
 from fire_water_manager.snapshot import FireWaterInfrastructureSnapshot
 
-from stair_perception.models import StairOccupancySnapshot
+from observable_assets.models import ObservableAssetSnapshot
 
 from perception.models.camera_observation import CameraFrameObservation
 
@@ -207,19 +207,27 @@ class BuildingState:
     # fire_water_infrastructure.md's own FACP/BuildingControl boundary).
     fire_water_status: Optional[FireWaterInfrastructureSnapshot] = None
 
-    # Observable Stair Perception milestone (additive) -- the current
-    # per-Stair OBSERVED/UNKNOWN occupancy truth, see stair_perception.
-    # facts.compute_stair_occupancy_snapshot(), which produces this
+    # Observable Asset Perception Framework milestone (additive,
+    # generalized from the Observable Stair Perception milestone's own
+    # stair_occupancy field -- that field's actual type,
+    # StairOccupancySnapshot, had no Stair-specific logic in it at all,
+    # so it was renamed/moved rather than kept as a redundant parallel
+    # type) -- the current per-asset OBSERVED/UNKNOWN occupancy truth
+    # for every registered observable asset (Stair today; a future Door/
+    # Exit/etc. would appear in this SAME snapshot, keyed by asset_id,
+    # never a new BuildingState field of its own), see observable_assets.
+    # facts.compute_asset_occupancy_snapshot(), which produces this
     # value; BuildingStateEstimator only ever passes it through, never
     # computes it, same discipline as facp_status/control_status/
-    # fire_safety_status/fire_water_status above. None when no stair
-    # occupancy computation was configured for this cycle -- never
-    # fabricated. Deliberately NOT folded into zone_occupancy: Stair is
-    # not, and must not become, a Navigation Graph node (see
+    # fire_safety_status/fire_water_status above. None when no
+    # observable-asset computation was configured for this cycle --
+    # never fabricated. Deliberately NOT folded into zone_occupancy:
+    # Stair (and every other observable asset this framework anticipates)
+    # is not, and must not become, a Navigation Graph node (see
     # docs/architecture/stair_camera_perception_audit.md and
-    # docs/architecture/live_stair_perception.md) -- zone_occupancy
+    # docs/architecture/observable_asset_perception.md) -- zone_occupancy
     # stays exactly what it always was, node-keyed occupancy only.
-    stair_occupancy: Optional[StairOccupancySnapshot] = None
+    observable_assets: Optional[ObservableAssetSnapshot] = None
 
     # =====================================================
 
