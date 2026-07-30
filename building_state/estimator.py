@@ -27,6 +27,8 @@ from fire_water_manager.snapshot import FireWaterInfrastructureSnapshot
 
 from observable_assets.models import ObservableAssetSnapshot
 
+from camera_coverage.models import CameraCoverageSnapshot
+
 from building_state.models import (
     ActiveAssetsSummary,
     BuildingState,
@@ -101,6 +103,7 @@ class BuildingStateEstimator:
         fire_safety_snapshot: Optional[FireSafetyStatusSnapshot] = None,
         fire_water_snapshot: Optional[FireWaterInfrastructureSnapshot] = None,
         observable_asset_snapshot: Optional[ObservableAssetSnapshot] = None,
+        camera_coverage_snapshot: Optional[CameraCoverageSnapshot] = None,
     ) -> BuildingState:
 
         # Materialized up front -- every argument is iterated more than
@@ -141,6 +144,7 @@ class BuildingStateEstimator:
             fire_safety_status=fire_safety_snapshot,
             fire_water_status=fire_water_snapshot,
             observable_assets=observable_asset_snapshot,
+            camera_coverage=camera_coverage_snapshot,
         )
 
     # =====================================================

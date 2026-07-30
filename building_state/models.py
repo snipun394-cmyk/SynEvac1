@@ -19,6 +19,8 @@ from fire_water_manager.snapshot import FireWaterInfrastructureSnapshot
 
 from observable_assets.models import ObservableAssetSnapshot
 
+from camera_coverage.models import CameraCoverageSnapshot
+
 from perception.models.camera_observation import CameraFrameObservation
 
 from multi_camera_fusion.track import FusedTrack
@@ -228,6 +230,21 @@ class BuildingState:
     # docs/architecture/observable_asset_perception.md) -- zone_occupancy
     # stays exactly what it always was, node-keyed occupancy only.
     observable_assets: Optional[ObservableAssetSnapshot] = None
+
+    # Camera Coverage Intelligence & Observable Asset Mapping milestone
+    # (additive) -- the current, geometrically-derived Camera <->
+    # Observable Asset coverage picture (which cameras cover which
+    # assets, and how completely), see camera_coverage.discovery.
+    # compute_camera_coverage_snapshot(), which produces this value;
+    # BuildingStateEstimator only ever passes it through, never computes
+    # it, same discipline as facp_status/control_status/observable_assets
+    # above. None when no camera-coverage computation was configured for
+    # this cycle -- never fabricated. Purely metadata: carries no
+    # occupancy count of its own (see camera_coverage.models.
+    # CameraCoverageSnapshot's own docstring on why multi-camera coverage
+    # cannot double-count) -- occupancy truth stays entirely on
+    # `observable_assets` above, a genuinely separate field.
+    camera_coverage: Optional[CameraCoverageSnapshot] = None
 
     # =====================================================
 
