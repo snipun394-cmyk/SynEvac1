@@ -4,6 +4,8 @@ from predictive_dataset.candidate import CandidateIdentity
 from predictive_dataset.graph_context_v4 import CandidateGraphContext
 from predictive_dataset.live_extractor_v2_1 import extract_live_experimental_candidate_features
 
+from stair_flow.models import StairFlowSnapshot
+
 
 # =====================================================
 # Predictive Dataset V4 milestone, Phase 3 -- THE LIVE EXTRACTOR for
@@ -23,6 +25,15 @@ from predictive_dataset.live_extractor_v2_1 import extract_live_experimental_can
 # predictive_dataset/simulation_extractor_v4.py calls, proving sim/live
 # parity by construction rather than by a second, independently-written
 # implementation that could silently drift.
+#
+# Stair Predictive-Feature Live Parity milestone -- `stair_flow_snapshot`
+# is likewise OPTIONAL and simply threaded through to
+# extract_live_experimental_candidate_features() unchanged (see that
+# module's own docstring and predictive_dataset.live_extractor_v2_1.
+# build_stair_flow_snapshot_for_prediction() for how to build one). Still
+# NOT wired into LiveRuntime -- this parameter only makes a genuinely
+# parity-proven Stair candidate_recent_flow_rate available to a caller
+# that supplies it, never enables model inference on its own.
 # =====================================================
 
 
@@ -38,13 +49,14 @@ def extract_live_v4_candidate_features(
     alternative_route_counts: Dict[str, int],
     evacuation_snapshot=None,
     occupants: Optional[Sequence] = None,
+    stair_flow_snapshot: Optional[StairFlowSnapshot] = None,
 ) -> Dict[str, Any]:
 
     base = extract_live_experimental_candidate_features(
         candidate, edge, time,
         building=building, crowd_snapshot=crowd_snapshot, occupancy_facts=occupancy_facts,
         alternative_route_counts=alternative_route_counts, evacuation_snapshot=evacuation_snapshot,
-        occupants=occupants,
+        occupants=occupants, stair_flow_snapshot=stair_flow_snapshot,
     )
 
     context = graph_context.get(candidate.candidate_id)

@@ -60,12 +60,18 @@ V4_PROMOTED_EXPERIMENTAL_FIELDS: Tuple[AIFeatureField, ...] = (
         source="SIM: predictive_dataset.simulation_extractor_v2_1._recent_flow_rate (completed-crossing "
                "count over movement_result.occupants). LIVE: predictive_dataset.live_extractor_v2_1."
                "_live_recent_flow_rate -- Exit reuses evacuation_progress.models.ExitFlow."
-               "recent_flow_per_minute directly (same 60s window); Door/Stair query "
-               "live_occupants.history.OccupantHistory.zone_transitions for the matching zone pair.",
+               "recent_flow_per_minute directly (same 60s window); Stair reuses stair_flow.models."
+               "StairFlowMetrics.exits (a genuine, camera/tracking-derived completed-crossing count, "
+               "proved semantically equivalent to the simulation definition -- see docs/architecture/"
+               "stair_predictive_feature_live_parity.md) when a caller supplies `stair_flow_snapshot`, "
+               "else falls back to the original Door/Stair zone_transitions proxy; Door always uses "
+               "that proxy (queries live_occupants.history.OccupantHistory.zone_transitions for the "
+               "matching zone pair -- no per-asset transition evidence analogous to Stair exists for Door).",
         availability=FeatureAvailability.LIVE_ESTIMABLE,
         nullable=True,
-        missing_value_note="LIVE: None when the underlying evacuation_snapshot/occupants source is "
-                            "unavailable this cycle. SIM: never None -- exact ground truth is always computable.",
+        missing_value_note="LIVE: None when the underlying evacuation_snapshot/occupants/stair_flow_"
+                            "snapshot source is unavailable this cycle. SIM: never None -- exact ground "
+                            "truth is always computable.",
     ),
     AIFeatureField(
         name="candidate_congestion_trend",
