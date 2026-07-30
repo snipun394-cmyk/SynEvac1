@@ -346,7 +346,24 @@ class MultiAgentSimulation:
         )
         effective_speed = occupant.walking_speed * speed_factor
 
-        distance = edge.walking_distance or 0.0
+        # Stair Simulation Reliability & Multi-Floor Reachability Audit
+        # milestone, Phase 17 -- `edge.walking_distance or 0.0` silently
+        # coerced BOTH a genuinely unknown distance (None) and a
+        # genuinely computed zero to the same 0.0, producing an
+        # instantaneous (start_time == end_time) traversal whenever
+        # walking_distance was None -- exactly the historical zero-
+        # duration Stair bug's own simulation-level symptom, and the one
+        # mechanism that would have silently neutralized navigation.
+        # graph_builder.NavigationGraphGenerator._add_stair_edges()'s own
+        # new None-on-degenerate-distance guard (see that method's own
+        # comment). `edge.traversal_cost` already implements exactly the
+        # right fallback (walking_distance when known, Edge.DEFAULT_
+        # TRAVERSAL_COST otherwise -- see navigation/edge.py) and is
+        # numerically IDENTICAL to the old expression whenever
+        # walking_distance was already known (including a genuine 0.0),
+        # so this changes behavior ONLY for the previously-broken
+        # None case.
+        distance = edge.traversal_cost
         duration = distance / effective_speed
 
         start_time = time

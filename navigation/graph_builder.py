@@ -297,6 +297,75 @@ class NavigationGraphGenerator:
             ):
                 continue
 
+            # Stair Simulation Reliability & Multi-Floor Reachability
+            # Audit milestone, Phase 17 -- permanent regression guard for
+            # the historical bug: a Staircase whose `from_floor_id` does
+            # not actually match the floor it is placed on (`floor` here,
+            # since `from_zone` above is resolved against `floor`, not
+            # against `stair.from_floor_id` -- connectivity is therefore
+            # unaffected by this mismatch, only the DISTANCE computation,
+            # which reads from_floor_id/to_floor_id independently via
+            # Staircase.vertical_height()) silently computed
+            # vertical_height()==0 -> travel_distance()==0 ->
+            # Edge.walking_distance==0.0 (never None) -> Edge.
+            # traversal_cost==0.0 (never DEFAULT_TRAVERSAL_COST) ->
+            # MultiAgentSimulation's own `duration = distance /
+            # effective_speed` computed an INSTANTANEOUS
+            # (start_time == end_time) traversal, with no validation
+            # signal anywhere. Both degenerate cases below are surfaced
+            # via graph.record_issue() (never silent, never fatal to
+            # building the graph -- this floor's Stair edge still gets
+            # built, exactly like every other validation issue in this
+            # module) AND, when the computed distance itself is <= 0,
+            # `walking_distance` is left None rather than 0.0 -- reusing
+            # Edge.walking_distance's OWN ALREADY-EXISTING "not derivable"
+            # contract (its own docstring: "None means 'not derivable'"),
+            # so Edge.traversal_cost/traversal_time fall back to the
+            # SAME DEFAULT_TRAVERSAL_COST/None-time behavior every other
+            # edge with undeterminable geometry already gets -- no new
+            # concept introduced, no edge silently dropped, no change to
+            # graph connectivity or routing reachability.
+
+            if floor.id == destination_floor.id:
+
+                graph.record_issue(
+                    "stair_same_floor_both_ends",
+                    (
+                        f"Stair '{stair.name}' has the same floor "
+                        f"('{floor.name}') resolved for both ends -- "
+                        f"a Staircase must connect two distinct floors."
+                    ),
+                    severity=ValidationReport.WARNING,
+                    object_id=stair.id,
+                    floor_id=floor.id,
+                )
+
+            travel_distance = stair.travel_distance(building)
+
+            if travel_distance is None or travel_distance <= 0:
+
+                graph.record_issue(
+                    "stair_zero_traversal_distance",
+                    (
+                        f"Stair '{stair.name}' connects floor "
+                        f"'{floor.name}' to floor '{destination_floor.name}' "
+                        f"but its computed travel distance is zero or "
+                        f"invalid (commonly caused by from_floor_id not "
+                        f"matching the floor this Stair is actually placed "
+                        f"on) -- falling back to Edge.DEFAULT_TRAVERSAL_COST "
+                        f"instead of simulating an instantaneous traversal."
+                    ),
+                    severity=ValidationReport.WARNING,
+                    object_id=stair.id,
+                    floor_id=floor.id,
+                )
+
+                walking_distance = None
+
+            else:
+
+                walking_distance = travel_distance
+
             graph.add_edge(
                 Edge(
                     id=stair.id,
@@ -304,7 +373,7 @@ class NavigationGraphGenerator:
                     from_node=from_zone.id,
                     to_node=to_zone.id,
                     reference=stair,
-                    walking_distance=stair.travel_distance(building),
+                    walking_distance=walking_distance,
                 )
             )
 
