@@ -55,6 +55,38 @@ def build_regressor(algorithm: str, kwargs: Optional[Dict[str, Any]] = None):
 
         return XGBRegressor(**kwargs)
 
+    if algorithm == "decision_tree":
+
+        from sklearn.tree import DecisionTreeRegressor
+
+        kwargs.setdefault("random_state", 0)
+
+        return DecisionTreeRegressor(**kwargs)
+
+    if algorithm == "linear_regression":
+
+        from sklearn.linear_model import LinearRegression
+
+        return LinearRegression(**kwargs)
+
+    if algorithm == "mlp":
+
+        from sklearn.neural_network import MLPRegressor
+
+        kwargs.setdefault("random_state", 0)
+        kwargs.setdefault("max_iter", 500)
+        kwargs.setdefault("early_stopping", True)
+
+        return MLPRegressor(**kwargs)
+
+    if algorithm == "dummy":
+
+        from sklearn.dummy import DummyRegressor
+
+        kwargs.setdefault("strategy", "mean")
+
+        return DummyRegressor(**kwargs)
+
     raise ValueError(f"Unknown regression algorithm: {algorithm!r}")
 
 
@@ -96,6 +128,42 @@ def build_classifier(algorithm: str, kwargs: Optional[Dict[str, Any]] = None):
         kwargs.setdefault("eval_metric", "logloss")
 
         return XGBClassifier(**kwargs)
+
+    if algorithm == "decision_tree":
+
+        from sklearn.tree import DecisionTreeClassifier
+
+        kwargs.setdefault("random_state", 0)
+
+        return DecisionTreeClassifier(**kwargs)
+
+    if algorithm == "logistic_regression":
+
+        from sklearn.linear_model import LogisticRegression
+
+        kwargs.setdefault("random_state", 0)
+        kwargs.setdefault("max_iter", 1000)
+
+        return LogisticRegression(**kwargs)
+
+    if algorithm == "mlp":
+
+        from sklearn.neural_network import MLPClassifier
+
+        kwargs.setdefault("random_state", 0)
+        kwargs.setdefault("max_iter", 500)
+        kwargs.setdefault("early_stopping", True)
+
+        return MLPClassifier(**kwargs)
+
+    if algorithm == "dummy":
+
+        from sklearn.dummy import DummyClassifier
+
+        kwargs.setdefault("strategy", "stratified")
+        kwargs.setdefault("random_state", 0)
+
+        return DummyClassifier(**kwargs)
 
     raise ValueError(f"Unknown classification algorithm: {algorithm!r}")
 
