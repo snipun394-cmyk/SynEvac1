@@ -15,7 +15,7 @@ from dynamic_signage.consistency import instruction_inconsistencies
 from dynamic_signage.controller import DynamicSignageController, SignageControlEvent, SignageRequestStatus
 from dynamic_signage.models import SignageInstruction, SignageStatus
 
-from live_system.event_bus import EventType
+from event_bus.bus import EventType
 
 
 # =====================================================

@@ -34,7 +34,6 @@ from live_system.incident_manager import (
     InvalidIncidentTransition,
 )
 from live_system.integration import (
-    AIInferenceGateway,
     CommandCenterGateway,
     DecisionPolicyGateway,
     PerceptionGateway,
@@ -118,8 +117,10 @@ __all__ = [
     # Never populated by live_runtime.factory.build_live_runtime() in
     # production -- see live_system/integration.py's own module
     # docstring and docs/architecture/live_runtime_architecture_cleanup.md.
+    # AIInferenceGateway (the Phase-7 generation-1 inference seam) was
+    # RETIRED by the Shadow-Mode Predictive AI Integration milestone --
+    # see live_system/integration.py's own docstring.
     "PerceptionGateway",
-    "AIInferenceGateway",
     "DecisionPolicyGateway",
     "CommandCenterGateway",
     "RecommendationBuilder",

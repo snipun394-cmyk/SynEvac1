@@ -1,7 +1,7 @@
 import dataclasses
 from typing import Dict, FrozenSet, Optional, Set
 
-from live_system.event_bus import EventBus, EventType
+from event_bus.bus import EventBus, EventType
 
 from live_occupants import events as occupant_events
 from live_occupants.state import OccupantStatus

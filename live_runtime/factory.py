@@ -34,8 +34,9 @@ from building_control.controller import BuildingControlController
 from building_control.providers import SimulationControlProvider
 
 from live_system.building_state_gateway import EstimatorBuildingStateGateway
-from live_system.event_bus import EventBus
+from event_bus.bus import EventBus
 from live_system.live_command_center_gateway import LiveCommandCenterDataSource
+from live_system.live_occupants_gateway import EngineLiveOccupantsGateway
 from live_system.orchestrator import LiveOrchestrator
 
 from command_center.live_operator_action_gateway import LiveOperatorActionGateway
@@ -564,6 +565,27 @@ def build_live_runtime(
         fire_water_snapshot_provider=fire_water_snapshot_provider,
     )
 
+    # Shadow-Mode Predictive AI Integration milestone, Phase 3 -- traced,
+    # not modified: this factory already accepted `live_ai_gateway` as
+    # an OPAQUE, already-constructed object and already threaded it
+    # straight through to LiveOrchestrator (see the construction call
+    # below) before this milestone touched anything. That is a
+    # deliberate, tested architectural boundary (tests/test_live_runtime_
+    # architecture_guards.py::GatewayIsTheOnlyExecutionSeamTests) this
+    # factory must never import ai_registry/ai_inference/ai_training/
+    # decision_policy itself to construct a gateway -- mirroring
+    # live_advisory_gateway's own identical "opaque object in" contract
+    # one parameter over. A caller enabling Shadow Mode constructs
+    # live_system.live_ai_gateway.RegistryLiveAIInferenceGateway(
+    # ai_registry.inference_service.LiveAIInferenceService(model_registry))
+    # itself (see docs/architecture/shadow_mode_prediction.md's own
+    # "how to enable" section and tests/test_shadow_mode_prediction.py
+    # for a complete worked example) and passes the result in here --
+    # exactly the same shape every other optional engine/gateway
+    # parameter on this factory already uses. Passing nothing (the
+    # default) is unchanged: no AI inference is attempted, and nothing
+    # downstream of LiveOrchestrator ever reads ai_prediction_snapshot
+    # regardless.
     orchestrator = LiveOrchestrator(
         event_bus=event_bus,
         facp_gateway=facp_gateway,
@@ -575,6 +597,7 @@ def build_live_runtime(
         evacuation_recommendation_gateway=EngineEvacuationRecommendationGateway(evacuation_recommendation_engine),
         evacuation_guidance_gateway=EngineEvacuationGuidanceGateway(evacuation_guidance_engine, speaker_manager=speaker_manager),
         evacuation_signage_gateway=EngineEvacuationSignageGateway(dynamic_signage_planner, sign_manager=sign_manager),
+        live_occupants_gateway=EngineLiveOccupantsGateway(live_occupant_manager),
         live_ai_gateway=live_ai_gateway,
         live_advisory_gateway=live_advisory_gateway,
         interval_seconds=interval_seconds,

@@ -5,7 +5,7 @@ from behavior_recognition.observation import RecognizedBehavior
 
 from perception.models.human_observation import HumanClassification, HumanState
 
-from live_system.event_bus import Event, EventBus, EventType
+from event_bus.bus import Event, EventBus, EventType
 
 from live_occupants.occupant import LiveOccupant
 

@@ -14,6 +14,7 @@ from live_system.evacuation_recommendation_gateway import EvacuationRecommendati
 from live_system.evacuation_guidance_gateway import EvacuationGuidanceGateway
 from live_system.evacuation_signage_gateway import EvacuationSignageGateway
 from live_system.facp_gateway import FACPGateway
+from live_system.live_occupants_gateway import LiveOccupantsGateway
 from live_system.event_bus import EventBus, EventType
 
 from evacuation_progress.models import EvacuationProgressTrend, ZoneClearanceStatus
@@ -26,7 +27,6 @@ from dynamic_signage.models import SignageStatus
 
 from live_system.incident_manager import IncidentManager, IncidentState
 from live_system.integration import (
-    AIInferenceGateway,
     CommandCenterGateway,
     DecisionPolicyGateway,
     PerceptionGateway,
@@ -118,10 +118,10 @@ class LiveOrchestrator:
         evacuation_progress_gateway: Optional[EvacuationProgressGateway] = None,
         trajectory_intelligence_gateway: Optional[TrajectoryIntelligenceGateway] = None,
         emergency_response_gateway: Optional[EmergencyResponseGateway] = None,
+        live_occupants_gateway: Optional[LiveOccupantsGateway] = None,
         evacuation_recommendation_gateway: Optional[EvacuationRecommendationGateway] = None,
         evacuation_guidance_gateway: Optional[EvacuationGuidanceGateway] = None,
         evacuation_signage_gateway: Optional[EvacuationSignageGateway] = None,
-        ai_inference_gateway: Optional[AIInferenceGateway] = None,
         decision_policy_gateway: Optional[DecisionPolicyGateway] = None,
         command_center_gateway: Optional[CommandCenterGateway] = None,
         recommendation_builder: Optional[RecommendationBuilder] = None,
@@ -142,10 +142,10 @@ class LiveOrchestrator:
         self.evacuation_progress_gateway = evacuation_progress_gateway
         self.trajectory_intelligence_gateway = trajectory_intelligence_gateway
         self.emergency_response_gateway = emergency_response_gateway
+        self.live_occupants_gateway = live_occupants_gateway
         self.evacuation_recommendation_gateway = evacuation_recommendation_gateway
         self.evacuation_guidance_gateway = evacuation_guidance_gateway
         self.evacuation_signage_gateway = evacuation_signage_gateway
-        self.ai_inference_gateway = ai_inference_gateway
         self.decision_policy_gateway = decision_policy_gateway
         self.command_center_gateway = command_center_gateway
         self.recommendation_builder = recommendation_builder
@@ -378,6 +378,28 @@ class LiveOrchestrator:
             snapshot = self.state_manager.update_building_state(building_state, time)
 
             self.event_bus.emit(EventType.BUILDING_STATE_UPDATED, building_state, time)
+
+        if self.live_occupants_gateway is not None:
+
+            # Expose Real Live Camera Occupant State In SynEvac UI
+            # milestone -- runs immediately AFTER building_state_gateway,
+            # deliberately: live_occupant_manager (whichever real object
+            # this gateway wraps) was already updated as a side effect of
+            # THIS cycle's fusion_result_provider/camera_pipeline.run_cycle()
+            # call inside building_state_gateway.collect() above -- reading
+            # it any earlier would see last cycle's state, any later would
+            # gain nothing (no other stage below depends on this one, and
+            # this one depends on nothing but building_state_gateway having
+            # already run). Fires every cycle it succeeds (mirrors
+            # CROWD_INTELLIGENCE_UPDATED's own "every tick, not transition-
+            # only" discipline) -- an operator-facing occupant table is
+            # meant to refresh continuously, not only on a lifecycle edge.
+            live_occupants_snapshot = self.live_occupants_gateway.compute(time)
+
+            if live_occupants_snapshot is not None:
+
+                snapshot = self.state_manager.update_live_occupants(live_occupants_snapshot, time)
+                self.event_bus.emit(EventType.LIVE_OCCUPANTS_UPDATED, live_occupants_snapshot, time)
 
         if self.crowd_intelligence_gateway is not None:
 
@@ -639,11 +661,6 @@ class LiveOrchestrator:
 
                 snapshot = self.state_manager.update_advisory_report(advisory_report, time)
                 self.event_bus.emit(EventType.ADVISORY_REPORT_UPDATED, advisory_report, time)
-
-        if self.ai_inference_gateway is not None:
-
-            predictions = self.ai_inference_gateway.predict(snapshot)
-            snapshot = self.state_manager.update_ai_predictions(predictions, time)
 
         if self.decision_policy_gateway is not None:
 

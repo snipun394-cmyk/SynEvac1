@@ -27,6 +27,13 @@ _DELETED_SYMBOLS = (
     "DashboardCommandCenterGateway",
     "FeatureRowBuilder",
     "DecisionInputsBuilder",
+    # Shadow-Mode Predictive AI Integration milestone, Phase 1 -- the
+    # Freeze Review's own second cleanup item: AIInferenceGateway itself
+    # (the Phase-7 generation-1 inference Protocol, plus LiveOrchestrator's
+    # own ai_inference_gateway parameter/attribute/dispatch) is now
+    # retired too -- live_system.live_ai_gateway.LiveAIInferenceGateway
+    # is the only inference gateway left.
+    "AIInferenceGateway",
 )
 
 # Files that are EXPECTED to still mention a deleted symbol's name, in
@@ -42,6 +49,13 @@ _ALLOWED_MENTIONS = frozenset({
     "docs/architecture/live_command_center_integration.md",
     "docs/architecture/live_runtime_architecture_cleanup.md",
     "docs/architecture/synevac_end_to_end_architecture_review.md",
+    # Shadow-Mode Predictive AI Integration milestone -- AIInferenceGateway's
+    # own retirement notice (live_system/__init__.py's __all__ comment)
+    # and the Freeze Review's own historical record of finding it.
+    "live_system/__init__.py",
+    "live_system/building_state_gateway.py",
+    "docs/architecture/core_architecture_freeze_review.md",
+    "docs/architecture/shadow_mode_prediction.md",
     # Pre-existing, comment-only analogical cross-references (never an
     # import) to the deleted classes' own former documented conventions
     # -- e.g. "the same pattern DashboardCommandCenterGateway already
@@ -118,7 +132,7 @@ class DeletedSymbolsHaveNoRemainingImportsTests(unittest.TestCase):
         import live_system
 
         for symbol in (
-            "PerceptionGateway", "AIInferenceGateway", "DecisionPolicyGateway",
+            "PerceptionGateway", "DecisionPolicyGateway",
             "CommandCenterGateway", "RecommendationBuilder",
         ):
             self.assertIn(symbol, live_system.__all__)
@@ -137,7 +151,14 @@ class NoNonHistoricalMentionsOutsideAllowedFilesTests(unittest.TestCase):
         # historical docs, this milestone's own new doc, and this test
         # module itself).
 
-        name_pattern = re.compile("|".join(re.escape(s) for s in _DELETED_SYMBOLS))
+        # Word-boundary-wrapped (Shadow-Mode Predictive AI Integration
+        # milestone, Phase 1) -- AIInferenceGateway is a plain substring
+        # of several CURRENT, undeleted class names (LiveAIInferenceGateway,
+        # RegistryLiveAIInferenceGateway, ThrottledLiveAIInferenceGateway);
+        # without \b this loose scan would false-positive on every one of
+        # them. The other deleted symbols are all long/unique enough that
+        # this changes nothing for them.
+        name_pattern = re.compile(r"\b(?:%s)\b" % "|".join(re.escape(s) for s in _DELETED_SYMBOLS))
 
         unexpected = []
 

@@ -1,3 +1,5 @@
+import time as _time
+
 from dataclasses import dataclass, field
 from enum import Enum, auto
 from typing import Optional, Protocol, Tuple
@@ -26,13 +28,16 @@ from ai_registry.metadata import Deployability
 # a caller's job, the same way composing CameraManager/SensorManager is
 # a building_state_gateway caller's job.
 #
-# This is a SEPARATE, newly-added slot on LiveOrchestrator --
-# live_system.integration.AIInferenceGateway (the original Phase 7
-# seam, operating on LiveBuildingSnapshot via an injected
+# This was originally a SEPARATE, newly-added slot on LiveOrchestrator,
+# alongside the older live_system.integration's own Phase-7 inference
+# seam (operating on LiveBuildingSnapshot via an injected
 # feature_row_builder that was never implemented in production -- see
-# docs/architecture/live_system_integration_audit.md §5) is untouched
-# and unrelated. This gateway operates on the canonical BuildingState
-# specifically, via the proven ai_registry/ai_features pipeline.
+# docs/architecture/live_system_integration_audit.md §5). That older
+# seam has since been RETIRED entirely by the Shadow-Mode Predictive AI
+# Integration milestone (see live_system/integration.py's own docstring)
+# -- this gateway is now the ONLY inference seam on LiveOrchestrator,
+# operating on the canonical BuildingState specifically, via the proven
+# ai_registry/ai_features pipeline.
 #
 # Only BottleneckOccurrenceModel_LiveCompatible (PRODUCTION_CANDIDATE)
 # is treated as an operational signal. EvacuationTimeModel_
@@ -87,6 +92,16 @@ class LiveAIPredictionSnapshot:
 
     errors: Tuple[str, ...] = field(default_factory=tuple)
     warnings: Tuple[str, ...] = field(default_factory=tuple)
+
+    # Shadow-Mode Predictive AI Integration milestone, Phase 6 -- pure
+    # instrumentation (wall-clock time spent inside predict() below),
+    # never a change to WHAT is predicted or HOW -- added as a new,
+    # defaulted field only, so every existing construction of this
+    # (frozen) dataclass keeps working unchanged. None means "not
+    # measured" (e.g. a hand-built test snapshot, or the state=None
+    # early-return path above, which has no inference work to time),
+    # never a fabricated 0.0.
+    inference_duration_seconds: Optional[float] = None
 
 
 # =====================================================
@@ -146,11 +161,15 @@ class RegistryLiveAIInferenceGateway:
         errors = []
         warnings = []
 
+        started = _time.perf_counter()
+
         bottleneck = self._predict_bottleneck(state, time, errors)
         evacuation_time = (
             self._predict_evacuation_time_experimental(state, time, warnings)
             if self._include_evacuation_time else None
         )
+
+        inference_duration_seconds = _time.perf_counter() - started
 
         feature_schema_version = (
             bottleneck.feature_schema_version if bottleneck is not None
@@ -167,6 +186,7 @@ class RegistryLiveAIInferenceGateway:
             evacuation_time_experimental=evacuation_time,
             errors=tuple(errors),
             warnings=tuple(warnings),
+            inference_duration_seconds=inference_duration_seconds,
         )
 
     # =====================================================

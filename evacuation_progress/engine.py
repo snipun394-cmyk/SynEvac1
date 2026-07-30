@@ -1,6 +1,6 @@
 from typing import Dict, Optional
 
-from live_system.event_bus import EventBus
+from event_bus.bus import EventBus
 
 from crowd_intelligence.models import TrendDirection
 from crowd_intelligence.trends import TrendConfig, TrendTracker

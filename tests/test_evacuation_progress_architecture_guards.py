@@ -81,10 +81,12 @@ class EvacuationProgressArchitectureGuardTests(unittest.TestCase):
 
         # Allow-list: live_occupants (models/manager/state/events),
         # crowd_intelligence (reused flow-geometry/trends, never
-        # duplicated), live_system.event_bus (the shared pub/sub
-        # mechanism), and itself.
+        # duplicated), event_bus (the shared pub/sub mechanism --
+        # moved out of live_system/ by the Shadow-Mode Predictive AI
+        # Integration milestone, Phase 1, resolving the Core
+        # Architecture Freeze Review's own Finding 1), and itself.
         allowed_prefixes = (
-            "live_occupants", "crowd_intelligence", "live_system.event_bus", "evacuation_progress",
+            "live_occupants", "crowd_intelligence", "event_bus", "evacuation_progress",
         )
 
         project_package_pattern = r"^\s*(from|import)\s+([a-z_][a-z0-9_.]*)"

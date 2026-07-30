@@ -583,16 +583,6 @@ class _StubPerceptionGateway:
         return _make_observation(zone_a_count=1.0, zone_a_alarm=self.alarm_active)
 
 
-class _StubAIInferenceGateway:
-
-    def __init__(self):
-        self.calls = []
-
-    def predict(self, snapshot):
-        self.calls.append(snapshot)
-        return {"stub_prediction": "value"}
-
-
 class _StubDecisionPolicyGateway:
 
     def __init__(self):
@@ -790,49 +780,85 @@ class LiveOrchestratorStateUpdatesTests(unittest.TestCase):
         self.assertEqual(snapshot.timestamp, 3.0)
 
 
+class _StubLiveOccupantsGateway:
+
+    def __init__(self, snapshot=None):
+        self.snapshot = snapshot
+        self.calls = []
+
+    def compute(self, time):
+        self.calls.append(time)
+        return self.snapshot
+
+
+class LiveOrchestratorLiveOccupantsGatewayTests(unittest.TestCase):
+
+    # Expose Real Live Camera Occupant State In SynEvac UI milestone --
+    # proves the new run_cycle() stage in isolation, mirroring
+    # LiveOrchestratorStateUpdatesTests' own minimal-orchestrator
+    # convention exactly.
+
+    def test_not_configured_leaves_live_occupants_none(self):
+
+        orchestrator = LiveOrchestrator()
+        orchestrator.start()
+
+        snapshot = orchestrator.run_cycle(1.0)
+
+        self.assertIsNone(snapshot.live_occupants)
+
+    def test_configured_gateway_result_reaches_the_state_manager(self):
+
+        from live_occupants.models import LiveOccupantsSnapshot
+
+        live_occupants_snapshot = LiveOccupantsSnapshot(timestamp=5.0, occupants=(), current_occupant_count=0)
+        gateway = _StubLiveOccupantsGateway(live_occupants_snapshot)
+
+        orchestrator = LiveOrchestrator(live_occupants_gateway=gateway)
+        orchestrator.start()
+
+        snapshot = orchestrator.run_cycle(5.0)
+
+        self.assertIs(snapshot.live_occupants, live_occupants_snapshot)
+        self.assertIs(orchestrator.state_manager.latest_live_occupants(), live_occupants_snapshot)
+        self.assertEqual(gateway.calls, [5.0])
+
+    def test_gateway_returning_none_this_cycle_leaves_the_previous_snapshot_in_place(self):
+
+        from live_occupants.models import LiveOccupantsSnapshot
+
+        first = LiveOccupantsSnapshot(timestamp=1.0, occupants=(), current_occupant_count=0)
+        gateway = _StubLiveOccupantsGateway(first)
+
+        orchestrator = LiveOrchestrator(live_occupants_gateway=gateway)
+        orchestrator.start()
+        orchestrator.run_cycle(1.0)
+
+        gateway.snapshot = None  # this cycle's computation "failed"/is unavailable
+        snapshot = orchestrator.run_cycle(2.0)
+
+        self.assertIs(snapshot.live_occupants, first)
+
+
 class LiveOrchestratorAIAndDecisionPolicyInvocationTests(unittest.TestCase):
 
-    def test_ai_inference_gateway_is_invoked_with_the_current_snapshot(self):
-
-        ai_gateway = _StubAIInferenceGateway()
-        orchestrator = LiveOrchestrator(
-            perception_gateway=_StubPerceptionGateway(), ai_inference_gateway=ai_gateway,
-        )
-        orchestrator.start()
-        snapshot = orchestrator.run_cycle(0.0)
-
-        self.assertEqual(len(ai_gateway.calls), 1)
-        self.assertEqual(snapshot.ai_predictions, {"stub_prediction": "value"})
-
-    def test_decision_policy_gateway_is_invoked_after_ai_inference(self):
-
-        call_order = []
-
-        class OrderTrackingAI(_StubAIInferenceGateway):
-            def predict(self, snapshot):
-                call_order.append("ai")
-                return super().predict(snapshot)
-
-        class OrderTrackingPolicy(_StubDecisionPolicyGateway):
-            def evaluate(self, snapshot):
-                call_order.append("policy")
-                return super().evaluate(snapshot)
-
-        orchestrator = LiveOrchestrator(
-            ai_inference_gateway=OrderTrackingAI(), decision_policy_gateway=OrderTrackingPolicy(),
-        )
-        orchestrator.start()
-        snapshot = orchestrator.run_cycle(0.0)
-
-        self.assertEqual(call_order, ["ai", "policy"])
-        self.assertEqual(snapshot.decision_policy, "stub-policy")
+    # Shadow-Mode Predictive AI Integration milestone, Phase 1 -- the
+    # generation-1 ai_inference_gateway parameter/_StubAIInferenceGateway
+    # and the two tests that exercised it (test_ai_inference_gateway_is_
+    # invoked_with_the_current_snapshot, test_decision_policy_gateway_
+    # is_invoked_after_ai_inference) were removed along with
+    # live_system.integration.AIInferenceGateway itself -- retired, not
+    # merely deprecated (see that module's own docstring).
+    # live_system.live_ai_gateway.LiveAIInferenceGateway is now the
+    # ONLY inference seam; its own invocation is covered by
+    # tests/test_live_ai_runtime_integration.py, not this file.
 
     def test_stages_with_no_gateway_configured_are_simply_skipped(self):
 
-        # No perception/AI/decision-policy/command-center gateway at
-        # all -- a fully "bare" orchestrator must still run a cycle
-        # cleanly rather than raising, per every gateway being
-        # documented optional.
+        # No perception/decision-policy/command-center gateway at all --
+        # a fully "bare" orchestrator must still run a cycle cleanly
+        # rather than raising, per every gateway being documented
+        # optional.
 
         orchestrator = LiveOrchestrator()
         orchestrator.start()
@@ -848,7 +874,6 @@ class LiveOrchestratorAIAndDecisionPolicyInvocationTests(unittest.TestCase):
         command_center = _StubCommandCenterGateway()
         orchestrator = LiveOrchestrator(
             perception_gateway=_StubPerceptionGateway(),
-            ai_inference_gateway=_StubAIInferenceGateway(),
             decision_policy_gateway=_StubDecisionPolicyGateway(),
             recommendation_builder=lambda snapshot: (object(),),
             command_center_gateway=command_center,
@@ -861,7 +886,6 @@ class LiveOrchestratorAIAndDecisionPolicyInvocationTests(unittest.TestCase):
 
         self.assertIs(notified_snapshot, snapshot)
         self.assertIsNotNone(notified_snapshot.building_observation)
-        self.assertEqual(notified_snapshot.ai_predictions, {"stub_prediction": "value"})
         self.assertEqual(notified_snapshot.decision_policy, "stub-policy")
         self.assertEqual(len(notified_snapshot.recommendations), 1)
 

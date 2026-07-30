@@ -10,7 +10,7 @@ from human_evidence.reconciliation import (
     reconcile_classification, reconcile_state,
 )
 
-from live_system.event_bus import EventBus, EventType
+from event_bus.bus import EventBus, EventType
 
 from live_occupants import events
 from live_occupants.events import (

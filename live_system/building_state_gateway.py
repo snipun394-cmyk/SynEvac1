@@ -75,8 +75,11 @@ class BuildingStateGateway(Protocol):
 
     # The one method live_system.orchestrator.LiveOrchestrator actually
     # calls -- same "thin Protocol, real adapter composes an already-
-    # public API" shape as PerceptionGateway/AIInferenceGateway/
-    # DecisionPolicyGateway/CommandCenterGateway in live_system.integration.
+    # public API" shape as PerceptionGateway/DecisionPolicyGateway/
+    # CommandCenterGateway in live_system.integration (AIInferenceGateway,
+    # once a fourth example here, was retired by the Shadow-Mode
+    # Predictive AI Integration milestone -- see live_system/
+    # integration.py's own docstring).
     # A test that wants a deterministic double simply implements this
     # Protocol; it never has to subclass EstimatorBuildingStateGateway.
 
