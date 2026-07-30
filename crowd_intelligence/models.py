@@ -3,6 +3,8 @@ from enum import Enum, auto
 from types import MappingProxyType
 from typing import Mapping, Optional, Tuple
 
+from stair_flow.models import StairFlowMetrics
+
 
 # =====================================================
 # Live Occupancy, Crowd Density & Congestion Intelligence milestone --
@@ -241,6 +243,24 @@ class CrowdIntelligenceSnapshot:
     exit_metrics: Mapping[str, AssetApproachMetrics] = field(default_factory=dict)
     stair_metrics: Mapping[str, AssetApproachMetrics] = field(default_factory=dict)
 
+    # Live Stair Flow & Movement Direction Intelligence milestone
+    # (additive) -- a GENUINELY separate measurement from stair_metrics
+    # above (AssetApproachMetrics.observed_occupant_count is a point-in-
+    # time occupancy fact; StairFlowMetrics is a WINDOWED throughput fact
+    # -- entries/exits/rate/direction), never merged into
+    # AssetApproachMetrics itself (that shape is explicitly shared across
+    # Door/Exit/Stair, and entry/exit/direction semantics do not apply to
+    # Door/Exit today -- see stair_flow/models.py's own docstring). Keyed
+    # by stair_id, same "one mapping per asset kind" convention door_
+    # metrics/exit_metrics/stair_metrics already establish. Computed by
+    # stair_flow.compute.compute_stair_flow_snapshot(), called from
+    # CrowdIntelligenceEngine.compute() itself (Phase 10's own "prefer
+    # extending the existing Crowd Intelligence snapshot rather than
+    # creating another intelligence engine") -- never a second, separately-
+    # scheduled engine. Empty (never fabricated entries) for any stair
+    # this cycle genuinely has no evidence for.
+    stair_flow_metrics: Mapping[str, StairFlowMetrics] = field(default_factory=dict)
+
     building_summary: BuildingCrowdSummary = field(default_factory=BuildingCrowdSummary)
 
     def __post_init__(self):
@@ -249,6 +269,7 @@ class CrowdIntelligenceSnapshot:
         object.__setattr__(self, "door_metrics", MappingProxyType(dict(self.door_metrics)))
         object.__setattr__(self, "exit_metrics", MappingProxyType(dict(self.exit_metrics)))
         object.__setattr__(self, "stair_metrics", MappingProxyType(dict(self.stair_metrics)))
+        object.__setattr__(self, "stair_flow_metrics", MappingProxyType(dict(self.stair_flow_metrics)))
 
     # =====================================================
 
@@ -267,3 +288,7 @@ class CrowdIntelligenceSnapshot:
     def stair(self, stair_id: str) -> Optional[AssetApproachMetrics]:
 
         return self.stair_metrics.get(stair_id)
+
+    def stair_flow(self, stair_id: str) -> Optional[StairFlowMetrics]:
+
+        return self.stair_flow_metrics.get(stair_id)

@@ -13,6 +13,8 @@ from crowd_intelligence.trends import TrendConfig, TrendTracker
 
 from observable_assets.models import ObservableAssetSnapshot, ObservationStatus
 
+from stair_flow.compute import DEFAULT_WINDOW_SECONDS, compute_stair_flow_snapshot
+
 
 # =====================================================
 # Live Occupancy, Crowd Density & Congestion Intelligence milestone,
@@ -37,6 +39,7 @@ class CrowdIntelligenceEngine:
         congestion_thresholds: Optional[CongestionThresholds] = None,
         trend_config: Optional[TrendConfig] = None,
         approach_region_depth: float = DEFAULT_APPROACH_REGION_DEPTH,
+        stair_flow_window_seconds: float = DEFAULT_WINDOW_SECONDS,
     ):
 
         self.building = building
@@ -45,6 +48,7 @@ class CrowdIntelligenceEngine:
         self.density_thresholds = density_thresholds if density_thresholds is not None else DensityThresholds()
         self.congestion_thresholds = congestion_thresholds if congestion_thresholds is not None else CongestionThresholds()
         self.approach_region_depth = approach_region_depth
+        self.stair_flow_window_seconds = stair_flow_window_seconds
 
         self._trend_tracker = TrendTracker(trend_config)
 
@@ -72,6 +76,7 @@ class CrowdIntelligenceEngine:
 
     def compute(
         self, time: float, observable_assets: Optional[ObservableAssetSnapshot] = None,
+        camera_coverage: Optional[object] = None,
     ) -> CrowdIntelligenceSnapshot:
 
         # Observable Asset Perception Framework milestone -- OPTIONAL,
@@ -99,6 +104,15 @@ class CrowdIntelligenceEngine:
         # tests/test_crowd_intelligence_architecture_guards.py, updated
         # this milestone to reflect this one additional, deliberate
         # entry).
+        #
+        # Live Stair Flow & Movement Direction Intelligence milestone --
+        # `camera_coverage` is likewise OPTIONAL and additive: a
+        # camera_coverage.models.CameraCoverageSnapshot, used ONLY to
+        # enrich stair_flow_metrics' own provenance text with which
+        # camera(s) currently cover a stair (see stair_flow.compute.
+        # _provenance_text()) -- it is never a second, competing
+        # OBSERVED/UNKNOWN determination; `observable_assets` above
+        # remains the single gate for that.
 
         # Canonical Live Occupancy Source of Truth milestone -- the ONE
         # per-cycle canonical grouping (memoized by LiveOccupantManager
@@ -148,13 +162,30 @@ class CrowdIntelligenceEngine:
             for stair in self._stairs
         }
 
+        # Live Stair Flow & Movement Direction Intelligence milestone --
+        # reuses `all_occupants` (already fetched above, TEMPORARILY_LOST/
+        # EXITED occupants included -- see stair_flow.compute's own
+        # docstring on why) and each stair's own observed_occupant_count
+        # just computed above, never a second independent occupancy
+        # computation.
+        stair_flow_metrics = compute_stair_flow_snapshot(
+            self._stairs, all_occupants, self.building, time,
+            window_seconds=self.stair_flow_window_seconds,
+            observable_assets=observable_assets,
+            observed_occupant_counts={
+                stair.id: stair_metrics[stair.id].observed_occupant_count for stair in self._stairs
+            },
+            camera_coverage=camera_coverage,
+        ).by_stair
+
         building_summary = self._compute_building_summary(
             zone_metrics, door_metrics, exit_metrics, stair_metrics, active_occupants, facts,
         )
 
         return CrowdIntelligenceSnapshot(
             timestamp=time, zone_metrics=zone_metrics, door_metrics=door_metrics,
-            exit_metrics=exit_metrics, stair_metrics=stair_metrics, building_summary=building_summary,
+            exit_metrics=exit_metrics, stair_metrics=stair_metrics, stair_flow_metrics=stair_flow_metrics,
+            building_summary=building_summary,
         )
 
     # =====================================================

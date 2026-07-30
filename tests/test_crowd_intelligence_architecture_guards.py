@@ -92,9 +92,22 @@ class CrowdIntelligenceArchitectureGuardTests(unittest.TestCase):
         # observable_assets.models.ObservableAssetSnapshot directly (see
         # crowd_intelligence/engine.py's own docstring for compute()),
         # superseding an earlier plain-dict-only design.
+        #
+        # Live Stair Flow & Movement Direction Intelligence milestone --
+        # one further deliberate addition: stair_flow (a pure-function +
+        # value-object package computing windowed Stair throughput
+        # evidence from live_occupants history -- see stair_flow/models.py's
+        # own docstring; itself mechanically proven, in tests/test_stair_
+        # flow_architecture_guards.py, to import none of navigation.graph/
+        # Recommendation/Guidance/Voice/Signage/BuildingControl/AI/
+        # predictive/simulation). CrowdIntelligenceEngine.compute() calls
+        # stair_flow.compute.compute_stair_flow_snapshot() directly and
+        # threads the result into CrowdIntelligenceSnapshot.stair_flow_metrics
+        # (Phase 10's own "extend the existing snapshot, do not create a
+        # second engine").
         allowed_prefixes = (
             "live_occupants", "models", "navigation.edge", "simulator.capacity",
-            "behavior_recognition.observation", "crowd_intelligence", "observable_assets",
+            "behavior_recognition.observation", "crowd_intelligence", "observable_assets", "stair_flow",
         )
 
         project_package_pattern = r"^\s*(from|import)\s+([a-z_][a-z0-9_.]*)"
