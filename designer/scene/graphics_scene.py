@@ -355,6 +355,21 @@ class GraphicsScene(QGraphicsScene):
 
         self.floor_plan_item.setZValue(-100)
 
+        # SynEvac Builder milestone -- Scale Calibration. Floor.
+        # floor_plan_scale (pixels-per-meter of the RAW image) defaults
+        # to 0.0 ("not calibrated"), in which case this is a no-op and
+        # the floor plan renders exactly as it always has (1 image
+        # pixel = 1 scene unit). When calibrated, the backdrop is
+        # scaled so it lines up with the existing GRID_SIZE-based
+        # meter grid every Zone/Door/Exit/Stair is already authored
+        # in -- geometry itself is never touched, only how this one
+        # backdrop image is displayed.
+        if self.current_floor.floor_plan_scale:
+
+            self.floor_plan_item.setScale(
+                self.GRID_SIZE / self.current_floor.floor_plan_scale
+            )
+
         self.addItem(self.floor_plan_item)
 
     # =====================================================

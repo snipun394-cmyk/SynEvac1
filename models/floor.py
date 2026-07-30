@@ -54,6 +54,27 @@ class Floor:
 
     floor_plan: str = ""
 
+    # =====================================================
+    # Floor Plan Scale Calibration (SynEvac Builder milestone) --
+    # additive, optional. floor_plan_scale is pixels-per-meter of the
+    # RAW imported floor plan IMAGE (not the GRID_SIZE-based scene
+    # coordinate system every Zone/Door/Exit/Stair is already authored
+    # in). 0.0 means "not calibrated yet" -- the honest default, never
+    # a fabricated scale. When calibrated, GraphicsScene scales the
+    # floor plan backdrop so it lines up with the existing meter-based
+    # scene grid; it never changes how geometry itself is authored or
+    # stored (Zone.x/y/width/height etc. stay exactly as they are
+    # today). The two calibration points and the real-world distance
+    # are kept only so recalibration can show what was used last time
+    # -- they are not consulted by anything else.
+    # =====================================================
+
+    floor_plan_scale: float = 0.0
+
+    floor_plan_calibration_point_a: list | None = None
+    floor_plan_calibration_point_b: list | None = None
+    floor_plan_calibration_distance_m: float | None = None
+
     visible: bool = True
     locked: bool = False
 
@@ -119,6 +140,22 @@ class Floor:
     def rename(self, name):
 
         self.name = name
+
+    # =====================================================
+    # Floor Plan Scale Calibration
+    # =====================================================
+
+    @property
+    def is_scale_calibrated(self):
+
+        return self.floor_plan_scale > 0.0
+
+    def set_scale_calibration(self, point_a, point_b, distance_m, pixels_per_meter):
+
+        self.floor_plan_calibration_point_a = list(point_a)
+        self.floor_plan_calibration_point_b = list(point_b)
+        self.floor_plan_calibration_distance_m = distance_m
+        self.floor_plan_scale = pixels_per_meter
 
     # =====================================================
     # Zones
@@ -545,6 +582,11 @@ class Floor:
 
             "floor_plan": self.floor_plan,
 
+            "floor_plan_scale": self.floor_plan_scale,
+            "floor_plan_calibration_point_a": self.floor_plan_calibration_point_a,
+            "floor_plan_calibration_point_b": self.floor_plan_calibration_point_b,
+            "floor_plan_calibration_distance_m": self.floor_plan_calibration_distance_m,
+
             "visible": self.visible,
             "locked": self.locked,
 
@@ -694,6 +736,26 @@ class Floor:
             floor_plan=data.get(
                 "floor_plan",
                 "",
+            ),
+
+            floor_plan_scale=data.get(
+                "floor_plan_scale",
+                0.0,
+            ),
+
+            floor_plan_calibration_point_a=data.get(
+                "floor_plan_calibration_point_a",
+                None,
+            ),
+
+            floor_plan_calibration_point_b=data.get(
+                "floor_plan_calibration_point_b",
+                None,
+            ),
+
+            floor_plan_calibration_distance_m=data.get(
+                "floor_plan_calibration_distance_m",
+                None,
             ),
 
             visible=data.get(
