@@ -1,0 +1,1264 @@
+{
+  "official_summary": {
+    "n_runs": 40,
+    "n_with_evacuation_time": 40,
+    "evacuation_time_mean": 10213.79751857297,
+    "evacuation_time_ci_lower": 10144.270800735212,
+    "evacuation_time_ci_upper": 10283.324236410728,
+    "evacuation_time_min": 9782.740141320877,
+    "evacuation_time_max": 10706.897878802927,
+    "evacuation_time_stdev": 214.66167145503155,
+    "mean_people_evacuated": 542.675,
+    "mean_people_trapped": 62.325,
+    "mean_peak_congestion_value": 180.0,
+    "mean_peak_occupancy_ratio": 1.0
+  },
+  "official_runs": [
+    {
+      "scenario_id": "scn-a30623773164a90f",
+      "total_evacuation_time": 10241.918984582426,
+      "people_evacuated": 529,
+      "people_trapped": 76,
+      "unreachable_occupants": 0,
+      "peak_congestion_value": 181,
+      "congestion_duration": null,
+      "peak_occupancy_ratio": 1.0,
+      "exit_utilization_balance": 1.0,
+      "exits_underutilized": [],
+      "exits_exceeding_capacity": [],
+      "doors_that_became_bottlenecks": [
+        "door-a-lobby"
+      ]
+    },
+    {
+      "scenario_id": "scn-55657feeb69e227c",
+      "total_evacuation_time": 9930.27270038391,
+      "people_evacuated": 532,
+      "people_trapped": 73,
+      "unreachable_occupants": 0,
+      "peak_congestion_value": 174,
+      "congestion_duration": null,
+      "peak_occupancy_ratio": 1.0,
+      "exit_utilization_balance": 1.0,
+      "exits_underutilized": [],
+      "exits_exceeding_capacity": [],
+      "doors_that_became_bottlenecks": [
+        "door-a-lobby"
+      ]
+    },
+    {
+      "scenario_id": "scn-57970c849595f1df",
+      "total_evacuation_time": 10201.346832785703,
+      "people_evacuated": 555,
+      "people_trapped": 50,
+      "unreachable_occupants": 0,
+      "peak_congestion_value": 180,
+      "congestion_duration": null,
+      "peak_occupancy_ratio": 1.0,
+      "exit_utilization_balance": 1.0,
+      "exits_underutilized": [],
+      "exits_exceeding_capacity": [],
+      "doors_that_became_bottlenecks": [
+        "door-a-lobby"
+      ]
+    },
+    {
+      "scenario_id": "scn-c39ba35c647fa0cb",
+      "total_evacuation_time": 10537.730220467296,
+      "people_evacuated": 549,
+      "people_trapped": 56,
+      "unreachable_occupants": 0,
+      "peak_congestion_value": 186,
+      "congestion_duration": null,
+      "peak_occupancy_ratio": 1.0,
+      "exit_utilization_balance": 1.0,
+      "exits_underutilized": [],
+      "exits_exceeding_capacity": [],
+      "doors_that_became_bottlenecks": [
+        "door-a-lobby"
+      ]
+    },
+    {
+      "scenario_id": "scn-847a4dbbac15e881",
+      "total_evacuation_time": 10267.041667667469,
+      "people_evacuated": 548,
+      "people_trapped": 57,
+      "unreachable_occupants": 0,
+      "peak_congestion_value": 182,
+      "congestion_duration": null,
+      "peak_occupancy_ratio": 1.0,
+      "exit_utilization_balance": 1.0,
+      "exits_underutilized": [],
+      "exits_exceeding_capacity": [],
+      "doors_that_became_bottlenecks": [
+        "door-a-lobby"
+      ]
+    },
+    {
+      "scenario_id": "scn-f8cad62311066d14",
+      "total_evacuation_time": 10538.183055627744,
+      "people_evacuated": 554,
+      "people_trapped": 51,
+      "unreachable_occupants": 0,
+      "peak_congestion_value": 186,
+      "congestion_duration": null,
+      "peak_occupancy_ratio": 1.0,
+      "exit_utilization_balance": 1.0,
+      "exits_underutilized": [],
+      "exits_exceeding_capacity": [],
+      "doors_that_became_bottlenecks": [
+        "door-a-lobby"
+      ]
+    },
+    {
+      "scenario_id": "scn-b8278bb3da514ea9",
+      "total_evacuation_time": 10438.075383589132,
+      "people_evacuated": 542,
+      "people_trapped": 63,
+      "unreachable_occupants": 0,
+      "peak_congestion_value": 183,
+      "congestion_duration": null,
+      "peak_occupancy_ratio": 1.0,
+      "exit_utilization_balance": 1.0,
+      "exits_underutilized": [],
+      "exits_exceeding_capacity": [],
+      "doors_that_became_bottlenecks": [
+        "door-a-lobby"
+      ]
+    },
+    {
+      "scenario_id": "scn-4809c432bc81c600",
+      "total_evacuation_time": 10050.414346776937,
+      "people_evacuated": 544,
+      "people_trapped": 61,
+      "unreachable_occupants": 0,
+      "peak_congestion_value": 177,
+      "congestion_duration": null,
+      "peak_occupancy_ratio": 1.0,
+      "exit_utilization_balance": 1.0,
+      "exits_underutilized": [],
+      "exits_exceeding_capacity": [],
+      "doors_that_became_bottlenecks": [
+        "door-a-lobby"
+      ]
+    },
+    {
+      "scenario_id": "scn-c413dbf82c2e68bf",
+      "total_evacuation_time": 10424.26515835368,
+      "people_evacuated": 553,
+      "people_trapped": 52,
+      "unreachable_occupants": 0,
+      "peak_congestion_value": 185,
+      "congestion_duration": null,
+      "peak_occupancy_ratio": 1.0,
+      "exit_utilization_balance": 1.0,
+      "exits_underutilized": [],
+      "exits_exceeding_capacity": [],
+      "doors_that_became_bottlenecks": [
+        "door-a-lobby"
+      ]
+    },
+    {
+      "scenario_id": "scn-e41505e84ac901ed",
+      "total_evacuation_time": 10361.135639248703,
+      "people_evacuated": 553,
+      "people_trapped": 52,
+      "unreachable_occupants": 0,
+      "peak_congestion_value": 181,
+      "congestion_duration": null,
+      "peak_occupancy_ratio": 1.0,
+      "exit_utilization_balance": 1.0,
+      "exits_underutilized": [],
+      "exits_exceeding_capacity": [],
+      "doors_that_became_bottlenecks": [
+        "door-a-lobby"
+      ]
+    },
+    {
+      "scenario_id": "scn-3ea85c0b658d1afe",
+      "total_evacuation_time": 10097.380683960158,
+      "people_evacuated": 542,
+      "people_trapped": 63,
+      "unreachable_occupants": 0,
+      "peak_congestion_value": 178,
+      "congestion_duration": null,
+      "peak_occupancy_ratio": 1.0,
+      "exit_utilization_balance": 1.0,
+      "exits_underutilized": [],
+      "exits_exceeding_capacity": [],
+      "doors_that_became_bottlenecks": [
+        "door-a-lobby"
+      ]
+    },
+    {
+      "scenario_id": "scn-c79a1ddca6e7cfa9",
+      "total_evacuation_time": 10072.591912232008,
+      "people_evacuated": 545,
+      "people_trapped": 60,
+      "unreachable_occupants": 0,
+      "peak_congestion_value": 178,
+      "congestion_duration": null,
+      "peak_occupancy_ratio": 1.0,
+      "exit_utilization_balance": 1.0,
+      "exits_underutilized": [],
+      "exits_exceeding_capacity": [],
+      "doors_that_became_bottlenecks": [
+        "door-a-lobby"
+      ]
+    },
+    {
+      "scenario_id": "scn-1ab59acb71c99045",
+      "total_evacuation_time": 10294.286580426471,
+      "people_evacuated": 543,
+      "people_trapped": 62,
+      "unreachable_occupants": 0,
+      "peak_congestion_value": 183,
+      "congestion_duration": null,
+      "peak_occupancy_ratio": 1.0,
+      "exit_utilization_balance": 1.0,
+      "exits_underutilized": [],
+      "exits_exceeding_capacity": [],
+      "doors_that_became_bottlenecks": [
+        "door-a-lobby"
+      ]
+    },
+    {
+      "scenario_id": "scn-392c80ef262577b6",
+      "total_evacuation_time": 10162.620676928354,
+      "people_evacuated": 536,
+      "people_trapped": 69,
+      "unreachable_occupants": 0,
+      "peak_congestion_value": 181,
+      "congestion_duration": null,
+      "peak_occupancy_ratio": 1.0,
+      "exit_utilization_balance": 1.0,
+      "exits_underutilized": [],
+      "exits_exceeding_capacity": [],
+      "doors_that_became_bottlenecks": [
+        "door-a-lobby"
+      ]
+    },
+    {
+      "scenario_id": "scn-d6727d04b1e9b617",
+      "total_evacuation_time": 10332.814173975128,
+      "people_evacuated": 554,
+      "people_trapped": 51,
+      "unreachable_occupants": 0,
+      "peak_congestion_value": 182,
+      "congestion_duration": null,
+      "peak_occupancy_ratio": 1.0,
+      "exit_utilization_balance": 1.0,
+      "exits_underutilized": [],
+      "exits_exceeding_capacity": [],
+      "doors_that_became_bottlenecks": [
+        "door-a-lobby"
+      ]
+    },
+    {
+      "scenario_id": "scn-f143284a9fc2e3c2",
+      "total_evacuation_time": 10445.984174882053,
+      "people_evacuated": 547,
+      "people_trapped": 58,
+      "unreachable_occupants": 0,
+      "peak_congestion_value": 183,
+      "congestion_duration": null,
+      "peak_occupancy_ratio": 1.0,
+      "exit_utilization_balance": 1.0,
+      "exits_underutilized": [],
+      "exits_exceeding_capacity": [],
+      "doors_that_became_bottlenecks": [
+        "door-a-lobby"
+      ]
+    },
+    {
+      "scenario_id": "scn-4341ab5dfcdd4645",
+      "total_evacuation_time": 9783.26677133259,
+      "people_evacuated": 524,
+      "people_trapped": 81,
+      "unreachable_occupants": 0,
+      "peak_congestion_value": 173,
+      "congestion_duration": null,
+      "peak_occupancy_ratio": 1.0,
+      "exit_utilization_balance": 1.0,
+      "exits_underutilized": [],
+      "exits_exceeding_capacity": [],
+      "doors_that_became_bottlenecks": [
+        "door-a-lobby"
+      ]
+    },
+    {
+      "scenario_id": "scn-f82fb0b26047ce03",
+      "total_evacuation_time": 9782.740141320877,
+      "people_evacuated": 540,
+      "people_trapped": 65,
+      "unreachable_occupants": 0,
+      "peak_congestion_value": 174,
+      "congestion_duration": null,
+      "peak_occupancy_ratio": 1.0,
+      "exit_utilization_balance": 1.0,
+      "exits_underutilized": [],
+      "exits_exceeding_capacity": [],
+      "doors_that_became_bottlenecks": [
+        "door-a-lobby"
+      ]
+    },
+    {
+      "scenario_id": "scn-8b98db2d41affb59",
+      "total_evacuation_time": 9986.815825289055,
+      "people_evacuated": 536,
+      "people_trapped": 69,
+      "unreachable_occupants": 0,
+      "peak_congestion_value": 177,
+      "congestion_duration": null,
+      "peak_occupancy_ratio": 1.0,
+      "exit_utilization_balance": 1.0,
+      "exits_underutilized": [],
+      "exits_exceeding_capacity": [],
+      "doors_that_became_bottlenecks": [
+        "door-a-lobby"
+      ]
+    },
+    {
+      "scenario_id": "scn-6deec3c164e7f119",
+      "total_evacuation_time": 10208.108991053343,
+      "people_evacuated": 540,
+      "people_trapped": 65,
+      "unreachable_occupants": 0,
+      "peak_congestion_value": 181,
+      "congestion_duration": null,
+      "peak_occupancy_ratio": 1.0,
+      "exit_utilization_balance": 1.0,
+      "exits_underutilized": [],
+      "exits_exceeding_capacity": [],
+      "doors_that_became_bottlenecks": [
+        "door-a-lobby"
+      ]
+    },
+    {
+      "scenario_id": "scn-153e8f69e0df2c87",
+      "total_evacuation_time": 10089.956872372988,
+      "people_evacuated": 530,
+      "people_trapped": 75,
+      "unreachable_occupants": 0,
+      "peak_congestion_value": 176,
+      "congestion_duration": null,
+      "peak_occupancy_ratio": 1.0,
+      "exit_utilization_balance": 1.0,
+      "exits_underutilized": [],
+      "exits_exceeding_capacity": [],
+      "doors_that_became_bottlenecks": [
+        "door-a-lobby"
+      ]
+    },
+    {
+      "scenario_id": "scn-571c3dbce9f906d4",
+      "total_evacuation_time": 10169.179311566406,
+      "people_evacuated": 539,
+      "people_trapped": 66,
+      "unreachable_occupants": 0,
+      "peak_congestion_value": 179,
+      "congestion_duration": null,
+      "peak_occupancy_ratio": 1.0,
+      "exit_utilization_balance": 1.0,
+      "exits_underutilized": [],
+      "exits_exceeding_capacity": [],
+      "doors_that_became_bottlenecks": [
+        "door-a-lobby"
+      ]
+    },
+    {
+      "scenario_id": "scn-98fe354e70830d46",
+      "total_evacuation_time": 10146.305478784037,
+      "people_evacuated": 543,
+      "people_trapped": 62,
+      "unreachable_occupants": 0,
+      "peak_congestion_value": 179,
+      "congestion_duration": null,
+      "peak_occupancy_ratio": 1.0,
+      "exit_utilization_balance": 1.0,
+      "exits_underutilized": [],
+      "exits_exceeding_capacity": [],
+      "doors_that_became_bottlenecks": [
+        "door-a-lobby"
+      ]
+    },
+    {
+      "scenario_id": "scn-58610d82f16e69f9",
+      "total_evacuation_time": 10472.13466111987,
+      "people_evacuated": 540,
+      "people_trapped": 65,
+      "unreachable_occupants": 0,
+      "peak_congestion_value": 183,
+      "congestion_duration": null,
+      "peak_occupancy_ratio": 1.0,
+      "exit_utilization_balance": 1.0,
+      "exits_underutilized": [],
+      "exits_exceeding_capacity": [],
+      "doors_that_became_bottlenecks": [
+        "door-a-lobby"
+      ]
+    },
+    {
+      "scenario_id": "scn-88de1e42eeef8b4c",
+      "total_evacuation_time": 10221.908861630201,
+      "people_evacuated": 546,
+      "people_trapped": 59,
+      "unreachable_occupants": 0,
+      "peak_congestion_value": 179,
+      "congestion_duration": null,
+      "peak_occupancy_ratio": 1.0,
+      "exit_utilization_balance": 1.0,
+      "exits_underutilized": [],
+      "exits_exceeding_capacity": [],
+      "doors_that_became_bottlenecks": [
+        "door-a-lobby"
+      ]
+    },
+    {
+      "scenario_id": "scn-e1de90e043f40154",
+      "total_evacuation_time": 9863.119350547024,
+      "people_evacuated": 537,
+      "people_trapped": 68,
+      "unreachable_occupants": 0,
+      "peak_congestion_value": 173,
+      "congestion_duration": null,
+      "peak_occupancy_ratio": 1.0,
+      "exit_utilization_balance": 1.0,
+      "exits_underutilized": [],
+      "exits_exceeding_capacity": [],
+      "doors_that_became_bottlenecks": [
+        "door-a-lobby"
+      ]
+    },
+    {
+      "scenario_id": "scn-ed27e4bb9ad01aab",
+      "total_evacuation_time": 10605.811155345045,
+      "people_evacuated": 548,
+      "people_trapped": 57,
+      "unreachable_occupants": 0,
+      "peak_congestion_value": 186,
+      "congestion_duration": null,
+      "peak_occupancy_ratio": 1.0,
+      "exit_utilization_balance": 1.0,
+      "exits_underutilized": [],
+      "exits_exceeding_capacity": [],
+      "doors_that_became_bottlenecks": [
+        "door-a-lobby"
+      ]
+    },
+    {
+      "scenario_id": "scn-f6287a7c3132e849",
+      "total_evacuation_time": 10135.679734378657,
+      "people_evacuated": 537,
+      "people_trapped": 68,
+      "unreachable_occupants": 0,
+      "peak_congestion_value": 179,
+      "congestion_duration": null,
+      "peak_occupancy_ratio": 1.0,
+      "exit_utilization_balance": 1.0,
+      "exits_underutilized": [],
+      "exits_exceeding_capacity": [],
+      "doors_that_became_bottlenecks": [
+        "door-a-lobby"
+      ]
+    },
+    {
+      "scenario_id": "scn-5b3fc8a5f3a894f4",
+      "total_evacuation_time": 10049.71274604888,
+      "people_evacuated": 536,
+      "people_trapped": 69,
+      "unreachable_occupants": 0,
+      "peak_congestion_value": 177,
+      "congestion_duration": null,
+      "peak_occupancy_ratio": 1.0,
+      "exit_utilization_balance": 1.0,
+      "exits_underutilized": [],
+      "exits_exceeding_capacity": [],
+      "doors_that_became_bottlenecks": [
+        "door-a-lobby"
+      ]
+    },
+    {
+      "scenario_id": "scn-847aae128c142044",
+      "total_evacuation_time": 9985.30115380744,
+      "people_evacuated": 546,
+      "people_trapped": 59,
+      "unreachable_occupants": 0,
+      "peak_congestion_value": 176,
+      "congestion_duration": null,
+      "peak_occupancy_ratio": 1.0,
+      "exit_utilization_balance": 1.0,
+      "exits_underutilized": [],
+      "exits_exceeding_capacity": [],
+      "doors_that_became_bottlenecks": [
+        "door-a-lobby"
+      ]
+    },
+    {
+      "scenario_id": "scn-a876a0afda0c5bce",
+      "total_evacuation_time": 10706.897878802927,
+      "people_evacuated": 553,
+      "people_trapped": 52,
+      "unreachable_occupants": 0,
+      "peak_congestion_value": 189,
+      "congestion_duration": null,
+      "peak_occupancy_ratio": 1.0,
+      "exit_utilization_balance": 1.0,
+      "exits_underutilized": [],
+      "exits_exceeding_capacity": [],
+      "doors_that_became_bottlenecks": [
+        "door-a-lobby"
+      ]
+    },
+    {
+      "scenario_id": "scn-67dc3e213f229599",
+      "total_evacuation_time": 10174.606911484661,
+      "people_evacuated": 542,
+      "people_trapped": 63,
+      "unreachable_occupants": 0,
+      "peak_congestion_value": 181,
+      "congestion_duration": null,
+      "peak_occupancy_ratio": 1.0,
+      "exit_utilization_balance": 1.0,
+      "exits_underutilized": [],
+      "exits_exceeding_capacity": [],
+      "doors_that_became_bottlenecks": [
+        "door-a-lobby"
+      ]
+    },
+    {
+      "scenario_id": "scn-cf52f9b8c8b6ce02",
+      "total_evacuation_time": 10137.138786834506,
+      "people_evacuated": 541,
+      "people_trapped": 64,
+      "unreachable_occupants": 0,
+      "peak_congestion_value": 178,
+      "congestion_duration": null,
+      "peak_occupancy_ratio": 1.0,
+      "exit_utilization_balance": 1.0,
+      "exits_underutilized": [],
+      "exits_exceeding_capacity": [],
+      "doors_that_became_bottlenecks": [
+        "door-a-lobby"
+      ]
+    },
+    {
+      "scenario_id": "scn-1df9d8d1d02a4197",
+      "total_evacuation_time": 10353.434597878457,
+      "people_evacuated": 536,
+      "people_trapped": 69,
+      "unreachable_occupants": 0,
+      "peak_congestion_value": 181,
+      "congestion_duration": null,
+      "peak_occupancy_ratio": 1.0,
+      "exit_utilization_balance": 1.0,
+      "exits_underutilized": [],
+      "exits_exceeding_capacity": [],
+      "doors_that_became_bottlenecks": [
+        "door-a-lobby"
+      ]
+    },
+    {
+      "scenario_id": "scn-c0fce5ee527be514",
+      "total_evacuation_time": 10365.434081696329,
+      "people_evacuated": 546,
+      "people_trapped": 59,
+      "unreachable_occupants": 0,
+      "peak_congestion_value": 183,
+      "congestion_duration": null,
+      "peak_occupancy_ratio": 1.0,
+      "exit_utilization_balance": 1.0,
+      "exits_underutilized": [],
+      "exits_exceeding_capacity": [],
+      "doors_that_became_bottlenecks": [
+        "door-a-lobby"
+      ]
+    },
+    {
+      "scenario_id": "scn-b35e2612947488fc",
+      "total_evacuation_time": 10251.452732059748,
+      "people_evacuated": 546,
+      "people_trapped": 59,
+      "unreachable_occupants": 0,
+      "peak_congestion_value": 183,
+      "congestion_duration": null,
+      "peak_occupancy_ratio": 1.0,
+      "exit_utilization_balance": 1.0,
+      "exits_underutilized": [],
+      "exits_exceeding_capacity": [],
+      "doors_that_became_bottlenecks": [
+        "door-a-lobby"
+      ]
+    },
+    {
+      "scenario_id": "scn-0f22ab7c689695ec",
+      "total_evacuation_time": 10237.983715465754,
+      "people_evacuated": 545,
+      "people_trapped": 60,
+      "unreachable_occupants": 0,
+      "peak_congestion_value": 179,
+      "congestion_duration": null,
+      "peak_occupancy_ratio": 1.0,
+      "exit_utilization_balance": 1.0,
+      "exits_underutilized": [],
+      "exits_exceeding_capacity": [],
+      "doors_that_became_bottlenecks": [
+        "door-a-lobby"
+      ]
+    },
+    {
+      "scenario_id": "scn-bff75b504631838e",
+      "total_evacuation_time": 9871.687556518445,
+      "people_evacuated": 532,
+      "people_trapped": 73,
+      "unreachable_occupants": 0,
+      "peak_congestion_value": 173,
+      "congestion_duration": null,
+      "peak_occupancy_ratio": 1.0,
+      "exit_utilization_balance": 1.0,
+      "exits_underutilized": [],
+      "exits_exceeding_capacity": [],
+      "doors_that_became_bottlenecks": [
+        "door-a-lobby"
+      ]
+    },
+    {
+      "scenario_id": "scn-5b6e73f120447aae",
+      "total_evacuation_time": 10251.996964474021,
+      "people_evacuated": 549,
+      "people_trapped": 56,
+      "unreachable_occupants": 0,
+      "peak_congestion_value": 182,
+      "congestion_duration": null,
+      "peak_occupancy_ratio": 1.0,
+      "exit_utilization_balance": 1.0,
+      "exits_underutilized": [],
+      "exits_exceeding_capacity": [],
+      "doors_that_became_bottlenecks": [
+        "door-a-lobby"
+      ]
+    },
+    {
+      "scenario_id": "scn-e0d395529b726323",
+      "total_evacuation_time": 10305.16427122042,
+      "people_evacuated": 549,
+      "people_trapped": 56,
+      "unreachable_occupants": 0,
+      "peak_congestion_value": 179,
+      "congestion_duration": null,
+      "peak_occupancy_ratio": 1.0,
+      "exit_utilization_balance": 1.0,
+      "exits_underutilized": [],
+      "exits_exceeding_capacity": [],
+      "doors_that_became_bottlenecks": [
+        "door-a-lobby"
+      ]
+    }
+  ],
+  "diagnostic_summary": {
+    "n_runs": 15,
+    "n_with_evacuation_time": 15,
+    "evacuation_time_mean": 10263.338534467008,
+    "evacuation_time_ci_lower": 10163.2559688083,
+    "evacuation_time_ci_upper": 10363.421100125715,
+    "evacuation_time_min": 9930.27270038391,
+    "evacuation_time_max": 10538.183055627744,
+    "evacuation_time_stdev": 174.5976293091135,
+    "mean_people_evacuated": 545.2666666666667,
+    "mean_people_trapped": 59.733333333333334,
+    "mean_peak_congestion_value": 181.13333333333333,
+    "mean_peak_occupancy_ratio": 1.0
+  },
+  "diagnostic_runs": [
+    {
+      "scenario_id": "scn-a30623773164a90f",
+      "total_evacuation_time": 10241.918984582426,
+      "people_evacuated": 529,
+      "people_trapped": 76,
+      "unreachable_occupants": 0,
+      "peak_congestion_value": 181,
+      "congestion_duration": null,
+      "peak_occupancy_ratio": 1.0,
+      "exit_utilization_balance": 1.0,
+      "exits_underutilized": [],
+      "exits_exceeding_capacity": [],
+      "doors_that_became_bottlenecks": [
+        "door-a-lobby"
+      ]
+    },
+    {
+      "scenario_id": "scn-55657feeb69e227c",
+      "total_evacuation_time": 9930.27270038391,
+      "people_evacuated": 532,
+      "people_trapped": 73,
+      "unreachable_occupants": 0,
+      "peak_congestion_value": 174,
+      "congestion_duration": null,
+      "peak_occupancy_ratio": 1.0,
+      "exit_utilization_balance": 1.0,
+      "exits_underutilized": [],
+      "exits_exceeding_capacity": [],
+      "doors_that_became_bottlenecks": [
+        "door-a-lobby"
+      ]
+    },
+    {
+      "scenario_id": "scn-57970c849595f1df",
+      "total_evacuation_time": 10201.346832785703,
+      "people_evacuated": 555,
+      "people_trapped": 50,
+      "unreachable_occupants": 0,
+      "peak_congestion_value": 180,
+      "congestion_duration": null,
+      "peak_occupancy_ratio": 1.0,
+      "exit_utilization_balance": 1.0,
+      "exits_underutilized": [],
+      "exits_exceeding_capacity": [],
+      "doors_that_became_bottlenecks": [
+        "door-a-lobby"
+      ]
+    },
+    {
+      "scenario_id": "scn-c39ba35c647fa0cb",
+      "total_evacuation_time": 10537.730220467296,
+      "people_evacuated": 549,
+      "people_trapped": 56,
+      "unreachable_occupants": 0,
+      "peak_congestion_value": 186,
+      "congestion_duration": null,
+      "peak_occupancy_ratio": 1.0,
+      "exit_utilization_balance": 1.0,
+      "exits_underutilized": [],
+      "exits_exceeding_capacity": [],
+      "doors_that_became_bottlenecks": [
+        "door-a-lobby"
+      ]
+    },
+    {
+      "scenario_id": "scn-847a4dbbac15e881",
+      "total_evacuation_time": 10267.041667667469,
+      "people_evacuated": 548,
+      "people_trapped": 57,
+      "unreachable_occupants": 0,
+      "peak_congestion_value": 182,
+      "congestion_duration": null,
+      "peak_occupancy_ratio": 1.0,
+      "exit_utilization_balance": 1.0,
+      "exits_underutilized": [],
+      "exits_exceeding_capacity": [],
+      "doors_that_became_bottlenecks": [
+        "door-a-lobby"
+      ]
+    },
+    {
+      "scenario_id": "scn-f8cad62311066d14",
+      "total_evacuation_time": 10538.183055627744,
+      "people_evacuated": 554,
+      "people_trapped": 51,
+      "unreachable_occupants": 0,
+      "peak_congestion_value": 186,
+      "congestion_duration": null,
+      "peak_occupancy_ratio": 1.0,
+      "exit_utilization_balance": 1.0,
+      "exits_underutilized": [],
+      "exits_exceeding_capacity": [],
+      "doors_that_became_bottlenecks": [
+        "door-a-lobby"
+      ]
+    },
+    {
+      "scenario_id": "scn-b8278bb3da514ea9",
+      "total_evacuation_time": 10438.075383589132,
+      "people_evacuated": 542,
+      "people_trapped": 63,
+      "unreachable_occupants": 0,
+      "peak_congestion_value": 183,
+      "congestion_duration": null,
+      "peak_occupancy_ratio": 1.0,
+      "exit_utilization_balance": 1.0,
+      "exits_underutilized": [],
+      "exits_exceeding_capacity": [],
+      "doors_that_became_bottlenecks": [
+        "door-a-lobby"
+      ]
+    },
+    {
+      "scenario_id": "scn-4809c432bc81c600",
+      "total_evacuation_time": 10050.414346776937,
+      "people_evacuated": 544,
+      "people_trapped": 61,
+      "unreachable_occupants": 0,
+      "peak_congestion_value": 177,
+      "congestion_duration": null,
+      "peak_occupancy_ratio": 1.0,
+      "exit_utilization_balance": 1.0,
+      "exits_underutilized": [],
+      "exits_exceeding_capacity": [],
+      "doors_that_became_bottlenecks": [
+        "door-a-lobby"
+      ]
+    },
+    {
+      "scenario_id": "scn-c413dbf82c2e68bf",
+      "total_evacuation_time": 10424.26515835368,
+      "people_evacuated": 553,
+      "people_trapped": 52,
+      "unreachable_occupants": 0,
+      "peak_congestion_value": 185,
+      "congestion_duration": null,
+      "peak_occupancy_ratio": 1.0,
+      "exit_utilization_balance": 1.0,
+      "exits_underutilized": [],
+      "exits_exceeding_capacity": [],
+      "doors_that_became_bottlenecks": [
+        "door-a-lobby"
+      ]
+    },
+    {
+      "scenario_id": "scn-e41505e84ac901ed",
+      "total_evacuation_time": 10361.135639248703,
+      "people_evacuated": 553,
+      "people_trapped": 52,
+      "unreachable_occupants": 0,
+      "peak_congestion_value": 181,
+      "congestion_duration": null,
+      "peak_occupancy_ratio": 1.0,
+      "exit_utilization_balance": 1.0,
+      "exits_underutilized": [],
+      "exits_exceeding_capacity": [],
+      "doors_that_became_bottlenecks": [
+        "door-a-lobby"
+      ]
+    },
+    {
+      "scenario_id": "scn-3ea85c0b658d1afe",
+      "total_evacuation_time": 10097.380683960158,
+      "people_evacuated": 542,
+      "people_trapped": 63,
+      "unreachable_occupants": 0,
+      "peak_congestion_value": 178,
+      "congestion_duration": null,
+      "peak_occupancy_ratio": 1.0,
+      "exit_utilization_balance": 1.0,
+      "exits_underutilized": [],
+      "exits_exceeding_capacity": [],
+      "doors_that_became_bottlenecks": [
+        "door-a-lobby"
+      ]
+    },
+    {
+      "scenario_id": "scn-c79a1ddca6e7cfa9",
+      "total_evacuation_time": 10072.591912232008,
+      "people_evacuated": 545,
+      "people_trapped": 60,
+      "unreachable_occupants": 0,
+      "peak_congestion_value": 178,
+      "congestion_duration": null,
+      "peak_occupancy_ratio": 1.0,
+      "exit_utilization_balance": 1.0,
+      "exits_underutilized": [],
+      "exits_exceeding_capacity": [],
+      "doors_that_became_bottlenecks": [
+        "door-a-lobby"
+      ]
+    },
+    {
+      "scenario_id": "scn-1ab59acb71c99045",
+      "total_evacuation_time": 10294.286580426471,
+      "people_evacuated": 543,
+      "people_trapped": 62,
+      "unreachable_occupants": 0,
+      "peak_congestion_value": 183,
+      "congestion_duration": null,
+      "peak_occupancy_ratio": 1.0,
+      "exit_utilization_balance": 1.0,
+      "exits_underutilized": [],
+      "exits_exceeding_capacity": [],
+      "doors_that_became_bottlenecks": [
+        "door-a-lobby"
+      ]
+    },
+    {
+      "scenario_id": "scn-392c80ef262577b6",
+      "total_evacuation_time": 10162.620676928354,
+      "people_evacuated": 536,
+      "people_trapped": 69,
+      "unreachable_occupants": 0,
+      "peak_congestion_value": 181,
+      "congestion_duration": null,
+      "peak_occupancy_ratio": 1.0,
+      "exit_utilization_balance": 1.0,
+      "exits_underutilized": [],
+      "exits_exceeding_capacity": [],
+      "doors_that_became_bottlenecks": [
+        "door-a-lobby"
+      ]
+    },
+    {
+      "scenario_id": "scn-d6727d04b1e9b617",
+      "total_evacuation_time": 10332.814173975128,
+      "people_evacuated": 554,
+      "people_trapped": 51,
+      "unreachable_occupants": 0,
+      "peak_congestion_value": 182,
+      "congestion_duration": null,
+      "peak_occupancy_ratio": 1.0,
+      "exit_utilization_balance": 1.0,
+      "exits_underutilized": [],
+      "exits_exceeding_capacity": [],
+      "doors_that_became_bottlenecks": [
+        "door-a-lobby"
+      ]
+    }
+  ],
+  "stairA_trace": {
+    "final_arrival_time": 10241.918984582426,
+    "n_steps": 24,
+    "total_queue_wait": 10016.513361325577,
+    "trace": [
+      {
+        "edge_id": "stair-a-24",
+        "edge_type": "Stair",
+        "start_time": 60.25597379569171,
+        "end_time": 65.61381227520344,
+        "queue_wait_time": 34.73199405078307
+      },
+      {
+        "edge_id": "stair-a-23",
+        "edge_type": "Stair",
+        "start_time": 118.64467613776851,
+        "end_time": 124.00251461728024,
+        "queue_wait_time": 53.03086386256507
+      },
+      {
+        "edge_id": "stair-a-22",
+        "edge_type": "Stair",
+        "start_time": 187.14525309307572,
+        "end_time": 192.50309157258746,
+        "queue_wait_time": 63.14273847579548
+      },
+      {
+        "edge_id": "stair-a-21",
+        "edge_type": "Stair",
+        "start_time": 240.63265948868346,
+        "end_time": 245.9904979681952,
+        "queue_wait_time": 48.12956791609599
+      },
+      {
+        "edge_id": "stair-a-20",
+        "edge_type": "Stair",
+        "start_time": 290.06872991662146,
+        "end_time": 295.4265683961332,
+        "queue_wait_time": 44.078231948426264
+      },
+      {
+        "edge_id": "stair-a-19",
+        "edge_type": "Stair",
+        "start_time": 352.77513952903877,
+        "end_time": 358.1329780085505,
+        "queue_wait_time": 57.34857113290559
+      },
+      {
+        "edge_id": "stair-a-18",
+        "edge_type": "Stair",
+        "start_time": 398.9765007940439,
+        "end_time": 404.3343392735556,
+        "queue_wait_time": 40.843522785493406
+      },
+      {
+        "edge_id": "stair-a-17",
+        "edge_type": "Stair",
+        "start_time": 448.02743857931694,
+        "end_time": 453.38527705882865,
+        "queue_wait_time": 43.693099305761336
+      },
+      {
+        "edge_id": "stair-a-16",
+        "edge_type": "Stair",
+        "start_time": 517.456004808862,
+        "end_time": 522.8138432883737,
+        "queue_wait_time": 64.07072775003331
+      },
+      {
+        "edge_id": "stair-a-15",
+        "edge_type": "Stair",
+        "start_time": 568.4399082430389,
+        "end_time": 573.7977467225506,
+        "queue_wait_time": 45.62606495466514
+      },
+      {
+        "edge_id": "stair-a-14",
+        "edge_type": "Stair",
+        "start_time": 628.8248194582346,
+        "end_time": 634.1826579377464,
+        "queue_wait_time": 55.02707273568399
+      },
+      {
+        "edge_id": "stair-a-13",
+        "edge_type": "Stair",
+        "start_time": 684.3805903724033,
+        "end_time": 689.738428851915,
+        "queue_wait_time": 50.19793243465688
+      },
+      {
+        "edge_id": "stair-a-12",
+        "edge_type": "Stair",
+        "start_time": 749.9813445594631,
+        "end_time": 755.3391830389749,
+        "queue_wait_time": 60.242915707548036
+      },
+      {
+        "edge_id": "stair-a-11",
+        "edge_type": "Stair",
+        "start_time": 813.2353521453463,
+        "end_time": 818.593190624858,
+        "queue_wait_time": 57.89616910637142
+      },
+      {
+        "edge_id": "stair-a-10",
+        "edge_type": "Stair",
+        "start_time": 875.1481125270852,
+        "end_time": 880.505951006597,
+        "queue_wait_time": 56.55492190222719
+      },
+      {
+        "edge_id": "stair-a-9",
+        "edge_type": "Stair",
+        "start_time": 940.9072793059831,
+        "end_time": 946.2651177854949,
+        "queue_wait_time": 60.40132829938614
+      },
+      {
+        "edge_id": "stair-a-8",
+        "edge_type": "Stair",
+        "start_time": 1010.4685633057229,
+        "end_time": 1015.8264017852347,
+        "queue_wait_time": 64.203445520228
+      },
+      {
+        "edge_id": "stair-a-7",
+        "edge_type": "Stair",
+        "start_time": 1078.9145539303865,
+        "end_time": 1084.2723924098982,
+        "queue_wait_time": 63.08815214515187
+      },
+      {
+        "edge_id": "stair-a-6",
+        "edge_type": "Stair",
+        "start_time": 1142.0111291028898,
+        "end_time": 1147.3689675824014,
+        "queue_wait_time": 57.73873669299155
+      },
+      {
+        "edge_id": "stair-a-5",
+        "edge_type": "Stair",
+        "start_time": 1192.9197119480912,
+        "end_time": 1198.2775504276028,
+        "queue_wait_time": 45.55074436568975
+      },
+      {
+        "edge_id": "stair-a-4",
+        "edge_type": "Stair",
+        "start_time": 1260.8297706642006,
+        "end_time": 1266.1876091437123,
+        "queue_wait_time": 62.552220236597805
+      },
+      {
+        "edge_id": "stair-a-3",
+        "edge_type": "Stair",
+        "start_time": 1992.0984377709929,
+        "end_time": 2000.1351954902605,
+        "queue_wait_time": 725.9108286272806
+      },
+      {
+        "edge_id": "door-a-lobby",
+        "edge_type": "Door",
+        "start_time": 10162.588706859498,
+        "end_time": 10203.77985063171,
+        "queue_wait_time": 8162.453511369238
+      },
+      {
+        "edge_id": "exit-lobby",
+        "edge_type": "Exit",
+        "start_time": 10203.77985063171,
+        "end_time": 10241.918984582426,
+        "queue_wait_time": 0.0
+      }
+    ]
+  },
+  "stairB_trace": {
+    "final_arrival_time": 2697.6485826698026,
+    "n_steps": 24,
+    "total_queue_wait": 2503.4655301156877,
+    "trace": [
+      {
+        "edge_id": "stair-b-24",
+        "edge_type": "Stair",
+        "start_time": 83.73062470378339,
+        "end_time": 89.63259775856608,
+        "queue_wait_time": 34.55689313075782
+      },
+      {
+        "edge_id": "stair-b-23",
+        "edge_type": "Stair",
+        "start_time": 156.62106817380317,
+        "end_time": 162.52304122858584,
+        "queue_wait_time": 66.98847041523709
+      },
+      {
+        "edge_id": "stair-b-22",
+        "edge_type": "Stair",
+        "start_time": 230.09803203876308,
+        "end_time": 236.00000509354575,
+        "queue_wait_time": 67.57499081017724
+      },
+      {
+        "edge_id": "stair-b-21",
+        "edge_type": "Stair",
+        "start_time": 319.6488911690918,
+        "end_time": 325.5508642238745,
+        "queue_wait_time": 83.64888607554607
+      },
+      {
+        "edge_id": "stair-b-20",
+        "edge_type": "Stair",
+        "start_time": 385.1689041279217,
+        "end_time": 391.07087718270435,
+        "queue_wait_time": 59.61803990404718
+      },
+      {
+        "edge_id": "stair-b-19",
+        "edge_type": "Stair",
+        "start_time": 457.9329243172138,
+        "end_time": 463.8348973719965,
+        "queue_wait_time": 66.86204713450945
+      },
+      {
+        "edge_id": "stair-b-18",
+        "edge_type": "Stair",
+        "start_time": 536.1055598008776,
+        "end_time": 542.0075328556603,
+        "queue_wait_time": 72.27066242888111
+      },
+      {
+        "edge_id": "stair-b-17",
+        "edge_type": "Stair",
+        "start_time": 620.6128931718555,
+        "end_time": 626.5148662266382,
+        "queue_wait_time": 78.60536031619517
+      },
+      {
+        "edge_id": "stair-b-16",
+        "edge_type": "Stair",
+        "start_time": 705.677836260054,
+        "end_time": 711.5798093148368,
+        "queue_wait_time": 79.16297003341583
+      },
+      {
+        "edge_id": "stair-b-15",
+        "edge_type": "Stair",
+        "start_time": 792.8008871965583,
+        "end_time": 798.702860251341,
+        "queue_wait_time": 81.2210778817215
+      },
+      {
+        "edge_id": "stair-b-14",
+        "edge_type": "Stair",
+        "start_time": 861.7837168337537,
+        "end_time": 867.6856898885364,
+        "queue_wait_time": 63.08085658241271
+      },
+      {
+        "edge_id": "stair-b-13",
+        "edge_type": "Stair",
+        "start_time": 931.1109367053192,
+        "end_time": 937.0129097601019,
+        "queue_wait_time": 63.42524681678276
+      },
+      {
+        "edge_id": "stair-b-12",
+        "edge_type": "Stair",
+        "start_time": 1006.7849922727055,
+        "end_time": 1012.6869653274882,
+        "queue_wait_time": 69.77208251260356
+      },
+      {
+        "edge_id": "stair-b-11",
+        "edge_type": "Stair",
+        "start_time": 1089.0992587309197,
+        "end_time": 1095.0012317857024,
+        "queue_wait_time": 76.41229340343148
+      },
+      {
+        "edge_id": "stair-b-10",
+        "edge_type": "Stair",
+        "start_time": 1177.6060287704133,
+        "end_time": 1183.508001825196,
+        "queue_wait_time": 82.6047969847109
+      },
+      {
+        "edge_id": "stair-b-9",
+        "edge_type": "Stair",
+        "start_time": 1259.591970350033,
+        "end_time": 1265.4939434048158,
+        "queue_wait_time": 76.08396852483702
+      },
+      {
+        "edge_id": "stair-b-8",
+        "edge_type": "Stair",
+        "start_time": 1325.0300346510053,
+        "end_time": 1330.932007705788,
+        "queue_wait_time": 59.53609124618947
+      },
+      {
+        "edge_id": "stair-b-7",
+        "edge_type": "Stair",
+        "start_time": 1398.373014349184,
+        "end_time": 1404.2749874039666,
+        "queue_wait_time": 67.4410066433959
+      },
+      {
+        "edge_id": "stair-b-6",
+        "edge_type": "Stair",
+        "start_time": 1479.3641626878787,
+        "end_time": 1485.2661357426614,
+        "queue_wait_time": 75.08917528391203
+      },
+      {
+        "edge_id": "stair-b-5",
+        "edge_type": "Stair",
+        "start_time": 1570.0361833618647,
+        "end_time": 1575.9381564166474,
+        "queue_wait_time": 84.7700476192033
+      },
+      {
+        "edge_id": "stair-b-4",
+        "edge_type": "Stair",
+        "start_time": 1643.6144605187346,
+        "end_time": 1649.5164335735174,
+        "queue_wait_time": 67.67630410208722
+      },
+      {
+        "edge_id": "stair-b-3",
+        "edge_type": "Stair",
+        "start_time": 2559.436982391127,
+        "end_time": 2568.289941973301,
+        "queue_wait_time": 909.9205488176096
+      },
+      {
+        "edge_id": "stair-b-2",
+        "edge_type": "Stair",
+        "start_time": 2685.4336554213246,
+        "end_time": 2694.286615003499,
+        "queue_wait_time": 117.14371344802339
+      },
+      {
+        "edge_id": "exit-b",
+        "edge_type": "Exit",
+        "start_time": 2694.286615003499,
+        "end_time": 2697.6485826698026,
+        "queue_wait_time": 0.0
+      }
+    ]
+  }
+}
