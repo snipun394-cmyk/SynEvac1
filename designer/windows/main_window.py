@@ -41,6 +41,7 @@ from designer.items.zone_rectangle import ZoneRectangle
 from designer.scene.graphics_view import GraphicsView
 from designer.widgets.bottom_info_bar import BottomInfoBar
 from designer.widgets.building_state_debug_panel import BuildingStateDebugPanel
+from designer.widgets.dock_manager import DockManager
 from designer.widgets.camera_manager_panel import CameraManagerPanel
 from designer.widgets.speaker_manager_panel import SpeakerManagerPanel
 from designer.widgets.camera_validation_panel import CameraValidationPanel
@@ -332,9 +333,16 @@ class MainWindow(QMainWindow):
         # constructs, rather than creating a second, competing set.
         self.create_toolbar()
 
-        self.create_menu()
-
+        # Dock Management Refactor V1 -- create_docks() must now run
+        # before create_menu(): every dock's own View-menu entry is its
+        # real, Qt-synced toggleViewAction() (see designer.widgets.
+        # dock_manager.DockManager), which does not exist until the
+        # dock itself has been created and registered. This is why the
+        # original code used standalone QActions instead -- no dock
+        # existed yet at menu-build time.
         self.create_docks()
+
+        self.create_menu()
 
         self.connect_toolbar()
 
@@ -413,15 +421,6 @@ class MainWindow(QMainWindow):
             self.import_floor_plan
         )
 
-        self.toggle_simulation_panel_action = QAction(
-            "Simulation Panel",
-            self,
-        )
-
-        self.toggle_simulation_panel_action.triggered.connect(
-            self.toggle_simulation_panel
-        )
-
         self.validate_project_action = QAction(
             "Validate Project",
             self,
@@ -431,51 +430,6 @@ class MainWindow(QMainWindow):
             self.validate_project
         )
 
-        self.toggle_perception_debug_panel_action = QAction(
-            "Perception Debug Panel",
-            self,
-        )
-
-        self.toggle_perception_debug_panel_action.triggered.connect(
-            self.toggle_perception_debug_panel
-        )
-
-        self.toggle_building_state_debug_panel_action = QAction(
-            "Building State Debug Panel",
-            self,
-        )
-
-        self.toggle_building_state_debug_panel_action.triggered.connect(
-            self.toggle_building_state_debug_panel
-        )
-
-        self.toggle_camera_manager_panel_action = QAction(
-            "Camera Manager Panel",
-            self,
-        )
-
-        self.toggle_camera_manager_panel_action.triggered.connect(
-            self.toggle_camera_manager_panel
-        )
-
-        self.toggle_speaker_manager_panel_action = QAction(
-            "Speaker Manager Panel",
-            self,
-        )
-
-        self.toggle_speaker_manager_panel_action.triggered.connect(
-            self.toggle_speaker_manager_panel
-        )
-
-        self.toggle_camera_validation_panel_action = QAction(
-            "Camera Validation Panel",
-            self,
-        )
-
-        self.toggle_camera_validation_panel_action.triggered.connect(
-            self.toggle_camera_validation_panel
-        )
-
         self.open_campaign_studio_action = QAction(
             "Scenario Campaign Studio...",
             self,
@@ -483,42 +437,6 @@ class MainWindow(QMainWindow):
 
         self.open_campaign_studio_action.triggered.connect(
             self.open_campaign_studio
-        )
-
-        self.toggle_live_runtime_panel_action = QAction(
-            "Live Runtime Panel",
-            self,
-        )
-
-        self.toggle_live_runtime_panel_action.triggered.connect(
-            self.toggle_live_runtime_panel
-        )
-
-        self.toggle_recommendation_panel_action = QAction(
-            "Recommendations Panel",
-            self,
-        )
-
-        self.toggle_recommendation_panel_action.triggered.connect(
-            self.toggle_recommendation_panel
-        )
-
-        self.toggle_execution_panel_action = QAction(
-            "Execution Status Panel",
-            self,
-        )
-
-        self.toggle_execution_panel_action.triggered.connect(
-            self.toggle_execution_panel
-        )
-
-        self.toggle_live_camera_view_panel_action = QAction(
-            "Live Camera View Panel",
-            self,
-        )
-
-        self.toggle_live_camera_view_panel_action.triggered.connect(
-            self.toggle_live_camera_view_panel
         )
 
     # =====================================================
@@ -533,41 +451,16 @@ class MainWindow(QMainWindow):
 
         view_menu = menubar.addMenu("View")
 
-        view_menu.addAction(
-            self.toggle_perception_debug_panel_action
-        )
-
-        view_menu.addAction(
-            self.toggle_building_state_debug_panel_action
-        )
-
-        view_menu.addAction(
-            self.toggle_camera_manager_panel_action
-        )
-
-        view_menu.addAction(
-            self.toggle_speaker_manager_panel_action
-        )
-
-        view_menu.addAction(
-            self.toggle_camera_validation_panel_action
-        )
-
-        view_menu.addAction(
-            self.toggle_live_runtime_panel_action
-        )
-
-        view_menu.addAction(
-            self.toggle_recommendation_panel_action
-        )
-
-        view_menu.addAction(
-            self.toggle_execution_panel_action
-        )
-
-        view_menu.addAction(
-            self.toggle_live_camera_view_panel_action
-        )
+        # Dock Management Refactor V1 -- one loop over every dock's own
+        # real toggleViewAction() (populated by create_docks(), which
+        # now runs before this method -- see __init__'s own comment on
+        # why), replacing nine individually-added, independently
+        # desyncable QActions. This is also what makes Project Explorer/
+        # Floors/Fire Water Systems/Properties recoverable for the
+        # first time -- they previously had no View-menu entry (or any
+        # other reopen path) at all.
+        for action in self._view_menu_actions:
+            view_menu.addAction(action)
 
         insert_menu = menubar.addMenu("Insert")
 
@@ -600,8 +493,12 @@ class MainWindow(QMainWindow):
 
         simulation_menu = menubar.addMenu("Simulation")
 
+        # The exact same action already added to the View menu above
+        # (self._view_menu_actions) and mirrored onto toolbar.
+        # simulation_action -- one underlying dock state, three UI
+        # surfaces, never three independently-desyncable ones.
         simulation_menu.addAction(
-            self.toggle_simulation_panel_action
+            self.simulation_dock_action
         )
 
         menubar.addMenu("AI")
@@ -652,6 +549,24 @@ class MainWindow(QMainWindow):
 
     def create_docks(self):
 
+        # Dock Management Refactor V1 -- the one DockManager for this
+        # window; every dock is created through it, never through a
+        # bare addDockWidget() call, so every dock (including the four
+        # below that previously had no reopen mechanism at all) ends up
+        # with a real, Qt-synced toggleViewAction(). _view_menu_actions
+        # collects them in creation order for create_menu() to add in
+        # one loop, replacing what used to be nine separate, duplicated
+        # QAction definitions + nine identical toggle_*_panel methods.
+        self.dock_manager = DockManager(self)
+        self._view_menu_actions = []
+
+        def register(dock, area, title):
+
+            action = self.dock_manager.register(dock, area, title=title)
+            self._view_menu_actions.append(action)
+
+            return action
+
         project_dock = QDockWidget(
             "Project Explorer",
             self,
@@ -661,10 +576,7 @@ class MainWindow(QMainWindow):
             self.project_tree
         )
 
-        self.addDockWidget(
-            Qt.DockWidgetArea.LeftDockWidgetArea,
-            project_dock,
-        )
+        register(project_dock, Qt.DockWidgetArea.LeftDockWidgetArea, "Project Explorer")
 
         floor_dock = QDockWidget(
             "Floors",
@@ -675,10 +587,7 @@ class MainWindow(QMainWindow):
             self.floor_list
         )
 
-        self.addDockWidget(
-            Qt.DockWidgetArea.LeftDockWidgetArea,
-            floor_dock,
-        )
+        register(floor_dock, Qt.DockWidgetArea.LeftDockWidgetArea, "Floors")
 
         fire_water_system_dock = QDockWidget(
             "Fire Water Systems",
@@ -689,10 +598,7 @@ class MainWindow(QMainWindow):
             self.fire_water_system_list
         )
 
-        self.addDockWidget(
-            Qt.DockWidgetArea.LeftDockWidgetArea,
-            fire_water_system_dock,
-        )
+        register(fire_water_system_dock, Qt.DockWidgetArea.LeftDockWidgetArea, "Fire Water Systems")
 
         property_dock = QDockWidget(
             "Properties",
@@ -703,10 +609,7 @@ class MainWindow(QMainWindow):
             self.property_panel
         )
 
-        self.addDockWidget(
-            Qt.DockWidgetArea.RightDockWidgetArea,
-            property_dock,
-        )
+        register(property_dock, Qt.DockWidgetArea.RightDockWidgetArea, "Properties")
 
         self.simulation_dock = QDockWidget(
             "Simulation",
@@ -717,10 +620,15 @@ class MainWindow(QMainWindow):
             self.simulation_panel
         )
 
-        self.addDockWidget(
-            Qt.DockWidgetArea.BottomDockWidgetArea,
-            self.simulation_dock,
+        # Mirrors toolbar.simulation_action -- the toolbar button and
+        # this dock's own View-menu entry are now the exact same
+        # underlying state (see DockManager._mirror()), never two
+        # independently-desyncable actions.
+        self.simulation_dock_action = self.dock_manager.register(
+            self.simulation_dock, Qt.DockWidgetArea.BottomDockWidgetArea,
+            title="Simulation Panel", mirror_actions=(self.toolbar.simulation_action,),
         )
+        self._view_menu_actions.append(self.simulation_dock_action)
 
         # Hidden until the user opens it via the toolbar/menu action --
         # Simulation V0 is opt-in, not part of the default Designer
@@ -736,9 +644,8 @@ class MainWindow(QMainWindow):
             self.perception_debug_panel
         )
 
-        self.addDockWidget(
-            Qt.DockWidgetArea.BottomDockWidgetArea,
-            self.perception_debug_dock,
+        self.perception_debug_dock_action = register(
+            self.perception_debug_dock, Qt.DockWidgetArea.BottomDockWidgetArea, "Perception Debug Panel",
         )
 
         self.tabifyDockWidget(
@@ -755,9 +662,8 @@ class MainWindow(QMainWindow):
             self.building_state_debug_panel
         )
 
-        self.addDockWidget(
-            Qt.DockWidgetArea.BottomDockWidgetArea,
-            self.building_state_debug_dock,
+        self.building_state_debug_dock_action = register(
+            self.building_state_debug_dock, Qt.DockWidgetArea.BottomDockWidgetArea, "Building State Debug Panel",
         )
 
         self.tabifyDockWidget(
@@ -783,9 +689,8 @@ class MainWindow(QMainWindow):
             self.camera_manager_panel
         )
 
-        self.addDockWidget(
-            Qt.DockWidgetArea.BottomDockWidgetArea,
-            self.camera_manager_dock,
+        self.camera_manager_dock_action = register(
+            self.camera_manager_dock, Qt.DockWidgetArea.BottomDockWidgetArea, "Camera Manager Panel",
         )
 
         self.tabifyDockWidget(
@@ -797,6 +702,14 @@ class MainWindow(QMainWindow):
         # bottom docks -- not part of the default Designer layout.
         self.camera_manager_dock.hide()
 
+        # Refresh the panel's own content every time it becomes visible
+        # (by any means -- toolbar, View menu, or reopening after being
+        # closed while floating) -- preserved from this dock's own
+        # pre-refactor toggle handler, not new behavior.
+        self.camera_manager_dock_action.toggled.connect(
+            lambda checked: self._refresh_camera_manager_panel() if checked else None
+        )
+
         self.speaker_manager_dock = QDockWidget(
             "Speaker Manager",
             self,
@@ -806,9 +719,8 @@ class MainWindow(QMainWindow):
             self.speaker_manager_panel
         )
 
-        self.addDockWidget(
-            Qt.DockWidgetArea.BottomDockWidgetArea,
-            self.speaker_manager_dock,
+        self.speaker_manager_dock_action = register(
+            self.speaker_manager_dock, Qt.DockWidgetArea.BottomDockWidgetArea, "Speaker Manager Panel",
         )
 
         self.tabifyDockWidget(
@@ -820,6 +732,12 @@ class MainWindow(QMainWindow):
         # bottom docks -- not part of the default Designer layout.
         self.speaker_manager_dock.hide()
 
+        # Preserved from this dock's own pre-refactor toggle handler --
+        # see the identical comment above camera_manager_dock_action.
+        self.speaker_manager_dock_action.toggled.connect(
+            lambda checked: self._refresh_speaker_manager_panel() if checked else None
+        )
+
         self.camera_validation_dock = QDockWidget(
             "Camera Validation",
             self,
@@ -829,9 +747,8 @@ class MainWindow(QMainWindow):
             self.camera_validation_panel
         )
 
-        self.addDockWidget(
-            Qt.DockWidgetArea.BottomDockWidgetArea,
-            self.camera_validation_dock,
+        self.camera_validation_dock_action = register(
+            self.camera_validation_dock, Qt.DockWidgetArea.BottomDockWidgetArea, "Camera Validation Panel",
         )
 
         self.tabifyDockWidget(
@@ -843,6 +760,14 @@ class MainWindow(QMainWindow):
         # bottom docks -- not part of the default Designer layout.
         self.camera_validation_dock.hide()
 
+        # Preserved from this dock's own pre-refactor toggle handler --
+        # see the identical comment above camera_manager_dock_action.
+        self.camera_validation_dock_action.toggled.connect(
+            lambda checked: self.camera_validation_panel.refresh(
+                self.canvas.scene_obj.project.building
+            ) if checked else None
+        )
+
         self.live_runtime_dock = QDockWidget(
             "Live Runtime",
             self,
@@ -852,9 +777,8 @@ class MainWindow(QMainWindow):
             self.live_runtime_panel
         )
 
-        self.addDockWidget(
-            Qt.DockWidgetArea.BottomDockWidgetArea,
-            self.live_runtime_dock,
+        self.live_runtime_dock_action = register(
+            self.live_runtime_dock, Qt.DockWidgetArea.BottomDockWidgetArea, "Live Runtime Panel",
         )
 
         self.tabifyDockWidget(
@@ -876,9 +800,8 @@ class MainWindow(QMainWindow):
             self.recommendation_panel
         )
 
-        self.addDockWidget(
-            Qt.DockWidgetArea.BottomDockWidgetArea,
-            self.recommendation_dock,
+        self.recommendation_dock_action = register(
+            self.recommendation_dock, Qt.DockWidgetArea.BottomDockWidgetArea, "Recommendations Panel",
         )
 
         self.tabifyDockWidget(
@@ -899,9 +822,8 @@ class MainWindow(QMainWindow):
             self.execution_panel
         )
 
-        self.addDockWidget(
-            Qt.DockWidgetArea.BottomDockWidgetArea,
-            self.execution_dock,
+        self.execution_dock_action = register(
+            self.execution_dock, Qt.DockWidgetArea.BottomDockWidgetArea, "Execution Status Panel",
         )
 
         self.tabifyDockWidget(
@@ -922,9 +844,8 @@ class MainWindow(QMainWindow):
             self.live_camera_view_panel
         )
 
-        self.addDockWidget(
-            Qt.DockWidgetArea.BottomDockWidgetArea,
-            self.live_camera_view_dock,
+        self.live_camera_view_dock_action = register(
+            self.live_camera_view_dock, Qt.DockWidgetArea.BottomDockWidgetArea, "Live Camera View Panel",
         )
 
         self.tabifyDockWidget(
@@ -1124,9 +1045,10 @@ class MainWindow(QMainWindow):
             )
         )
 
-        self.toolbar.simulation_action.triggered.connect(
-            self.toggle_simulation_panel
-        )
+        # Dock Management Refactor V1 -- toolbar.simulation_action is
+        # now mirrored onto the Simulation dock's own real
+        # toggleViewAction() at registration time (create_docks()), not
+        # wired to a custom handler here.
 
     # =====================================================
 
@@ -1663,97 +1585,6 @@ class MainWindow(QMainWindow):
     # "advance one node" request (Step Mode). GraphicsScene/
     # OccupantItem stay exactly as passive as every other item: they
     # render whatever SandboxManager's occupants currently say.
-    # =====================================================
-
-    def toggle_simulation_panel(self):
-
-        self.simulation_dock.setVisible(
-            not self.simulation_dock.isVisible()
-        )
-
-    # =====================================================
-
-    def toggle_perception_debug_panel(self):
-
-        self.perception_debug_dock.setVisible(
-            not self.perception_debug_dock.isVisible()
-        )
-
-    # =====================================================
-
-    def toggle_building_state_debug_panel(self):
-
-        self.building_state_debug_dock.setVisible(
-            not self.building_state_debug_dock.isVisible()
-        )
-
-    # =====================================================
-
-    def toggle_camera_manager_panel(self):
-
-        visible = not self.camera_manager_dock.isVisible()
-
-        self.camera_manager_dock.setVisible(visible)
-
-        if visible:
-            self._refresh_camera_manager_panel()
-
-    # =====================================================
-
-    def toggle_speaker_manager_panel(self):
-
-        visible = not self.speaker_manager_dock.isVisible()
-
-        self.speaker_manager_dock.setVisible(visible)
-
-        if visible:
-            self._refresh_speaker_manager_panel()
-
-    # =====================================================
-
-    def toggle_camera_validation_panel(self):
-
-        visible = not self.camera_validation_dock.isVisible()
-
-        self.camera_validation_dock.setVisible(visible)
-
-        if visible:
-            self.camera_validation_panel.refresh(
-                self.canvas.scene_obj.project.building
-            )
-
-    # =====================================================
-
-    def toggle_live_runtime_panel(self):
-
-        self.live_runtime_dock.setVisible(
-            not self.live_runtime_dock.isVisible()
-        )
-
-    # =====================================================
-
-    def toggle_recommendation_panel(self):
-
-        self.recommendation_dock.setVisible(
-            not self.recommendation_dock.isVisible()
-        )
-
-    # =====================================================
-
-    def toggle_execution_panel(self):
-
-        self.execution_dock.setVisible(
-            not self.execution_dock.isVisible()
-        )
-
-    # =====================================================
-
-    def toggle_live_camera_view_panel(self):
-
-        self.live_camera_view_dock.setVisible(
-            not self.live_camera_view_dock.isVisible()
-        )
-
     # =====================================================
 
     def _on_live_runtime_tick(self):

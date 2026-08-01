@@ -22,6 +22,7 @@ from designer.items.stair_item import StairItem
 from designer.items.zone_rectangle import ZoneRectangle
 from designer.scene.graphics_view import GraphicsView
 from designer.widgets.bottom_info_bar import BottomInfoBar
+from designer.widgets.dock_manager import DockManager
 from designer.widgets.floor_list import FloorList
 from designer.widgets.project_tree import ProjectTree
 
@@ -113,8 +114,16 @@ class BuilderMainWindow(QMainWindow):
 
         self.create_actions()
         self.create_toolbar()
-        self.create_menu()
+
+        # Dock Management Refactor V1 -- create_docks() must run before
+        # create_menu() now: the View menu's dock entries are each
+        # dock's own real toggleViewAction() (designer.widgets.
+        # dock_manager.DockManager), which doesn't exist until the dock
+        # itself has been created and registered. Same reordering
+        # SynEvac Studio's own MainWindow needed for the same reason.
         self.create_docks()
+        self.create_menu()
+
         self.connect_toolbar()
         self.connect_signals()
 
@@ -200,9 +209,28 @@ class BuilderMainWindow(QMainWindow):
         tools_menu.addAction(self.calibrate_scale_action)
         tools_menu.addAction(self.validate_project_action)
 
+        # Dock Management Refactor V1 -- Builder previously had no View
+        # menu, and no dock (Project Explorer/Floors/Properties/
+        # Validation/Project Summary/Navigation Preview) had any reopen
+        # action at all: each was a local variable inside _add_dock(),
+        # discarded the moment addDockWidget() returned. Since
+        # DockWidgetClosable is on by default, closing any of them via
+        # its own native close button left no way back, ever. Every
+        # dock's own real toggleViewAction() (collected by create_docks(),
+        # which now runs before this method) is added here -- one View
+        # menu, same mechanism SynEvac Studio uses, making every Builder
+        # dock recoverable for the first time.
+        view_menu = menubar.addMenu("View")
+
+        for action in self._view_menu_actions:
+            view_menu.addAction(action)
+
     # =====================================================
 
     def create_docks(self):
+
+        self.dock_manager = DockManager(self)
+        self._view_menu_actions = []
 
         self._add_dock("Project Explorer", self.project_tree, Qt.DockWidgetArea.LeftDockWidgetArea)
         self._add_dock("Floors", self.floor_list, Qt.DockWidgetArea.LeftDockWidgetArea)
@@ -217,7 +245,9 @@ class BuilderMainWindow(QMainWindow):
 
         dock = QDockWidget(title, self)
         dock.setWidget(widget)
-        self.addDockWidget(area, dock)
+
+        action = self.dock_manager.register(dock, area, title=title)
+        self._view_menu_actions.append(action)
 
         return dock
 
