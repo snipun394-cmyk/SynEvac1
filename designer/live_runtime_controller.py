@@ -1,6 +1,16 @@
+import time
+
+from PyQt6.QtCore import QTimer
 from PyQt6.QtWidgets import QMessageBox
 
 from live_runtime_launcher.session import LiveRuntimeSession
+
+
+# Matches LiveOrchestrator's own default interval_seconds=1.0 (live_system/
+# orchestrator.py) and command_center.main_window.LIVE_REFRESH_INTERVAL_MS --
+# the existing "~1Hz live cycle" convention this milestone's own tick timer
+# reuses rather than inventing a second cadence.
+LIVE_CYCLE_INTERVAL_MS = 1000
 
 
 class LiveRuntimeController:
@@ -15,13 +25,41 @@ class LiveRuntimeController:
     # exactly one already-existing LiveRuntimeSession capability -- this
     # class calls no live_runtime/live_system/command_center API
     # directly, only LiveRuntimeSession's own public methods.
+    #
+    # Expose Real Live Camera Occupant State In SynEvac UI milestone --
+    # this class is ALSO now the one place a running LiveRuntime's own
+    # run_cycle() gets driven automatically. Phase 1's own investigation
+    # found a genuine, previously-undiscovered gap here: Command Center's
+    # own live_refresh_timer (command_center/main_window.py) ONLY ever
+    # re-renders whatever LiveCommandCenterDataSource.current_snapshot()
+    # already holds -- by its own explicit design ("never runs perception/
+    # fusion/AI inference... on the GUI thread") -- and nothing else in the
+    # real application ever called run_cycle() at all (only tests/scripts
+    # did). Without this, BuildingState/live_occupants/every other Live
+    # panel would stay frozen forever in a real Designer session, no
+    # matter how well-wired the UI panels themselves are. This tick timer
+    # is a THIN driver only -- it calls the existing, unmodified
+    # LiveRuntime.run_cycle() exactly once per interval; it performs no
+    # tracking/fusion/state logic itself.
 
-    def __init__(self, panel, get_building):
+    def __init__(self, panel, get_building, credential_store=None):
 
         self.panel = panel
         self.get_building = get_building
+        self.credential_store = credential_store
 
         self.session = None
+
+        # The Recommendation Layer milestone -- notified once per real
+        # run_cycle() tick, so MainWindow can refresh its Recommendation
+        # panel from freshly-computed live state. None (the default) is
+        # a valid, guarded state, same convention as CameraManagerPanel.
+        # on_camera_changed.
+        self.on_cycle_callback = None
+
+        self._tick_timer = QTimer()
+        self._tick_timer.setInterval(LIVE_CYCLE_INTERVAL_MS)
+        self._tick_timer.timeout.connect(self._on_tick)
 
         self.panel.start_button.clicked.connect(self.on_start)
         self.panel.stop_button.clicked.connect(self.on_stop)
@@ -29,6 +67,17 @@ class LiveRuntimeController:
         self.panel.mode_combo.currentIndexChanged.connect(self.on_mode_changed)
 
         self._refresh_panel()
+
+    # =====================================================
+
+    def _on_tick(self) -> None:
+
+        if self.session is not None and self.session.is_running:
+
+            self.session.runtime.run_cycle(time.time())
+
+            if self.on_cycle_callback is not None:
+                self.on_cycle_callback()
 
     # =====================================================
 
@@ -55,11 +104,14 @@ class LiveRuntimeController:
 
         if self.session is None:
 
-            self.session = LiveRuntimeSession(self.panel.selected_mode())
+            self.session = LiveRuntimeSession(self.panel.selected_mode(), credential_store=self.credential_store)
             self.session.construct(building)
 
         if self.session.runtime is not None:
             self.session.start()
+
+        if self.session.is_running:
+            self._tick_timer.start()
 
         self._refresh_panel()
 
@@ -69,6 +121,8 @@ class LiveRuntimeController:
     # =====================================================
 
     def on_stop(self):
+
+        self._tick_timer.stop()
 
         if self.session is not None:
             self.session.stop()
@@ -102,6 +156,8 @@ class LiveRuntimeController:
         # discarded, the same "stop the loop before the project
         # disappears" discipline MainWindow.stop_simulation() already
         # applies to the Manual Simulation Sandbox.
+
+        self._tick_timer.stop()
 
         if self.session is not None:
             self.session.shutdown()

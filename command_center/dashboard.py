@@ -1,8 +1,11 @@
+from bisect import bisect_right
+
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import QLabel, QSplitter, QTabWidget, QVBoxLayout, QWidget
 
 from command_center.building_view import BuildingView
 from command_center.data_source import CommandCenterMode, CommandCenterSnapshot, SnapshotConsistency
+from command_center.event_timeline_panel import EventTimelinePanel
 from command_center.hazard_panel import HazardPanel
 from command_center.human_panel import HumanPanel
 from command_center.incident_panel import IncidentPanel
@@ -11,15 +14,18 @@ from command_center.live_ai_panel import LiveAIPanel
 from command_center.live_events_panel import LiveEventsPanel
 from command_center.live_evacuation_progress_panel import LiveEvacuationProgressPanel
 from command_center.live_emergency_response_panel import LiveEmergencyResponsePanel
+from command_center.live_occupant_panel import LiveOccupantPanel
 from command_center.live_trajectory_intelligence_panel import LiveMovementIntelligencePanel
 from command_center.live_evacuation_recommendation_panel import LiveEvacuationRecommendationPanel
 from command_center.live_evacuation_guidance_panel import LiveEvacuationGuidancePanel
 from command_center.live_dynamic_signage_panel import LiveDynamicSignagePanel
 from command_center.live_status_panel import LiveStatusPanel
 from command_center.occupancy_panel import OccupancyPanel
+from command_center.occupant_inspector_panel import OccupantInspectorPanel
 from command_center.recommendation_center import RecommendationCenter
 from command_center.recommendation_panel import RecommendationPanel
 from command_center.recommendation_timeline_panel import RecommendationTimelinePanel
+from command_center.statistics_panel import StatisticsPanel
 from command_center.timeline_panel import TimelinePanel
 
 
@@ -82,6 +88,14 @@ class Dashboard(QWidget):
         self.recommendation_center = RecommendationCenter()
         self.recommendation_timeline_panel = RecommendationTimelinePanel()
 
+        # Simulation Replay Studio V1 -- additive replay-only panels.
+        self.occupant_inspector_panel = OccupantInspectorPanel()
+        self.event_timeline_panel = EventTimelinePanel()
+        self.statistics_panel = StatisticsPanel()
+
+        self.building_view.occupant_clicked.connect(self.occupant_inspector_panel.select_occupant)
+        self.event_timeline_panel.jump_to_time.connect(self.jump_to_time)
+
         # Live-only panels (Phase 8/9/15) -- always constructed (so
         # Dashboard stays one widget tree for both modes, never two
         # parallel applications), but only ever populated via
@@ -90,6 +104,7 @@ class Dashboard(QWidget):
         self.live_ai_panel = LiveAIPanel()
         self.live_evacuation_progress_panel = LiveEvacuationProgressPanel()
         self.live_emergency_response_panel = LiveEmergencyResponsePanel()
+        self.live_occupant_panel = LiveOccupantPanel()
         self.live_movement_intelligence_panel = LiveMovementIntelligencePanel()
         self.live_evacuation_recommendation_panel = LiveEvacuationRecommendationPanel()
         self.live_evacuation_guidance_panel = LiveEvacuationGuidancePanel()
@@ -104,10 +119,14 @@ class Dashboard(QWidget):
         self.side_tabs.addTab(self.hazard_panel, "Hazard")
         self.side_tabs.addTab(self.recommendation_panel, "Decision Policy (Raw)")
         self.side_tabs.addTab(self.human_panel, "People")
+        self.side_tabs.addTab(self.occupant_inspector_panel, "Occupant Inspector")
+        self.side_tabs.addTab(self.event_timeline_panel, "Event Timeline")
+        self.side_tabs.addTab(self.statistics_panel, "Statistics")
         self.side_tabs.addTab(self.live_status_panel, "Live Status")
         self.side_tabs.addTab(self.live_ai_panel, "Live AI")
         self.side_tabs.addTab(self.live_evacuation_progress_panel, "Live Evacuation Progress")
         self.side_tabs.addTab(self.live_emergency_response_panel, "Live Emergency Response")
+        self.side_tabs.addTab(self.live_occupant_panel, "Live Occupants")
         self.side_tabs.addTab(self.live_movement_intelligence_panel, "Live Movement Intelligence")
         self.side_tabs.addTab(self.live_evacuation_recommendation_panel, "Live Evacuation Recommendations")
         self.side_tabs.addTab(self.live_evacuation_guidance_panel, "Live Evacuation Guidance")
@@ -122,6 +141,7 @@ class Dashboard(QWidget):
         self._replay_only_tabs = (
             self.recommendation_timeline_panel, self.incident_panel,
             self.occupancy_panel, self.hazard_panel, self.recommendation_panel,
+            self.occupant_inspector_panel, self.event_timeline_panel, self.statistics_panel,
         )
         self._live_only_tabs = (
             self.live_status_panel, self.live_ai_panel, self.live_events_panel, self.live_dynamic_signage_panel,
@@ -168,9 +188,11 @@ class Dashboard(QWidget):
 
         building = incident_data.building if incident_data is not None else None
         policy = incident_data.decision_policy if incident_data is not None else None
+        occupant_routes = incident_data.occupant_routes if incident_data is not None else ()
 
         self.building_view.set_building(building)
         self.building_view.set_decision_policy(policy)
+        self.building_view.set_occupant_routes(occupant_routes)
 
         self.status_bar.set_incident(incident_data)
         self.incident_panel.set_incident(incident_data)
@@ -180,6 +202,9 @@ class Dashboard(QWidget):
         self.human_panel.set_incident(incident_data)
         self.recommendation_center.set_incident(incident_data)
         self.recommendation_timeline_panel.set_incident(incident_data)
+        self.occupant_inspector_panel.set_incident(incident_data)
+        self.event_timeline_panel.set_incident(incident_data)
+        self.statistics_panel.set_incident(incident_data)
         self.timeline_panel.set_incident(incident_data)
 
         if incident_data is not None:
@@ -199,6 +224,9 @@ class Dashboard(QWidget):
         self.status_bar.show_frame(frame, report)
         self.recommendation_center.show_frame(frame, report)
         self.recommendation_timeline_panel.show_frame(frame)
+        self.occupant_inspector_panel.show_frame(frame)
+        self.event_timeline_panel.show_frame(frame)
+        self.statistics_panel.show_frame(frame)
 
     # =====================================================
 
@@ -209,6 +237,28 @@ class Dashboard(QWidget):
 
         self.timeline_panel.set_frame_index(index)
         self.show_frame(self._incident.frame_at_index(index))
+
+    # =====================================================
+
+    def jump_to_time(self, time: float) -> None:
+
+        # Simulation Replay Studio V1 -- the Event Timeline's own
+        # "clicking an event jumps the replay" requirement. Same
+        # "nearest preceding frame" resolution IncidentData.frame_at()/
+        # TimelinePanel._on_jump_to_time() already establish, routed
+        # through the identical slider -> _on_frame_index_changed() path
+        # every other jump already uses (setting the slider, not calling
+        # set_frame_index() directly, keeps TimelinePanel's own slider
+        # position in sync).
+
+        if self._incident is None or self._incident.frame_count == 0:
+            return
+
+        times = [frame.time for frame in self._incident.frames]
+        index = bisect_right(times, time) - 1
+        index = max(0, min(index, len(times) - 1))
+
+        self.timeline_panel.slider.setValue(index)
 
     # =====================================================
 
@@ -293,12 +343,15 @@ class Dashboard(QWidget):
         self.status_bar.show_frame(
             frame, advisory_for_display, live=True, ai_prediction_snapshot=snapshot.ai_prediction_snapshot,
         )
-        self.recommendation_center.show_live(advisory_for_display, self._operator_action_gateway)
+        self.recommendation_center.show_live(
+            advisory_for_display, self._operator_action_gateway, recommendation_set=snapshot.recommendation_set,
+        )
 
         self.live_status_panel.show_building_state(snapshot.building_state)
         self.live_ai_panel.show_prediction(snapshot.ai_prediction_snapshot, stale=is_stale)
         self.live_evacuation_progress_panel.show_progress(snapshot.evacuation_progress)
         self.live_emergency_response_panel.show_response(snapshot.emergency_response)
+        self.live_occupant_panel.show_live_occupants(snapshot.live_occupants)
         self.live_movement_intelligence_panel.show_trajectory_intelligence(snapshot.trajectory_intelligence)
         self.live_evacuation_recommendation_panel.show_recommendations(snapshot.evacuation_recommendation)
         self.live_evacuation_guidance_panel.show_guidance(

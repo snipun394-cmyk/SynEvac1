@@ -15,6 +15,12 @@ from dynamic_signage.consistency import instruction_inconsistencies
 from dynamic_signage.controller import DynamicSignageController, SignageControlEvent, SignageRequestStatus
 from dynamic_signage.models import SignageInstruction, SignageStatus
 
+from warden_notification.controller import WardenNotificationController
+from warden_notification.history import WardenNotificationEvent
+from warden_notification.requests import WardenNotificationRequest
+
+from execution_layer.adapters.warden_adapter import translate_recommendation_set
+
 from event_bus.bus import EventType
 
 
@@ -155,12 +161,14 @@ class LiveOperatorActionGateway:
         voice_controller: Optional[VoiceEvacuationController] = None,
         control_controller: Optional[BuildingControlController] = None,
         signage_controller: Optional[DynamicSignageController] = None,
+        warden_controller: Optional[WardenNotificationController] = None,
         event_bus: Optional[object] = None,
     ):
 
         self._voice_controller = voice_controller
         self._control_controller = control_controller
         self._signage_controller = signage_controller
+        self._warden_controller = warden_controller
 
         # Optional -- duck-typed (only .emit(event_type, payload, time)
         # is ever called), so this module never needs to import
@@ -211,6 +219,14 @@ class LiveOperatorActionGateway:
         # a different synthesized id) is never blocked by this.
         self._rejected_control_recommendation_ids: set = set()
 
+        # Execution Layer V1 -- the SAME "an operator already said no,
+        # never silently resubmit" discipline, one collaborator over.
+        # Warden Notification recommendations are keyed by their own
+        # REAL recommendation_layer recommendation_id (never a
+        # synthesized one), since translate_recommendation_set() carries
+        # it through directly.
+        self._rejected_warden_recommendation_ids: set = set()
+
     # =====================================================
     # Shared-instance identity (Production Live Runtime Composition
     # Root milestone, Phase 4) -- read-only, so a composition root/test
@@ -242,6 +258,13 @@ class LiveOperatorActionGateway:
     def signage_controller(self) -> Optional[DynamicSignageController]:
 
         return self._signage_controller
+
+    # =====================================================
+
+    @property
+    def warden_controller(self) -> Optional[WardenNotificationController]:
+
+        return self._warden_controller
 
     # =====================================================
     # Provider capability (Phase 5)
@@ -281,6 +304,19 @@ class LiveOperatorActionGateway:
 
         return (
             PROVIDER_CAPABILITY_SIMULATION if self._signage_controller.provider.is_simulation_only
+            else PROVIDER_CAPABILITY_LIVE_HARDWARE
+        )
+
+    # =====================================================
+
+    @property
+    def warden_capability(self) -> str:
+
+        if self._warden_controller is None:
+            return PROVIDER_CAPABILITY_NO_PROVIDER
+
+        return (
+            PROVIDER_CAPABILITY_SIMULATION if self._warden_controller.provider.is_simulation_only
             else PROVIDER_CAPABILITY_LIVE_HARDWARE
         )
 
@@ -579,6 +615,100 @@ class LiveOperatorActionGateway:
             return ()
 
         return self._control_controller.history()
+
+    # =====================================================
+    # Warden Notification operator workflow -- Execution Layer V1
+    # milestone. Mirrors the Building Control workflow immediately
+    # above in shape exactly (submit-then-decide, via
+    # WardenNotificationController's own PENDING_APPROVAL/APPROVED/
+    # REJECTED lifecycle). Ingests from a recommendation_layer.
+    # RecommendationSet (not an AdvisoryReport) -- the one genuinely new
+    # bridge this milestone adds from the Recommendation Layer into
+    # real execution.
+    # =====================================================
+
+    def ingest_warden_recommendations(self, recommendation_set, time: float) -> Tuple[WardenNotificationRequest, ...]:
+
+        # Mirrors ingest_control_recommendations() exactly: translate,
+        # then submit() each -- WardenNotificationController.submit()
+        # itself already performs deduplication, so calling this once
+        # per render cycle is always safe.
+
+        if self._warden_controller is None or recommendation_set is None:
+            return ()
+
+        requests = translate_recommendation_set(recommendation_set)
+
+        submitted = []
+
+        for request in requests:
+
+            if request.source_recommendation_id in self._rejected_warden_recommendation_ids:
+                # An operator already said no to exactly this
+                # recommendation -- never silently resubmit it just
+                # because the same RecommendationSet was re-ingested on
+                # a later render.
+                continue
+
+            submitted.append(self._warden_controller.submit(request))
+
+        return tuple(submitted)
+
+    # =====================================================
+
+    def approve_warden_notification(self, request_id: str) -> WardenNotificationRequest:
+
+        if self._warden_controller is None:
+
+            raise OperatorActionUnavailable(
+                "No warden notification provider is configured -- cannot approve this request."
+            )
+
+        return self._warden_controller.approve(request_id, actor=OPERATOR_ACTOR)
+
+    # =====================================================
+
+    def reject_warden_notification(self, request_id: str) -> WardenNotificationRequest:
+
+        if self._warden_controller is None:
+
+            raise OperatorActionUnavailable(
+                "No warden notification provider is configured -- cannot reject this request."
+            )
+
+        request = self._warden_controller.reject(request_id, actor=OPERATOR_ACTOR)
+
+        if request.source_recommendation_id is not None:
+            self._rejected_warden_recommendation_ids.add(request.source_recommendation_id)
+
+        return request
+
+    # =====================================================
+
+    def pending_warden_notifications(self) -> Tuple[WardenNotificationRequest, ...]:
+
+        if self._warden_controller is None:
+            return ()
+
+        return self._warden_controller.pending_requests()
+
+    # =====================================================
+
+    def all_warden_notifications(self) -> Tuple[WardenNotificationRequest, ...]:
+
+        if self._warden_controller is None:
+            return ()
+
+        return self._warden_controller.all_requests()
+
+    # =====================================================
+
+    def warden_notification_history(self) -> Tuple[WardenNotificationEvent, ...]:
+
+        if self._warden_controller is None:
+            return ()
+
+        return self._warden_controller.history()
 
     # =====================================================
     # Dynamic Evacuation Signage operator workflow -- Live Dynamic

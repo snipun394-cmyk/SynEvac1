@@ -1,0 +1,1091 @@
+{
+    "id": "ee5f210b-dc49-4e28-b3b3-ba22a41a747e",
+    "name": "Untitled Project",
+    "author": "",
+    "version": "1.0",
+    "created_at": "2026-07-12T00:15:17.261107",
+    "modified_at": "2026-07-12T00:15:17.261154",
+    "building": {
+        "id": "9172bee6-2833-4950-ba7c-915149cd05f7",
+        "name": "Building",
+        "floors": [
+            {
+                "id": "a1937a63-d47d-40ed-94ed-ebd7441a9cb2",
+                "name": "Ground Floor",
+                "display_order": 0,
+                "height": 3.0,
+                "floor_plan": "",
+                "visible": true,
+                "locked": false,
+                "zones": [
+                    {
+                        "id": "934379d5-99a8-41b4-b060-96cb1ef32a04",
+                        "name": "Zone 1",
+                        "object_type": "Zone",
+                        "properties": {},
+                        "created_at": "2026-07-12T00:15:57.209587",
+                        "modified_at": "2026-07-12T00:15:57.209597",
+                        "x": -5.0,
+                        "y": -3.0,
+                        "width": 10.0,
+                        "height": 7.0,
+                        "polygon": [],
+                        "floor_id": "",
+                        "zone_type": "Generic",
+                        "max_occupancy": 0
+                    },
+                    {
+                        "id": "9774e980-ef0d-40b0-b9e8-35483f44e979",
+                        "name": "Zone 2",
+                        "object_type": "Zone",
+                        "properties": {},
+                        "created_at": "2026-07-12T00:16:02.353274",
+                        "modified_at": "2026-07-12T00:16:02.353283",
+                        "x": -4.0,
+                        "y": -6.0,
+                        "width": 5.0,
+                        "height": 3.0,
+                        "polygon": [],
+                        "floor_id": "",
+                        "zone_type": "Generic",
+                        "max_occupancy": 0
+                    },
+                    {
+                        "id": "f6141e17-3f45-41a0-972c-eea9d2b15fcd",
+                        "name": "Zone 3",
+                        "object_type": "Zone",
+                        "properties": {},
+                        "created_at": "2026-07-12T00:16:06.075031",
+                        "modified_at": "2026-07-12T00:16:06.075039",
+                        "x": 1.0,
+                        "y": -6.0,
+                        "width": 7.0,
+                        "height": 3.0,
+                        "polygon": [],
+                        "floor_id": "",
+                        "zone_type": "Generic",
+                        "max_occupancy": 0
+                    },
+                    {
+                        "id": "e6269e81-4ee7-4852-9c21-0c9b53dc8811",
+                        "name": "Zone 4",
+                        "object_type": "Zone",
+                        "properties": {},
+                        "created_at": "2026-07-12T00:16:09.500649",
+                        "modified_at": "2026-07-12T00:16:09.500656",
+                        "x": 5.0,
+                        "y": -3.0,
+                        "width": 3.0,
+                        "height": 7.0,
+                        "polygon": [],
+                        "floor_id": "",
+                        "zone_type": "Generic",
+                        "max_occupancy": 0
+                    },
+                    {
+                        "id": "0b64d076-fff1-4fa1-8e76-b6e3a707db9f",
+                        "name": "Zone 5",
+                        "object_type": "Zone",
+                        "properties": {},
+                        "created_at": "2026-07-12T00:16:13.367678",
+                        "modified_at": "2026-07-12T00:16:13.367692",
+                        "x": -5.0,
+                        "y": -5.0,
+                        "width": 1.0,
+                        "height": 2.0,
+                        "polygon": [],
+                        "floor_id": "",
+                        "zone_type": "Generic",
+                        "max_occupancy": 0
+                    }
+                ],
+                "exits": [
+                    {
+                        "id": "dced950d-de34-4fe0-9781-06cb1b7e258d",
+                        "name": "Exit 1",
+                        "object_type": "Exit",
+                        "properties": {},
+                        "created_at": "2026-07-12T01:53:48.228178",
+                        "modified_at": "2026-07-12T01:53:48.228192",
+                        "start_point": [
+                            -1.0,
+                            4.0
+                        ],
+                        "end_point": [
+                            3.0,
+                            4.0
+                        ],
+                        "floor_id": "a1937a63-d47d-40ed-94ed-ebd7441a9cb2",
+                        "width": 1.2,
+                        "capacity": 50,
+                        "is_blocked": false,
+                        "zone_id": "934379d5-99a8-41b4-b060-96cb1ef32a04"
+                    }
+                ],
+                "stairs": [],
+                "elevators": [],
+                "cameras": [
+                    {
+                        "id": "bf4d0a1e-6c15-46e6-95bd-c065ee948516",
+                        "name": "Camera 1",
+                        "object_type": "Camera",
+                        "properties": {},
+                        "created_at": "2026-07-12T00:17:36.812269",
+                        "modified_at": "2026-07-12T00:17:36.812278",
+                        "floor_id": "a1937a63-d47d-40ed-94ed-ebd7441a9cb2",
+                        "zone_ids": [],
+                        "position": [
+                            -5.0,
+                            4.0
+                        ],
+                        "mount_height": 3.0,
+                        "active": true,
+                        "mode": "Live",
+                        "connection": {
+                            "rtsp_address": "rtsp://192.168.1.248:554/cam/realmonitor?channel=1&subtype=0",
+                            "ip_address": "",
+                            "username": "synevac_svc",
+                            "credential_ref": "bf4d0a1e-6c15-46e6-95bd-c065ee948516"
+                        },
+                        "rotation": 315.0,
+                        "horizontal_fov": 90.0,
+                        "max_range": 15.0,
+                        "resolution": "1920x1080",
+                        "fps": 15
+                    },
+                    {
+                        "id": "37f62ac7-c766-44c7-aea8-6d2667d23845",
+                        "name": "Camera 2",
+                        "object_type": "Camera",
+                        "properties": {},
+                        "created_at": "2026-07-12T00:17:41.535394",
+                        "modified_at": "2026-07-12T00:17:41.535403",
+                        "floor_id": "a1937a63-d47d-40ed-94ed-ebd7441a9cb2",
+                        "zone_ids": [],
+                        "position": [
+                            -4.0,
+                            -6.0
+                        ],
+                        "mount_height": 3.0,
+                        "active": true,
+                        "mode": "Simulation",
+                        "connection": {
+                            "rtsp_address": "",
+                            "ip_address": "",
+                            "username": "",
+                            "credential_ref": null
+                        },
+                        "rotation": 45.0,
+                        "horizontal_fov": 90.0,
+                        "max_range": 5.0,
+                        "resolution": "1920x1080",
+                        "fps": 15
+                    },
+                    {
+                        "id": "80e50a2c-8b9e-4e79-9406-baac89794bc2",
+                        "name": "Camera 3",
+                        "object_type": "Camera",
+                        "properties": {},
+                        "created_at": "2026-07-12T00:17:44.939114",
+                        "modified_at": "2026-07-12T00:17:44.939127",
+                        "floor_id": "a1937a63-d47d-40ed-94ed-ebd7441a9cb2",
+                        "zone_ids": [],
+                        "position": [
+                            8.0,
+                            -6.0
+                        ],
+                        "mount_height": 3.0,
+                        "active": true,
+                        "mode": "Simulation",
+                        "connection": {
+                            "rtsp_address": "",
+                            "ip_address": "",
+                            "username": "",
+                            "credential_ref": null
+                        },
+                        "rotation": 135.0,
+                        "horizontal_fov": 90.0,
+                        "max_range": 7.0,
+                        "resolution": "1920x1080",
+                        "fps": 15
+                    },
+                    {
+                        "id": "fd4b9906-4527-47b6-a48b-01b9dc5e60dd",
+                        "name": "Camera 4",
+                        "object_type": "Camera",
+                        "properties": {},
+                        "created_at": "2026-07-12T00:17:46.843303",
+                        "modified_at": "2026-07-12T00:17:46.843310",
+                        "floor_id": "a1937a63-d47d-40ed-94ed-ebd7441a9cb2",
+                        "zone_ids": [],
+                        "position": [
+                            8.0,
+                            4.0
+                        ],
+                        "mount_height": 3.0,
+                        "active": true,
+                        "mode": "Simulation",
+                        "connection": {
+                            "rtsp_address": "",
+                            "ip_address": "",
+                            "username": "",
+                            "credential_ref": null
+                        },
+                        "rotation": 225.0,
+                        "horizontal_fov": 90.0,
+                        "max_range": 7.0,
+                        "resolution": "1920x1080",
+                        "fps": 15
+                    }
+                ],
+                "detectors": [],
+                "smoke_detectors": [],
+                "heat_detectors": [],
+                "speakers": [
+                    {
+                        "id": "57a23b65-b685-4fec-b30b-d27d5c15d870",
+                        "name": "Speaker 1",
+                        "object_type": "Speaker",
+                        "properties": {},
+                        "created_at": "2026-07-24T14:46:02.064567",
+                        "modified_at": "2026-07-24T14:46:02.064580",
+                        "floor_id": "a1937a63-d47d-40ed-94ed-ebd7441a9cb2",
+                        "zone_ids": [
+                            "934379d5-99a8-41b4-b060-96cb1ef32a04"
+                        ],
+                        "position": [
+                            4.0,
+                            -5.0
+                        ],
+                        "mount_height": 3.0,
+                        "active": true,
+                        "mode": "Simulation",
+                        "connection": {
+                            "rtsp_address": "",
+                            "ip_address": "",
+                            "username": "",
+                            "credential_ref": null
+                        },
+                        "health_status": "OK",
+                        "installation_date": "",
+                        "last_activation_time": null,
+                        "speaker_type": "Horn",
+                        "volume_level": 75.0
+                    }
+                ],
+                "signs": [
+                    {
+                        "id": "1834b2ab-9758-403f-af92-d70deceb23aa",
+                        "name": "Sign 1",
+                        "object_type": "DynamicEvacuationSign",
+                        "properties": {},
+                        "created_at": "2026-07-24T14:45:33.146605",
+                        "modified_at": "2026-07-24T14:45:33.146614",
+                        "floor_id": "a1937a63-d47d-40ed-94ed-ebd7441a9cb2",
+                        "zone_ids": [],
+                        "position": [
+                            1.0,
+                            -2.0
+                        ],
+                        "mount_height": 3.0,
+                        "active": true,
+                        "mode": "Simulation",
+                        "connection": {
+                            "rtsp_address": "",
+                            "ip_address": "",
+                            "username": "",
+                            "credential_ref": null
+                        },
+                        "orientation": 0.0,
+                        "supported_indications": [
+                            "LEFT",
+                            "RIGHT",
+                            "STRAIGHT",
+                            "EXIT_HERE",
+                            "USE_STAIRS",
+                            "DO_NOT_USE",
+                            "NO_SAFE_DIRECTION",
+                            "UNAVAILABLE"
+                        ]
+                    },
+                    {
+                        "id": "461d138a-f6b5-4dde-a3be-cb1ce93834b5",
+                        "name": "Sign 2",
+                        "object_type": "DynamicEvacuationSign",
+                        "properties": {},
+                        "created_at": "2026-07-24T14:46:50.324016",
+                        "modified_at": "2026-07-24T14:46:50.324029",
+                        "floor_id": "a1937a63-d47d-40ed-94ed-ebd7441a9cb2",
+                        "zone_ids": [],
+                        "position": [
+                            -2.0,
+                            -4.0
+                        ],
+                        "mount_height": 3.0,
+                        "active": true,
+                        "mode": "Simulation",
+                        "connection": {
+                            "rtsp_address": "",
+                            "ip_address": "",
+                            "username": "",
+                            "credential_ref": null
+                        },
+                        "orientation": 0.0,
+                        "supported_indications": [
+                            "LEFT",
+                            "RIGHT",
+                            "STRAIGHT",
+                            "EXIT_HERE",
+                            "USE_STAIRS",
+                            "DO_NOT_USE",
+                            "NO_SAFE_DIRECTION",
+                            "UNAVAILABLE"
+                        ]
+                    }
+                ],
+                "manual_call_points": [
+                    {
+                        "id": "ef88e0e4-61dc-4ba8-8b56-acc35b0de8e2",
+                        "name": "Manual Call Point 1",
+                        "object_type": "ManualCallPoint",
+                        "properties": {},
+                        "created_at": "2026-07-24T14:45:06.046692",
+                        "modified_at": "2026-07-24T14:45:06.046701",
+                        "floor_id": "a1937a63-d47d-40ed-94ed-ebd7441a9cb2",
+                        "zone_ids": [
+                            "934379d5-99a8-41b4-b060-96cb1ef32a04"
+                        ],
+                        "position": [
+                            -5.0,
+                            1.0
+                        ],
+                        "mount_height": 3.0,
+                        "active": true,
+                        "mode": "Simulation",
+                        "connection": {
+                            "rtsp_address": "",
+                            "ip_address": "",
+                            "username": "",
+                            "credential_ref": null
+                        },
+                        "health_status": "OK",
+                        "installation_date": "",
+                        "last_activation_time": null,
+                        "activated": false
+                    },
+                    {
+                        "id": "001f1d6f-3acd-4040-a247-df52ba26cb24",
+                        "name": "Manual Call Point 2",
+                        "object_type": "ManualCallPoint",
+                        "properties": {},
+                        "created_at": "2026-07-24T14:45:08.457233",
+                        "modified_at": "2026-07-24T14:45:08.457241",
+                        "floor_id": "a1937a63-d47d-40ed-94ed-ebd7441a9cb2",
+                        "zone_ids": [
+                            "f6141e17-3f45-41a0-972c-eea9d2b15fcd"
+                        ],
+                        "position": [
+                            2.0,
+                            -6.0
+                        ],
+                        "mount_height": 3.0,
+                        "active": true,
+                        "mode": "Simulation",
+                        "connection": {
+                            "rtsp_address": "",
+                            "ip_address": "",
+                            "username": "",
+                            "credential_ref": null
+                        },
+                        "health_status": "OK",
+                        "installation_date": "",
+                        "last_activation_time": null,
+                        "activated": false
+                    }
+                ],
+                "emergency_lights": [
+                    {
+                        "id": "c4099077-027f-472e-833c-abd44653edbc",
+                        "name": "Emergency Light 1",
+                        "object_type": "EmergencyLight",
+                        "properties": {},
+                        "created_at": "2026-07-24T14:45:12.969222",
+                        "modified_at": "2026-07-24T14:45:12.969233",
+                        "floor_id": "a1937a63-d47d-40ed-94ed-ebd7441a9cb2",
+                        "zone_ids": [
+                            "934379d5-99a8-41b4-b060-96cb1ef32a04"
+                        ],
+                        "position": [
+                            -3.0,
+                            1.0
+                        ],
+                        "mount_height": 3.0,
+                        "active": true,
+                        "mode": "Simulation",
+                        "connection": {
+                            "rtsp_address": "",
+                            "ip_address": "",
+                            "username": "",
+                            "credential_ref": null
+                        },
+                        "health_status": "OK",
+                        "light_type": "Wall Mounted"
+                    },
+                    {
+                        "id": "4fa070e3-e85b-4ed2-8c67-d106aeaf24d0",
+                        "name": "Emergency Light 2",
+                        "object_type": "EmergencyLight",
+                        "properties": {},
+                        "created_at": "2026-07-24T14:45:16.010129",
+                        "modified_at": "2026-07-24T14:45:16.010137",
+                        "floor_id": "a1937a63-d47d-40ed-94ed-ebd7441a9cb2",
+                        "zone_ids": [
+                            "934379d5-99a8-41b4-b060-96cb1ef32a04"
+                        ],
+                        "position": [
+                            -2.0,
+                            -2.0
+                        ],
+                        "mount_height": 3.0,
+                        "active": true,
+                        "mode": "Simulation",
+                        "connection": {
+                            "rtsp_address": "",
+                            "ip_address": "",
+                            "username": "",
+                            "credential_ref": null
+                        },
+                        "health_status": "OK",
+                        "light_type": "Wall Mounted"
+                    },
+                    {
+                        "id": "27ca29ed-23b5-4dbd-9f92-bab9f23fc793",
+                        "name": "Emergency Light 3",
+                        "object_type": "EmergencyLight",
+                        "properties": {},
+                        "created_at": "2026-07-24T14:47:21.661345",
+                        "modified_at": "2026-07-24T14:47:21.661360",
+                        "floor_id": "a1937a63-d47d-40ed-94ed-ebd7441a9cb2",
+                        "zone_ids": [
+                            "934379d5-99a8-41b4-b060-96cb1ef32a04"
+                        ],
+                        "position": [
+                            2.0,
+                            -1.0
+                        ],
+                        "mount_height": 3.0,
+                        "active": true,
+                        "mode": "Simulation",
+                        "connection": {
+                            "rtsp_address": "",
+                            "ip_address": "",
+                            "username": "",
+                            "credential_ref": null
+                        },
+                        "health_status": "OK",
+                        "light_type": "Wall Mounted"
+                    }
+                ],
+                "sprinklers": [
+                    {
+                        "id": "e7915f60-db1a-4d3a-9b29-3bb6f26fc5f0",
+                        "name": "Sprinkler 1",
+                        "object_type": "Sprinkler",
+                        "properties": {},
+                        "created_at": "2026-07-24T14:47:29.563493",
+                        "modified_at": "2026-07-24T14:47:29.563505",
+                        "floor_id": "a1937a63-d47d-40ed-94ed-ebd7441a9cb2",
+                        "zone_ids": [
+                            "f6141e17-3f45-41a0-972c-eea9d2b15fcd"
+                        ],
+                        "position": [
+                            2.0,
+                            -4.0
+                        ],
+                        "mount_height": 3.0,
+                        "active": true,
+                        "mode": "Simulation",
+                        "connection": {
+                            "rtsp_address": "",
+                            "ip_address": "",
+                            "username": "",
+                            "credential_ref": null
+                        },
+                        "health_status": "OK",
+                        "installation_date": "",
+                        "last_activation_time": null,
+                        "activation_temperature": 68.0
+                    },
+                    {
+                        "id": "b48e8ec1-6c77-4a85-b4bd-38f5d4655651",
+                        "name": "Sprinkler 2",
+                        "object_type": "Sprinkler",
+                        "properties": {},
+                        "created_at": "2026-07-24T14:47:31.404835",
+                        "modified_at": "2026-07-24T14:47:31.404843",
+                        "floor_id": "a1937a63-d47d-40ed-94ed-ebd7441a9cb2",
+                        "zone_ids": [
+                            "f6141e17-3f45-41a0-972c-eea9d2b15fcd"
+                        ],
+                        "position": [
+                            5.0,
+                            -4.0
+                        ],
+                        "mount_height": 3.0,
+                        "active": true,
+                        "mode": "Simulation",
+                        "connection": {
+                            "rtsp_address": "",
+                            "ip_address": "",
+                            "username": "",
+                            "credential_ref": null
+                        },
+                        "health_status": "OK",
+                        "installation_date": "",
+                        "last_activation_time": null,
+                        "activation_temperature": 68.0
+                    }
+                ],
+                "fire_extinguishers": [
+                    {
+                        "id": "ad65411a-7508-439f-b06d-41ee6bccdf6f",
+                        "name": "Fire Extinguisher 1",
+                        "object_type": "FireExtinguisher",
+                        "properties": {},
+                        "created_at": "2026-07-24T14:44:50.717966",
+                        "modified_at": "2026-07-24T14:44:50.717974",
+                        "floor_id": "a1937a63-d47d-40ed-94ed-ebd7441a9cb2",
+                        "zone_ids": [
+                            "934379d5-99a8-41b4-b060-96cb1ef32a04"
+                        ],
+                        "position": [
+                            -5.0,
+                            -2.0
+                        ],
+                        "mount_height": 3.0,
+                        "active": true,
+                        "mode": "Simulation",
+                        "connection": {
+                            "rtsp_address": "",
+                            "ip_address": "",
+                            "username": "",
+                            "credential_ref": null
+                        },
+                        "health_status": "OK",
+                        "extinguisher_type": "Water"
+                    },
+                    {
+                        "id": "ad521685-55fd-434a-abbb-587b7e083e74",
+                        "name": "Fire Extinguisher 2",
+                        "object_type": "FireExtinguisher",
+                        "properties": {},
+                        "created_at": "2026-07-24T14:44:54.542091",
+                        "modified_at": "2026-07-24T14:44:54.542100",
+                        "floor_id": "a1937a63-d47d-40ed-94ed-ebd7441a9cb2",
+                        "zone_ids": [
+                            "f6141e17-3f45-41a0-972c-eea9d2b15fcd"
+                        ],
+                        "position": [
+                            5.0,
+                            -6.0
+                        ],
+                        "mount_height": 3.0,
+                        "active": true,
+                        "mode": "Simulation",
+                        "connection": {
+                            "rtsp_address": "",
+                            "ip_address": "",
+                            "username": "",
+                            "credential_ref": null
+                        },
+                        "health_status": "OK",
+                        "extinguisher_type": "Water"
+                    },
+                    {
+                        "id": "8cfe7ffb-e64d-4358-b7f5-137037f92806",
+                        "name": "Fire Extinguisher 3",
+                        "object_type": "FireExtinguisher",
+                        "properties": {},
+                        "created_at": "2026-07-24T14:44:56.614349",
+                        "modified_at": "2026-07-24T14:44:56.614358",
+                        "floor_id": "a1937a63-d47d-40ed-94ed-ebd7441a9cb2",
+                        "zone_ids": [],
+                        "position": [
+                            5.0,
+                            4.0
+                        ],
+                        "mount_height": 3.0,
+                        "active": true,
+                        "mode": "Simulation",
+                        "connection": {
+                            "rtsp_address": "",
+                            "ip_address": "",
+                            "username": "",
+                            "credential_ref": null
+                        },
+                        "health_status": "OK",
+                        "extinguisher_type": "Water"
+                    },
+                    {
+                        "id": "f36c6616-18a4-457e-b4ec-6b3fe0abcc08",
+                        "name": "Fire Extinguisher 4",
+                        "object_type": "FireExtinguisher",
+                        "properties": {},
+                        "created_at": "2026-07-24T14:44:57.858699",
+                        "modified_at": "2026-07-24T14:44:57.858708",
+                        "floor_id": "a1937a63-d47d-40ed-94ed-ebd7441a9cb2",
+                        "zone_ids": [
+                            "934379d5-99a8-41b4-b060-96cb1ef32a04"
+                        ],
+                        "position": [
+                            0.0,
+                            -1.0
+                        ],
+                        "mount_height": 3.0,
+                        "active": true,
+                        "mode": "Simulation",
+                        "connection": {
+                            "rtsp_address": "",
+                            "ip_address": "",
+                            "username": "",
+                            "credential_ref": null
+                        },
+                        "health_status": "OK",
+                        "extinguisher_type": "Water"
+                    },
+                    {
+                        "id": "4e559320-c4a7-4cbb-8a2f-0274f06b5402",
+                        "name": "Fire Extinguisher 5",
+                        "object_type": "FireExtinguisher",
+                        "properties": {},
+                        "created_at": "2026-07-24T14:45:00.576911",
+                        "modified_at": "2026-07-24T14:45:00.576920",
+                        "floor_id": "a1937a63-d47d-40ed-94ed-ebd7441a9cb2",
+                        "zone_ids": [
+                            "e6269e81-4ee7-4852-9c21-0c9b53dc8811"
+                        ],
+                        "position": [
+                            8.0,
+                            -1.0
+                        ],
+                        "mount_height": 3.0,
+                        "active": true,
+                        "mode": "Simulation",
+                        "connection": {
+                            "rtsp_address": "",
+                            "ip_address": "",
+                            "username": "",
+                            "credential_ref": null
+                        },
+                        "health_status": "OK",
+                        "extinguisher_type": "Water"
+                    },
+                    {
+                        "id": "44e8b1e8-dcf4-4165-9898-52e73fe0e41e",
+                        "name": "Fire Extinguisher 6",
+                        "object_type": "FireExtinguisher",
+                        "properties": {},
+                        "created_at": "2026-07-24T14:48:25.813153",
+                        "modified_at": "2026-07-24T14:48:25.813160",
+                        "floor_id": "a1937a63-d47d-40ed-94ed-ebd7441a9cb2",
+                        "zone_ids": [
+                            "934379d5-99a8-41b4-b060-96cb1ef32a04"
+                        ],
+                        "position": [
+                            4.0,
+                            -2.0
+                        ],
+                        "mount_height": 3.0,
+                        "active": true,
+                        "mode": "Simulation",
+                        "connection": {
+                            "rtsp_address": "",
+                            "ip_address": "",
+                            "username": "",
+                            "credential_ref": null
+                        },
+                        "health_status": "OK",
+                        "extinguisher_type": "Water"
+                    },
+                    {
+                        "id": "12ca9fb1-4aa3-455a-8874-43bbd5dfdfbe",
+                        "name": "Fire Extinguisher 7",
+                        "object_type": "FireExtinguisher",
+                        "properties": {},
+                        "created_at": "2026-07-24T14:48:46.407274",
+                        "modified_at": "2026-07-24T14:48:46.407286",
+                        "floor_id": "a1937a63-d47d-40ed-94ed-ebd7441a9cb2",
+                        "zone_ids": [
+                            "934379d5-99a8-41b4-b060-96cb1ef32a04"
+                        ],
+                        "position": [
+                            3.0,
+                            2.0
+                        ],
+                        "mount_height": 3.0,
+                        "active": true,
+                        "mode": "Simulation",
+                        "connection": {
+                            "rtsp_address": "",
+                            "ip_address": "",
+                            "username": "",
+                            "credential_ref": null
+                        },
+                        "health_status": "OK",
+                        "extinguisher_type": "Water"
+                    }
+                ],
+                "fire_hydrants": [
+                    {
+                        "id": "fa13b020-ad2e-41a0-b52d-b2509205e7d2",
+                        "name": "Fire Hydrant 1",
+                        "object_type": "FireHydrant",
+                        "properties": {},
+                        "created_at": "2026-07-24T14:49:02.580355",
+                        "modified_at": "2026-07-24T14:49:02.580369",
+                        "floor_id": "a1937a63-d47d-40ed-94ed-ebd7441a9cb2",
+                        "zone_ids": [
+                            "934379d5-99a8-41b4-b060-96cb1ef32a04"
+                        ],
+                        "position": [
+                            -5.0,
+                            3.0
+                        ],
+                        "mount_height": 3.0,
+                        "active": true,
+                        "mode": "Simulation",
+                        "connection": {
+                            "rtsp_address": "",
+                            "ip_address": "",
+                            "username": "",
+                            "credential_ref": null
+                        },
+                        "health_status": "OK",
+                        "hydrant_type": "Wet Riser Landing Valve"
+                    }
+                ],
+                "hose_reels": [
+                    {
+                        "id": "8ccea5ff-8213-446a-9650-82bdc4b4ac96",
+                        "name": "Hose Reel 1",
+                        "object_type": "HoseReel",
+                        "properties": {},
+                        "created_at": "2026-07-24T14:49:53.817432",
+                        "modified_at": "2026-07-24T14:49:53.817440",
+                        "floor_id": "a1937a63-d47d-40ed-94ed-ebd7441a9cb2",
+                        "zone_ids": [
+                            "e6269e81-4ee7-4852-9c21-0c9b53dc8811"
+                        ],
+                        "position": [
+                            6.0,
+                            1.0
+                        ],
+                        "mount_height": 3.0,
+                        "active": true,
+                        "mode": "Simulation",
+                        "connection": {
+                            "rtsp_address": "",
+                            "ip_address": "",
+                            "username": "",
+                            "credential_ref": null
+                        },
+                        "health_status": "OK"
+                    }
+                ],
+                "fire_water_tanks": [],
+                "fire_pumps": [],
+                "jockey_pumps": [],
+                "fire_service_inlets": [],
+                "assembly_points": [],
+                "obstacles": [
+                    {
+                        "id": "96a5485e-fd78-4b8e-8c0c-7c499389c1c2",
+                        "name": "Obstacle 1",
+                        "object_type": "Obstacle",
+                        "properties": {},
+                        "created_at": "2026-07-12T00:17:32.885860",
+                        "modified_at": "2026-07-12T00:17:32.885868",
+                        "x": -1.0,
+                        "y": 0.0,
+                        "length": 3.0,
+                        "width": 3.0,
+                        "floor_id": "a1937a63-d47d-40ed-94ed-ebd7441a9cb2",
+                        "obstacle_type": "Barrier",
+                        "traversability": "Blocked",
+                        "traversal_cost": 1.0,
+                        "active": true
+                    }
+                ],
+                "doors": [
+                    {
+                        "id": "67a6455c-0005-413f-ac32-45b1c6364549",
+                        "name": "Door 1",
+                        "object_type": "Door",
+                        "properties": {},
+                        "created_at": "2026-07-12T00:17:05.767929",
+                        "modified_at": "2026-07-12T00:17:05.767945",
+                        "start_point": [
+                            2.0,
+                            -3.0
+                        ],
+                        "end_point": [
+                            4.0,
+                            -3.0
+                        ],
+                        "floor_id": "a1937a63-d47d-40ed-94ed-ebd7441a9cb2",
+                        "width": 0.9,
+                        "door_type": "Standard",
+                        "normally_open": false,
+                        "locked": false,
+                        "active": true,
+                        "zone_a_id": "f6141e17-3f45-41a0-972c-eea9d2b15fcd",
+                        "zone_b_id": "934379d5-99a8-41b4-b060-96cb1ef32a04"
+                    },
+                    {
+                        "id": "baa63d46-2c4f-4985-aef6-81e1e6feaa4e",
+                        "name": "Door 3",
+                        "object_type": "Door",
+                        "properties": {},
+                        "created_at": "2026-07-12T00:17:14.006541",
+                        "modified_at": "2026-07-12T00:17:14.006555",
+                        "start_point": [
+                            -3.0,
+                            -3.0
+                        ],
+                        "end_point": [
+                            -1.0,
+                            -3.0
+                        ],
+                        "floor_id": "a1937a63-d47d-40ed-94ed-ebd7441a9cb2",
+                        "width": 0.9,
+                        "door_type": "Standard",
+                        "normally_open": false,
+                        "locked": false,
+                        "active": true,
+                        "zone_a_id": "9774e980-ef0d-40b0-b9e8-35483f44e979",
+                        "zone_b_id": "934379d5-99a8-41b4-b060-96cb1ef32a04"
+                    },
+                    {
+                        "id": "aa4d75a1-edde-4403-a3bc-3edc0adc5500",
+                        "name": "Door 3",
+                        "object_type": "Door",
+                        "properties": {},
+                        "created_at": "2026-07-13T17:18:03.016502",
+                        "modified_at": "2026-07-13T17:18:03.016515",
+                        "start_point": [
+                            5.0,
+                            0.0
+                        ],
+                        "end_point": [
+                            5.0,
+                            2.0
+                        ],
+                        "floor_id": "a1937a63-d47d-40ed-94ed-ebd7441a9cb2",
+                        "width": 0.9,
+                        "door_type": "Standard",
+                        "normally_open": false,
+                        "locked": false,
+                        "active": true,
+                        "zone_a_id": "934379d5-99a8-41b4-b060-96cb1ef32a04",
+                        "zone_b_id": "e6269e81-4ee7-4852-9c21-0c9b53dc8811"
+                    },
+                    {
+                        "id": "6eb55a4b-804a-4a25-89db-9eda5bdd561c",
+                        "name": "Door 4",
+                        "object_type": "Door",
+                        "properties": {},
+                        "created_at": "2026-07-13T17:30:24.745920",
+                        "modified_at": "2026-07-13T17:30:24.745929",
+                        "start_point": [
+                            -5.0,
+                            -3.0
+                        ],
+                        "end_point": [
+                            -4.0,
+                            -3.0
+                        ],
+                        "floor_id": "a1937a63-d47d-40ed-94ed-ebd7441a9cb2",
+                        "width": 0.9,
+                        "door_type": "Standard",
+                        "normally_open": false,
+                        "locked": false,
+                        "active": true,
+                        "zone_a_id": "0b64d076-fff1-4fa1-8e76-b6e3a707db9f",
+                        "zone_b_id": "934379d5-99a8-41b4-b060-96cb1ef32a04"
+                    }
+                ]
+            },
+            {
+                "id": "901b1ce0-2f4c-4fbf-bbdc-19d4f943f454",
+                "name": "Floor 1",
+                "display_order": 1,
+                "height": 3.0,
+                "floor_plan": "",
+                "visible": true,
+                "locked": false,
+                "zones": [
+                    {
+                        "id": "b21b4d81-acc6-484d-9b27-e4ed8e20c78f",
+                        "name": "Zone 6",
+                        "object_type": "Zone",
+                        "properties": {},
+                        "created_at": "2026-07-12T00:16:22.394592",
+                        "modified_at": "2026-07-12T00:16:22.394601",
+                        "x": -3.0,
+                        "y": -4.0,
+                        "width": 5.0,
+                        "height": 5.0,
+                        "polygon": [],
+                        "floor_id": "",
+                        "zone_type": "Generic",
+                        "max_occupancy": 0
+                    },
+                    {
+                        "id": "120dfe31-f49a-46cf-8c57-4bb6882ec0ee",
+                        "name": "Zone 7",
+                        "object_type": "Zone",
+                        "properties": {},
+                        "created_at": "2026-07-12T00:16:25.399236",
+                        "modified_at": "2026-07-12T00:16:25.399245",
+                        "x": 2.0,
+                        "y": -4.0,
+                        "width": 3.0,
+                        "height": 5.0,
+                        "polygon": [],
+                        "floor_id": "",
+                        "zone_type": "Generic",
+                        "max_occupancy": 0
+                    },
+                    {
+                        "id": "82bad597-8e9d-4125-8025-f1ae15394984",
+                        "name": "Zone 8",
+                        "object_type": "Zone",
+                        "properties": {},
+                        "created_at": "2026-07-12T00:16:29.340164",
+                        "modified_at": "2026-07-12T00:16:29.340172",
+                        "x": -3.0,
+                        "y": 1.0,
+                        "width": 8.0,
+                        "height": 2.0,
+                        "polygon": [],
+                        "floor_id": "",
+                        "zone_type": "Generic",
+                        "max_occupancy": 0
+                    }
+                ],
+                "exits": [],
+                "stairs": [
+                    {
+                        "id": "12aa4621-50ba-4a38-ae2c-41e6b6fa4ac0",
+                        "name": "Stair 1",
+                        "object_type": "Staircase",
+                        "properties": {},
+                        "created_at": "2026-07-13T17:32:14.675732",
+                        "modified_at": "2026-07-13T17:32:14.675741",
+                        "from_position": [
+                            -1.0,
+                            -1.0
+                        ],
+                        "to_position": [
+                            -3.0,
+                            -1.0
+                        ],
+                        "from_floor_id": "901b1ce0-2f4c-4fbf-bbdc-19d4f943f454",
+                        "to_floor_id": "a1937a63-d47d-40ed-94ed-ebd7441a9cb2",
+                        "from_zone_id": "b21b4d81-acc6-484d-9b27-e4ed8e20c78f",
+                        "to_zone_id": "934379d5-99a8-41b4-b060-96cb1ef32a04",
+                        "width": 1.5
+                    }
+                ],
+                "elevators": [],
+                "cameras": [],
+                "detectors": [],
+                "smoke_detectors": [],
+                "heat_detectors": [],
+                "speakers": [],
+                "signs": [],
+                "manual_call_points": [],
+                "emergency_lights": [],
+                "sprinklers": [],
+                "fire_extinguishers": [],
+                "fire_hydrants": [],
+                "hose_reels": [],
+                "fire_water_tanks": [],
+                "fire_pumps": [],
+                "jockey_pumps": [],
+                "fire_service_inlets": [],
+                "assembly_points": [],
+                "obstacles": [
+                    {
+                        "id": "5192e901-a5c2-4618-8534-9f247c5273c7",
+                        "name": "Obstacle 1",
+                        "object_type": "Obstacle",
+                        "properties": {},
+                        "created_at": "2026-07-12T03:22:28.826808",
+                        "modified_at": "2026-07-12T03:22:28.826823",
+                        "x": -2.0,
+                        "y": -4.0,
+                        "length": 3.0,
+                        "width": 2.0,
+                        "floor_id": "901b1ce0-2f4c-4fbf-bbdc-19d4f943f454",
+                        "obstacle_type": "Barrier",
+                        "traversability": "Blocked",
+                        "traversal_cost": 1.0,
+                        "active": true
+                    }
+                ],
+                "doors": [
+                    {
+                        "id": "02f6d268-56fd-4f9f-8563-46f8920fd2f0",
+                        "name": "Door 1",
+                        "object_type": "Door",
+                        "properties": {},
+                        "created_at": "2026-07-12T03:22:54.554559",
+                        "modified_at": "2026-07-12T03:22:54.554574",
+                        "start_point": [
+                            2.0,
+                            -3.0
+                        ],
+                        "end_point": [
+                            2.0,
+                            -1.0
+                        ],
+                        "floor_id": "901b1ce0-2f4c-4fbf-bbdc-19d4f943f454",
+                        "width": 0.9,
+                        "door_type": "Standard",
+                        "normally_open": false,
+                        "locked": false,
+                        "active": true,
+                        "zone_a_id": "b21b4d81-acc6-484d-9b27-e4ed8e20c78f",
+                        "zone_b_id": "120dfe31-f49a-46cf-8c57-4bb6882ec0ee"
+                    },
+                    {
+                        "id": "307787d2-2c95-4994-a479-9553bae95152",
+                        "name": "Door 2",
+                        "object_type": "Door",
+                        "properties": {},
+                        "created_at": "2026-07-13T17:13:47.777005",
+                        "modified_at": "2026-07-13T17:13:47.777012",
+                        "start_point": [
+                            3.0,
+                            1.0
+                        ],
+                        "end_point": [
+                            4.0,
+                            1.0
+                        ],
+                        "floor_id": "901b1ce0-2f4c-4fbf-bbdc-19d4f943f454",
+                        "width": 0.9,
+                        "door_type": "Standard",
+                        "normally_open": false,
+                        "locked": false,
+                        "active": true,
+                        "zone_a_id": "120dfe31-f49a-46cf-8c57-4bb6882ec0ee",
+                        "zone_b_id": "82bad597-8e9d-4125-8025-f1ae15394984"
+                    }
+                ]
+            }
+        ],
+        "fire_water_systems": []
+    }
+}

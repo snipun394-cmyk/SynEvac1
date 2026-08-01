@@ -33,6 +33,10 @@ from evacuation_guidance.models import EvacuationGuidanceSnapshot
 
 from dynamic_signage.models import DynamicSignageSnapshot
 
+from live_occupants.models import LiveOccupantsSnapshot
+
+from recommendation_layer.models import RecommendationSet
+
 from live_system.live_ai_gateway import LiveAIPredictionSnapshot
 
 
@@ -171,6 +175,20 @@ class LiveBuildingSnapshot:
     # live_dynamic_evacuation_signage.md).
     dynamic_signage: Optional[DynamicSignageSnapshot] = None
 
+    # Expose Real Live Camera Occupant State In SynEvac UI milestone --
+    # the canonical live_system.live_occupants_gateway output, mirroring
+    # dynamic_signage/evacuation_guidance above exactly. None until a
+    # live_occupants_gateway is configured and has produced at least one
+    # snapshot -- never a fabricated empty-but-present snapshot.
+    live_occupants: Optional[LiveOccupantsSnapshot] = None
+
+    # The Recommendation Layer milestone -- the canonical, unified
+    # six-category recommendation output, mirroring dynamic_signage/
+    # evacuation_guidance above exactly. None until a recommendation_
+    # layer_gateway is configured and has produced at least one
+    # RecommendationSet.
+    recommendation_set: Optional[RecommendationSet] = None
+
     # component -> the timestamp its own field was last actually
     # updated -- distinct from `timestamp` (this snapshot's own
     # as-of time) because a cycle in which, say, AI Inference is not
@@ -282,6 +300,8 @@ class LiveBuildingSnapshot:
             "evacuation_recommendation": self.evacuation_recommendation,
             "evacuation_guidance": self.evacuation_guidance,
             "dynamic_signage": self.dynamic_signage,
+            "live_occupants": self.live_occupants,
+            "recommendation_set": self.recommendation_set,
             "component_timestamps": self.component_timestamps,
         }
         current.update(changes)
@@ -522,6 +542,24 @@ class StateManager:
 
     # =====================================================
 
+    def latest_live_occupants(self) -> Optional[LiveOccupantsSnapshot]:
+
+        return self._snapshot.live_occupants
+
+    # =====================================================
+
+    def update_live_occupants(
+        self, live_occupants: LiveOccupantsSnapshot, time: float,
+    ) -> LiveBuildingSnapshot:
+
+        return self._replace(
+            timestamp=time,
+            live_occupants=live_occupants,
+            component_timestamps=self._stamp("live_occupants", time),
+        )
+
+    # =====================================================
+
     def latest_evacuation_recommendation(self) -> Optional[EvacuationRecommendationSnapshot]:
 
         return self._snapshot.evacuation_recommendation
@@ -572,6 +610,24 @@ class StateManager:
             timestamp=time,
             dynamic_signage=dynamic_signage,
             component_timestamps=self._stamp("dynamic_signage", time),
+        )
+
+    # =====================================================
+
+    def latest_recommendation_set(self) -> Optional[RecommendationSet]:
+
+        return self._snapshot.recommendation_set
+
+    # =====================================================
+
+    def update_recommendation_set(
+        self, recommendation_set: RecommendationSet, time: float,
+    ) -> LiveBuildingSnapshot:
+
+        return self._replace(
+            timestamp=time,
+            recommendation_set=recommendation_set,
+            component_timestamps=self._stamp("recommendation_set", time),
         )
 
     # =====================================================

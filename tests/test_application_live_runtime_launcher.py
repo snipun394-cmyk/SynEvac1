@@ -1,3 +1,4 @@
+import pathlib
 import sys
 import unittest
 
@@ -14,6 +15,12 @@ from voice_evacuation.models import BroadcastStatus
 from dynamic_signage.models import SignageInstruction, SignageStatus
 
 from models.project import Project
+from models.building import Building
+from models.floor import Floor
+from models.camera import Camera
+from models.engineering_asset import ConnectionInfo, DeviceMode
+
+from camera_manager.connection_status import CameraConnectionState
 
 from designer.windows.main_window import MainWindow
 from designer.widgets.live_runtime_panel import LiveRuntimePanel
@@ -123,11 +130,15 @@ class LiveRuntimeSessionLifecycleTests(unittest.TestCase):
 
     def test_zero_network_zero_hardware_by_default(self):
 
-        # Neither mode's session ever supplies frame_sources/
-        # human_detector/identity_resolver (no RTSP-from-Camera-asset
-        # builder exists yet -- explicitly out of scope this milestone),
-        # so no camera pipeline exists to open a network connection at
-        # all, in either mode.
+        # Neither mode ever supplies human_detector/identity_resolver,
+        # so no camera_pipeline is ever built (out of scope for the CP
+        # PLUS NVR -> SynEvac1 Live Runtime Integration milestone -- see
+        # rtsp_camera_sources.py). frame_sources itself is now built for
+        # LIVE mode (build_rtsp_frame_sources()), but make_demo_building()'s
+        # cameras are never configured for Live mode/rtsp_address, so it
+        # still resolves to {} here -- this test proves the "no
+        # configured RTSP cameras" case stays exactly as honest as
+        # before, not that the wiring is absent.
 
         for mode in (ApplicationMode.LIVE, ApplicationMode.OFFLINE_DEMO):
 
@@ -140,6 +151,265 @@ class LiveRuntimeSessionLifecycleTests(unittest.TestCase):
             session.start()
             self.assertEqual(session.runtime.frame_sources, {})
             session.stop()
+
+
+class _FakeCredentialStore:
+
+    # Same tiny in-memory stand-in as tests/test_rtsp_camera_sources.py
+    # -- no real NVR, no real credentials, no disk I/O anywhere in this
+    # test class.
+
+    def __init__(self, passwords=None):
+        self._passwords = dict(passwords or {})
+
+    def get_credential(self, reference_id):
+        return self._passwords.get(reference_id)
+
+    def save_credential(self, reference_id, password):
+        self._passwords[reference_id] = password
+
+    def delete_credential(self, reference_id):
+        self._passwords.pop(reference_id, None)
+
+    def has_credential(self, reference_id):
+        return reference_id in self._passwords
+
+
+class LiveRuntimeSessionRTSPCameraWiringTests(unittest.TestCase):
+
+    # CP PLUS NVR -> SynEvac1 Live Runtime Integration milestone -- the
+    # NEW composition seam this milestone adds: LiveRuntimeSession.
+    # construct() itself (not build_rtsp_frame_sources() called
+    # directly) turns a Designer-configured Live-mode Camera Asset into
+    # a real RTSPFrameSource inside runtime.frame_sources. No RTSPFrame
+    # Source is ever start()-ed here -- proving the wiring reaches the
+    # right object is enough; actually opening a connection is exactly
+    # what scripts/test_camera_connection.py and the physical CCTV
+    # validation runner are for.
+
+    def _building_with_live_camera(self, credential_ref="CAM-1"):
+
+        camera = Camera(
+            id="CAM-1", name="Camera 1", floor_id="floor-1",
+            mode=DeviceMode.LIVE,
+            connection=ConnectionInfo(
+                rtsp_address="rtsp://192.168.1.248:554/cam/realmonitor?channel=1&subtype=0",
+                username="synevac_svc",
+                credential_ref=credential_ref,
+            ),
+        )
+        floor = Floor(id="floor-1", name="Ground Floor", cameras=[camera])
+        return Building(id="b1", name="Test Building", floors=[floor])
+
+    def test_live_mode_wires_a_configured_camera_into_frame_sources(self):
+
+        building = self._building_with_live_camera()
+
+        session = LiveRuntimeSession(ApplicationMode.LIVE, credential_store=_FakeCredentialStore())
+        session.construct(building)
+
+        self.assertEqual(session.state, RuntimeLifecycleState.STOPPED)
+        self.assertIsNone(session.last_error)
+        self.assertIn("CAM-1", session.runtime.frame_sources)
+        self.assertEqual(session.runtime.frame_sources["CAM-1"].endpoint, building.ordered_floors()[0].cameras[0].connection.rtsp_address)
+
+    def test_offline_demo_mode_never_wires_a_real_camera_even_if_configured(self):
+
+        # OFFLINE_DEMO stays exactly as before this milestone -- only
+        # LIVE mode ever builds real RTSPFrameSource instances.
+
+        building = self._building_with_live_camera()
+
+        session = LiveRuntimeSession(ApplicationMode.OFFLINE_DEMO, credential_store=_FakeCredentialStore())
+        session.construct(building)
+
+        self.assertEqual(session.runtime.frame_sources, {})
+
+    def test_camera_pipeline_stays_none_without_a_human_detector(self):
+
+        # This milestone wires frame_sources only -- human_detector/
+        # identity_resolver remain out of scope (build_live_runtime()'s
+        # own existing gate), so camera_pipeline is correctly still None
+        # even though a real frame source now exists.
+
+        building = self._building_with_live_camera()
+
+        session = LiveRuntimeSession(ApplicationMode.LIVE, credential_store=_FakeCredentialStore())
+        session.construct(building)
+
+        self.assertIsNone(session.runtime.camera_pipeline)
+
+    def test_camera_manager_status_starts_configured_for_a_wired_live_camera(self):
+
+        building = self._building_with_live_camera()
+
+        session = LiveRuntimeSession(ApplicationMode.LIVE, credential_store=_FakeCredentialStore())
+        session.construct(building)
+
+        self.assertEqual(
+            session.runtime.camera_manager.connection_status("CAM-1"), CameraConnectionState.CONFIGURED,
+        )
+
+    def test_default_credential_store_is_a_local_file_store_when_none_supplied(self):
+
+        from credential_store.local_file_store import LocalFileCredentialStore
+
+        session = LiveRuntimeSession(ApplicationMode.LIVE)
+
+        self.assertIsInstance(session.credential_store, LocalFileCredentialStore)
+
+    def test_simulation_mode_camera_is_never_wired_even_with_an_rtsp_address(self):
+
+        camera = Camera(
+            id="CAM-1", name="Camera 1", floor_id="floor-1",
+            mode=DeviceMode.SIMULATION,  # never switched to Live mode
+            connection=ConnectionInfo(
+                rtsp_address="rtsp://192.168.1.248:554/cam/realmonitor?channel=1&subtype=0",
+                credential_ref="CAM-1",
+            ),
+        )
+        floor = Floor(id="floor-1", name="Ground Floor", cameras=[camera])
+        building = Building(id="b1", name="Test Building", floors=[floor])
+
+        session = LiveRuntimeSession(ApplicationMode.LIVE, credential_store=_FakeCredentialStore())
+        session.construct(building)
+
+        self.assertEqual(session.runtime.frame_sources, {})
+
+
+class LiveRuntimeSessionHumanDetectionWiringTests(unittest.TestCase):
+
+    # Camera 1 Live Human-Detection Integration milestone -- proves
+    # LiveRuntimeSession.construct() itself closes the SECOND
+    # composition gap (frame_sources alone never builds a
+    # camera_pipeline -- build_live_runtime()'s own gate also needs
+    # human_detector AND identity_resolver). Uses the REAL local
+    # weights/yolov8n.pt file already in this repo for construction
+    # only (UltralyticsYOLOBackend never loads the actual model until
+    # infer() is called) -- no real NVR/RTSP/credentials/network/GPU
+    # anywhere in this test class.
+
+    _REAL_WEIGHTS_PATH = pathlib.Path(__file__).resolve().parent.parent / "weights" / "yolov8n.pt"
+
+    def _building_with_live_camera(self):
+
+        camera = Camera(
+            id="CAM-1", name="Camera 1", floor_id="floor-1",
+            mode=DeviceMode.LIVE,
+            connection=ConnectionInfo(
+                rtsp_address="rtsp://192.168.1.248:554/cam/realmonitor?channel=1&subtype=0",
+                username="synevac_svc",
+                credential_ref="CAM-1",
+            ),
+        )
+        floor = Floor(id="floor-1", name="Ground Floor", cameras=[camera])
+        return Building(id="b1", name="Test Building", floors=[floor])
+
+    def test_no_weights_path_leaves_camera_pipeline_none_as_before(self):
+
+        # Default behavior (no weights path supplied) is UNCHANGED by
+        # this milestone -- exactly the prior phase's own established
+        # "frame_sources only" result.
+
+        building = self._building_with_live_camera()
+
+        session = LiveRuntimeSession(ApplicationMode.LIVE, credential_store=_FakeCredentialStore())
+        session.construct(building)
+
+        self.assertEqual(session.state, RuntimeLifecycleState.STOPPED)
+        self.assertIsNone(session.runtime.camera_pipeline)
+        self.assertIn("CAM-1", session.runtime.frame_sources)
+
+    def test_weights_path_with_a_configured_live_camera_constructs_the_real_pipeline(self):
+
+        from live_camera_pipeline.pipeline import LiveCameraPipeline
+        from human_detection.yolo_human_detector import YOLOHumanDetector
+        from live_camera_pipeline.identity_resolver import SimulationIdentityResolver
+        from tracking.simple_tracker import SimpleSingleCameraTracker
+
+        building = self._building_with_live_camera()
+
+        session = LiveRuntimeSession(
+            ApplicationMode.LIVE, credential_store=_FakeCredentialStore(),
+            human_detector_weights_path=self._REAL_WEIGHTS_PATH,
+        )
+        session.construct(building)
+
+        self.assertEqual(session.state, RuntimeLifecycleState.STOPPED)
+        self.assertIsNone(session.last_error)
+
+        pipeline = session.runtime.camera_pipeline
+        self.assertIsInstance(pipeline, LiveCameraPipeline)
+        self.assertIsInstance(pipeline.human_detector, YOLOHumanDetector)
+        self.assertIsInstance(pipeline.identity_resolver, SimulationIdentityResolver)
+
+        # Camera 1 Live Detection -> Tracking/Building-State Integration
+        # milestone -- the existing SimpleSingleCameraTracker is now
+        # always paired with a real human_detector, closing the gap
+        # that previously left live_occupants.manager.LiveOccupantManager.
+        # update() structurally unreachable (pipeline.py's own
+        # `pending_occupant_updates` stays all-None without a tracker).
+        self.assertIsInstance(pipeline.tracker, SimpleSingleCameraTracker)
+
+        # The composition path this milestone establishes: the SAME
+        # RTSPFrameSource from the prior phase is what camera_pipeline
+        # itself was built with -- never a second, duplicate source.
+        self.assertIs(pipeline.frame_sources["CAM-1"], session.runtime.frame_sources["CAM-1"])
+
+        # Live Camera Viewer milestone -- the latest_frame() cache is
+        # reachable through the exact same runtime.camera_pipeline
+        # reference a Designer panel would read, with no camera
+        # started/no cycle run yet (no real network in this test).
+        self.assertIsNone(session.runtime.camera_pipeline.latest_frame("CAM-1"))
+
+    def test_weights_path_with_no_configured_camera_still_leaves_pipeline_none(self):
+
+        # No Live-mode camera at all -- frame_sources resolves to {},
+        # so the human-detector branch must never even attempt
+        # construction. Proven strongly with a DELIBERATELY BAD weights
+        # path: if the guard were missing, ModelWeightsNotFoundError
+        # would surface as an honest FAILED state instead of a clean
+        # STOPPED one.
+
+        floor = Floor(id="floor-1", name="Ground Floor", cameras=[])
+        building = Building(id="b1", name="Test Building", floors=[floor])
+
+        session = LiveRuntimeSession(
+            ApplicationMode.LIVE, credential_store=_FakeCredentialStore(),
+            human_detector_weights_path="/no/such/weights.pt",
+        )
+        session.construct(building)
+
+        self.assertEqual(session.state, RuntimeLifecycleState.STOPPED)
+        self.assertIsNone(session.last_error)
+        self.assertIsNone(session.runtime.camera_pipeline)
+
+    def test_offline_demo_mode_ignores_weights_path_entirely(self):
+
+        building = self._building_with_live_camera()
+
+        session = LiveRuntimeSession(
+            ApplicationMode.OFFLINE_DEMO, credential_store=_FakeCredentialStore(),
+            human_detector_weights_path=self._REAL_WEIGHTS_PATH,
+        )
+        session.construct(building)
+
+        self.assertEqual(session.runtime.frame_sources, {})
+        self.assertIsNone(session.runtime.camera_pipeline)
+
+    def test_a_bad_weights_path_with_a_configured_camera_fails_honestly_not_a_crash(self):
+
+        building = self._building_with_live_camera()
+
+        session = LiveRuntimeSession(
+            ApplicationMode.LIVE, credential_store=_FakeCredentialStore(),
+            human_detector_weights_path="/no/such/weights.pt",
+        )
+        session.construct(building)  # must not raise
+
+        self.assertEqual(session.state, RuntimeLifecycleState.FAILED)
+        self.assertIsNotNone(session.last_error)
+        self.assertIsNone(session.runtime)
 
 
 class LiveRuntimeSessionCapabilityHonestyTests(unittest.TestCase):
@@ -352,6 +622,50 @@ class PanelAndControllerWiringTests(unittest.TestCase):
             self.controller.session.runtime.orchestrator.state_manager,
         )
 
+    def test_starting_the_session_starts_the_live_cycle_tick_timer(self):
+
+        # Expose Real Live Camera Occupant State In SynEvac UI milestone
+        # -- Phase 1's own investigation found run_cycle() was never
+        # actually driven anywhere in the real application (only tests/
+        # scripts called it manually). This proves the fix: starting a
+        # session now starts a QTimer that will drive run_cycle().
+
+        self.assertFalse(self.controller._tick_timer.isActive())
+
+        self.panel.start_button.click()
+
+        self.assertTrue(self.controller._tick_timer.isActive())
+
+    def test_stopping_the_session_stops_the_tick_timer(self):
+
+        self.panel.start_button.click()
+        self.assertTrue(self.controller._tick_timer.isActive())
+
+        self.panel.stop_button.click()
+
+        self.assertFalse(self.controller._tick_timer.isActive())
+
+    def test_tick_timer_firing_actually_drives_run_cycle(self):
+
+        self.panel.start_button.click()
+        session = self.controller.session
+
+        calls = []
+        original_run_cycle = session.runtime.run_cycle
+        session.runtime.run_cycle = lambda t: calls.append(t) or original_run_cycle(t)
+
+        self.controller._on_tick()
+
+        self.assertEqual(len(calls), 1)
+
+        self.panel.stop_button.click()
+
+    def test_tick_does_nothing_before_any_session_is_constructed(self):
+
+        # Must never raise -- the timer technically exists (constructed
+        # in __init__) even before Start is ever clicked.
+        self.controller._on_tick()
+
     def test_stop_and_reset_tears_down_session_and_command_center(self):
 
         self.panel.start_button.click()
@@ -401,6 +715,14 @@ class ApplicationLevelOfflineFullChainE2ETests(unittest.TestCase):
         self.assertIsNotNone(snapshot.evacuation_progress)
         self.assertIsNotNone(snapshot.trajectory_intelligence)
         self.assertIsNotNone(snapshot.emergency_response)
+
+        # Expose Real Live Camera Occupant State In SynEvac UI milestone
+        # -- live_occupants_gateway is now ALWAYS configured by
+        # build_live_runtime() (no camera/YOLO required), so OFFLINE_DEMO
+        # correctly gets an honest, empty (never None) snapshot here too.
+        self.assertIsNotNone(snapshot.live_occupants)
+        self.assertEqual(snapshot.live_occupants.occupants, ())
+        self.assertEqual(snapshot.live_occupants.current_occupant_count, 0)
 
         panel.open_command_center_button.click()
         command_center_window = session._command_center_window

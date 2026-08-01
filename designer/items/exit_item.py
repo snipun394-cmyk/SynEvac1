@@ -27,6 +27,9 @@ class ExitItem(QGraphicsLineItem):
 
         self.setPos(x1, y1)
 
+        self._selected = False
+        self._highlighted = False
+
         self.default_pen = QPen(
             QColor(0, 255, 0),
             6,
@@ -37,7 +40,11 @@ class ExitItem(QGraphicsLineItem):
             6,
         )
 
-        self.setPen(self.default_pen)
+        # Recommendation Layer milestone -- amber, same convention
+        # Door/Stair/ZoneRectangle already use for highlighting.
+        self.highlight_pen = QPen(QColor(255, 165, 0), 6)
+
+        self._update_appearance()
 
         self.setFlag(
             QGraphicsItem.GraphicsItemFlag.ItemIsSelectable,
@@ -144,7 +151,32 @@ class ExitItem(QGraphicsLineItem):
 
     def set_selected(self, selected):
 
-        if selected:
+        self._selected = selected
+
+        self._update_appearance()
+
+    # =====================================================
+
+    def set_highlighted(self, highlighted):
+
+        self._highlighted = highlighted
+
+        self._update_appearance()
+
+    # =====================================================
+
+    def _update_appearance(self):
+
+        if self._selected:
+
             self.setPen(self.selected_pen)
-        else:
-            self.setPen(self.default_pen)
+
+            return
+
+        if self._highlighted:
+
+            self.setPen(self.highlight_pen)
+
+            return
+
+        self.setPen(self.default_pen)

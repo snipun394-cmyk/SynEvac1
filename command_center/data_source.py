@@ -130,6 +130,21 @@ class CommandCenterSnapshot:
     # Guidance, never a stored per-frame replay artifact).
     dynamic_signage: Optional[Any] = None
 
+    # Expose Real Live Camera Occupant State In SynEvac UI milestone --
+    # live_occupants.models.LiveOccupantsSnapshot, mirroring dynamic_
+    # signage's own convention exactly. Always None in Replay mode --
+    # IncidentData/IncidentFrame have no live-occupant-lifecycle
+    # equivalent (Replay's own per-frame human_observations stays the
+    # existing, unduplicated source for that mode).
+    live_occupants: Optional[Any] = None
+
+    # The Recommendation Layer milestone -- recommendation_layer.models.
+    # RecommendationSet, mirroring dynamic_signage's own convention
+    # exactly. Always None in Replay mode -- the Recommendation Layer
+    # has no Replay/IncidentData equivalent (it is recomputed fresh
+    # every live cycle, never a stored per-frame replay artifact).
+    recommendation_set: Optional[Any] = None
+
     # Phase 14 -- per-component as-of timestamps, honestly reported.
     # None means that component has never been populated at all (not
     # "populated at time 0.0"). Always None/CURRENT in Replay mode,
@@ -144,6 +159,7 @@ class CommandCenterSnapshot:
     evacuation_recommendation_timestamp: Optional[float] = None
     evacuation_guidance_timestamp: Optional[float] = None
     dynamic_signage_timestamp: Optional[float] = None
+    recommendation_set_timestamp: Optional[float] = None
     consistency: SnapshotConsistency = SnapshotConsistency.CURRENT
 
     # Phase 15 -- a bounded, most-recent-last list of human-readable

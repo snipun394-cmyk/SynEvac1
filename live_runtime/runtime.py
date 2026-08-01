@@ -59,6 +59,9 @@ class LiveRuntime:
         emergency_response_engine=None,
         evacuation_recommendation_engine=None,
         evacuation_guidance_engine=None,
+        recommendation_layer=None,
+        warden_notification_controller=None,
+        execution_layer=None,
         dynamic_signage_planner=None,
     ):
 
@@ -177,6 +180,24 @@ class LiveRuntime:
         # on this class.
         self.evacuation_guidance_engine = evacuation_guidance_engine
 
+        # The Recommendation Layer milestone -- exactly ONE
+        # RecommendationLayer for this live session, same untyped-
+        # attribute discipline as every other collaborator on this
+        # class.
+        self.recommendation_layer = recommendation_layer
+
+        # The Execution Layer V1 milestone -- exactly ONE
+        # WardenNotificationController (the one genuinely new execution
+        # controller this milestone adds, same NO_PROVIDER-under-LIVE
+        # discipline as voice_evacuation_controller/building_control_
+        # controller above) and exactly ONE ExecutionLayer (an
+        # orchestration/coordinating layer over all four controllers,
+        # never a replacement execution authority -- see execution_
+        # layer/layer.py's own docstring), same untyped-attribute
+        # discipline as every other collaborator on this class.
+        self.warden_notification_controller = warden_notification_controller
+        self.execution_layer = execution_layer
+
         # Live Dynamic Evacuation Signage milestone -- exactly ONE
         # DynamicSignagePlanner for this live session, same untyped-
         # attribute discipline as every other collaborator on this class.
@@ -294,3 +315,24 @@ class LiveRuntime:
         # own here.
 
         return self.orchestrator.run_cycle(time)
+
+    # =====================================================
+
+    def tick_execution_layer(self, time: float):
+
+        # The Execution Layer V1 milestone -- deliberately a SEPARATE
+        # method from run_cycle() above, never folded into it.
+        # LiveOrchestrator is mechanically forbidden from importing
+        # voice_evacuation/building_control.controller/dynamic_signage.
+        # controller (tests/test_live_runtime_architecture_guards.py::
+        # LiveOrchestratorCannotDirectlyCallControllersTests) -- those
+        # controllers live here, on LiveRuntime, one layer above the
+        # orchestrator, so ExecutionLayer (which reads them) cannot be
+        # ticked from inside run_cycle() without violating that guard.
+        # Returns None (never raises) if no execution_layer was
+        # constructed for this session.
+
+        if self.execution_layer is None:
+            return None
+
+        return self.execution_layer.compute(time)

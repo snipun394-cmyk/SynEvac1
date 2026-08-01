@@ -12,6 +12,13 @@ from perception.models.human_observation import BehaviorEvent, HumanClassificati
 from scenario.engineering_state import DeviceAvailability, DoorState, StairAvailability
 from scenario.scenario import Scenario
 
+from simulation_recording.occupant_position import (
+    BuildingPositionIndex,
+    OccupantPosition,
+    interpolate_occupant_position,
+)
+from simulation_recording.occupant_routes import OccupantRouteRecord
+
 from decision_policy import announcement_policy, exit_policy, stair_policy, zone_policy
 from decision_policy.policy import DecisionPolicy
 
@@ -139,6 +146,14 @@ class IncidentFrame:
     # _frame_from_row()/_baseline_frame()) was never given.
     human_decisions: Mapping[str, Dict[str, Any]] = field(default_factory=dict)
 
+    # Simulation Replay Studio V1 -- additive. Keyed by the same
+    # occupant/firefighter_id human_observations already uses. Empty
+    # whenever no OccupantRouteRecord artifact was ever loaded for this
+    # incident (every pre-existing IncidentData construction/load_incident()
+    # call is completely unaffected) -- see IncidentData.__post_init__'s
+    # own occupant_routes handling for exactly when this is populated.
+    occupant_positions: Mapping[str, OccupantPosition] = field(default_factory=dict)
+
     # =====================================================
 
     def __post_init__(self):
@@ -155,6 +170,7 @@ class IncidentFrame:
         object.__setattr__(self, "camera_states", MappingProxyType(dict(self.camera_states)))
         object.__setattr__(self, "human_observations", MappingProxyType(dict(self.human_observations)))
         object.__setattr__(self, "human_decisions", MappingProxyType(dict(self.human_decisions)))
+        object.__setattr__(self, "occupant_positions", MappingProxyType(dict(self.occupant_positions)))
 
 
 # =====================================================
@@ -175,11 +191,23 @@ class IncidentData:
     decision_policy: Any = None
     timeline_rows: Tuple[Dict[str, Any], ...] = field(default_factory=tuple)
 
+    # Simulation Replay Studio V1 -- additive. occupant_routes is
+    # simulation_recording.occupant_routes.OccupantRouteRecord instances
+    # (one per occupant/firefighter this run ever registered), and
+    # decision_events is human_decision_engine.events.DecisionEvent.
+    # to_dict()'s own plain-dict shape -- both empty by default, so every
+    # existing IncidentData construction/load_incident() call that
+    # predates this artifact pair is completely unaffected.
+    occupant_routes: Tuple[OccupantRouteRecord, ...] = field(default_factory=tuple)
+    decision_events: Tuple[Dict[str, Any], ...] = field(default_factory=tuple)
+
     # =====================================================
 
     def __post_init__(self):
 
         object.__setattr__(self, "timeline_rows", tuple(self.timeline_rows))
+        object.__setattr__(self, "occupant_routes", tuple(self.occupant_routes))
+        object.__setattr__(self, "decision_events", tuple(self.decision_events))
 
         if self.timeline_rows:
 
@@ -195,6 +223,16 @@ class IncidentData:
 
         if human_observations:
             frames = tuple(replace(frame, human_observations=human_observations) for frame in frames)
+
+        if self.occupant_routes:
+
+            positions_by_frame = _build_occupant_positions_by_frame(
+                self.building, self.scenario, self.occupant_routes, frames,
+            )
+            frames = tuple(
+                replace(frame, occupant_positions=positions)
+                for frame, positions in zip(frames, positions_by_frame)
+            )
 
         object.__setattr__(self, "_frames", frames)
         object.__setattr__(self, "_frame_times", tuple(frame.time for frame in frames))
@@ -567,6 +605,55 @@ def _observation_for(person_id, zone_id, classification, behavior_record) -> Hum
 
 
 # =====================================================
+# Simulation Replay Studio V1 -- OccupantRouteRecord -> per-frame
+# OccupantPosition. `start_zone_id` (needed for a STATIONARY/UNREACHABLE
+# record, whose own hops are empty -- see OccupantRouteRecord's own
+# docstring) is read from Scenario, never from the artifact itself,
+# since it is the one authored fact a completed run's own movement
+# result never needs to restate.
+# =====================================================
+
+
+def _start_zone_by_occupant_id(scenario: Scenario) -> Dict[str, str]:
+
+    start_zone_by_id: Dict[str, str] = {}
+
+    for occupant in scenario.occupants:
+        start_zone_by_id[occupant.occupant_id] = occupant.zone_id
+
+    for firefighter in scenario.firefighters:
+        start_zone_by_id[firefighter.firefighter_id] = firefighter.entry_zone_id
+
+    return start_zone_by_id
+
+
+def _build_occupant_positions_by_frame(
+    building: Building,
+    scenario: Scenario,
+    occupant_routes: Tuple[OccupantRouteRecord, ...],
+    frames: Tuple["IncidentFrame", ...],
+) -> Tuple[Dict[str, OccupantPosition], ...]:
+
+    position_index = BuildingPositionIndex(building)
+    start_zone_by_id = _start_zone_by_occupant_id(scenario)
+
+    positions_by_frame = []
+
+    for frame in frames:
+
+        positions_by_frame.append(
+            {
+                record.occupant_id: interpolate_occupant_position(
+                    record, start_zone_by_id.get(record.occupant_id), frame.time, position_index,
+                )
+                for record in occupant_routes
+            }
+        )
+
+    return tuple(positions_by_frame)
+
+
+# =====================================================
 # Frame -> DecisionPolicy -> AdvisoryReport. Command Center's own
 # integration layer, not a backend redesign: every function called
 # below (decision_policy.zone_policy.compute_zone_decisions(),
@@ -918,6 +1005,8 @@ def load_incident(
     ground_truth_path: Optional[str] = None,
     decision_policy_path: Optional[str] = None,
     timeline_rows_path: Optional[str] = None,
+    occupant_routes_path: Optional[str] = None,
+    decision_events_path: Optional[str] = None,
 ) -> IncidentData:
 
     import json
@@ -927,6 +1016,9 @@ def load_incident(
 
     from ground_truth.labels import GroundTruth
     from decision_policy import DecisionPolicy
+
+    from simulation_recording.decision_events import load_decision_events
+    from simulation_recording.occupant_routes import load_occupant_routes
 
     project = Serializer.load(project_path)
 
@@ -947,10 +1039,24 @@ def load_incident(
         with open(timeline_rows_path, "r", encoding="utf-8") as handle:
             timeline_rows = tuple(json.load(handle))
 
+    # Simulation Replay Studio V1 -- additive, optional artifacts. Absent
+    # (the default for every caller that predates this pair) means
+    # occupant_positions stays empty on every frame -- see IncidentData.
+    # __post_init__'s own occupant_routes handling.
+    occupant_routes: Tuple[OccupantRouteRecord, ...] = ()
+    if occupant_routes_path:
+        occupant_routes = load_occupant_routes(occupant_routes_path)
+
+    decision_events: Tuple[Dict[str, Any], ...] = ()
+    if decision_events_path:
+        decision_events = load_decision_events(decision_events_path)
+
     return IncidentData(
         building=project.building,
         scenario=scenario,
         ground_truth=ground_truth,
         decision_policy=decision_policy,
         timeline_rows=timeline_rows,
+        occupant_routes=occupant_routes,
+        decision_events=decision_events,
     )

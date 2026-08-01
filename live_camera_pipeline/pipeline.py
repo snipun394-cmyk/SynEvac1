@@ -1,10 +1,10 @@
 import dataclasses
-from typing import Mapping, Optional
+from typing import Dict, Mapping, Optional
 
 from perception.models.human_observation import HumanClassification, HumanState
 
 from live_camera_pipeline.detection_provider import LiveCameraPipelineDetectionProvider
-from live_camera_pipeline.frame_source import CameraFrameSource
+from live_camera_pipeline.frame_source import CameraFrame, CameraFrameSource
 from live_camera_pipeline.human_detector import HumanDetector
 from live_camera_pipeline.identity_resolver import IdentityResolver
 
@@ -227,6 +227,23 @@ class LiveCameraPipeline:
         self.world_projector = world_projector
         self.live_occupant_manager = live_occupant_manager
 
+        # Live Camera Viewer milestone -- the single-slot "last known
+        # good frame" cache described in docs/architecture/
+        # live_camera_view.md. Populated only from THIS class's own
+        # existing read_frame() call below (never a second read of any
+        # kind), so any consumer of latest_frame() is a consumer of
+        # already-decoded frames, not a second decoder. A transient
+        # miss (read_frame() returning None for one cycle) leaves the
+        # previous entry in place rather than clearing it -- this is a
+        # single overwritten slot per camera, never a growing buffer.
+        self._latest_frames: Dict[str, CameraFrame] = {}
+
+    # =====================================================
+
+    def latest_frame(self, camera_id: str) -> Optional[CameraFrame]:
+
+        return self._latest_frames.get(camera_id)
+
     # =====================================================
 
     def run_cycle(self, time: float) -> None:
@@ -240,6 +257,8 @@ class LiveCameraPipeline:
 
             if frame is None:
                 continue
+
+            self._latest_frames[camera_id] = frame
 
             raw = self.human_detector.detect(frame)
 

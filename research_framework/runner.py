@@ -33,6 +33,9 @@ from scenario_validator import compute_candidate_content_hash
 
 from simulation_runtime import SimulationRuntime
 
+from simulation_recording.decision_events import save_decision_events
+from simulation_recording.occupant_routes import build_occupant_route_records, save_occupant_routes
+
 from training_dataset import CampaignDataset, load_campaign
 
 from ai_training.dataset import load_campaign_dataset
@@ -237,6 +240,28 @@ def run_scenario_artifacts(scenario, building, output_directory: str, *, dt: flo
     timeline_dir = os.path.join(output_directory, "timelines", scenario_id)
     os.makedirs(timeline_dir, exist_ok=True)
     export_csv(timeline_rows, os.path.join(timeline_dir, "timeline.csv"))
+
+    # ---- Simulation Recording -- occupant routes + decision events.
+    # Same two artifacts designer/campaign/campaign_worker.py writes,
+    # keeping this producer's own "byte-for-byte the same layout" claim
+    # (this function's own docstring) true. Neither recomputes anything:
+    # occupant routes are extracted straight off this scenario's own
+    # already-completed movement_result, and decision_events is the
+    # exact same tuple already built above.
+
+    occupant_route_records = build_occupant_route_records(movement_result)
+
+    occupant_routes_dir = os.path.join(output_directory, "occupant_routes", scenario_id)
+    os.makedirs(occupant_routes_dir, exist_ok=True)
+    save_occupant_routes(
+        occupant_route_records, os.path.join(occupant_routes_dir, "occupant_routes.json"),
+    )
+
+    decision_events_dir = os.path.join(output_directory, "decision_events", scenario_id)
+    os.makedirs(decision_events_dir, exist_ok=True)
+    save_decision_events(
+        decision_events, os.path.join(decision_events_dir, "decision_events.json"),
+    )
 
     ground_truth = analyze_ground_truth(
         SimulationArtifacts(

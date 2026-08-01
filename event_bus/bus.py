@@ -153,6 +153,13 @@ class EventType(Enum):
     # docs/architecture/shadow_mode_prediction.md.
     SHADOW_PREDICTION_RECORDED = auto()
 
+    # The Recommendation Layer milestone -- published by live_system.
+    # orchestrator.LiveOrchestrator once per cycle a recommendation_
+    # layer_gateway is configured and succeeds. Fires every cycle, not
+    # transition-only, since RecommendationManager itself already owns
+    # the create/update/expire lifecycle for individual recommendations.
+    RECOMMENDATION_SET_UPDATED = auto()
+
 
 @dataclass(frozen=True)
 class Event:

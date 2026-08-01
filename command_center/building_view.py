@@ -1,6 +1,6 @@
 from collections import Counter
 
-from PyQt6.QtCore import Qt, QRectF
+from PyQt6.QtCore import QEvent, QRectF, Qt, pyqtSignal
 from PyQt6.QtGui import QBrush, QColor, QPen
 from PyQt6.QtWidgets import (
     QComboBox,
@@ -27,6 +27,8 @@ from decision_policy.stair_policy import AVOID, CONGESTED, USE
 from decision_policy.zone_policy import EVACUATE_IMMEDIATELY, SHELTER_IN_PLACE, WAIT
 
 from perception.models.human_observation import BehaviorEvent, HumanClassification, HumanState
+
+from simulation_recording.occupant_position import BuildingPositionIndex
 
 
 # =====================================================
@@ -82,6 +84,26 @@ _STAIR_STATUS_COLORS = {
     CONGESTED: _MODERATE_COLOR,
     AVOID: _CRITICAL_COLOR,
 }
+
+# Simulation Replay Studio V1 -- occupant marker coloring by their own
+# live OccupantState name (simulation_recording.occupant_position.
+# OccupantPosition.state, already an OccupantState.name string -- see
+# that module's own _live_state_for reasoning for why this is never
+# the run's whole-run-final state for a still-moving occupant).
+_OCCUPANT_STATE_COLORS = {
+    "PENDING": _NO_DATA_COLOR,
+    "AT_NODE": _MODERATE_COLOR,
+    "QUEUED": _ELEVATED_COLOR,
+    "TRAVERSING": _DEVICE_COLOR,
+    "ARRIVED": _SAFE_COLOR,
+    "UNREACHABLE": _CRITICAL_COLOR,
+    "STATIONARY": _INACTIVE_COLOR,
+}
+
+_OCCUPANT_MARKER_SIZE = 0.35
+_SELECTED_OCCUPANT_MARKER_SIZE = 0.55
+_SELECTED_OCCUPANT_COLOR = QColor(240, 220, 60)
+_ROUTE_HIGHLIGHT_COLOR = QColor(240, 220, 60)
 
 
 def _occupancy_color(count, capacity):
@@ -154,12 +176,22 @@ def _congestion_color(value):
 
 class BuildingView(QWidget):
 
+    # Simulation Replay Studio V1 -- emitted when the operator clicks an
+    # occupant marker directly on the floor plan (see eventFilter()
+    # below); occupant_id is the same id every other occupant-keyed
+    # frame field (IncidentFrame.occupant_positions/human_observations/
+    # human_decisions) already uses. Purely additive: nothing before
+    # this milestone ever connected to this signal, so no existing
+    # behavior changes.
+    occupant_clicked = pyqtSignal(str)
+
     def __init__(self, parent=None):
         super().__init__(parent)
 
         self._scene = QGraphicsScene(self)
         self._view = QGraphicsView(self._scene)
         self._view.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        self._view.viewport().installEventFilter(self)
 
         self.floor_combo = QComboBox()
         self.floor_combo.currentIndexChanged.connect(self._on_floor_combo_changed)
@@ -188,6 +220,11 @@ class BuildingView(QWidget):
         self._decision_policy = None
         self._overlay_mode = OVERLAY_HAZARD
 
+        # Simulation Replay Studio V1 -- additive occupant/route state.
+        self._position_index = None
+        self._occupant_routes_by_id = {}
+        self._selected_occupant_id = None
+
     # =====================================================
     # Public API -- pushed updates only.
     # =====================================================
@@ -196,6 +233,7 @@ class BuildingView(QWidget):
 
         self._building = building
         self._floors = list(building.ordered_floors()) if building is not None else []
+        self._position_index = BuildingPositionIndex(building) if building is not None else None
 
         self.floor_combo.blockSignals(True)
         self.floor_combo.clear()
@@ -253,6 +291,57 @@ class BuildingView(QWidget):
 
         self._frame = frame
         self._redraw()
+
+    # =====================================================
+
+    def set_occupant_routes(self, records):
+
+        # Simulation Replay Studio V1 -- records is an iterable of
+        # simulation_recording.occupant_routes.OccupantRouteRecord (one
+        # per occupant/firefighter); () when no occupant_routes artifact
+        # was loaded for this incident, in which case highlight_route()
+        # simply has nothing to draw for any occupant_id -- the same
+        # "empty means artifact absent" convention this whole milestone
+        # uses throughout.
+
+        self._occupant_routes_by_id = {record.occupant_id: record for record in records}
+        self._redraw()
+
+    # =====================================================
+
+    def select_occupant(self, occupant_id):
+
+        self._selected_occupant_id = occupant_id
+        self._redraw()
+
+    # =====================================================
+
+    @property
+    def selected_occupant_id(self):
+        return self._selected_occupant_id
+
+    # =====================================================
+
+    def eventFilter(self, watched, event):
+
+        # Hit-tests whatever occupant marker (if any) sits under a click
+        # on the floor-plan viewport -- occupant markers are the only
+        # items this view ever tags with QGraphicsItem.setData(0, ...)
+        # (see _render_occupants() below), so a hit on any other item
+        # (a Zone rect, a Door/Exit line, ...) simply yields None and is
+        # ignored, exactly like clicking empty canvas.
+
+        if watched is self._view.viewport() and event.type() == QEvent.Type.MouseButtonPress:
+
+            scene_pos = self._view.mapToScene(event.pos())
+            item = self._scene.itemAt(scene_pos, self._view.transform())
+            occupant_id = item.data(0) if item is not None else None
+
+            if occupant_id:
+                self.select_occupant(occupant_id)
+                self.occupant_clicked.emit(occupant_id)
+
+        return super().eventFilter(watched, event)
 
     # =====================================================
 
@@ -344,6 +433,13 @@ class BuildingView(QWidget):
             self._view.setSceneRect(bounds.adjusted(-2, -2, 2, 2))
             self._view.fitInView(self._view.sceneRect(), Qt.AspectRatioMode.KeepAspectRatio)
 
+        # Simulation Replay Studio V1 -- drawn after the view is fitted
+        # to the building's own static geometry above, so a moving
+        # occupant marker never causes the floor plan itself to rescale
+        # or pan from frame to frame.
+        self._render_selected_route(floor)
+        self._render_occupants(floor)
+
     # =====================================================
 
     def _add_line(self, start_point, end_point, color, width):
@@ -354,7 +450,7 @@ class BuildingView(QWidget):
 
     # =====================================================
 
-    def _add_marker(self, position, color, size, rectangular=False):
+    def _add_marker(self, position, color, size, rectangular=False, object_id=None):
 
         x, y = position
 
@@ -365,7 +461,111 @@ class BuildingView(QWidget):
 
         item.setBrush(QBrush(color))
         item.setPen(QPen(QColor(20, 20, 20), 0.03))
+
+        # Simulation Replay Studio V1 -- object_id (only ever an
+        # occupant_id today) tags this item for eventFilter()'s own
+        # click hit-test; None (every pre-existing caller) leaves the
+        # item exactly as untagged as before.
+        if object_id is not None:
+            item.setData(0, object_id)
+
         self._scene.addItem(item)
+        return item
+
+    # =====================================================
+
+    def _render_occupants(self, floor):
+
+        # Simulation Replay Studio V1 -- one marker per occupant whose
+        # interpolated position (IncidentFrame.occupant_positions,
+        # already computed by IncidentData -- never recomputed here)
+        # falls on the currently displayed floor. An "outside" position
+        # (floor_id=None) or one with no resolvable (x, y) at all draws
+        # nothing, rather than fabricating a location.
+
+        if self._frame is None or floor is None:
+            return
+
+        for occupant_id, position in self._frame.occupant_positions.items():
+
+            if position.floor_id != floor.id or position.x is None or position.y is None:
+                continue
+
+            is_selected = occupant_id == self._selected_occupant_id
+
+            color = _SELECTED_OCCUPANT_COLOR if is_selected else _OCCUPANT_STATE_COLORS.get(
+                position.state, _NO_DATA_COLOR,
+            )
+            size = _SELECTED_OCCUPANT_MARKER_SIZE if is_selected else _OCCUPANT_MARKER_SIZE
+
+            item = self._add_marker((position.x, position.y), color, size, object_id=occupant_id)
+            item.setToolTip(self._occupant_tooltip(occupant_id, position))
+
+    # =====================================================
+
+    def _occupant_tooltip(self, occupant_id, position):
+
+        lines = [
+            occupant_id,
+            f"State: {position.state.replace('_', ' ').title()}",
+        ]
+
+        if position.zone_id is not None:
+            lines.append(f"Zone: {self._object_name(position.zone_id)}")
+
+        if position.current_stair_id is not None:
+            lines.append(f"Stair: {self._object_name(position.current_stair_id)}")
+
+        if position.speed is not None:
+            lines.append(f"Speed: {position.speed:.2f} m/s")
+
+        return "\n".join(lines)
+
+    # =====================================================
+
+    def _object_name(self, object_id):
+
+        # BuildingView renders straight off Building/IncidentFrame and
+        # has no id -> name lookup of its own (that already lives on
+        # IncidentData, one layer up) -- falls back to the bare id, the
+        # same honest "no name known" default every tooltip already uses
+        # elsewhere in this widget.
+        return object_id
+
+    # =====================================================
+
+    def _render_selected_route(self, floor):
+
+        # Simulation Replay Studio V1 -- draws the selected occupant's
+        # own actually-travelled route (OccupantRouteRecord.hops, already
+        # recorded, never re-planned) as a polyline of already-completed
+        # or in-progress hops, restricted to this floor (a Stair hop's
+        # own two endpoints live in two different, non-comparable
+        # floors' coordinate spaces -- see simulation_recording.
+        # occupant_position's own docstring -- so it is skipped here
+        # rather than drawn as a misleading straight line).
+
+        if self._position_index is None or floor is None:
+            return
+
+        record = self._occupant_routes_by_id.get(self._selected_occupant_id)
+        if record is None:
+            return
+
+        for hop in record.hops:
+
+            if hop.edge_type == "Stair":
+                continue
+
+            from_position, from_floor_id = self._position_index.node_position(hop.from_node_id)
+            to_position, _to_floor_id = self._position_index.node_position(
+                hop.to_node_id, arriving_edge_id=hop.edge_id,
+            )
+
+            if from_position is None or to_position is None or from_floor_id != floor.id:
+                continue
+
+            self._add_line(from_position, to_position, _ROUTE_HIGHLIGHT_COLOR, 0.08)
 
     # =====================================================
     # Per-object coloring

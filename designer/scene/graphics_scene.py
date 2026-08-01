@@ -150,6 +150,12 @@ class GraphicsScene(QGraphicsScene):
         self.occupant_items = {}
         self._highlighted_route_items = []
 
+        # The Recommendation Layer milestone -- a SEPARATE tracking
+        # list from _highlighted_route_items above, so highlighting a
+        # selected Recommendation's affected zones/exits never clobbers
+        # occupant-route highlighting (both features coexist).
+        self._highlighted_recommendation_items = []
+
         # -------------------------------------------------
         # Camera Coverage & Visibility Engine -- purely a rendering
         # concern, same "graphics item is a view over the real state"
@@ -2216,6 +2222,7 @@ class GraphicsScene(QGraphicsScene):
 
         self.occupant_items = {}
         self._highlighted_route_items = []
+        self._highlighted_recommendation_items = []
 
         for item in self._coverage_overlay_items:
             self.removeItem(item)
@@ -2848,6 +2855,52 @@ class GraphicsScene(QGraphicsScene):
 
                 item.set_highlighted(True)
                 self._highlighted_route_items.append(item)
+
+    # =====================================================
+    # The Recommendation Layer milestone -- selecting a row in the
+    # Recommendation panel highlights its affected_zones/affected_exits
+    # on the canvas. A SEPARATE tracking list from _highlighted_route_
+    # items above (both features coexist without clobbering each
+    # other). Same single-floor-view constraint as _highlight_route
+    # above -- only ever touches items already on screen (self.items()),
+    # never fixed.
+    # =====================================================
+
+    def clear_recommendation_highlight(self):
+
+        for item in self._highlighted_recommendation_items:
+            item.set_highlighted(False)
+
+        self._highlighted_recommendation_items = []
+
+    # =====================================================
+
+    def highlight_recommendation(self, zone_ids, exit_ids):
+
+        self.clear_recommendation_highlight()
+
+        zone_id_set = set(zone_ids)
+        exit_id_set = set(exit_ids)
+
+        for item in self.items():
+
+            if (
+                isinstance(item, ZoneRectangle)
+                and item.model is not None
+                and item.model.id in zone_id_set
+            ):
+
+                item.set_highlighted(True)
+                self._highlighted_recommendation_items.append(item)
+
+            elif (
+                isinstance(item, (DoorItem, StairItem, ExitItem))
+                and item.model is not None
+                and item.model.id in exit_id_set
+            ):
+
+                item.set_highlighted(True)
+                self._highlighted_recommendation_items.append(item)
 
     # =====================================================
     # Called by MainWindow after the Property Panel recomputes an

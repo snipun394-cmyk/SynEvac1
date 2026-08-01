@@ -816,17 +816,17 @@ class RecommendationCenterTests(unittest.TestCase):
         self.assertEqual(panel.severity_value.text(), report.commander_dashboard.overall_incident_severity)
         self.assertEqual(panel.rset_value.text(), "02:00")
 
-    def test_container_wires_all_six_panels(self):
+    def test_container_wires_all_seven_panels(self):
 
         # Civilian/Voice Evacuation/Firefighter/Building/Building
-        # Controls/Commander -- bumped from five to six by the Building
-        # Control & Safety Systems Integration Framework's own
-        # BuildingControlsPanel addition.
+        # Controls/Warden Notifications/Commander -- bumped from six to
+        # seven by the Execution Layer V1 milestone's own
+        # WardenNotificationsPanel addition.
         center = RecommendationCenter()
         center.set_incident(self.incident)
         center.show_frame(self.incident.frame_at_index(0), self.incident.advisory_report_at_index(0))
 
-        self.assertEqual(center.count(), 6)
+        self.assertEqual(center.count(), 7)
 
     def test_none_incident_degrades_without_raising(self):
 

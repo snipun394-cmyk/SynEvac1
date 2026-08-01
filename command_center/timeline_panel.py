@@ -26,7 +26,8 @@ from PyQt6.QtWidgets import (
 # Simulation Sandbox.
 # =====================================================
 
-_SPEED_OPTIONS = ("0.25x", "0.5x", "1x", "2x", "4x", "8x")
+# Simulation Replay Studio V1's own requested speed set.
+_SPEED_OPTIONS = ("0.25x", "0.5x", "1x", "2x", "5x")
 
 
 class _TrendChart(QWidget):
@@ -115,8 +116,20 @@ class TimelinePanel(QWidget):
         self.pause_button = QPushButton("Pause")
         self.reset_button = QPushButton("Reset")
 
+        # Simulation Replay Studio V1 -- Step Back/Step Forward. Both
+        # simply move the slider by one frame, reusing the exact same
+        # slider.valueChanged -> Dashboard._on_frame_index_changed() path
+        # every other slider interaction (drag, "Jump to") already goes
+        # through -- neither button owns any playback logic of its own.
+        self.step_back_button = QPushButton("⏪ Step Back")
+        self.step_forward_button = QPushButton("⏩ Step Forward")
+        self.step_back_button.clicked.connect(self._on_step_back)
+        self.step_forward_button.clicked.connect(self._on_step_forward)
+
+        controls.addWidget(self.step_back_button)
         controls.addWidget(self.play_button)
         controls.addWidget(self.pause_button)
+        controls.addWidget(self.step_forward_button)
         controls.addWidget(self.reset_button)
 
         controls.addSpacing(16)
@@ -215,6 +228,24 @@ class TimelinePanel(QWidget):
 
     # =====================================================
     # Internal wiring
+    # =====================================================
+
+    def _on_step_back(self):
+
+        if self._incident is None or self._incident.frame_count == 0:
+            return
+
+        self.slider.setValue(max(0, self.slider.value() - 1))
+
+    # =====================================================
+
+    def _on_step_forward(self):
+
+        if self._incident is None or self._incident.frame_count == 0:
+            return
+
+        self.slider.setValue(min(self.slider.maximum(), self.slider.value() + 1))
+
     # =====================================================
 
     def _on_jump_to_time(self):

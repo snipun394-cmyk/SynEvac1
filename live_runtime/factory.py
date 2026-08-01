@@ -33,6 +33,11 @@ from voice_evacuation.provider import SimulationVoiceOutputProvider
 from building_control.controller import BuildingControlController
 from building_control.providers import SimulationControlProvider
 
+from warden_notification.controller import WardenNotificationController
+from warden_notification.provider import SimulationWardenNotificationProvider
+
+from execution_layer.layer import ExecutionLayer
+
 from live_system.building_state_gateway import EstimatorBuildingStateGateway
 from event_bus.bus import EventBus
 from live_system.live_command_center_gateway import LiveCommandCenterDataSource
@@ -63,6 +68,8 @@ from evacuation_recommendation.engine import EvacuationRecommendationEngine
 
 from evacuation_guidance.engine import EvacuationGuidanceEngine
 
+from recommendation_layer.layer import RecommendationLayer
+
 from dynamic_signage.provider import SimulationDynamicSignageProvider
 
 from navigation.graph_builder import NavigationGraphGenerator
@@ -74,6 +81,7 @@ from live_system.trajectory_intelligence_gateway import EngineTrajectoryIntellig
 from live_system.evacuation_recommendation_gateway import EngineEvacuationRecommendationGateway
 from live_system.evacuation_guidance_gateway import EngineEvacuationGuidanceGateway
 from live_system.evacuation_signage_gateway import EngineEvacuationSignageGateway
+from live_system.recommendation_layer_gateway import EngineRecommendationLayerGateway
 from live_system.facp_gateway import EngineFACPGateway
 
 from live_runtime.runtime import LiveRuntime
@@ -114,6 +122,7 @@ def build_live_runtime(
     emergency_response_engine: Optional[EmergencyResponseIntelligenceEngine] = None,
     evacuation_recommendation_engine: Optional[EvacuationRecommendationEngine] = None,
     evacuation_guidance_engine: Optional[EvacuationGuidanceEngine] = None,
+    recommendation_layer: Optional[RecommendationLayer] = None,
     dynamic_signage_planner: Optional[DynamicSignagePlanner] = None,
     sign_manager: Optional[SignManager] = None,
     dynamic_signage_provider: Optional[object] = None,
@@ -131,6 +140,7 @@ def build_live_runtime(
     occupancy_snapshot_provider: Optional[Callable[[float], object]] = None,
     voice_output_provider: Optional[object] = None,
     building_control_provider: Optional[object] = None,
+    warden_notification_provider: Optional[object] = None,
     live_ai_gateway: Optional[object] = None,
     live_advisory_gateway: Optional[object] = None,
     event_bus: Optional[EventBus] = None,
@@ -256,6 +266,19 @@ def build_live_runtime(
     evacuation_guidance_engine = (
         evacuation_guidance_engine if evacuation_guidance_engine is not None
         else EvacuationGuidanceEngine(building, navigation_graph)
+    )
+
+    # The Recommendation Layer milestone -- exactly ONE RecommendationLayer
+    # for this live session, engine-shaped like every sibling intelligence
+    # engine above (constructed by default, not opaque-supplied like
+    # live_ai_gateway/live_advisory_gateway) -- it has no Scenario/
+    # GroundTruth/decision_policy dependency of its own, and reads every
+    # upstream snapshot as a compute() parameter each cycle, never a
+    # constructor dependency, so it needs no building/navigation_graph
+    # argument at all.
+    recommendation_layer = (
+        recommendation_layer if recommendation_layer is not None
+        else RecommendationLayer()
     )
 
     # Live Dynamic Evacuation Signage milestone -- exactly ONE
@@ -485,9 +508,30 @@ def build_live_runtime(
         if dynamic_signage_provider is not None else None
     )
 
+    # Execution Layer V1 -- the SAME "None whenever no provider was
+    # supplied" discipline, one collaborator over. Warden Notification
+    # is the one genuinely new controller this milestone adds; it
+    # mirrors Voice/Building Control/Signage's own NO_PROVIDER-under-
+    # LIVE convention exactly.
+    warden_notification_controller = (
+        WardenNotificationController(warden_notification_provider)
+        if warden_notification_provider is not None else None
+    )
+
     operator_action_gateway = LiveOperatorActionGateway(
         voice_controller=voice_evacuation_controller, control_controller=building_control_controller,
-        signage_controller=dynamic_signage_controller,
+        signage_controller=dynamic_signage_controller, warden_controller=warden_notification_controller,
+    )
+
+    # Execution Layer V1 -- an orchestration/coordinating layer over the
+    # four controllers above, never a replacement execution authority
+    # (see execution_layer/layer.py's own docstring). Constructed
+    # unconditionally -- it degrades gracefully with any subset of
+    # controllers None, exactly like RecommendationLayer degrades with
+    # any subset of snapshots None.
+    execution_layer = ExecutionLayer(
+        voice_controller=voice_evacuation_controller, control_controller=building_control_controller,
+        signage_controller=dynamic_signage_controller, warden_controller=warden_notification_controller,
     )
 
     # =====================================================
@@ -597,6 +641,7 @@ def build_live_runtime(
         evacuation_recommendation_gateway=EngineEvacuationRecommendationGateway(evacuation_recommendation_engine),
         evacuation_guidance_gateway=EngineEvacuationGuidanceGateway(evacuation_guidance_engine, speaker_manager=speaker_manager),
         evacuation_signage_gateway=EngineEvacuationSignageGateway(dynamic_signage_planner, sign_manager=sign_manager),
+        recommendation_layer_gateway=EngineRecommendationLayerGateway(recommendation_layer),
         live_occupants_gateway=EngineLiveOccupantsGateway(live_occupant_manager),
         live_ai_gateway=live_ai_gateway,
         live_advisory_gateway=live_advisory_gateway,
@@ -645,6 +690,9 @@ def build_live_runtime(
         emergency_response_engine=emergency_response_engine,
         evacuation_recommendation_engine=evacuation_recommendation_engine,
         evacuation_guidance_engine=evacuation_guidance_engine,
+        recommendation_layer=recommendation_layer,
+        warden_notification_controller=warden_notification_controller,
+        execution_layer=execution_layer,
         dynamic_signage_planner=dynamic_signage_planner,
     )
 
@@ -679,6 +727,7 @@ def build_offline_demo_runtime(
     kwargs.setdefault("voice_output_provider", SimulationVoiceOutputProvider())
     kwargs.setdefault("building_control_provider", SimulationControlProvider(building, action_executor))
     kwargs.setdefault("dynamic_signage_provider", SimulationDynamicSignageProvider())
+    kwargs.setdefault("warden_notification_provider", SimulationWardenNotificationProvider())
 
     return build_live_runtime(
         building, frame_sources=frame_sources, human_detector=human_detector,

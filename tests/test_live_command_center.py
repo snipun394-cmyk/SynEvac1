@@ -661,6 +661,69 @@ class ReplayBackwardCompatibilityTests(unittest.TestCase):
 # =====================================================
 
 
+class _StubLiveOccupantsGatewayForCommandCenter:
+
+    def __init__(self, snapshot):
+        self.snapshot = snapshot
+
+    def compute(self, time):
+        return self.snapshot
+
+
+class _StubBuildingStateGatewayForCommandCenter:
+
+    # current_snapshot() only builds the full CommandCenterSnapshot
+    # (including live_occupants) once BuildingState itself is non-None
+    # this cycle -- a minimal real BuildingState is enough to reach that
+    # path without pulling in the full _LiveChain fixture above.
+
+    def collect(self, time):
+        from building_state.models import BuildingState
+        return BuildingState(timestamp=time)
+
+
+class LiveOccupantsReachesCommandCenterSnapshotTests(unittest.TestCase):
+
+    # Expose Real Live Camera Occupant State In SynEvac UI milestone --
+    # proves the LAST composition hop in isolation: whatever
+    # StateManager.current().live_occupants holds is exactly what
+    # LiveCommandCenterDataSource.current_snapshot().live_occupants
+    # returns, never recomputed/reshaped along the way.
+
+    def test_live_occupants_snapshot_passes_through_unchanged(self):
+
+        from live_occupants.models import LiveOccupantsSnapshot
+
+        live_occupants_snapshot = LiveOccupantsSnapshot(timestamp=1.0, occupants=(), current_occupant_count=0)
+        gateway = _StubLiveOccupantsGatewayForCommandCenter(live_occupants_snapshot)
+
+        building = Building(id="b1", name="Test", floors=[])
+        orchestrator = LiveOrchestrator(
+            live_occupants_gateway=gateway, building_state_gateway=_StubBuildingStateGatewayForCommandCenter(),
+        )
+        orchestrator.start()
+        orchestrator.run_cycle(1.0)
+
+        data_source = LiveCommandCenterDataSource(orchestrator.state_manager, building=building)
+        data_source.start()
+
+        snapshot = data_source.current_snapshot()
+
+        self.assertIs(snapshot.live_occupants, live_occupants_snapshot)
+
+    def test_unconfigured_gateway_leaves_live_occupants_none(self):
+
+        building = Building(id="b1", name="Test", floors=[])
+        orchestrator = LiveOrchestrator(building_state_gateway=_StubBuildingStateGatewayForCommandCenter())
+        orchestrator.start()
+        orchestrator.run_cycle(1.0)
+
+        data_source = LiveCommandCenterDataSource(orchestrator.state_manager, building=building)
+        data_source.start()
+
+        self.assertIsNone(data_source.current_snapshot().live_occupants)
+
+
 class CommandCenterLiveIntegrationGuardTests(unittest.TestCase):
 
     _LIVE_INTEGRATION_FILES = (

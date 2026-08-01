@@ -70,6 +70,12 @@ class MainWindow(QMainWindow):
         self.load_incident_action = QAction("Load Incident...", self)
         self.load_incident_action.triggered.connect(self.load_incident_dialog)
 
+        # Simulation Replay Studio V1 -- additive, sits alongside
+        # load_incident_dialog() rather than replacing it (see
+        # open_scenario_dialog()'s own docstring).
+        self.open_scenario_action = QAction("Open Scenario...", self)
+        self.open_scenario_action.triggered.connect(self.open_scenario_dialog)
+
         self.overlay_action_group = QActionGroup(self)
         self.overlay_action_group.setExclusive(True)
 
@@ -111,6 +117,7 @@ class MainWindow(QMainWindow):
         menubar = self.menuBar()
 
         file_menu = menubar.addMenu("File")
+        file_menu.addAction(self.open_scenario_action)
         file_menu.addAction(self.load_incident_action)
 
         view_menu = menubar.addMenu("View")
@@ -174,6 +181,43 @@ class MainWindow(QMainWindow):
         except Exception as error:
 
             QMessageBox.critical(self, "Load Incident", f"Failed to load incident:\n{error}")
+            return
+
+        self.load_incident_data(incident_data)
+
+    # =====================================================
+    # Simulation Replay Studio V1 -- "open a generated scenario by id"
+    # against a campaign output directory (designer/campaign/
+    # campaign_worker.py / research_framework/runner.py's own shared
+    # layout), rather than six separate raw file pickers. Deferred
+    # import: replay_studio already depends on command_center (it
+    # reuses this MainWindow/Dashboard as a library), so importing it
+    # back at module load time here would be circular -- this method-
+    # local import is the same "avoid a real circular import" pattern
+    # already used elsewhere in this codebase (e.g.
+    # human_decision_engine.groups's own local simulator.occupant import).
+    # =====================================================
+
+    def open_scenario_dialog(self):
+
+        from replay_studio.open_scenario_dialog import OpenScenarioDialog
+
+        dialog = OpenScenarioDialog(self)
+
+        if dialog.exec() != OpenScenarioDialog.DialogCode.Accepted:
+            return
+
+        artifacts = dialog.resolved_artifacts()
+        if artifacts is None:
+            return
+
+        try:
+
+            incident_data = load_incident(**artifacts)
+
+        except Exception as error:
+
+            QMessageBox.critical(self, "Open Scenario", f"Failed to load scenario:\n{error}")
             return
 
         self.load_incident_data(incident_data)

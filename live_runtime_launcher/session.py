@@ -1,10 +1,17 @@
 from camera_manager.connection_status import CameraConnectionState
+from camera_manager.manager import CameraManager
 
 from command_center.main_window import MainWindow as CommandCenterMainWindow
+
+from credential_store.local_file_store import LocalFileCredentialStore
 
 from live_runtime.factory import build_live_runtime, build_offline_demo_runtime
 
 from live_runtime_launcher.modes import ApplicationMode, RuntimeLifecycleState
+from live_runtime_launcher.rtsp_camera_sources import build_rtsp_frame_sources
+from live_runtime_launcher.human_detector_wiring import build_yolo_human_detector
+
+from tracking.simple_tracker import SimpleSingleCameraTracker
 
 
 # =====================================================
@@ -27,7 +34,10 @@ from live_runtime_launcher.modes import ApplicationMode, RuntimeLifecycleState
 
 class LiveRuntimeSession:
 
-    def __init__(self, mode: ApplicationMode):
+    def __init__(
+        self, mode: ApplicationMode, credential_store=None,
+        human_detector_weights_path=None, human_detector_device: str = "cpu",
+    ):
 
         if mode is ApplicationMode.DESIGNER:
             raise ValueError("LiveRuntimeSession is only for ApplicationMode.LIVE/OFFLINE_DEMO.")
@@ -36,6 +46,30 @@ class LiveRuntimeSession:
         self.runtime = None
         self.state = RuntimeLifecycleState.STOPPED
         self.last_error = None
+
+        # CP PLUS NVR -> SynEvac1 Live Runtime Integration milestone --
+        # the SAME CredentialStore a caller (MainWindow.__init__'s own
+        # self._credential_store) already resolves saved camera
+        # passwords through, reused here rather than duplicated -- see
+        # designer/windows/main_window.py. Defaults to a fresh
+        # LocalFileCredentialStore() (the same default ~/.synevac/
+        # credentials.json path) so every existing caller/test that
+        # never passes one stays unaffected.
+        self.credential_store = (
+            credential_store if credential_store is not None else LocalFileCredentialStore()
+        )
+
+        # Camera 1 Live Human-Detection Integration milestone -- an
+        # explicit, OPTIONAL opt-in (default None) rather than a
+        # hardcoded model path: no caller/test that never supplies one
+        # is affected, matching this launcher's own "never fabricate a
+        # provider" discipline (ai_status()/provider_capabilities()
+        # above). None means exactly what it already means everywhere
+        # else in this class -- no real human detector configured, so
+        # construct() below never builds one, and camera_pipeline stays
+        # None exactly as before this milestone.
+        self.human_detector_weights_path = human_detector_weights_path
+        self.human_detector_device = human_detector_device
 
         self._command_center_window = None
 
@@ -65,8 +99,90 @@ class LiveRuntimeSession:
 
         factory = build_live_runtime if self.mode is ApplicationMode.LIVE else build_offline_demo_runtime
 
+        # CP PLUS NVR -> SynEvac1 Live Runtime Integration milestone --
+        # closes the composition gap named (but deliberately left open)
+        # by the Application Live Runtime Launcher milestone's own
+        # "no RTSP-from-Camera-asset builder exists yet" note (see
+        # live_runtime_launcher/modes.py). Only ApplicationMode.LIVE
+        # ever gets real RTSPFrameSource instances -- OFFLINE_DEMO stays
+        # exactly as before (Simulation* providers only, zero network
+        # I/O), matching this launcher's own established "LIVE means
+        # real hardware, OFFLINE_DEMO means Simulation" split.
+        #
+        # The CameraManager is built HERE (not left for build_live_
+        # runtime() to construct its own) specifically so the SAME
+        # instance backs both frame_sources' status_callback bridge
+        # (build_rtsp_frame_sources) and self._any_configured_camera_
+        # offline()'s later reads -- build_live_runtime()'s own
+        # `camera_manager` parameter exists exactly to let a caller
+        # reuse an already-built manager instead of a second, duplicate
+        # one (factory.py's own Phase 1 item 9 comment).
+        factory_kwargs = {}
+
+        if self.mode is ApplicationMode.LIVE:
+
+            camera_manager = CameraManager()
+            camera_manager.discover_cameras(building)
+
+            factory_kwargs["camera_manager"] = camera_manager
+            factory_kwargs["frame_sources"] = build_rtsp_frame_sources(
+                building, camera_manager, self.credential_store,
+            )
+
         try:
-            self.runtime = factory(building)
+
+            # Camera 1 Live Human-Detection Integration milestone --
+            # closes the SECOND composition gap: build_live_runtime()'s
+            # own camera_pipeline gate needs frame_sources AND
+            # human_detector AND identity_resolver all non-None (see
+            # live_runtime/factory.py). Only attempted when there is at
+            # least one real configured camera to feed it -- a
+            # human_detector_weights_path supplied against a building
+            # with no Live-mode camera correctly builds nothing here,
+            # same "no cameras" honesty build_live_runtime() itself
+            # already establishes. Constructed INSIDE this try block
+            # (not before it) so a bad weights path (UltralyticsYOLO
+            # Backend's own ModelWeightsNotFoundError) degrades this
+            # session to an honest FAILED state -- exactly this
+            # method's own Phase 10 "never crash the application"
+            # requirement above -- rather than raising uncaught.
+            if (
+                self.mode is ApplicationMode.LIVE
+                and factory_kwargs.get("frame_sources")
+                and self.human_detector_weights_path is not None
+            ):
+
+                human_detector, identity_resolver = build_yolo_human_detector(
+                    self.human_detector_weights_path, device=self.human_detector_device,
+                )
+
+                factory_kwargs["human_detector"] = human_detector
+                factory_kwargs["identity_resolver"] = identity_resolver
+
+                # Camera 1 Live Detection -> Tracking/Building-State
+                # Integration milestone -- closes the THIRD composition
+                # gap. Without a tracker, LiveCameraPipeline.run_cycle()
+                # feeds identity_resolver the detector's own raw,
+                # per-frame-only local_track_id (YOLOHumanDetector's own
+                # docstring: "NOT stable across frames"), and its
+                # pending_occupant_updates stays all-None (see
+                # pipeline.py's own run_cycle(), `else: camera_pending_
+                # updates = [None] * len(raw)`) -- meaning live_occupants.
+                # manager.LiveOccupantManager.update() is NEVER called at
+                # all, even though build_live_runtime() always constructs
+                # one. SimpleSingleCameraTracker (tracking/simple_tracker.py)
+                # is the EXISTING, already-tested, non-ML production
+                # tracker docs/architecture/human_detection.md's own
+                # real-world validation combination already paired with
+                # this exact detector/identity_resolver pairing -- reused
+                # verbatim here, never a second/new tracker. Needs no
+                # weights/credentials/machine-specific config of its own,
+                # so it is always paired with a real human_detector
+                # (never a separate opt-in flag).
+                factory_kwargs["tracker"] = SimpleSingleCameraTracker()
+
+            self.runtime = factory(building, **factory_kwargs)
+
         except Exception as exc:
 
             self.runtime = None

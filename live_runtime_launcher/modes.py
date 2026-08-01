@@ -47,9 +47,11 @@ class RuntimeLifecycleState(Enum):
     # itself has no transient or failed state -- it either succeeds or
     # raises). DEGRADED is only ever reported when a configured
     # CameraFrameSource genuinely failed to reach Online -- never
-    # fabricated, and (see session.py) unreachable today because this
-    # milestone wires zero frame_sources (no RTSP-from-Camera-asset
-    # builder exists yet -- out of scope, see Phase 9/15).
+    # fabricated. Reachable under ApplicationMode.LIVE since the CP
+    # PLUS NVR -> SynEvac1 Live Runtime Integration milestone (see
+    # session.py's own build_rtsp_frame_sources() wiring); still
+    # unreachable under OFFLINE_DEMO, which never configures a real
+    # RTSPFrameSource.
 
     STOPPED = "STOPPED"
     STARTING = "STARTING"

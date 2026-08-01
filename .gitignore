@@ -130,3 +130,9 @@ __pycache__/
 # docs/architecture/predictive_dataset_campaign_v4.md.
 /data/predictive_dataset_campaign_v4_pilot/
 /data/predictive_dataset_campaign_v4/
+
+# PyInstaller build artifacts for the SynEvac Builder standalone .exe --
+# regenerated from builder_main.py/builder/ on demand, never committed.
+/build/
+/dist/
+*.spec

@@ -1,0 +1,48 @@
+  [single_exit_lowrise] 100/500 (elapsed 0.6s, rows so far 23296)
+  [single_exit_lowrise] 200/500 (elapsed 1.3s, rows so far 49072)
+  [single_exit_lowrise] 300/500 (elapsed 1.9s, rows so far 74800)
+  [single_exit_lowrise] 400/500 (elapsed 2.5s, rows so far 99880)
+  [single_exit_lowrise] 500/500 (elapsed 3.2s, rows so far 126296)
+  [twin_stair_highrise] 100/800 (elapsed 18.2s, rows so far 449456)
+  [twin_stair_highrise] 200/800 (elapsed 34.5s, rows so far 807128)
+  [twin_stair_highrise] 300/800 (elapsed 50.4s, rows so far 1153656)
+  [twin_stair_highrise] 400/800 (elapsed 67.2s, rows so far 1505056)
+  [twin_stair_highrise] 500/800 (elapsed 85.2s, rows so far 1879780)
+  [twin_stair_highrise] 600/800 (elapsed 101.4s, rows so far 2220652)
+  [twin_stair_highrise] 700/800 (elapsed 117.7s, rows so far 2566256)
+  [twin_stair_highrise] 800/800 (elapsed 135.4s, rows so far 2935072)
+  [multi_exit_wide] 100/700 (elapsed 164.4s, rows so far 3756956)
+  [multi_exit_wide] 200/700 (elapsed 197.6s, rows so far 4676168)
+  [multi_exit_wide] 300/700 (elapsed 230.8s, rows so far 5569508)
+  [multi_exit_wide] 400/700 (elapsed 262.5s, rows so far 6434820)
+  [multi_exit_wide] 500/700 (elapsed 294.8s, rows so far 7281960)
+  [multi_exit_wide] 600/700 (elapsed 327.5s, rows so far 8089284)
+  [multi_exit_wide] 700/700 (elapsed 373.1s, rows so far 8982008)
+  [v1_topology_fixed] 100/500 (elapsed 375.9s, rows so far 9113816)
+  [v1_topology_fixed] 200/500 (elapsed 380.1s, rows so far 9241756)
+  [v1_topology_fixed] 300/500 (elapsed 382.5s, rows so far 9365756)
+  [v1_topology_fixed] 400/500 (elapsed 387.4s, rows so far 9501716)
+  [v1_topology_fixed] 500/500 (elapsed 391.5s, rows so far 9618976)
+Generation+simulation+extraction done: 391.5s, 9620196 rows, 2500 accepted, 0 failed
+  analysis[class_balance_report]: 41.8s
+  analysis[horizon_analysis]: 11.2s
+  analysis[stair_feature_repair_report]: 2.2s
+  analysis[multi_bottleneck_candidate_type_combinations]: 60.2s
+  analysis[total_lockout_scenarios]: 0.0s
+  analysis[scenario_diversity_report]: 0.1s
+  analysis[candidate_utilization_report]: 16.4s
+  analysis[feature_distribution_report]: 145.6s
+  analysis[label_bias_report]: 18.6s
+  analysis[temporal_coverage_report]: 17.2s
+  analysis[feature_target_correlations]: 129.6s
+  analysis[categorical_target_association[candidate_type]]: 28.1s
+  analysis[categorical_target_association[congestion_level]]: 26.1s
+  analysis[redundant_feature_pairs]: 432.7s
+  analysis[run_quality_checks]: 65.6s
+  analysis[zero_walking_distance_candidates]: 13.5s
+  analysis[duplicate_scenario_ids]: 0.1s
+  analysis[operational_coverage_report]: 12.9s
+Accepted 2500, failed 0. Rows: 9620196. Wall: 391.5s
+Wrote report to C:\Users\riddh\Desktop\SynEvac1\data\predictive_dataset_campaign_v2\campaign_v2_report.json
+Wrote scenario metadata to C:\Users\riddh\Desktop\SynEvac1\data\predictive_dataset_campaign_v2\scenario_metadata.json
+Wrote dataset CSV to C:\Users\riddh\Desktop\SynEvac1\data\predictive_dataset_campaign_v2\candidate_dataset_v2.csv

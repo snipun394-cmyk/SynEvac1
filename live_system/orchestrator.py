@@ -13,6 +13,7 @@ from live_system.trajectory_intelligence_gateway import TrajectoryIntelligenceGa
 from live_system.evacuation_recommendation_gateway import EvacuationRecommendationGateway
 from live_system.evacuation_guidance_gateway import EvacuationGuidanceGateway
 from live_system.evacuation_signage_gateway import EvacuationSignageGateway
+from live_system.recommendation_layer_gateway import RecommendationLayerGateway
 from live_system.facp_gateway import FACPGateway
 from live_system.live_occupants_gateway import LiveOccupantsGateway
 from live_system.event_bus import EventBus, EventType
@@ -122,6 +123,7 @@ class LiveOrchestrator:
         evacuation_recommendation_gateway: Optional[EvacuationRecommendationGateway] = None,
         evacuation_guidance_gateway: Optional[EvacuationGuidanceGateway] = None,
         evacuation_signage_gateway: Optional[EvacuationSignageGateway] = None,
+        recommendation_layer_gateway: Optional[RecommendationLayerGateway] = None,
         decision_policy_gateway: Optional[DecisionPolicyGateway] = None,
         command_center_gateway: Optional[CommandCenterGateway] = None,
         recommendation_builder: Optional[RecommendationBuilder] = None,
@@ -146,6 +148,7 @@ class LiveOrchestrator:
         self.evacuation_recommendation_gateway = evacuation_recommendation_gateway
         self.evacuation_guidance_gateway = evacuation_guidance_gateway
         self.evacuation_signage_gateway = evacuation_signage_gateway
+        self.recommendation_layer_gateway = recommendation_layer_gateway
         self.decision_policy_gateway = decision_policy_gateway
         self.command_center_gateway = command_center_gateway
         self.recommendation_builder = recommendation_builder
@@ -258,6 +261,15 @@ class LiveOrchestrator:
         # Mirrors latest_building_state's own forwarding-property style.
 
         return self.state_manager.latest_dynamic_signage()
+
+    # =====================================================
+
+    @property
+    def latest_recommendation_set(self):
+
+        # Mirrors latest_building_state's own forwarding-property style.
+
+        return self.state_manager.latest_recommendation_set()
 
     # =====================================================
 
@@ -661,6 +673,35 @@ class LiveOrchestrator:
 
                 snapshot = self.state_manager.update_advisory_report(advisory_report, time)
                 self.event_bus.emit(EventType.ADVISORY_REPORT_UPDATED, advisory_report, time)
+
+        if self.recommendation_layer_gateway is not None:
+
+            # The Recommendation Layer milestone -- runs LAST among the
+            # optional intelligence/advisory stages, reading every
+            # upstream evidence snapshot this cycle already assembled
+            # (Evacuation Recommendation/Guidance, Emergency Response,
+            # Crowd Intelligence, AI, Advisory) and adapting them into
+            # one unified, six-category Recommendation vocabulary. It
+            # recomputes none of their logic -- see recommendation_
+            # layer/adapters/'s own module docstrings. Whole-report-
+            # shaped (like Advisory), not per-zone-keyed (like
+            # Recommendation/Guidance) -- one _UPDATED event only, since
+            # RecommendationManager already owns the create/update/
+            # expire lifecycle internally.
+            recommendation_set = self.recommendation_layer_gateway.compute(
+                time,
+                evacuation_recommendation_snapshot=snapshot.evacuation_recommendation,
+                evacuation_guidance_snapshot=snapshot.evacuation_guidance,
+                emergency_response_snapshot=snapshot.emergency_response,
+                crowd_intelligence_snapshot=snapshot.crowd_intelligence,
+                ai_prediction_snapshot=snapshot.ai_prediction_snapshot,
+                advisory_report=snapshot.advisory_report,
+            )
+
+            if recommendation_set is not None:
+
+                snapshot = self.state_manager.update_recommendation_set(recommendation_set, time)
+                self.event_bus.emit(EventType.RECOMMENDATION_SET_UPDATED, recommendation_set, time)
 
         if self.decision_policy_gateway is not None:
 

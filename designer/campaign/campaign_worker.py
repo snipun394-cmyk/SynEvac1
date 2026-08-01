@@ -35,6 +35,9 @@ from ground_truth import analyze as analyze_ground_truth
 
 from decision_policy import DecisionInputs, generate_policy
 
+from simulation_recording.decision_events import save_decision_events
+from simulation_recording.occupant_routes import build_occupant_route_records, save_occupant_routes
+
 from serialization.serializer import Serializer
 
 from designer.validation import validate_building_authoring
@@ -619,6 +622,29 @@ class CampaignWorker(QThread):
             os.path.join(timeline_dir, "timeline_rows.json"), "w", encoding="utf-8",
         ) as handle:
             json.dump(timeline_rows, handle)
+
+        # ---- Simulation Recording -- occupant routes + decision events.
+        # Simulation Replay Studio V1's one new artifact pair: neither
+        # recomputes anything -- occupant routes are extracted straight
+        # off this scenario's own already-completed movement_result
+        # (simulator.multi_agent_result.MultiAgentSimulationResult, read-
+        # only), and decision_events is the exact same tuple already
+        # built above for Dataset Builder's own *_Count columns, simply
+        # also persisted this time instead of being discarded after. ----
+
+        occupant_route_records = build_occupant_route_records(movement_result)
+
+        occupant_routes_dir = os.path.join(config.output_directory, "occupant_routes", scenario_id)
+        os.makedirs(occupant_routes_dir, exist_ok=True)
+        save_occupant_routes(
+            occupant_route_records, os.path.join(occupant_routes_dir, "occupant_routes.json"),
+        )
+
+        decision_events_dir = os.path.join(config.output_directory, "decision_events", scenario_id)
+        os.makedirs(decision_events_dir, exist_ok=True)
+        save_decision_events(
+            decision_events, os.path.join(decision_events_dir, "decision_events.json"),
+        )
 
         # ---- Ground Truth Generator ----
 

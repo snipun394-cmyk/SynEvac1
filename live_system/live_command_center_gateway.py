@@ -266,6 +266,8 @@ class LiveCommandCenterDataSource:
             evacuation_recommendation=snapshot.evacuation_recommendation,
             evacuation_guidance=snapshot.evacuation_guidance,
             dynamic_signage=snapshot.dynamic_signage,
+            live_occupants=snapshot.live_occupants,
+            recommendation_set=snapshot.recommendation_set,
             building_state_timestamp=timestamps.get("building_state"),
             ai_prediction_timestamp=timestamps.get("ai_prediction_snapshot"),
             advisory_timestamp=timestamps.get("advisory_report"),
@@ -275,6 +277,7 @@ class LiveCommandCenterDataSource:
             evacuation_recommendation_timestamp=timestamps.get("evacuation_recommendation"),
             evacuation_guidance_timestamp=timestamps.get("evacuation_guidance"),
             dynamic_signage_timestamp=timestamps.get("dynamic_signage"),
+            recommendation_set_timestamp=timestamps.get("recommendation_set"),
             consistency=self._resolve_consistency(timestamps),
             recent_events=self._recent_events(),
         )

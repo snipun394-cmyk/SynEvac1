@@ -1,3 +1,5 @@
+import time
+
 from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtGui import QAction
 from PyQt6.QtWidgets import (
@@ -43,6 +45,9 @@ from designer.widgets.camera_manager_panel import CameraManagerPanel
 from designer.widgets.speaker_manager_panel import SpeakerManagerPanel
 from designer.widgets.camera_validation_panel import CameraValidationPanel
 from designer.widgets.live_runtime_panel import LiveRuntimePanel
+from designer.widgets.recommendation_panel import RecommendationPanel
+from designer.widgets.execution_panel import ExecutionPanel
+from designer.widgets.live_camera_view_panel import LiveCameraViewPanel
 from designer.live_runtime_controller import LiveRuntimeController
 from designer.widgets.floor_list import FloorList
 from designer.widgets.fire_water_system_list import FireWaterSystemList
@@ -242,7 +247,40 @@ class MainWindow(QMainWindow):
         self.live_runtime_controller = LiveRuntimeController(
             self.live_runtime_panel,
             lambda: self.canvas.scene_obj.project.building,
+            credential_store=self._credential_store,
         )
+
+        # =====================================================
+        # The Recommendation Layer milestone -- the Studio-facing view
+        # onto RecommendationLayer's own output, refreshed once per
+        # real LiveRuntimeController tick (not the Manual Simulation
+        # Sandbox loop -- see recommendation_panel.py's own docstring).
+        # =====================================================
+
+        self.recommendation_panel = RecommendationPanel()
+
+        # =====================================================
+        # The Execution Layer V1 milestone -- the Studio-facing,
+        # READ-ONLY view onto ExecutionLayer's own output, refreshed on
+        # the SAME LiveRuntimeController tick as the Recommendation
+        # panel above (see execution_panel.py's own docstring).
+        # =====================================================
+
+        self.execution_panel = ExecutionPanel()
+
+        # =====================================================
+        # Live Camera Viewer milestone -- the Studio-facing, video-only
+        # presentation of the real camera stream LiveCameraPipeline
+        # already decodes each cycle, refreshed on the SAME
+        # LiveRuntimeController tick as the two panels above (see
+        # live_camera_view_panel.py's own docstring). No YOLO overlay,
+        # no detection rendering, no second RTSP connection/decoder --
+        # this widget only ever reads LiveCameraPipeline.latest_frame().
+        # =====================================================
+
+        self.live_camera_view_panel = LiveCameraViewPanel()
+
+        self.live_runtime_controller.on_cycle_callback = self._on_live_runtime_tick
 
         # =====================================================
         # Project Tree
@@ -456,6 +494,33 @@ class MainWindow(QMainWindow):
             self.toggle_live_runtime_panel
         )
 
+        self.toggle_recommendation_panel_action = QAction(
+            "Recommendations Panel",
+            self,
+        )
+
+        self.toggle_recommendation_panel_action.triggered.connect(
+            self.toggle_recommendation_panel
+        )
+
+        self.toggle_execution_panel_action = QAction(
+            "Execution Status Panel",
+            self,
+        )
+
+        self.toggle_execution_panel_action.triggered.connect(
+            self.toggle_execution_panel
+        )
+
+        self.toggle_live_camera_view_panel_action = QAction(
+            "Live Camera View Panel",
+            self,
+        )
+
+        self.toggle_live_camera_view_panel_action.triggered.connect(
+            self.toggle_live_camera_view_panel
+        )
+
     # =====================================================
 
     def create_menu(self):
@@ -490,6 +555,18 @@ class MainWindow(QMainWindow):
 
         view_menu.addAction(
             self.toggle_live_runtime_panel_action
+        )
+
+        view_menu.addAction(
+            self.toggle_recommendation_panel_action
+        )
+
+        view_menu.addAction(
+            self.toggle_execution_panel_action
+        )
+
+        view_menu.addAction(
+            self.toggle_live_camera_view_panel_action
         )
 
         insert_menu = menubar.addMenu("Insert")
@@ -790,6 +867,75 @@ class MainWindow(QMainWindow):
         # entering Live/Offline-Demo mode is always an explicit action.
         self.live_runtime_dock.hide()
 
+        self.recommendation_dock = QDockWidget(
+            "Recommendations",
+            self,
+        )
+
+        self.recommendation_dock.setWidget(
+            self.recommendation_panel
+        )
+
+        self.addDockWidget(
+            Qt.DockWidgetArea.BottomDockWidgetArea,
+            self.recommendation_dock,
+        )
+
+        self.tabifyDockWidget(
+            self.live_runtime_dock,
+            self.recommendation_dock,
+        )
+
+        # Hidden by default, same opt-in convention as the other
+        # bottom docks -- not part of the default Designer layout.
+        self.recommendation_dock.hide()
+
+        self.execution_dock = QDockWidget(
+            "Execution Status",
+            self,
+        )
+
+        self.execution_dock.setWidget(
+            self.execution_panel
+        )
+
+        self.addDockWidget(
+            Qt.DockWidgetArea.BottomDockWidgetArea,
+            self.execution_dock,
+        )
+
+        self.tabifyDockWidget(
+            self.recommendation_dock,
+            self.execution_dock,
+        )
+
+        # Hidden by default, same opt-in convention as the other
+        # bottom docks -- not part of the default Designer layout.
+        self.execution_dock.hide()
+
+        self.live_camera_view_dock = QDockWidget(
+            "Live Camera View",
+            self,
+        )
+
+        self.live_camera_view_dock.setWidget(
+            self.live_camera_view_panel
+        )
+
+        self.addDockWidget(
+            Qt.DockWidgetArea.BottomDockWidgetArea,
+            self.live_camera_view_dock,
+        )
+
+        self.tabifyDockWidget(
+            self.execution_dock,
+            self.live_camera_view_dock,
+        )
+
+        # Hidden by default, same opt-in convention as the other
+        # bottom docks -- not part of the default Designer layout.
+        self.live_camera_view_dock.hide()
+
     # =====================================================
 
     def connect_toolbar(self):
@@ -1000,6 +1146,11 @@ class MainWindow(QMainWindow):
         # Property Panel
         self.canvas.scene_obj.selection_changed_callback = (
             self.on_selection_changed
+        )
+
+        # Recommendation Panel
+        self.recommendation_panel.on_recommendation_selected = (
+            self._on_recommendation_selected
         )
 
         # Floor List
@@ -1577,6 +1728,135 @@ class MainWindow(QMainWindow):
 
         self.live_runtime_dock.setVisible(
             not self.live_runtime_dock.isVisible()
+        )
+
+    # =====================================================
+
+    def toggle_recommendation_panel(self):
+
+        self.recommendation_dock.setVisible(
+            not self.recommendation_dock.isVisible()
+        )
+
+    # =====================================================
+
+    def toggle_execution_panel(self):
+
+        self.execution_dock.setVisible(
+            not self.execution_dock.isVisible()
+        )
+
+    # =====================================================
+
+    def toggle_live_camera_view_panel(self):
+
+        self.live_camera_view_dock.setVisible(
+            not self.live_camera_view_dock.isVisible()
+        )
+
+    # =====================================================
+
+    def _on_live_runtime_tick(self):
+
+        # The single callback LiveRuntimeController.on_cycle_callback
+        # invokes once per real run_cycle() tick -- refreshes the
+        # Recommendation panel, the Execution panel, and the Live
+        # Camera View panel, so a single wiring point drives every
+        # Studio panel that reads live state this way.
+
+        self._refresh_recommendation_panel()
+        self._refresh_execution_panel()
+        self._refresh_live_camera_view_panel()
+
+    # =====================================================
+
+    def _refresh_recommendation_panel(self):
+
+        # Driven by LiveRuntimeController's own tick (on_cycle_callback),
+        # not the Manual Simulation Sandbox loop -- see recommendation_
+        # panel.py's own docstring for why. Reads only RecommendationLayer's
+        # own accessor (orchestrator.latest_recommendation_set) -- never
+        # touches evacuation_recommendation/advisory_system directly.
+
+        session = self.live_runtime_controller.session
+
+        if session is None or session.runtime is None:
+
+            self.recommendation_panel.refresh(None)
+            return
+
+        self.recommendation_panel.refresh(
+            session.runtime.orchestrator.latest_recommendation_set
+        )
+
+    # =====================================================
+
+    def _refresh_execution_panel(self):
+
+        # Driven by the SAME LiveRuntimeController tick as the
+        # Recommendation panel above. Calls LiveRuntime.tick_execution_
+        # layer() -- a method deliberately separate from run_cycle()
+        # (see live_runtime/runtime.py's own docstring for why
+        # ExecutionLayer cannot be ticked from inside the orchestrator's
+        # own run_cycle()).
+
+        session = self.live_runtime_controller.session
+
+        if session is None or session.runtime is None:
+
+            self.execution_panel.refresh(None)
+            return
+
+        execution_set = session.runtime.tick_execution_layer(time.time())
+        self.execution_panel.refresh(execution_set)
+
+    # =====================================================
+
+    def _refresh_live_camera_view_panel(self):
+
+        # Driven by the SAME LiveRuntimeController tick as the
+        # Recommendation/Execution panels above. Reads only
+        # LiveRuntime's own already-public attributes (camera_manager,
+        # camera_pipeline, frame_sources) -- never constructs a
+        # CameraFrameSource/decoder of its own, never calls
+        # read_frame() itself. V1 shows exactly one camera (the first
+        # configured frame source) -- a channel selector is out of
+        # scope for this milestone.
+
+        session = self.live_runtime_controller.session
+
+        if (
+            session is None or session.runtime is None
+            or not session.runtime.frame_sources
+        ):
+
+            self.live_camera_view_panel.refresh(None, None, None)
+            return
+
+        camera_id = next(iter(session.runtime.frame_sources))
+        camera = session.runtime.camera_manager.get_camera(camera_id)
+        status = session.runtime.camera_manager.connection_status(camera_id)
+
+        frame = (
+            session.runtime.camera_pipeline.latest_frame(camera_id)
+            if session.runtime.camera_pipeline is not None else None
+        )
+
+        self.live_camera_view_panel.refresh(
+            camera.name if camera is not None else camera_id, status, frame,
+        )
+
+    # =====================================================
+
+    def _on_recommendation_selected(self, recommendation):
+
+        if recommendation is None:
+
+            self.canvas.scene_obj.clear_recommendation_highlight()
+            return
+
+        self.canvas.scene_obj.highlight_recommendation(
+            recommendation.affected_zones, recommendation.affected_exits,
         )
 
     # =====================================================

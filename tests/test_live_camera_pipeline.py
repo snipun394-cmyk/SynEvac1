@@ -250,5 +250,83 @@ class LiveCameraPipelineDependencyDirectionTests(unittest.TestCase):
             )
 
 
+class LiveCameraPipelineLatestFrameCacheTests(unittest.TestCase):
+
+    # Live Camera Viewer milestone -- proves the single-slot
+    # latest_frame() cache added to run_cycle() above without touching
+    # any existing detection/tracking/fusion behavior: read_frame() is
+    # still called exactly once per camera per cycle (no second
+    # consumer, no second decode), a genuine new frame overwrites the
+    # slot, and a transient miss (queue exhausted) leaves the previous
+    # frame in place rather than clearing it.
+
+    def setUp(self):
+
+        self.cam_a = FakeFrameSource("CAM-A")
+        self.pipeline = LiveCameraPipeline(
+            frame_sources={"CAM-A": self.cam_a},
+            human_detector=FakeHumanDetector(),
+            identity_resolver=MappingIdentityResolver({}),
+            detection_provider=LiveCameraPipelineDetectionProvider(),
+        )
+
+    def test_latest_frame_is_none_before_any_cycle(self):
+
+        self.assertIsNone(self.pipeline.latest_frame("CAM-A"))
+
+    def test_latest_frame_is_none_for_an_unknown_camera_id(self):
+
+        self.cam_a.queue_frame(1.0, 1, payload_ref=[])
+        self.pipeline.run_cycle(1.0)
+
+        self.assertIsNone(self.pipeline.latest_frame("CAM-B"))
+
+    def test_latest_frame_reflects_the_most_recently_read_frame(self):
+
+        self.cam_a.queue_frame(1.0, 1, payload_ref=[])
+        self.pipeline.run_cycle(1.0)
+
+        frame = self.pipeline.latest_frame("CAM-A")
+        self.assertIsNotNone(frame)
+        self.assertEqual(frame.timestamp, 1.0)
+        self.assertEqual(frame.frame_sequence, 1)
+
+        self.cam_a.queue_frame(2.0, 2, payload_ref=[])
+        self.pipeline.run_cycle(2.0)
+
+        self.assertEqual(self.pipeline.latest_frame("CAM-A").frame_sequence, 2)
+
+    def test_a_transient_miss_leaves_the_previous_frame_cached(self):
+
+        self.cam_a.queue_frame(1.0, 1, payload_ref=[])
+        self.pipeline.run_cycle(1.0)
+
+        # Nothing queued this cycle -- read_frame() returns None.
+        self.pipeline.run_cycle(2.0)
+
+        frame = self.pipeline.latest_frame("CAM-A")
+        self.assertIsNotNone(frame)
+        self.assertEqual(frame.frame_sequence, 1)
+
+    def test_run_cycle_still_calls_read_frame_exactly_once_per_camera(self):
+
+        # Regression guard: adding the cache must never introduce a
+        # second read of the same frame source.
+
+        call_count = {"count": 0}
+        original_read_frame = self.cam_a.read_frame
+
+        def counting_read_frame():
+            call_count["count"] += 1
+            return original_read_frame()
+
+        self.cam_a.read_frame = counting_read_frame
+        self.cam_a.queue_frame(1.0, 1, payload_ref=[])
+
+        self.pipeline.run_cycle(1.0)
+
+        self.assertEqual(call_count["count"], 1)
+
+
 if __name__ == "__main__":
     unittest.main()

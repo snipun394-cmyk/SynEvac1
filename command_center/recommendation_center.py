@@ -18,6 +18,7 @@ from advisory_system.confidence_engine import DETERMINISTIC_RULE_BASE_CONFIDENCE
 from voice_evacuation.models import BroadcastStatus
 
 from command_center.building_controls_panel import BuildingControlsPanel
+from command_center.warden_notifications_panel import WardenNotificationsPanel
 from command_center.live_operator_action_gateway import (
     PROVIDER_CAPABILITY_NO_PROVIDER,
     VOICE_STATUS_RECOMMENDED,
@@ -1021,12 +1022,14 @@ class RecommendationCenter(QTabWidget):
         self.commander_panel = CommanderSummaryPanel()
         self.voice_evacuation_panel = VoiceEvacuationPanel()
         self.building_controls_panel = BuildingControlsPanel()
+        self.warden_notifications_panel = WardenNotificationsPanel()
 
         self.addTab(self.civilian_panel, "Civilian Voice Announcements")
         self.addTab(self.voice_evacuation_panel, "Voice Evacuation / Broadcast")
         self.addTab(self.firefighter_panel, "Firefighter Intelligence")
         self.addTab(self.building_panel, "Building System Recommendations")
         self.addTab(self.building_controls_panel, "Building Controls")
+        self.addTab(self.warden_notifications_panel, "Warden Notifications")
         self.addTab(self.commander_panel, "Incident Commander Summary")
 
     # =====================================================
@@ -1066,7 +1069,7 @@ class RecommendationCenter(QTabWidget):
 
     # =====================================================
 
-    def show_live(self, report, gateway=None) -> None:
+    def show_live(self, report, gateway=None, recommendation_set=None) -> None:
 
         self.civilian_panel.show_frame(None, report)
         self.firefighter_panel.show_frame(None, report)
@@ -1074,3 +1077,4 @@ class RecommendationCenter(QTabWidget):
         self.commander_panel.show_frame(None, report)
         self.voice_evacuation_panel.show_live(report, gateway)
         self.building_controls_panel.show_live(report, gateway)
+        self.warden_notifications_panel.show_live(recommendation_set, gateway)
