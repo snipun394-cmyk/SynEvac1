@@ -67,6 +67,60 @@ def make_full_incident_data():
     )
 
 
+class BuildingViewObstacleRenderingTests(unittest.TestCase):
+
+    # Simulation Replay Studio V1 end-to-end verification, Verification
+    # Task 19 -- discovered that BuildingView never rendered Floor.
+    # obstacles at all (a pre-existing gap, not introduced by this
+    # milestone, but directly relevant to "verify obstructions
+    # visually"). Fixed minimally, alongside occupant/route rendering.
+
+    def test_active_obstacle_renders_with_a_tooltip(self):
+
+        from models.building import Building
+        from models.floor import Floor
+        from models.obstacle import Obstacle
+        from models.zone import Zone
+
+        floor = Floor(
+            name="Ground", id="floor-1", display_order=0,
+            zones=[Zone(id="zone-a", name="Zone A", x=0.0, y=0.0, width=10.0, height=10.0, floor_id="floor-1")],
+            obstacles=[
+                Obstacle(
+                    id="obs-1", name="Crate", floor_id="floor-1",
+                    x=2.0, y=2.0, length=2.0, width=2.0,
+                    traversability="Blocked", active=True,
+                ),
+            ],
+        )
+        building = Building(name="Test Building", id="building-1", floors=[floor])
+
+        view = BuildingView()
+        view.set_building(building)
+        view.set_floor(floor)
+
+        tooltips = [item.toolTip() for item in view.scene.items() if "Crate" in item.toolTip()]
+
+        self.assertEqual(len(tooltips), 1)
+        self.assertIn("Traversability: Blocked", tooltips[0])
+        self.assertIn("Active: Yes", tooltips[0])
+
+    # =====================================================
+
+    def test_inactive_obstacle_is_colored_differently(self):
+
+        from command_center.building_view import _INACTIVE_OBSTACLE_COLOR, _OBSTACLE_TRAVERSABILITY_COLORS
+        from models.obstacle import Obstacle
+
+        view = BuildingView()
+
+        active = Obstacle(traversability="Blocked", active=True)
+        inactive = Obstacle(traversability="Blocked", active=False)
+
+        self.assertEqual(view._obstacle_color(active), _OBSTACLE_TRAVERSABILITY_COLORS["Blocked"])
+        self.assertEqual(view._obstacle_color(inactive), _INACTIVE_OBSTACLE_COLOR)
+
+
 class BuildingViewOccupantRenderingTests(unittest.TestCase):
 
     def test_set_occupant_routes_and_select_occupant_do_not_crash(self):

@@ -100,6 +100,16 @@ _OCCUPANT_STATE_COLORS = {
     "STATIONARY": _INACTIVE_COLOR,
 }
 
+# Same fill-tint-by-traversability convention
+# designer/items/obstacle_item.py::ObstacleItem.TRAVERSABILITY_COLORS
+# already establishes, restated (not imported) for this read-only view.
+_OBSTACLE_TRAVERSABILITY_COLORS = {
+    "Blocked": QColor(210, 60, 40),
+    "Reduced Width": QColor(230, 160, 40),
+    "Passable": QColor(130, 130, 140),
+}
+_INACTIVE_OBSTACLE_COLOR = QColor(90, 90, 90)
+
 _OCCUPANT_MARKER_SIZE = 0.35
 _SELECTED_OCCUPANT_MARKER_SIZE = 0.55
 _SELECTED_OCCUPANT_COLOR = QColor(240, 220, 60)
@@ -415,6 +425,26 @@ class BuildingView(QWidget):
 
         for stair in floor.stairs:
             self._add_marker(stair.from_position, self._stair_color(stair, frame), 0.5, rectangular=True)
+
+        # Simulation Replay Studio V1 -- Verification finding: obstacles
+        # (Floor.obstacles) were never rendered here at all, even though
+        # they genuinely affect routing (Edge.blocking_obstacles, the
+        # Obstacle -> Navigation & Evacuation Connectivity milestone) --
+        # a researcher visually inspecting a replay could see a route
+        # detour around a Door/Exit without ever seeing why. Same
+        # coloring convention designer/items/obstacle_item.py's own
+        # TRAVERSABILITY_COLORS already establishes, restated here (not
+        # imported, since that module is a Designer-editing QGraphicsItem
+        # with drag/select behavior this read-only view has no use for).
+        for obstacle in floor.obstacles:
+
+            rect_item = QGraphicsRectItem(
+                QRectF(obstacle.x, obstacle.y, obstacle.length, obstacle.width),
+            )
+            rect_item.setBrush(QBrush(self._obstacle_color(obstacle)))
+            rect_item.setPen(QPen(QColor(25, 25, 25), 0.05))
+            rect_item.setToolTip(self._obstacle_tooltip(obstacle))
+            self._scene.addItem(rect_item)
 
         for camera in floor.cameras:
             self._add_marker(
@@ -739,6 +769,32 @@ class BuildingView(QWidget):
             return _INACTIVE_COLOR
 
         return _SAFE_COLOR
+
+    # =====================================================
+
+    def _obstacle_color(self, obstacle):
+
+        # Obstacle has no per-tick engineering state anywhere in this
+        # codebase (unlike Door/Exit/Stair) -- its own `active`/
+        # `traversability` fields are the whole, static picture, so
+        # there is no frame-dependent lookup to make here.
+        if not obstacle.active:
+            return _INACTIVE_OBSTACLE_COLOR
+
+        return _OBSTACLE_TRAVERSABILITY_COLORS.get(obstacle.traversability, _NO_DATA_COLOR)
+
+    # =====================================================
+
+    def _obstacle_tooltip(self, obstacle):
+
+        lines = [
+            obstacle.name or "Obstacle",
+            f"Type: {obstacle.obstacle_type}",
+            f"Traversability: {obstacle.traversability}",
+            f"Active: {'Yes' if obstacle.active else 'No'}",
+        ]
+
+        return "\n".join(lines)
 
     # =====================================================
 

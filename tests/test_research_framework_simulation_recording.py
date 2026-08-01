@@ -1,3 +1,4 @@
+import json
 import shutil
 import sys
 import tempfile
@@ -9,6 +10,8 @@ from PyQt6.QtWidgets import QApplication
 _app = QApplication.instance() or QApplication(sys.argv)
 
 from research_framework.runner import run_scenario_artifacts
+
+from replay_studio.session import resolve_scenario_artifacts
 
 from tests.test_command_center import make_building, make_scenario
 
@@ -70,6 +73,40 @@ class RunScenarioArtifactsSimulationRecordingTests(unittest.TestCase):
             # among occupants placed in different zones), never invalid.
             events = load_decision_events(str(decision_events_path))
             self.assertIsInstance(events, tuple)
+
+    # =====================================================
+
+    def test_writes_timeline_rows_json_not_only_csv(self):
+
+        # Simulation Replay Studio V1 end-to-end verification,
+        # Verification Task 22 -- this function used to write only
+        # timeline.csv, never timeline_rows.json, silently blocking
+        # timeline-scrubbed replay for any scenario produced by this
+        # (as opposed to designer/campaign/campaign_worker.py's) producer.
+
+        building = make_building()
+        scenario = make_scenario(building)
+
+        with _TempOutputDir() as output_dir:
+
+            run_scenario_artifacts(scenario, building, output_dir, dt=10.0, registration="dynamic")
+
+            scenario_id = scenario.metadata.scenario_id
+            timeline_rows_path = Path(output_dir) / "timelines" / scenario_id / "timeline_rows.json"
+
+            self.assertTrue(timeline_rows_path.is_file())
+
+            with open(timeline_rows_path, "r", encoding="utf-8") as handle:
+                rows = json.load(handle)
+
+            self.assertIsInstance(rows, list)
+            self.assertTrue(len(rows) > 0)
+            self.assertEqual(rows[0]["scenario_id"], scenario_id)
+
+            # resolve_scenario_artifacts() (replay_studio's own scenario
+            # picker) must now find it too.
+            artifacts = resolve_scenario_artifacts(output_dir, scenario_id)
+            self.assertIsNotNone(artifacts["timeline_rows_path"])
 
 
 if __name__ == "__main__":
