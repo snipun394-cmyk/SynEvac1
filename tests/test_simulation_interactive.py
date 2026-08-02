@@ -535,7 +535,7 @@ class IndependenceTests(unittest.TestCase):
 
         package_dir = Path(__file__).resolve().parent.parent / "simulation_interactive"
         forbidden_assignments = (
-            "._occupants[", "._edge_occupancy[", "._edge_queues[",
+            "._occupants[", "._edge_occupancy[", "._admission_queues[",
             "._node_occupancy[", "._generation[", "._event_heap",
         )
 

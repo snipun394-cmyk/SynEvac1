@@ -143,7 +143,14 @@ class MovementStepper:
 
     def current_queue_length(self, edge_id: str) -> int:
 
-        return len(self._simulation._edge_queues.get(edge_id, ()))
+        # Hybrid Flow Regions (Option D), Milestone 3 -- the
+        # coordinator's admission-control queue is now keyed by
+        # _resolve_admission()'s own admission_key, not always a raw
+        # edge id (see simulator/coordinator.py). For every caller here
+        # today, MultiAgentSimulation is constructed with no
+        # flow_region_map, so admission_key IS edge_id -- identical
+        # behavior to before this milestone.
+        return len(self._simulation._admission_queues.get(edge_id, ()))
 
     # =====================================================
 

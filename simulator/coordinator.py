@@ -4,6 +4,7 @@ import itertools
 from collections import deque
 
 from navigation.edge import Edge
+from navigation.flow_region import FlowRegion
 
 from simulator.capacity import DefaultCapacityModel
 from simulator.congestion import DefaultCongestionModel
@@ -40,6 +41,7 @@ class MultiAgentSimulation:
         occupant_simulator=None,
         capacity_model=None,
         congestion_model=None,
+        flow_region_map=None,
     ):
 
         self.engine = engine
@@ -48,6 +50,22 @@ class MultiAgentSimulation:
         self.occupant_simulator = occupant_simulator or OccupantSimulator(engine)
         self.capacity_model = capacity_model or DefaultCapacityModel()
         self.congestion_model = congestion_model or DefaultCongestionModel()
+
+        # Hybrid Flow Regions (Option D), Milestone 3 -- optional,
+        # edge.id -> FlowRegion (see navigation/flow_region.py), the
+        # exact shape NavigationGraph.flow_regions already carries.
+        # None (every existing caller today) means admission control
+        # stays keyed by each edge's own id, structurally identical to
+        # this coordinator before this milestone -- see
+        # _resolve_admission() below, which never touches a dict
+        # lookup at all in that case. When supplied, `capacity_model`/
+        # `congestion_model` must themselves be Flow-Region-aware
+        # (FlowRegionCapacityModel/FlowRegionCongestionModel, Milestone
+        # 2) since every mapped edge resolves to a FlowRegion object,
+        # not an Edge -- pairing a plain DefaultCapacityModel with a
+        # non-None flow_region_map is a caller error, not something
+        # this coordinator guards against.
+        self.flow_region_map = flow_region_map
 
         self._occupants = {}
         self._timelines = {}
@@ -66,9 +84,27 @@ class MultiAgentSimulation:
         self._event_heap = []
         self._counter = itertools.count()
 
+        # Per-edge occupancy -- unchanged in meaning since before this
+        # milestone. Kept purely for peak_edge_occupancy reporting
+        # (Ground Truth and every other existing per-edge consumer),
+        # never for the admission-control decision itself once a
+        # FlowRegion is mapped. See _admission_occupancy below.
         self._edge_occupancy = {}
         self._node_occupancy = {}
-        self._edge_queues = {}
+
+        # Hybrid Flow Regions (Option D), Milestone 3 -- the actual
+        # admission-control state: occupancy and FIFO queue keyed by
+        # _resolve_admission()'s own admission_key (a FlowRegion's id
+        # when one is mapped, otherwise the edge's own id -- so for
+        # every existing caller, an admission_key IS an edge id, and
+        # these two dicts behave exactly like the single per-edge
+        # occupancy/queue dicts this coordinator has always had, just
+        # renamed). Two or more edges that share a FlowRegion share one
+        # entry in each of these dicts, which is the whole mechanism
+        # behind merge/chain admission control.
+        self._admission_occupancy = {}
+        self._admission_queues = {}
+
         self._queue_join_time = {}
 
         self._peak_edge_occupancy = {}
@@ -246,7 +282,7 @@ class MultiAgentSimulation:
         if occupant_id in self._unreachable_ids:
             self._unreachable_ids.remove(occupant_id)
 
-        for queue in self._edge_queues.values():
+        for queue in self._admission_queues.values():
             if occupant_id in queue:
                 queue.remove(occupant_id)
 
@@ -295,20 +331,63 @@ class MultiAgentSimulation:
 
     # =====================================================
 
+    def _resolve_admission(self, edge):
+
+        # Hybrid Flow Regions (Option D), Milestone 3 -- returns
+        # (admission_object, admission_key): the object handed to
+        # capacity_model/congestion_model (an Edge, or the FlowRegion
+        # it belongs to -- both FlowRegionCapacityModel and
+        # FlowRegionCongestionModel dispatch on isinstance(...,
+        # FlowRegion) to pick their region formula vs. their plain
+        # edge-delegating one) and the plain string key this
+        # coordinator's own _admission_occupancy/_admission_queues
+        # dicts are keyed by.
+        #
+        # When flow_region_map is None -- every existing caller today
+        # -- this never touches a dict lookup at all: it is a literal
+        # (edge, edge.id) passthrough, not "a map that happens to
+        # default to identity", so the zero-behavior-change guarantee
+        # for those callers is structural, not merely tested.
+
+        if self.flow_region_map is None:
+            return edge, edge.id
+
+        region = self.flow_region_map.get(edge.id)
+
+        if region is None or region.region_kind == FlowRegion.SINGLE:
+            # A trivial, one-edge region carries no grouping
+            # information beyond the edge itself -- FlowRegion's own
+            # docstring promises these are "identical in effect to
+            # today's per-edge behavior". Resolving straight to the
+            # edge (not the FlowRegion wrapper) is what actually keeps
+            # that promise all the way through capacity/congestion, not
+            # just admission-pool bookkeeping: it preserves, for
+            # example, a solo Stair's own counterflow penalty
+            # (StairAwareCongestionModel), which
+            # FlowRegionCongestionModel's region-shaped formula
+            # deliberately does not apply (see that class's own
+            # docstring).
+            return edge, edge.id
+
+        return region, region.id
+
+    # =====================================================
+
     def _handle_try_enter_edge(self, time, occupant):
 
         edge = occupant.route.edges[occupant.current_edge_index]
+        admission_object, admission_key = self._resolve_admission(edge)
 
-        capacity = self.capacity_model.capacity(edge)
-        current_on_edge = len(self._edge_occupancy.get(edge.id, ()))
+        capacity = self.capacity_model.capacity(admission_object)
+        current_admitted = len(self._admission_occupancy.get(admission_key, ()))
 
-        if current_on_edge < capacity:
+        if current_admitted < capacity:
 
             self._admit_onto_edge(time, occupant, edge)
 
         else:
 
-            self._edge_queues.setdefault(edge.id, deque()).append(
+            self._admission_queues.setdefault(admission_key, deque()).append(
                 occupant.occupant_id
             )
             self._queue_join_time[occupant.occupant_id] = time
@@ -325,24 +404,32 @@ class MultiAgentSimulation:
 
         self._remove_node_occupant(from_node.id, occupant.occupant_id)
 
+        # Per-edge occupancy -- reporting only (peak_edge_occupancy),
+        # never consulted for the admission decision below. See this
+        # dict's own comment in __init__.
         edge_occupants = self._edge_occupancy.setdefault(edge.id, set())
         edge_occupants.add(occupant.occupant_id)
         self._track_peak(self._peak_edge_occupancy, edge.id, len(edge_occupants))
 
         occupant.state = OccupantState.TRAVERSING
 
-        capacity = self.capacity_model.capacity(edge)
-        other_occupants = len(edge_occupants) - 1
+        admission_object, admission_key = self._resolve_admission(edge)
+
+        admission_occupants = self._admission_occupancy.setdefault(admission_key, set())
+        admission_occupants.add(occupant.occupant_id)
+
+        capacity = self.capacity_model.capacity(admission_object)
+        other_occupants = len(admission_occupants) - 1
 
         opposing_occupants = 0
 
         if edge.edge_type == Edge.STAIR:
             opposing_occupants = self._count_opposing_occupants(
-                edge, edge_occupants, from_node, to_node, occupant.occupant_id,
+                edge, admission_occupants, from_node, to_node, occupant.occupant_id,
             )
 
         speed_factor = self.congestion_model.speed_factor(
-            edge, other_occupants, capacity, opposing_occupants=opposing_occupants,
+            admission_object, other_occupants, capacity, opposing_occupants=opposing_occupants,
         )
         effective_speed = occupant.walking_speed * speed_factor
 
@@ -388,7 +475,7 @@ class MultiAgentSimulation:
 
     # =====================================================
 
-    def _count_opposing_occupants(self, edge, edge_occupants, from_node, to_node, occupant_id):
+    def _count_opposing_occupants(self, edge, candidate_occupants, from_node, to_node, occupant_id):
 
         # Every V1 edge is bidirectional (see navigation/edge.py), so
         # two occupants can legitimately be on the same Stair edge at
@@ -396,10 +483,21 @@ class MultiAgentSimulation:
         # the other's to_node/from_node. Reuses each other occupant's
         # already-tracked route/current_edge_index; no new tracking
         # state is added for this.
+        #
+        # Hybrid Flow Regions (Option D), Milestone 3 -- `candidate_occupants`
+        # is the admission-level pool (a whole FlowRegion's shared
+        # occupants when one is mapped, otherwise just this edge's, see
+        # _resolve_admission()), so counterflow is scanned across the
+        # same shared pool the capacity/congestion decision itself
+        # uses. The exact node-pair reversal test below is unchanged --
+        # it still only ever matches someone genuinely travelling this
+        # same edge the opposite way; widening the pool does not change
+        # that geometry, only where the search space itself is drawn
+        # from.
 
         count = 0
 
-        for other_id in edge_occupants:
+        for other_id in candidate_occupants:
 
             if other_id == occupant_id:
                 continue
@@ -427,7 +525,12 @@ class MultiAgentSimulation:
         edge_occupants = self._edge_occupancy.get(edge.id, set())
         edge_occupants.discard(occupant.occupant_id)
 
-        queue = self._edge_queues.get(edge.id)
+        _, admission_key = self._resolve_admission(edge)
+
+        admission_occupants = self._admission_occupancy.get(admission_key, set())
+        admission_occupants.discard(occupant.occupant_id)
+
+        queue = self._admission_queues.get(admission_key)
 
         if queue:
 
