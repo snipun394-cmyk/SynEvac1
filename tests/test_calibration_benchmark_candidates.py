@@ -3,12 +3,15 @@ import unittest
 from behaviour_profile_resolver.registry import DEFAULT_PROFILE_REGISTRY
 from crowd_intelligence.models import DensityThresholds
 from simulator.capacity import DefaultCapacityModel, StairCapacityModel
-from simulator.congestion import DefaultCongestionModel
+from simulator.congestion import DefaultCongestionModel, StairAwareCongestionModel
+from simulator.flow_region_capacity import FlowRegionCapacityModel
+from simulator.flow_region_congestion import FlowRegionCongestionModel
 
 from calibration_benchmark.candidates import (
     CapacityWidthCandidate,
     CongestionMinimumSpeedFactorCandidate,
     DensityThresholdCandidate,
+    FlowRegionCapacityCandidate,
     PreMovementDelayCandidate,
     WalkingSpeedCandidate,
 )
@@ -133,6 +136,55 @@ class DensityThresholdCandidateTests(unittest.TestCase):
         candidate = DensityThresholdCandidate(thresholds, "source", "rationale")
 
         self.assertEqual(candidate.candidate_density_thresholds(), thresholds)
+
+
+class BaseParameterCandidateFlowRegionDefaultsTests(unittest.TestCase):
+
+    # None of the five candidates above override these -- every one of
+    # them must inherit the same "off" default, unchanged by this
+    # milestone.
+
+    def test_every_existing_candidate_defaults_flow_regions_off_on_both_arms(self):
+
+        candidates = (
+            WalkingSpeedCandidate("Adult_Default", 0.6, "source", "rationale"),
+            PreMovementDelayCandidate("Adult_Default", 12.0, "source", "rationale"),
+            CapacityWidthCandidate(3.0, "source", "rationale"),
+            CongestionMinimumSpeedFactorCandidate(0.1, "source", "rationale"),
+            DensityThresholdCandidate(DensityThresholds(), "source", "rationale"),
+        )
+
+        for candidate in candidates:
+            self.assertFalse(candidate.baseline_use_flow_regions())
+            self.assertFalse(candidate.candidate_use_flow_regions())
+
+
+class FlowRegionCapacityCandidateTests(unittest.TestCase):
+
+    def test_baseline_arm_is_the_untouched_production_default(self):
+
+        candidate = FlowRegionCapacityCandidate("source", "rationale")
+
+        self.assertIsInstance(candidate.baseline_capacity_model(), StairCapacityModel)
+        self.assertIsInstance(candidate.baseline_congestion_model(), StairAwareCongestionModel)
+        self.assertFalse(candidate.baseline_use_flow_regions())
+
+    def test_candidate_arm_uses_flow_region_aware_models_and_enables_the_map(self):
+
+        candidate = FlowRegionCapacityCandidate("source", "rationale")
+
+        self.assertIsInstance(candidate.candidate_capacity_model(), FlowRegionCapacityModel)
+        self.assertIsInstance(candidate.candidate_congestion_model(), FlowRegionCongestionModel)
+        self.assertTrue(candidate.candidate_use_flow_regions())
+
+    def test_describe_reports_an_architecture_comparison_not_a_scalar(self):
+
+        candidate = FlowRegionCapacityCandidate("source", "rationale")
+        description = candidate.describe()
+
+        self.assertIsInstance(description["current_value"], str)
+        self.assertIsInstance(description["candidate_value"], str)
+        self.assertNotEqual(description["current_value"], description["candidate_value"])
 
 
 if __name__ == "__main__":

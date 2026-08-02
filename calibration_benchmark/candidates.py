@@ -6,6 +6,8 @@ from behaviour_profile_resolver.registry import DEFAULT_PROFILE_REGISTRY
 from crowd_intelligence.models import DensityThresholds
 from simulator.capacity import DefaultCapacityModel, StairCapacityModel
 from simulator.congestion import DefaultCongestionModel, StairAwareCongestionModel
+from simulator.flow_region_capacity import FlowRegionCapacityModel
+from simulator.flow_region_congestion import FlowRegionCongestionModel
 
 
 # =====================================================
@@ -76,6 +78,23 @@ class ParameterCandidate:
 
     def candidate_density_thresholds(self) -> DensityThresholds:
         return DensityThresholds()
+
+    # Hybrid Flow Regions (Option D), Milestone 4 -- both default False
+    # (today's exact per-edge admission control), so none of the five
+    # existing candidate classes above need any change at all. Only
+    # FlowRegionCapacityCandidate (below) overrides these, always
+    # together with matching capacity_model()/congestion_model()
+    # overrides -- flow_region_map is meaningless to
+    # MultiAgentSimulation without a Flow-Region-aware pair of models
+    # to hand it to (see simulator/coordinator.py's own __init__
+    # comment), so this framework keeps that pairing entirely within
+    # one candidate's own four hooks rather than trying to enforce it
+    # generically.
+    def baseline_use_flow_regions(self) -> bool:
+        return False
+
+    def candidate_use_flow_regions(self) -> bool:
+        return False
 
     # =====================================================
 
@@ -315,3 +334,50 @@ class DensityThresholdCandidate(ParameterCandidate):
 
     def candidate_density_thresholds(self) -> DensityThresholds:
         return self._candidate_thresholds
+
+
+# =====================================================
+
+
+class FlowRegionCapacityCandidate(ParameterCandidate):
+
+    # Hybrid Flow Regions (Option D), Milestone 4 -- unlike every
+    # candidate above, this one is not calibrating a single dataset-
+    # derived scalar against a Calibration Mapping Report tier; it
+    # compares an ARCHITECTURE (today's independent per-edge admission
+    # control) against a candidate one (FlowRegion-aware shared
+    # admission control, Milestones 1-3). current_value/candidate_value
+    # are therefore short descriptions, not numbers -- render_markdown_report()
+    # already formats either the same way (plain str()), so no reporting
+    # change was needed for this.
+    #
+    # The baseline arm is left entirely at the inherited base-class
+    # defaults (StairCapacityModel/StairAwareCongestionModel/
+    # baseline_use_flow_regions()==False) -- byte-for-byte today's
+    # production behavior, exactly like every other candidate's own
+    # baseline arm. The candidate arm overrides capacity_model(),
+    # congestion_model(), AND use_flow_regions() together, since
+    # flow_region_map only does anything when paired with Flow-Region-
+    # aware models (see ParameterCandidate's own comment above).
+
+    def __init__(self, dataset_source: str, rationale: str):
+
+        super().__init__(
+            name="MultiAgentSimulation.flow_region_map (Hybrid Flow Regions, Option D)",
+            subsystem="Admission Control Architecture",
+            calibration_tier="Tier 1",
+            dataset_source=dataset_source,
+            current_value="independent per-edge admission control (today's production default)",
+            candidate_value="FlowRegion-aware shared admission control (FlowRegionCapacityModel + FlowRegionCongestionModel)",
+            unit="architecture variant (not a scalar parameter)",
+            rationale=rationale,
+        )
+
+    def candidate_capacity_model(self):
+        return FlowRegionCapacityModel()
+
+    def candidate_congestion_model(self):
+        return FlowRegionCongestionModel()
+
+    def candidate_use_flow_regions(self) -> bool:
+        return True

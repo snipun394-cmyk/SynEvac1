@@ -162,6 +162,7 @@ def run_calibration_benchmark(
             capacity_model=baseline_capacity_model,
             congestion_model=candidate.baseline_congestion_model(),
             dt=dt,
+            use_flow_regions=candidate.baseline_use_flow_regions(),
         )
 
         candidate_capacity_model = candidate.candidate_capacity_model()
@@ -171,6 +172,7 @@ def run_calibration_benchmark(
             capacity_model=candidate_capacity_model,
             congestion_model=candidate.candidate_congestion_model(),
             dt=dt,
+            use_flow_regions=candidate.candidate_use_flow_regions(),
         )
 
         baseline_sample = extract_metrics(

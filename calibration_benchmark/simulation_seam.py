@@ -45,7 +45,22 @@ from simulator.coordinator import MultiAgentSimulation
 
 def run_with_overrides(
     scenario, building, *, registry=None, capacity_model=None, congestion_model=None, dt: float = 5.0,
+    use_flow_regions: bool = False,
 ):
+
+    # Hybrid Flow Regions (Option D), Milestone 4 -- `use_flow_regions`
+    # is the ONLY new thing this seam adds: when True, the already-
+    # computed graph.flow_regions (NavigationGraphGenerator.build()
+    # populates this on every graph since Milestone 1) is passed
+    # through to MultiAgentSimulation. It does NOT auto-select a
+    # Flow-Region-aware capacity_model/congestion_model -- exactly like
+    # capacity_model/congestion_model themselves, that pairing is the
+    # caller's own responsibility (see ParameterCandidate.candidate_use_flow_regions()
+    # in calibration_benchmark/candidates.py, which is always supplied
+    # alongside FlowRegionCapacityModel/FlowRegionCongestionModel
+    # together, never flow_region_map alone). Default False, so every
+    # existing caller -- including every other ParameterCandidate --
+    # is completely unaffected.
 
     building_copy = build_initialized_building(scenario, building)
 
@@ -55,6 +70,7 @@ def run_with_overrides(
         engine,
         capacity_model=capacity_model or StairCapacityModel(),
         congestion_model=congestion_model or StairAwareCongestionModel(),
+        flow_region_map=graph.flow_regions if use_flow_regions else None,
     )
     occupants = build_occupants(scenario)
     firefighters = build_firefighters(scenario)
