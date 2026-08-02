@@ -47,6 +47,15 @@ class NavigationGraph:
         # checks on top of these every time it is called.
         self._build_issues = []
 
+        # Hybrid Flow Regions (Option D), Milestone 1 -- edge.id ->
+        # FlowRegion, populated by NavigationGraphGenerator.build() via
+        # FlowRegionInferencer, after every edge has been added. Empty
+        # by default so a NavigationGraph built by hand (as many tests
+        # do, never calling the generator) simply has no Flow Region
+        # data rather than a stale or fabricated one. Purely additive:
+        # nothing in routing/Pathfinding/navigation.cost reads this.
+        self.flow_regions = {}
+
     # =====================================================
     # Construction
     # =====================================================

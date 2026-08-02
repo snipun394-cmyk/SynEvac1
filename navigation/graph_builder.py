@@ -3,6 +3,7 @@ import math
 from models.connectable_space import SPACE_TYPE_LABELS
 
 from navigation.edge import Edge
+from navigation.flow_region_inference import FlowRegionInferencer
 from navigation.graph import NavigationGraph
 from navigation.node import Node
 from navigation.validation import ValidationReport
@@ -75,6 +76,13 @@ class NavigationGraphGenerator:
 
         for floor in floors:
             self._add_stair_edges(graph, building, floor)
+
+        # Hybrid Flow Regions (Option D), Milestone 1 -- purely additive
+        # post-processing, run once every edge exists. Never influences
+        # anything above: node/edge construction and every existing
+        # validation issue are computed exactly as before this line was
+        # added.
+        graph.flow_regions = FlowRegionInferencer.infer(graph)
 
         return graph
 
