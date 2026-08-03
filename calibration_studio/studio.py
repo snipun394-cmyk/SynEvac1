@@ -7,6 +7,7 @@ from calibration_benchmark.optional_metrics import AdditionalMetric
 import calibration_studio.storage as storage
 from calibration_studio.benchmark import PublishedBenchmark
 from calibration_studio.benchmark_library import BenchmarkNotFoundError, PublishedBenchmarkLibrary
+from calibration_studio.dashboard import generate_validation_dashboard as generate_validation_dashboard_impl
 from calibration_studio.geometry_resolution import resolve_geometry_reference
 from calibration_studio.project import CalibrationProject
 from calibration_studio.replay_integration import (
@@ -19,7 +20,8 @@ from calibration_studio.session import CalibrationSession
 # =====================================================
 # Calibration Studio Phase 1 -- Core Architecture; Phase 2 --
 # Persistence Layer; Phase 3 -- Published Benchmark Library; Phase 4 --
-# Calibration Runner; Phase 5 -- Replay Studio Integration.
+# Calibration Runner; Phase 5 -- Replay Studio Integration; Phase 6 --
+# Validation Dashboard.
 #
 # CalibrationStudio is the single public entry point this milestone's
 # own brief requires -- a coordinating facade, never a second
@@ -59,8 +61,16 @@ from calibration_studio.session import CalibrationSession
 # Studio remains the sole visualization engine; nothing here renders
 # anything.
 #
-# generate_validation_dashboard() remains a NotImplementedError
-# placeholder -- explicitly out of this milestone's scope.
+# generate_validation_dashboard() is real now too -- read-only,
+# stateless aggregation, thin delegation to calibration_studio/
+# dashboard.py. See that module's own docstring for the ONE genuine
+# scope gap it discloses: ValidationEvidence/ParameterValidationRecord/
+# ExperimentHistory (the ORIGINAL persistent-data-model design's own
+# Phases 4/5/6, a different numbering from this implementation's
+# Phase 0-5) were never actually built as code anywhere in this
+# codebase -- the dashboard computes equivalent summaries directly from
+# PublishedBenchmark/CalibrationSession's own already-real fields
+# instead, not from stand-in types invented to make the names match.
 # =====================================================
 
 
@@ -377,14 +387,23 @@ class CalibrationStudio:
 
         return open_in_replay_studio_impl(session)
 
-    def generate_validation_dashboard(self, *args, **kwargs):
+    # =====================================================
+    # Validation Dashboard -- Phase 6. Read-only, stateless: every call
+    # re-aggregates from whatever this Studio's own benchmark library
+    # and in-process sessions currently report -- no cache, no second
+    # storage layer, so a session completed after the previous call is
+    # simply present the next time this is called, with no separate
+    # "refresh" step to remember. To include persisted (not just
+    # in-process) data, call list_persisted_projects()/self.benchmarks.
+    # list_persisted_benchmarks() first (both already exist, both
+    # already merge into this Studio's in-process registries) -- this
+    # method itself never reads or writes a file.
+    # =====================================================
 
-        # Explicitly out of scope for this milestone (Dashboard is not
-        # to be implemented) -- present only so the public API's final
-        # shape is visible now.
-        raise NotImplementedError(
-            "generate_validation_dashboard() is out of scope until the Validation "
-            "Dashboard milestone.",
+    def generate_validation_dashboard(self):
+
+        return generate_validation_dashboard_impl(
+            benchmarks=self.benchmarks.list_benchmarks(), sessions=self.list_sessions(),
         )
 
     def __repr__(self) -> str:

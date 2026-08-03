@@ -112,23 +112,13 @@ class CalibrationStudioSessionAccessTests(unittest.TestCase):
         self.assertIsNone(session.reproducible)
 
 
-class CalibrationStudioOrchestrationPlaceholderTests(unittest.TestCase):
-
-    # run_published_benchmark()/run_parameter_sweep() were placeholders
-    # at Phase 1 (this file's own original scope); Phase 4 -- Calibration
-    # Runner -- implemented both for real (see tests/
-    # test_calibration_studio_runner_integration.py and
-    # test_calibration_studio_runner_architecture.py). open_in_replay_studio()
-    # was likewise a placeholder here; Phase 5 -- Replay Studio Integration
-    # -- implemented it for real too (see tests/
-    # test_calibration_studio_replay_integration.py). Only
-    # generate_validation_dashboard() remains a NotImplementedError
-    # placeholder, still correctly proven here.
-
-    def test_generate_validation_dashboard_is_not_implemented(self):
-
-        with self.assertRaises(NotImplementedError):
-            CalibrationStudio().generate_validation_dashboard()
+# CalibrationStudioOrchestrationPlaceholderTests (Phase 1's own scope)
+# has been removed: run_published_benchmark()/run_parameter_sweep()
+# (Phase 4), open_in_replay_studio() (Phase 5), and
+# generate_validation_dashboard() (Phase 6) are all real now -- see
+# tests/test_calibration_studio_runner_*.py,
+# tests/test_calibration_studio_replay_integration.py, and
+# tests/test_calibration_studio_dashboard.py for their actual behavior.
 
 
 if __name__ == "__main__":

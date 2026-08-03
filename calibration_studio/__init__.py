@@ -12,6 +12,12 @@ from calibration_studio.benchmark_library import (
     DuplicateBenchmarkError,
     PublishedBenchmarkLibrary,
 )
+from calibration_studio.dashboard import (
+    BenchmarkStatusSummary,
+    ParameterConfidenceSummary,
+    ValidationDashboard,
+    generate_validation_dashboard,
+)
 from calibration_studio.git_provenance import GitProvenance, capture_git_provenance
 from calibration_studio.project import (
     CalibrationProject,
@@ -75,4 +81,8 @@ __all__ = [
     "IncompatibleSchemaVersionError",
     "CorruptedRecordFileError",
     "ReplayArtifactsUnavailableError",
+    "ValidationDashboard",
+    "BenchmarkStatusSummary",
+    "ParameterConfidenceSummary",
+    "generate_validation_dashboard",
 ]
