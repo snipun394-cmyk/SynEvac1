@@ -8,6 +8,8 @@ from research_framework.statistics import (
     confidence_interval, effect_size_cohens_d, paired_comparison,
 )
 
+from behaviour_profile_resolver.randomness_audit import RandomnessControlReport, audit_registry
+
 from calibration_benchmark.candidates import ParameterCandidate
 from calibration_benchmark.metrics import METRIC_FIELDS, METRIC_LABELS, MetricSample, extract_metrics
 from calibration_benchmark.optional_metrics import AdditionalMetric
@@ -35,6 +37,19 @@ from calibration_benchmark.simulation_seam import run_with_overrides
 # objects (see candidates.py's own docstring). A CalibrationBenchmarkResult
 # is a report to read, never something this module applies back onto
 # SynEvac's own defaults.
+#
+# Calibration Studio Phase 0 -- Deterministic Experiment Infrastructure:
+# both arms of every paired scenario already run fully deterministically
+# given scenario.metadata.seed (behaviour_profile_resolver.registrar's
+# own per-occupant seed derivation, predating this milestone -- see
+# behaviour_profile_resolver/randomness_audit.py's own docstring for the
+# full account). What this milestone adds is EVIDENCE, not new seeding:
+# master_seed is now recorded on the result (previously computed, used,
+# and discarded), and baseline_randomness/candidate_randomness record,
+# per arm, whether audit_registry() actually confirmed every reachable
+# randomness source in that arm's own registry is one this codebase has
+# verified prefers context.rng -- never assumed from the fact that a
+# result exists at all.
 # =====================================================
 
 
@@ -77,6 +92,32 @@ class CalibrationBenchmarkResult:
     comparisons: Dict[str, MetricComparison] = field(default_factory=dict)
     additional_comparisons: Dict[str, MetricComparison] = field(default_factory=dict)
 
+    # Phase 0 additions -- appended at the end, all defaulted, so every
+    # existing keyword-constructed CalibrationBenchmarkResult (tests,
+    # any future caller) keeps working unchanged. master_seed is the one
+    # value that, combined with the already-deterministic derivation
+    # chain audited below, is sufficient to reproduce every occupant's
+    # every random draw in this run byte-for-byte -- recording each
+    # derived sub-seed individually would be redundant, not more
+    # reproducible.
+    master_seed: Optional[int] = None
+    baseline_randomness: Optional[RandomnessControlReport] = None
+    candidate_randomness: Optional[RandomnessControlReport] = None
+
+    @property
+    def reproducible(self) -> Optional[bool]:
+
+        # None (not True/False) when randomness wasn't audited at all --
+        # an honest "unknown", never silently defaulted to either
+        # extreme. Derived, not stored, for the same
+        # never-independently-settable reason RandomnessControlReport.
+        # fully_controlled is a property rather than a field.
+
+        if self.baseline_randomness is None or self.candidate_randomness is None:
+            return None
+
+        return self.baseline_randomness.fully_controlled and self.candidate_randomness.fully_controlled
+
     def to_dict(self) -> dict:
 
         return {
@@ -87,6 +128,10 @@ class CalibrationBenchmarkResult:
             "candidate_samples": [s.to_dict() for s in self.candidate_samples],
             "comparisons": {name: c.to_dict() for name, c in self.comparisons.items()},
             "additional_comparisons": {name: c.to_dict() for name, c in self.additional_comparisons.items()},
+            "master_seed": self.master_seed,
+            "baseline_randomness": self.baseline_randomness.to_dict() if self.baseline_randomness else None,
+            "candidate_randomness": self.candidate_randomness.to_dict() if self.candidate_randomness else None,
+            "reproducible": self.reproducible,
         }
 
 
@@ -144,6 +189,12 @@ def run_calibration_benchmark(
 ) -> CalibrationBenchmarkResult:
 
     batch = run_batch_pipeline(definition, definition_id, building, master_seed, n_scenarios)
+
+    # Registry-structural, not per-scenario -- audited once regardless
+    # of n_scenarios. Cheap and read-only (see randomness_audit.py's own
+    # docstring): this can never change what any scenario simulates.
+    baseline_randomness = audit_registry(candidate.baseline_registry())
+    candidate_randomness = audit_registry(candidate.candidate_registry())
 
     baseline_samples: List[MetricSample] = []
     candidate_samples: List[MetricSample] = []
@@ -222,4 +273,7 @@ def run_calibration_benchmark(
         candidate_samples=tuple(candidate_samples),
         comparisons=comparisons,
         additional_comparisons=additional_comparisons,
+        master_seed=master_seed,
+        baseline_randomness=baseline_randomness,
+        candidate_randomness=candidate_randomness,
     )
