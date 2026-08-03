@@ -14,6 +14,7 @@ from calibration_studio.replay_integration import (
     open_in_replay_studio as open_in_replay_studio_impl,
     record_session_replay as record_session_replay_impl,
 )
+from calibration_studio.report import CalibrationReportGenerator
 from calibration_studio.session import CalibrationSession
 
 
@@ -21,7 +22,7 @@ from calibration_studio.session import CalibrationSession
 # Calibration Studio Phase 1 -- Core Architecture; Phase 2 --
 # Persistence Layer; Phase 3 -- Published Benchmark Library; Phase 4 --
 # Calibration Runner; Phase 5 -- Replay Studio Integration; Phase 6 --
-# Validation Dashboard.
+# Validation Dashboard; Phase 7 -- Report Generation (feature-complete).
 #
 # CalibrationStudio is the single public entry point this milestone's
 # own brief requires -- a coordinating facade, never a second
@@ -76,7 +77,13 @@ from calibration_studio.session import CalibrationSession
 
 class CalibrationStudio:
 
-    def __init__(self, *, storage_root=None, benchmark_library: Optional[PublishedBenchmarkLibrary] = None):
+    def __init__(
+        self,
+        *,
+        storage_root=None,
+        benchmark_library: Optional[PublishedBenchmarkLibrary] = None,
+        report_generator: Optional[CalibrationReportGenerator] = None,
+    ):
 
         self._projects: Dict[str, CalibrationProject] = {}
         self._storage_root = Path(storage_root) if storage_root is not None else None
@@ -90,6 +97,10 @@ class CalibrationStudio:
             benchmark_library if benchmark_library is not None
             else PublishedBenchmarkLibrary(storage_root=self._storage_root)
         )
+
+        # Same composition pattern, for the same reason -- report
+        # generation never happens inline in this class's own methods.
+        self.reports = report_generator if report_generator is not None else CalibrationReportGenerator()
 
     def _require_storage_root(self) -> Path:
 
@@ -404,6 +415,56 @@ class CalibrationStudio:
 
         return generate_validation_dashboard_impl(
             benchmarks=self.benchmarks.list_benchmarks(), sessions=self.list_sessions(),
+        )
+
+    # =====================================================
+    # Report Generation -- Phase 7. Thin delegation to self.reports
+    # (calibration_studio/report.py) -- this facade's only real
+    # contribution is resolving the session's own project/benchmark
+    # context automatically, so a caller doesn't have to look each of
+    # them up by hand before every report. include_dashboard=True by
+    # default (a fresh, current aggregation, matching Phase 6's own
+    # "no cache" design) -- pass False to omit it (e.g. a caller who
+    # already knows there is nothing meaningful to show yet).
+    # =====================================================
+
+    def _find_project_for_session(self, session: CalibrationSession) -> Optional[CalibrationProject]:
+
+        for project in self._projects.values():
+            if project.get_session(session.session_id) is not None:
+                return project
+
+        return None
+
+    def generate_session_report(self, session_id: str, *, include_dashboard: bool = True) -> str:
+
+        session = self.get_session(session_id)
+
+        if session is None:
+            raise ValueError(f"No session {session_id!r} is known to this Studio.")
+
+        project = self._find_project_for_session(session)
+        benchmark = self.benchmarks.get(session.benchmark_id) if session.benchmark_id else None
+        dashboard = self.generate_validation_dashboard() if include_dashboard else None
+
+        return self.reports.generate_session_report(
+            session=session, project=project, benchmark=benchmark, dashboard=dashboard,
+        )
+
+    def save_session_report(self, session_id: str, *, include_dashboard: bool = True) -> Path:
+
+        session = self.get_session(session_id)
+
+        if session is None:
+            raise ValueError(f"No session {session_id!r} is known to this Studio.")
+
+        project = self._find_project_for_session(session)
+        benchmark = self.benchmarks.get(session.benchmark_id) if session.benchmark_id else None
+        dashboard = self.generate_validation_dashboard() if include_dashboard else None
+
+        return self.reports.save_session_report(
+            session=session, storage_root=self._require_storage_root(),
+            project=project, benchmark=benchmark, dashboard=dashboard,
         )
 
     def __repr__(self) -> str:

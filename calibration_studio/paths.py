@@ -22,6 +22,7 @@ from pathlib import Path
 PROJECTS_SUBDIRECTORY = "projects"
 SESSIONS_SUBDIRECTORY = "sessions"
 BENCHMARKS_SUBDIRECTORY = "benchmarks"
+REPORTS_SUBDIRECTORY = "reports"
 
 PROJECTS_CATALOG_FILENAME = "projects_catalog.csv"
 SESSIONS_CATALOG_FILENAME = "sessions_catalog.csv"
@@ -71,3 +72,19 @@ def benchmark_json_path(storage_root, benchmark_id: str) -> Path:
 def benchmarks_catalog_path(storage_root) -> Path:
 
     return Path(storage_root) / BENCHMARKS_CATALOG_FILENAME
+
+
+def report_markdown_filename(session_id: str) -> str:
+
+    return f"{session_id}.md"
+
+
+def report_markdown_path(storage_root, session_id: str) -> Path:
+
+    # Phase 7 -- Report Generation. A rendered OUTPUT artifact (plain
+    # Markdown text), not a catalog-indexed persisted record type like
+    # projects/sessions/benchmarks above -- reports are regenerable at
+    # any time from a session's own already-persisted state, so no
+    # catalog/"list reports" operation exists for them, deliberately.
+
+    return Path(storage_root) / REPORTS_SUBDIRECTORY / report_markdown_filename(session_id)

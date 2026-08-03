@@ -26,6 +26,7 @@ from calibration_studio.project import (
     ProjectStatus,
 )
 from calibration_studio.replay_integration import ReplayArtifactsUnavailableError
+from calibration_studio.report import CalibrationReportGenerator, SessionReportContent
 from calibration_studio.session import (
     CalibrationSession,
     CorruptedSessionRecordError,
@@ -85,4 +86,6 @@ __all__ = [
     "BenchmarkStatusSummary",
     "ParameterConfidenceSummary",
     "generate_validation_dashboard",
+    "CalibrationReportGenerator",
+    "SessionReportContent",
 ]
