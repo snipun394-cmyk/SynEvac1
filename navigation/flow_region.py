@@ -1,5 +1,30 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Optional, Tuple
+
+from navigation.edge import Edge
+
+
+@dataclass(frozen=True)
+class FlowRegionMember:
+
+    # Flow Region Capacity Formula V2 -- one member edge's own live
+    # Edge reference (never a copy, same convention Edge.reference
+    # itself uses), plus which of its two ends is upstream (farther
+    # from Outside) vs downstream (closer). This is exactly the
+    # orientation FlowRegionInferencer already derives internally to
+    # decide chain/merge membership (see flow_region_inference.py) --
+    # retained here, instead of being discarded after inference, so a
+    # region-level capacity formula can reconstruct the region's own
+    # internal flow network (for a min-cut/max-flow computation)
+    # without needing the whole NavigationGraph or Building passed to
+    # it. Anticipated explicitly by the Flow Region Capacity Formula V2
+    # design investigation: "no new topology analysis is needed beyond
+    # what Milestone 1 already derives and currently discards after
+    # inference."
+
+    edge: Edge
+    upstream_node_id: str
+    downstream_node_id: str
 
 
 @dataclass(frozen=True)
@@ -45,6 +70,20 @@ class FlowRegion:
     # members may themselves have undeterminable geometry.
     total_length: Optional[float]
     representative_width: Optional[float]
+
+    # Flow Region Capacity Formula V2 -- each member edge's own live
+    # Edge reference plus its orientation within this region (see
+    # FlowRegionMember above). Defaults to an empty tuple so every
+    # existing caller/test that constructs a FlowRegion with only the
+    # five original fields keeps working unchanged; populated by
+    # FlowRegionInferencer for every region it produces except a
+    # SINGLE-kind region built from an edge whose own orientation was
+    # undeterminable (non-traversable or an equal-distance tie -- see
+    # FlowRegionInferencer's own docstring), which was never going to
+    # reach a region-level capacity formula anyway (MultiAgentSimulation
+    # resolves a SINGLE-kind region straight through to its one edge,
+    # see simulator/coordinator.py::_resolve_admission()).
+    member_edges: Tuple[FlowRegionMember, ...] = field(default_factory=tuple)
 
     SINGLE = "single"
     CHAIN = "chain"

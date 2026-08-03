@@ -1,0 +1,1607 @@
+{
+  "summary": {
+    "baseline": {
+      "n_seeds": 6,
+      "evacuation_time_mean": 28191.727600567752,
+      "overprediction_ratio": 23.650778188395766,
+      "avg_queue_wait_time_mean": 939.324229500849,
+      "max_queue_wait_time_mean": 26500.501467540158,
+      "queue_wait_percentage_mean": 94.7404556450618,
+      "peak_congestion_mean": 288.3333333333333,
+      "people_evacuated_mean": 975.0,
+      "people_trapped_mean": 109.0,
+      "lobby_discharge_rate_mean": 0.026443836035290044,
+      "dominant_bottleneck": "Door '' (door-7-lobby)",
+      "door_3_lobby_crossings_mean": 262.3333333333333,
+      "door_7_lobby_crossings_mean": 305.6666666666667,
+      "door_12_lobby_crossings_mean": 177.33333333333334
+    },
+    "v1": {
+      "n_seeds": 6,
+      "evacuation_time_mean": 574.3247576767529,
+      "overprediction_ratio": 0.4818160718764706,
+      "avg_queue_wait_time_mean": 0.40443603351165786,
+      "max_queue_wait_time_mean": 6.665335969016266,
+      "queue_wait_percentage_mean": 2.642480648606765,
+      "peak_congestion_mean": 296.6666666666667,
+      "people_evacuated_mean": 975.0,
+      "people_trapped_mean": 109.0,
+      "lobby_discharge_rate_mean": 1.297904307852848,
+      "dominant_bottleneck": "Stair '' (stair-1-9)",
+      "door_3_lobby_crossings_mean": 262.3333333333333,
+      "door_7_lobby_crossings_mean": 305.6666666666667,
+      "door_12_lobby_crossings_mean": 177.33333333333334
+    },
+    "v2": {
+      "n_seeds": 6,
+      "evacuation_time_mean": 77266.71054354023,
+      "overprediction_ratio": 64.82106589223174,
+      "avg_queue_wait_time_mean": 4027.8644995335944,
+      "max_queue_wait_time_mean": 7176.729829877205,
+      "queue_wait_percentage_mean": 99.19179563462278,
+      "peak_congestion_mean": 74.83333333333333,
+      "people_evacuated_mean": 975.0,
+      "people_trapped_mean": 109.0,
+      "lobby_discharge_rate_mean": 0.00964648163623442,
+      "dominant_bottleneck": "Exit '' (exit-lobby)",
+      "door_3_lobby_crossings_mean": 262.3333333333333,
+      "door_7_lobby_crossings_mean": 305.6666666666667,
+      "door_12_lobby_crossings_mean": 177.33333333333334
+    }
+  },
+  "comparisons": {
+    "baseline_vs_v1": {
+      "total_evacuation_time": {
+        "n_pairs": 6,
+        "a_mean": 28191.727600567752,
+        "b_mean": 574.3247576767529,
+        "a_ci": {
+          "mean": 28191.727600567752,
+          "lower": 27566.008008147386,
+          "upper": 28817.44719298812,
+          "confidence": 0.95,
+          "n": 6
+        },
+        "b_ci": {
+          "mean": 574.3247576767529,
+          "lower": 567.861367359553,
+          "upper": 580.7881479939529,
+          "confidence": 0.95,
+          "n": 6
+        },
+        "paired": {
+          "t_statistic": 113.90937771965518,
+          "p_value": 9.888898443666567e-10,
+          "mean_difference": 27617.402842891,
+          "n": 6
+        },
+        "effect_size_cohens_d": {
+          "cohens_d": -65.501420723584,
+          "n_a": 6,
+          "n_b": 6
+        }
+      },
+      "avg_queue_wait_time": {
+        "n_pairs": 6,
+        "a_mean": 939.324229500849,
+        "b_mean": 0.40443603351165786,
+        "a_ci": {
+          "mean": 939.324229500849,
+          "lower": 923.9942648388992,
+          "upper": 954.6541941627988,
+          "confidence": 0.95,
+          "n": 6
+        },
+        "b_ci": {
+          "mean": 0.40443603351165786,
+          "lower": 0.3058862189846645,
+          "upper": 0.5029858480386512,
+          "confidence": 0.95,
+          "n": 6
+        },
+        "paired": {
+          "t_statistic": 157.27017310237792,
+          "p_value": 1.9718956436738588e-10,
+          "mean_difference": 938.9197934673374,
+          "n": 6
+        },
+        "effect_size_cohens_d": {
+          "cohens_d": -90.8969213570674,
+          "n_a": 6,
+          "n_b": 6
+        }
+      },
+      "max_queue_wait_time": {
+        "n_pairs": 6,
+        "a_mean": 26500.501467540158,
+        "b_mean": 6.665335969016266,
+        "a_ci": {
+          "mean": 26500.501467540158,
+          "lower": 25899.879059452513,
+          "upper": 27101.123875627803,
+          "confidence": 0.95,
+          "n": 6
+        },
+        "b_ci": {
+          "mean": 6.665335969016266,
+          "lower": 5.7834435763412495,
+          "upper": 7.547228361691283,
+          "confidence": 0.95,
+          "n": 6
+        },
+        "paired": {
+          "t_statistic": 113.4660438176105,
+          "p_value": 1.0083538088941087e-09,
+          "mean_difference": 26493.83613157114,
+          "n": 6
+        },
+        "effect_size_cohens_d": {
+          "cohens_d": -65.46567555418918,
+          "n_a": 6,
+          "n_b": 6
+        }
+      },
+      "queue_wait_percentage": {
+        "n_pairs": 6,
+        "a_mean": 94.7404556450618,
+        "b_mean": 2.642480648606765,
+        "a_ci": {
+          "mean": 94.7404556450618,
+          "lower": 94.66564573785509,
+          "upper": 94.81526555226851,
+          "confidence": 0.95,
+          "n": 6
+        },
+        "b_ci": {
+          "mean": 2.642480648606765,
+          "lower": 2.065699096424523,
+          "upper": 3.2192622007890073,
+          "confidence": 0.95,
+          "n": 6
+        },
+        "paired": {
+          "t_statistic": 374.12038473434257,
+          "p_value": 2.5894871247498757e-12,
+          "mean_difference": 92.09797499645504,
+          "n": 6
+        },
+        "effect_size_cohens_d": {
+          "cohens_d": -235.01030812818928,
+          "n_a": 6,
+          "n_b": 6
+        }
+      },
+      "peak_congestion_value": {
+        "n_pairs": 6,
+        "a_mean": 288.3333333333333,
+        "b_mean": 296.6666666666667,
+        "a_ci": {
+          "mean": 288.3333333333333,
+          "lower": 282.33530905018193,
+          "upper": 294.3313576164847,
+          "confidence": 0.95,
+          "n": 6
+        },
+        "b_ci": {
+          "mean": 296.6666666666667,
+          "lower": 288.9359032627973,
+          "upper": 304.3974300705361,
+          "confidence": 0.95,
+          "n": 6
+        },
+        "paired": {
+          "t_statistic": -2.0633693775014934,
+          "p_value": 0.094029266058521,
+          "mean_difference": -8.333333333333334,
+          "n": 6
+        },
+        "effect_size_cohens_d": {
+          "cohens_d": 1.2639811160609584,
+          "n_a": 6,
+          "n_b": 6
+        }
+      },
+      "congestion_duration": {
+        "n_pairs": 0,
+        "a_mean": null,
+        "b_mean": null,
+        "a_ci": null,
+        "b_ci": null,
+        "paired": null,
+        "effect_size_cohens_d": null
+      },
+      "exit_utilization_balance": {
+        "n_pairs": 6,
+        "a_mean": 1.0,
+        "b_mean": 0.5,
+        "a_ci": {
+          "mean": 1.0,
+          "lower": 1.0,
+          "upper": 1.0,
+          "confidence": 0.95,
+          "n": 6
+        },
+        "b_ci": {
+          "mean": 0.5,
+          "lower": 0.5,
+          "upper": 0.5,
+          "confidence": 0.95,
+          "n": 6
+        },
+        "paired": {
+          "t_statistic": Infinity,
+          "p_value": 0.0,
+          "mean_difference": 0.5,
+          "n": 6
+        },
+        "effect_size_cohens_d": {
+          "cohens_d": null,
+          "n_a": 6,
+          "n_b": 6
+        }
+      },
+      "people_evacuated": {
+        "n_pairs": 6,
+        "a_mean": 975.0,
+        "b_mean": 975.0,
+        "a_ci": {
+          "mean": 975.0,
+          "lower": 962.6184382814639,
+          "upper": 987.3815617185361,
+          "confidence": 0.95,
+          "n": 6
+        },
+        "b_ci": {
+          "mean": 975.0,
+          "lower": 962.6184382814639,
+          "upper": 987.3815617185361,
+          "confidence": 0.95,
+          "n": 6
+        },
+        "paired": {
+          "t_statistic": NaN,
+          "p_value": NaN,
+          "mean_difference": 0.0,
+          "n": 6
+        },
+        "effect_size_cohens_d": {
+          "cohens_d": 0.0,
+          "n_a": 6,
+          "n_b": 6
+        }
+      },
+      "people_trapped": {
+        "n_pairs": 6,
+        "a_mean": 109.0,
+        "b_mean": 109.0,
+        "a_ci": {
+          "mean": 109.0,
+          "lower": 96.61843828146392,
+          "upper": 121.38156171853608,
+          "confidence": 0.95,
+          "n": 6
+        },
+        "b_ci": {
+          "mean": 109.0,
+          "lower": 96.61843828146392,
+          "upper": 121.38156171853608,
+          "confidence": 0.95,
+          "n": 6
+        },
+        "paired": {
+          "t_statistic": NaN,
+          "p_value": NaN,
+          "mean_difference": 0.0,
+          "n": 6
+        },
+        "effect_size_cohens_d": {
+          "cohens_d": 0.0,
+          "n_a": 6,
+          "n_b": 6
+        }
+      },
+      "lobby_discharge_count": {
+        "n_pairs": 6,
+        "a_mean": 745.3333333333334,
+        "b_mean": 745.3333333333334,
+        "a_ci": {
+          "mean": 745.3333333333334,
+          "lower": 736.2894953177405,
+          "upper": 754.3771713489263,
+          "confidence": 0.95,
+          "n": 6
+        },
+        "b_ci": {
+          "mean": 745.3333333333334,
+          "lower": 736.2894953177405,
+          "upper": 754.3771713489263,
+          "confidence": 0.95,
+          "n": 6
+        },
+        "paired": {
+          "t_statistic": NaN,
+          "p_value": NaN,
+          "mean_difference": 0.0,
+          "n": 6
+        },
+        "effect_size_cohens_d": {
+          "cohens_d": 0.0,
+          "n_a": 6,
+          "n_b": 6
+        }
+      },
+      "lobby_discharge_rate": {
+        "n_pairs": 6,
+        "a_mean": 0.026443836035290044,
+        "b_mean": 1.297904307852848,
+        "a_ci": {
+          "mean": 0.026443836035290044,
+          "lower": 0.02604143797601977,
+          "upper": 0.026846234094560318,
+          "confidence": 0.95,
+          "n": 6
+        },
+        "b_ci": {
+          "mean": 1.297904307852848,
+          "lower": 1.2744430162729272,
+          "upper": 1.3213655994327689,
+          "confidence": 0.95,
+          "n": 6
+        },
+        "paired": {
+          "t_statistic": -139.80144238692282,
+          "p_value": 3.552282934108785e-10,
+          "mean_difference": -1.271460471817558,
+          "n": 6
+        },
+        "effect_size_cohens_d": {
+          "cohens_d": 80.41885453346161,
+          "n_a": 6,
+          "n_b": 6
+        }
+      },
+      "door_3_lobby_crossings": {
+        "n_pairs": 6,
+        "a_mean": 262.3333333333333,
+        "b_mean": 262.3333333333333,
+        "a_ci": {
+          "mean": 262.3333333333333,
+          "lower": 258.7182344514535,
+          "upper": 265.94843221521313,
+          "confidence": 0.95,
+          "n": 6
+        },
+        "b_ci": {
+          "mean": 262.3333333333333,
+          "lower": 258.7182344514535,
+          "upper": 265.94843221521313,
+          "confidence": 0.95,
+          "n": 6
+        },
+        "paired": {
+          "t_statistic": NaN,
+          "p_value": NaN,
+          "mean_difference": 0.0,
+          "n": 6
+        },
+        "effect_size_cohens_d": {
+          "cohens_d": 0.0,
+          "n_a": 6,
+          "n_b": 6
+        }
+      },
+      "door_7_lobby_crossings": {
+        "n_pairs": 6,
+        "a_mean": 305.6666666666667,
+        "b_mean": 305.6666666666667,
+        "a_ci": {
+          "mean": 305.6666666666667,
+          "lower": 299.452211606828,
+          "upper": 311.8811217265054,
+          "confidence": 0.95,
+          "n": 6
+        },
+        "b_ci": {
+          "mean": 305.6666666666667,
+          "lower": 299.452211606828,
+          "upper": 311.8811217265054,
+          "confidence": 0.95,
+          "n": 6
+        },
+        "paired": {
+          "t_statistic": NaN,
+          "p_value": NaN,
+          "mean_difference": 0.0,
+          "n": 6
+        },
+        "effect_size_cohens_d": {
+          "cohens_d": 0.0,
+          "n_a": 6,
+          "n_b": 6
+        }
+      },
+      "door_12_lobby_crossings": {
+        "n_pairs": 6,
+        "a_mean": 177.33333333333334,
+        "b_mean": 177.33333333333334,
+        "a_ci": {
+          "mean": 177.33333333333334,
+          "lower": 172.562535354602,
+          "upper": 182.10413131206468,
+          "confidence": 0.95,
+          "n": 6
+        },
+        "b_ci": {
+          "mean": 177.33333333333334,
+          "lower": 172.562535354602,
+          "upper": 182.10413131206468,
+          "confidence": 0.95,
+          "n": 6
+        },
+        "paired": {
+          "t_statistic": NaN,
+          "p_value": NaN,
+          "mean_difference": 0.0,
+          "n": 6
+        },
+        "effect_size_cohens_d": {
+          "cohens_d": 0.0,
+          "n_a": 6,
+          "n_b": 6
+        }
+      }
+    },
+    "baseline_vs_v2": {
+      "total_evacuation_time": {
+        "n_pairs": 6,
+        "a_mean": 28191.727600567752,
+        "b_mean": 77266.71054354023,
+        "a_ci": {
+          "mean": 28191.727600567752,
+          "lower": 27566.008008147386,
+          "upper": 28817.44719298812,
+          "confidence": 0.95,
+          "n": 6
+        },
+        "b_ci": {
+          "mean": 77266.71054354023,
+          "lower": 76261.04767794706,
+          "upper": 78272.3734091334,
+          "confidence": 0.95,
+          "n": 6
+        },
+        "paired": {
+          "t_statistic": -206.9978833569047,
+          "p_value": 4.9930480821789393e-11,
+          "mean_difference": -49074.98294297248,
+          "n": 6
+        },
+        "effect_size_cohens_d": {
+          "cohens_d": 61.49223353518374,
+          "n_a": 6,
+          "n_b": 6
+        }
+      },
+      "avg_queue_wait_time": {
+        "n_pairs": 6,
+        "a_mean": 939.324229500849,
+        "b_mean": 4027.8644995335944,
+        "a_ci": {
+          "mean": 939.324229500849,
+          "lower": 923.9942648388992,
+          "upper": 954.6541941627988,
+          "confidence": 0.95,
+          "n": 6
+        },
+        "b_ci": {
+          "mean": 4027.8644995335944,
+          "lower": 3973.438934305953,
+          "upper": 4082.290064761236,
+          "confidence": 0.95,
+          "n": 6
+        },
+        "paired": {
+          "t_statistic": -197.72706821753619,
+          "p_value": 6.278475670763944e-11,
+          "mean_difference": -3088.5402700327454,
+          "n": 6
+        },
+        "effect_size_cohens_d": {
+          "cohens_d": 81.06671434801335,
+          "n_a": 6,
+          "n_b": 6
+        }
+      },
+      "max_queue_wait_time": {
+        "n_pairs": 6,
+        "a_mean": 26500.501467540158,
+        "b_mean": 7176.729829877205,
+        "a_ci": {
+          "mean": 26500.501467540158,
+          "lower": 25899.879059452513,
+          "upper": 27101.123875627803,
+          "confidence": 0.95,
+          "n": 6
+        },
+        "b_ci": {
+          "mean": 7176.729829877205,
+          "lower": 6968.599049546276,
+          "upper": 7384.860610208134,
+          "confidence": 0.95,
+          "n": 6
+        },
+        "paired": {
+          "t_statistic": 100.70828834091449,
+          "p_value": 1.8302866184382248e-09,
+          "mean_difference": 19323.771637662954,
+          "n": 6
+        },
+        "effect_size_cohens_d": {
+          "cohens_d": -45.116636101105726,
+          "n_a": 6,
+          "n_b": 6
+        }
+      },
+      "queue_wait_percentage": {
+        "n_pairs": 6,
+        "a_mean": 94.7404556450618,
+        "b_mean": 99.19179563462278,
+        "a_ci": {
+          "mean": 94.7404556450618,
+          "lower": 94.66564573785509,
+          "upper": 94.81526555226851,
+          "confidence": 0.95,
+          "n": 6
+        },
+        "b_ci": {
+          "mean": 99.19179563462278,
+          "lower": 99.17811472875232,
+          "upper": 99.20547654049324,
+          "confidence": 0.95,
+          "n": 6
+        },
+        "paired": {
+          "t_statistic": -155.49675071600748,
+          "p_value": 2.086915405035068e-10,
+          "mean_difference": -4.451339989560968,
+          "n": 6
+        },
+        "effect_size_cohens_d": {
+          "cohens_d": 86.86785394949189,
+          "n_a": 6,
+          "n_b": 6
+        }
+      },
+      "peak_congestion_value": {
+        "n_pairs": 6,
+        "a_mean": 288.3333333333333,
+        "b_mean": 74.83333333333333,
+        "a_ci": {
+          "mean": 288.3333333333333,
+          "lower": 282.33530905018193,
+          "upper": 294.3313576164847,
+          "confidence": 0.95,
+          "n": 6
+        },
+        "b_ci": {
+          "mean": 74.83333333333333,
+          "lower": 71.9849966791628,
+          "upper": 77.68166998750385,
+          "confidence": 0.95,
+          "n": 6
+        },
+        "paired": {
+          "t_statistic": 97.61859578944188,
+          "p_value": 2.1387149717037852e-09,
+          "mean_difference": 213.5,
+          "n": 6
+        },
+        "effect_size_cohens_d": {
+          "cohens_d": -47.72017205524844,
+          "n_a": 6,
+          "n_b": 6
+        }
+      },
+      "congestion_duration": {
+        "n_pairs": 0,
+        "a_mean": null,
+        "b_mean": null,
+        "a_ci": null,
+        "b_ci": null,
+        "paired": null,
+        "effect_size_cohens_d": null
+      },
+      "exit_utilization_balance": {
+        "n_pairs": 6,
+        "a_mean": 1.0,
+        "b_mean": 1.0,
+        "a_ci": {
+          "mean": 1.0,
+          "lower": 1.0,
+          "upper": 1.0,
+          "confidence": 0.95,
+          "n": 6
+        },
+        "b_ci": {
+          "mean": 1.0,
+          "lower": 1.0,
+          "upper": 1.0,
+          "confidence": 0.95,
+          "n": 6
+        },
+        "paired": {
+          "t_statistic": NaN,
+          "p_value": NaN,
+          "mean_difference": 0.0,
+          "n": 6
+        },
+        "effect_size_cohens_d": {
+          "cohens_d": 0.0,
+          "n_a": 6,
+          "n_b": 6
+        }
+      },
+      "people_evacuated": {
+        "n_pairs": 6,
+        "a_mean": 975.0,
+        "b_mean": 975.0,
+        "a_ci": {
+          "mean": 975.0,
+          "lower": 962.6184382814639,
+          "upper": 987.3815617185361,
+          "confidence": 0.95,
+          "n": 6
+        },
+        "b_ci": {
+          "mean": 975.0,
+          "lower": 962.6184382814639,
+          "upper": 987.3815617185361,
+          "confidence": 0.95,
+          "n": 6
+        },
+        "paired": {
+          "t_statistic": NaN,
+          "p_value": NaN,
+          "mean_difference": 0.0,
+          "n": 6
+        },
+        "effect_size_cohens_d": {
+          "cohens_d": 0.0,
+          "n_a": 6,
+          "n_b": 6
+        }
+      },
+      "people_trapped": {
+        "n_pairs": 6,
+        "a_mean": 109.0,
+        "b_mean": 109.0,
+        "a_ci": {
+          "mean": 109.0,
+          "lower": 96.61843828146392,
+          "upper": 121.38156171853608,
+          "confidence": 0.95,
+          "n": 6
+        },
+        "b_ci": {
+          "mean": 109.0,
+          "lower": 96.61843828146392,
+          "upper": 121.38156171853608,
+          "confidence": 0.95,
+          "n": 6
+        },
+        "paired": {
+          "t_statistic": NaN,
+          "p_value": NaN,
+          "mean_difference": 0.0,
+          "n": 6
+        },
+        "effect_size_cohens_d": {
+          "cohens_d": 0.0,
+          "n_a": 6,
+          "n_b": 6
+        }
+      },
+      "lobby_discharge_count": {
+        "n_pairs": 6,
+        "a_mean": 745.3333333333334,
+        "b_mean": 745.3333333333334,
+        "a_ci": {
+          "mean": 745.3333333333334,
+          "lower": 736.2894953177405,
+          "upper": 754.3771713489263,
+          "confidence": 0.95,
+          "n": 6
+        },
+        "b_ci": {
+          "mean": 745.3333333333334,
+          "lower": 736.2894953177405,
+          "upper": 754.3771713489263,
+          "confidence": 0.95,
+          "n": 6
+        },
+        "paired": {
+          "t_statistic": NaN,
+          "p_value": NaN,
+          "mean_difference": 0.0,
+          "n": 6
+        },
+        "effect_size_cohens_d": {
+          "cohens_d": 0.0,
+          "n_a": 6,
+          "n_b": 6
+        }
+      },
+      "lobby_discharge_rate": {
+        "n_pairs": 6,
+        "a_mean": 0.026443836035290044,
+        "b_mean": 0.00964648163623442,
+        "a_ci": {
+          "mean": 0.026443836035290044,
+          "lower": 0.02604143797601977,
+          "upper": 0.026846234094560318,
+          "confidence": 0.95,
+          "n": 6
+        },
+        "b_ci": {
+          "mean": 0.00964648163623442,
+          "lower": 0.009582782675033838,
+          "upper": 0.009710180597435001,
+          "confidence": 0.95,
+          "n": 6
+        },
+        "paired": {
+          "t_statistic": 113.55290140216557,
+          "p_value": 1.004504489777685e-09,
+          "mean_difference": 0.016797354399055626,
+          "n": 6
+        },
+        "effect_size_cohens_d": {
+          "cohens_d": -61.1901496269583,
+          "n_a": 6,
+          "n_b": 6
+        }
+      },
+      "door_3_lobby_crossings": {
+        "n_pairs": 6,
+        "a_mean": 262.3333333333333,
+        "b_mean": 262.3333333333333,
+        "a_ci": {
+          "mean": 262.3333333333333,
+          "lower": 258.7182344514535,
+          "upper": 265.94843221521313,
+          "confidence": 0.95,
+          "n": 6
+        },
+        "b_ci": {
+          "mean": 262.3333333333333,
+          "lower": 258.7182344514535,
+          "upper": 265.94843221521313,
+          "confidence": 0.95,
+          "n": 6
+        },
+        "paired": {
+          "t_statistic": NaN,
+          "p_value": NaN,
+          "mean_difference": 0.0,
+          "n": 6
+        },
+        "effect_size_cohens_d": {
+          "cohens_d": 0.0,
+          "n_a": 6,
+          "n_b": 6
+        }
+      },
+      "door_7_lobby_crossings": {
+        "n_pairs": 6,
+        "a_mean": 305.6666666666667,
+        "b_mean": 305.6666666666667,
+        "a_ci": {
+          "mean": 305.6666666666667,
+          "lower": 299.452211606828,
+          "upper": 311.8811217265054,
+          "confidence": 0.95,
+          "n": 6
+        },
+        "b_ci": {
+          "mean": 305.6666666666667,
+          "lower": 299.452211606828,
+          "upper": 311.8811217265054,
+          "confidence": 0.95,
+          "n": 6
+        },
+        "paired": {
+          "t_statistic": NaN,
+          "p_value": NaN,
+          "mean_difference": 0.0,
+          "n": 6
+        },
+        "effect_size_cohens_d": {
+          "cohens_d": 0.0,
+          "n_a": 6,
+          "n_b": 6
+        }
+      },
+      "door_12_lobby_crossings": {
+        "n_pairs": 6,
+        "a_mean": 177.33333333333334,
+        "b_mean": 177.33333333333334,
+        "a_ci": {
+          "mean": 177.33333333333334,
+          "lower": 172.562535354602,
+          "upper": 182.10413131206468,
+          "confidence": 0.95,
+          "n": 6
+        },
+        "b_ci": {
+          "mean": 177.33333333333334,
+          "lower": 172.562535354602,
+          "upper": 182.10413131206468,
+          "confidence": 0.95,
+          "n": 6
+        },
+        "paired": {
+          "t_statistic": NaN,
+          "p_value": NaN,
+          "mean_difference": 0.0,
+          "n": 6
+        },
+        "effect_size_cohens_d": {
+          "cohens_d": 0.0,
+          "n_a": 6,
+          "n_b": 6
+        }
+      }
+    },
+    "v1_vs_v2": {
+      "total_evacuation_time": {
+        "n_pairs": 6,
+        "a_mean": 574.3247576767529,
+        "b_mean": 77266.71054354023,
+        "a_ci": {
+          "mean": 574.3247576767529,
+          "lower": 567.861367359553,
+          "upper": 580.7881479939529,
+          "confidence": 0.95,
+          "n": 6
+        },
+        "b_ci": {
+          "mean": 77266.71054354023,
+          "lower": 76261.04767794706,
+          "upper": 78272.3734091334,
+          "confidence": 0.95,
+          "n": 6
+        },
+        "paired": {
+          "t_statistic": -195.86627606301425,
+          "p_value": 6.582399650198915e-11,
+          "mean_difference": -76692.38578586349,
+          "n": 6
+        },
+        "effect_size_cohens_d": {
+          "cohens_d": 113.17791056284297,
+          "n_a": 6,
+          "n_b": 6
+        }
+      },
+      "avg_queue_wait_time": {
+        "n_pairs": 6,
+        "a_mean": 0.40443603351165786,
+        "b_mean": 4027.8644995335944,
+        "a_ci": {
+          "mean": 0.40443603351165786,
+          "lower": 0.3058862189846645,
+          "upper": 0.5029858480386512,
+          "confidence": 0.95,
+          "n": 6
+        },
+        "b_ci": {
+          "mean": 4027.8644995335944,
+          "lower": 3973.438934305953,
+          "upper": 4082.290064761236,
+          "confidence": 0.95,
+          "n": 6
+        },
+        "paired": {
+          "t_statistic": -190.1816897033084,
+          "p_value": 7.626613046302722e-11,
+          "mean_difference": -4027.460063500083,
+          "n": 6
+        },
+        "effect_size_cohens_d": {
+          "cohens_d": 109.82428629967512,
+          "n_a": 6,
+          "n_b": 6
+        }
+      },
+      "max_queue_wait_time": {
+        "n_pairs": 6,
+        "a_mean": 6.665335969016266,
+        "b_mean": 7176.729829877205,
+        "a_ci": {
+          "mean": 6.665335969016266,
+          "lower": 5.7834435763412495,
+          "upper": 7.547228361691283,
+          "confidence": 0.95,
+          "n": 6
+        },
+        "b_ci": {
+          "mean": 7176.729829877205,
+          "lower": 6968.599049546276,
+          "upper": 7384.860610208134,
+          "confidence": 0.95,
+          "n": 6
+        },
+        "paired": {
+          "t_statistic": -88.50818824919394,
+          "p_value": 3.4897378085813265e-09,
+          "mean_difference": -7170.064493908189,
+          "n": 6
+        },
+        "effect_size_cohens_d": {
+          "cohens_d": 51.12739412323352,
+          "n_a": 6,
+          "n_b": 6
+        }
+      },
+      "queue_wait_percentage": {
+        "n_pairs": 6,
+        "a_mean": 2.642480648606765,
+        "b_mean": 99.19179563462278,
+        "a_ci": {
+          "mean": 2.642480648606765,
+          "lower": 2.065699096424523,
+          "upper": 3.2192622007890073,
+          "confidence": 0.95,
+          "n": 6
+        },
+        "b_ci": {
+          "mean": 99.19179563462278,
+          "lower": 99.17811472875232,
+          "upper": 99.20547654049324,
+          "confidence": 0.95,
+          "n": 6
+        },
+        "paired": {
+          "t_statistic": -429.9673817556839,
+          "p_value": 1.2915200147803186e-12,
+          "mean_difference": -96.549314986016,
+          "n": 6
+        },
+        "effect_size_cohens_d": {
+          "cohens_d": 248.3627773114904,
+          "n_a": 6,
+          "n_b": 6
+        }
+      },
+      "peak_congestion_value": {
+        "n_pairs": 6,
+        "a_mean": 296.6666666666667,
+        "b_mean": 74.83333333333333,
+        "a_ci": {
+          "mean": 296.6666666666667,
+          "lower": 288.9359032627973,
+          "upper": 304.3974300705361,
+          "confidence": 0.95,
+          "n": 6
+        },
+        "b_ci": {
+          "mean": 74.83333333333333,
+          "lower": 71.9849966791628,
+          "upper": 77.68166998750385,
+          "confidence": 0.95,
+          "n": 6
+        },
+        "paired": {
+          "t_statistic": 65.24196268766583,
+          "p_value": 1.6016816893046012e-08,
+          "mean_difference": 221.83333333333334,
+          "n": 6
+        },
+        "effect_size_cohens_d": {
+          "cohens_d": -39.960781657380416,
+          "n_a": 6,
+          "n_b": 6
+        }
+      },
+      "congestion_duration": {
+        "n_pairs": 0,
+        "a_mean": null,
+        "b_mean": null,
+        "a_ci": null,
+        "b_ci": null,
+        "paired": null,
+        "effect_size_cohens_d": null
+      },
+      "exit_utilization_balance": {
+        "n_pairs": 6,
+        "a_mean": 0.5,
+        "b_mean": 1.0,
+        "a_ci": {
+          "mean": 0.5,
+          "lower": 0.5,
+          "upper": 0.5,
+          "confidence": 0.95,
+          "n": 6
+        },
+        "b_ci": {
+          "mean": 1.0,
+          "lower": 1.0,
+          "upper": 1.0,
+          "confidence": 0.95,
+          "n": 6
+        },
+        "paired": {
+          "t_statistic": -Infinity,
+          "p_value": 0.0,
+          "mean_difference": -0.5,
+          "n": 6
+        },
+        "effect_size_cohens_d": {
+          "cohens_d": null,
+          "n_a": 6,
+          "n_b": 6
+        }
+      },
+      "people_evacuated": {
+        "n_pairs": 6,
+        "a_mean": 975.0,
+        "b_mean": 975.0,
+        "a_ci": {
+          "mean": 975.0,
+          "lower": 962.6184382814639,
+          "upper": 987.3815617185361,
+          "confidence": 0.95,
+          "n": 6
+        },
+        "b_ci": {
+          "mean": 975.0,
+          "lower": 962.6184382814639,
+          "upper": 987.3815617185361,
+          "confidence": 0.95,
+          "n": 6
+        },
+        "paired": {
+          "t_statistic": NaN,
+          "p_value": NaN,
+          "mean_difference": 0.0,
+          "n": 6
+        },
+        "effect_size_cohens_d": {
+          "cohens_d": 0.0,
+          "n_a": 6,
+          "n_b": 6
+        }
+      },
+      "people_trapped": {
+        "n_pairs": 6,
+        "a_mean": 109.0,
+        "b_mean": 109.0,
+        "a_ci": {
+          "mean": 109.0,
+          "lower": 96.61843828146392,
+          "upper": 121.38156171853608,
+          "confidence": 0.95,
+          "n": 6
+        },
+        "b_ci": {
+          "mean": 109.0,
+          "lower": 96.61843828146392,
+          "upper": 121.38156171853608,
+          "confidence": 0.95,
+          "n": 6
+        },
+        "paired": {
+          "t_statistic": NaN,
+          "p_value": NaN,
+          "mean_difference": 0.0,
+          "n": 6
+        },
+        "effect_size_cohens_d": {
+          "cohens_d": 0.0,
+          "n_a": 6,
+          "n_b": 6
+        }
+      },
+      "lobby_discharge_count": {
+        "n_pairs": 6,
+        "a_mean": 745.3333333333334,
+        "b_mean": 745.3333333333334,
+        "a_ci": {
+          "mean": 745.3333333333334,
+          "lower": 736.2894953177405,
+          "upper": 754.3771713489263,
+          "confidence": 0.95,
+          "n": 6
+        },
+        "b_ci": {
+          "mean": 745.3333333333334,
+          "lower": 736.2894953177405,
+          "upper": 754.3771713489263,
+          "confidence": 0.95,
+          "n": 6
+        },
+        "paired": {
+          "t_statistic": NaN,
+          "p_value": NaN,
+          "mean_difference": 0.0,
+          "n": 6
+        },
+        "effect_size_cohens_d": {
+          "cohens_d": 0.0,
+          "n_a": 6,
+          "n_b": 6
+        }
+      },
+      "lobby_discharge_rate": {
+        "n_pairs": 6,
+        "a_mean": 1.297904307852848,
+        "b_mean": 0.00964648163623442,
+        "a_ci": {
+          "mean": 1.297904307852848,
+          "lower": 1.2744430162729272,
+          "upper": 1.3213655994327689,
+          "confidence": 0.95,
+          "n": 6
+        },
+        "b_ci": {
+          "mean": 0.00964648163623442,
+          "lower": 0.009582782675033838,
+          "upper": 0.009710180597435001,
+          "confidence": 0.95,
+          "n": 6
+        },
+        "paired": {
+          "t_statistic": 141.199151497587,
+          "p_value": 3.3799483582294697e-10,
+          "mean_difference": 1.2882578262166138,
+          "n": 6
+        },
+        "effect_size_cohens_d": {
+          "cohens_d": -81.49295740938985,
+          "n_a": 6,
+          "n_b": 6
+        }
+      },
+      "door_3_lobby_crossings": {
+        "n_pairs": 6,
+        "a_mean": 262.3333333333333,
+        "b_mean": 262.3333333333333,
+        "a_ci": {
+          "mean": 262.3333333333333,
+          "lower": 258.7182344514535,
+          "upper": 265.94843221521313,
+          "confidence": 0.95,
+          "n": 6
+        },
+        "b_ci": {
+          "mean": 262.3333333333333,
+          "lower": 258.7182344514535,
+          "upper": 265.94843221521313,
+          "confidence": 0.95,
+          "n": 6
+        },
+        "paired": {
+          "t_statistic": NaN,
+          "p_value": NaN,
+          "mean_difference": 0.0,
+          "n": 6
+        },
+        "effect_size_cohens_d": {
+          "cohens_d": 0.0,
+          "n_a": 6,
+          "n_b": 6
+        }
+      },
+      "door_7_lobby_crossings": {
+        "n_pairs": 6,
+        "a_mean": 305.6666666666667,
+        "b_mean": 305.6666666666667,
+        "a_ci": {
+          "mean": 305.6666666666667,
+          "lower": 299.452211606828,
+          "upper": 311.8811217265054,
+          "confidence": 0.95,
+          "n": 6
+        },
+        "b_ci": {
+          "mean": 305.6666666666667,
+          "lower": 299.452211606828,
+          "upper": 311.8811217265054,
+          "confidence": 0.95,
+          "n": 6
+        },
+        "paired": {
+          "t_statistic": NaN,
+          "p_value": NaN,
+          "mean_difference": 0.0,
+          "n": 6
+        },
+        "effect_size_cohens_d": {
+          "cohens_d": 0.0,
+          "n_a": 6,
+          "n_b": 6
+        }
+      },
+      "door_12_lobby_crossings": {
+        "n_pairs": 6,
+        "a_mean": 177.33333333333334,
+        "b_mean": 177.33333333333334,
+        "a_ci": {
+          "mean": 177.33333333333334,
+          "lower": 172.562535354602,
+          "upper": 182.10413131206468,
+          "confidence": 0.95,
+          "n": 6
+        },
+        "b_ci": {
+          "mean": 177.33333333333334,
+          "lower": 172.562535354602,
+          "upper": 182.10413131206468,
+          "confidence": 0.95,
+          "n": 6
+        },
+        "paired": {
+          "t_statistic": NaN,
+          "p_value": NaN,
+          "mean_difference": 0.0,
+          "n": 6
+        },
+        "effect_size_cohens_d": {
+          "cohens_d": 0.0,
+          "n_a": 6,
+          "n_b": 6
+        }
+      }
+    }
+  },
+  "records": {
+    "baseline": [
+      {
+        "scenario_id": "scn-ae074946b5f5a253",
+        "total_evacuation_time": 28116.28344797567,
+        "people_evacuated": 962,
+        "people_trapped": 122,
+        "peak_congestion_value": 289,
+        "congestion_duration": null,
+        "exit_utilization_balance": 1.0,
+        "avg_queue_wait_time": 937.9181648165796,
+        "max_queue_wait_time": 26450.384083037556,
+        "queue_wait_percentage": 94.79439107599022,
+        "dominant_bottleneck_id": "door-7-lobby",
+        "dominant_bottleneck_label": "Door '' (door-7-lobby)",
+        "lobby_discharge_count": 743,
+        "lobby_discharge_rate": 0.026425967762588296,
+        "door_3_lobby_crossings": 264,
+        "door_7_lobby_crossings": 307,
+        "door_12_lobby_crossings": 172
+      },
+      {
+        "scenario_id": "scn-4bec2fea4c94d729",
+        "total_evacuation_time": 28785.996440464518,
+        "people_evacuated": 979,
+        "people_trapped": 105,
+        "peak_congestion_value": 292,
+        "congestion_duration": null,
+        "exit_utilization_balance": 1.0,
+        "avg_queue_wait_time": 945.6293762921605,
+        "max_queue_wait_time": 27042.96397825289,
+        "queue_wait_percentage": 94.65703565115005,
+        "dominant_bottleneck_id": "door-7-lobby",
+        "dominant_bottleneck_label": "Door '' (door-7-lobby)",
+        "lobby_discharge_count": 744,
+        "lobby_discharge_rate": 0.02584590050717015,
+        "door_3_lobby_crossings": 259,
+        "door_7_lobby_crossings": 309,
+        "door_12_lobby_crossings": 176
+      },
+      {
+        "scenario_id": "scn-ae01f4a5781332f2",
+        "total_evacuation_time": 28730.03812919792,
+        "people_evacuated": 992,
+        "people_trapped": 92,
+        "peak_congestion_value": 293,
+        "congestion_duration": null,
+        "exit_utilization_balance": 1.0,
+        "avg_queue_wait_time": 957.514488023747,
+        "max_queue_wait_time": 27027.339218934165,
+        "queue_wait_percentage": 94.78107591852458,
+        "dominant_bottleneck_id": "door-7-lobby",
+        "dominant_bottleneck_label": "Door '' (door-7-lobby)",
+        "lobby_discharge_count": 760,
+        "lobby_discharge_rate": 0.02645314971676362,
+        "door_3_lobby_crossings": 265,
+        "door_7_lobby_crossings": 311,
+        "door_12_lobby_crossings": 184
+      },
+      {
+        "scenario_id": "scn-d6530c90895bda32",
+        "total_evacuation_time": 27871.19392653195,
+        "people_evacuated": 976,
+        "people_trapped": 108,
+        "peak_congestion_value": 284,
+        "congestion_duration": null,
+        "exit_utilization_balance": 1.0,
+        "avg_queue_wait_time": 924.1062296047445,
+        "max_queue_wait_time": 26187.084036304375,
+        "queue_wait_percentage": 94.67612025185204,
+        "dominant_bottleneck_id": "door-7-lobby",
+        "dominant_bottleneck_label": "Door '' (door-7-lobby)",
+        "lobby_discharge_count": 739,
+        "lobby_discharge_rate": 0.026514831117317506,
+        "door_3_lobby_crossings": 259,
+        "door_7_lobby_crossings": 301,
+        "door_12_lobby_crossings": 179
+      },
+      {
+        "scenario_id": "scn-fa8dbad2c895997c",
+        "total_evacuation_time": 28437.786518303357,
+        "people_evacuated": 980,
+        "people_trapped": 104,
+        "peak_congestion_value": 293,
+        "congestion_duration": null,
+        "exit_utilization_balance": 1.0,
+        "avg_queue_wait_time": 950.0813768992838,
+        "max_queue_wait_time": 26746.02660185909,
+        "queue_wait_percentage": 94.83161662183072,
+        "dominant_bottleneck_id": "door-7-lobby",
+        "dominant_bottleneck_label": "Door '' (door-7-lobby)",
+        "lobby_discharge_count": 750,
+        "lobby_discharge_rate": 0.026373360652288423,
+        "door_3_lobby_crossings": 267,
+        "door_7_lobby_crossings": 310,
+        "door_12_lobby_crossings": 173
+      },
+      {
+        "scenario_id": "scn-3e5843d270d7d107",
+        "total_evacuation_time": 27209.067140933104,
+        "people_evacuated": 961,
+        "people_trapped": 123,
+        "peak_congestion_value": 279,
+        "congestion_duration": null,
+        "exit_utilization_balance": 1.0,
+        "avg_queue_wait_time": 920.6957413685783,
+        "max_queue_wait_time": 25549.210886852874,
+        "queue_wait_percentage": 94.70249435102316,
+        "dominant_bottleneck_id": "door-7-lobby",
+        "dominant_bottleneck_label": "Door '' (door-7-lobby)",
+        "lobby_discharge_count": 736,
+        "lobby_discharge_rate": 0.02704980645561227,
+        "door_3_lobby_crossings": 260,
+        "door_7_lobby_crossings": 296,
+        "door_12_lobby_crossings": 180
+      }
+    ],
+    "v1": [
+      {
+        "scenario_id": "scn-ae074946b5f5a253",
+        "total_evacuation_time": 572.1961885330684,
+        "people_evacuated": 962,
+        "people_trapped": 122,
+        "peak_congestion_value": 304,
+        "congestion_duration": 480.65975135669044,
+        "exit_utilization_balance": 0.5,
+        "avg_queue_wait_time": 0.2793688986531578,
+        "max_queue_wait_time": 6.204167965137202,
+        "queue_wait_percentage": 1.940828540904126,
+        "dominant_bottleneck_id": "stair-1-6",
+        "dominant_bottleneck_label": "Stair '' (stair-1-6)",
+        "lobby_discharge_count": 743,
+        "lobby_discharge_rate": 1.2985056784541313,
+        "door_3_lobby_crossings": 264,
+        "door_7_lobby_crossings": 307,
+        "door_12_lobby_crossings": 172
+      },
+      {
+        "scenario_id": "scn-4bec2fea4c94d729",
+        "total_evacuation_time": 582.630978548484,
+        "people_evacuated": 979,
+        "people_trapped": 105,
+        "peak_congestion_value": 294,
+        "congestion_duration": 495.59539343620725,
+        "exit_utilization_balance": 0.5,
+        "avg_queue_wait_time": 0.4712767078466196,
+        "max_queue_wait_time": 6.58974458902231,
+        "queue_wait_percentage": 2.928013937982086,
+        "dominant_bottleneck_id": "stair-1-9",
+        "dominant_bottleneck_label": "Stair '' (stair-1-9)",
+        "lobby_discharge_count": 744,
+        "lobby_discharge_rate": 1.2769660855547653,
+        "door_3_lobby_crossings": 259,
+        "door_7_lobby_crossings": 309,
+        "door_12_lobby_crossings": 176
+      },
+      {
+        "scenario_id": "scn-ae01f4a5781332f2",
+        "total_evacuation_time": 566.7396346766029,
+        "people_evacuated": 992,
+        "people_trapped": 92,
+        "peak_congestion_value": 304,
+        "congestion_duration": 466.3522230764941,
+        "exit_utilization_balance": 0.5,
+        "avg_queue_wait_time": 0.43066273464232097,
+        "max_queue_wait_time": 7.904288014686337,
+        "queue_wait_percentage": 2.817178079743449,
+        "dominant_bottleneck_id": "stair-1-9",
+        "dominant_bottleneck_label": "Stair '' (stair-1-9)",
+        "lobby_discharge_count": 760,
+        "lobby_discharge_rate": 1.3410037934503676,
+        "door_3_lobby_crossings": 265,
+        "door_7_lobby_crossings": 311,
+        "door_12_lobby_crossings": 184
+      },
+      {
+        "scenario_id": "scn-d6530c90895bda32",
+        "total_evacuation_time": 574.7167286745185,
+        "people_evacuated": 976,
+        "people_trapped": 108,
+        "peak_congestion_value": 290,
+        "congestion_duration": 488.9878276834044,
+        "exit_utilization_balance": 0.5,
+        "avg_queue_wait_time": 0.5365586232519376,
+        "max_queue_wait_time": 7.452777472312789,
+        "queue_wait_percentage": 3.476283159665166,
+        "dominant_bottleneck_id": "stair-1-2",
+        "dominant_bottleneck_label": "Stair '' (stair-1-2)",
+        "lobby_discharge_count": 739,
+        "lobby_discharge_rate": 1.2858508603088195,
+        "door_3_lobby_crossings": 259,
+        "door_7_lobby_crossings": 301,
+        "door_12_lobby_crossings": 179
+      },
+      {
+        "scenario_id": "scn-fa8dbad2c895997c",
+        "total_evacuation_time": 580.2146088537891,
+        "people_evacuated": 980,
+        "people_trapped": 104,
+        "peak_congestion_value": 287,
+        "congestion_duration": 483.68328737203007,
+        "exit_utilization_balance": 0.5,
+        "avg_queue_wait_time": 0.3340391389465407,
+        "max_queue_wait_time": 6.075393961154418,
+        "queue_wait_percentage": 2.21341092060405,
+        "dominant_bottleneck_id": "stair-1-5",
+        "dominant_bottleneck_label": "Stair '' (stair-1-5)",
+        "lobby_discharge_count": 750,
+        "lobby_discharge_rate": 1.2926251572355634,
+        "door_3_lobby_crossings": 267,
+        "door_7_lobby_crossings": 310,
+        "door_12_lobby_crossings": 173
+      },
+      {
+        "scenario_id": "scn-3e5843d270d7d107",
+        "total_evacuation_time": 569.450406774055,
+        "people_evacuated": 961,
+        "people_trapped": 123,
+        "peak_congestion_value": 301,
+        "congestion_duration": 466.17997817073416,
+        "exit_utilization_balance": 0.5,
+        "avg_queue_wait_time": 0.3747100977293705,
+        "max_queue_wait_time": 5.7656438117845425,
+        "queue_wait_percentage": 2.4791692527417144,
+        "dominant_bottleneck_id": "stair-1-10",
+        "dominant_bottleneck_label": "Stair '' (stair-1-10)",
+        "lobby_discharge_count": 736,
+        "lobby_discharge_rate": 1.2924742721134417,
+        "door_3_lobby_crossings": 260,
+        "door_7_lobby_crossings": 296,
+        "door_12_lobby_crossings": 180
+      }
+    ],
+    "v2": [
+      {
+        "scenario_id": "scn-ae074946b5f5a253",
+        "total_evacuation_time": 76917.58193594823,
+        "people_evacuated": 962,
+        "people_trapped": 122,
+        "peak_congestion_value": 76,
+        "congestion_duration": null,
+        "exit_utilization_balance": 1.0,
+        "avg_queue_wait_time": 4021.331716299158,
+        "max_queue_wait_time": 7030.532698894276,
+        "queue_wait_percentage": 99.18924110400343,
+        "dominant_bottleneck_id": "exit-lobby",
+        "dominant_bottleneck_label": "Exit '' (exit-lobby)",
+        "lobby_discharge_count": 743,
+        "lobby_discharge_rate": 0.009659690038341563,
+        "door_3_lobby_crossings": 264,
+        "door_7_lobby_crossings": 307,
+        "door_12_lobby_crossings": 172
+      },
+      {
+        "scenario_id": "scn-4bec2fea4c94d729",
+        "total_evacuation_time": 77603.2610547837,
+        "people_evacuated": 979,
+        "people_trapped": 105,
+        "peak_congestion_value": 79,
+        "congestion_duration": null,
+        "exit_utilization_balance": 1.0,
+        "avg_queue_wait_time": 4032.0589413198213,
+        "max_queue_wait_time": 7335.276561037731,
+        "queue_wait_percentage": 99.20451825931411,
+        "dominant_bottleneck_id": "exit-lobby",
+        "dominant_bottleneck_label": "Exit '' (exit-lobby)",
+        "lobby_discharge_count": 744,
+        "lobby_discharge_rate": 0.009587225973336047,
+        "door_3_lobby_crossings": 259,
+        "door_7_lobby_crossings": 309,
+        "door_12_lobby_crossings": 176
+      },
+      {
+        "scenario_id": "scn-ae01f4a5781332f2",
+        "total_evacuation_time": 78888.19615933699,
+        "people_evacuated": 992,
+        "people_trapped": 92,
+        "peak_congestion_value": 72,
+        "congestion_duration": null,
+        "exit_utilization_balance": 1.0,
+        "avg_queue_wait_time": 4114.997368139862,
+        "max_queue_wait_time": 7146.266844171212,
+        "queue_wait_percentage": 99.20954349854127,
+        "dominant_bottleneck_id": "exit-lobby",
+        "dominant_bottleneck_label": "Exit '' (exit-lobby)",
+        "lobby_discharge_count": 760,
+        "lobby_discharge_rate": 0.009633887412826189,
+        "door_3_lobby_crossings": 265,
+        "door_7_lobby_crossings": 311,
+        "door_12_lobby_crossings": 184
+      },
+      {
+        "scenario_id": "scn-d6530c90895bda32",
+        "total_evacuation_time": 77175.90062711606,
+        "people_evacuated": 976,
+        "people_trapped": 108,
+        "peak_congestion_value": 72,
+        "congestion_duration": null,
+        "exit_utilization_balance": 1.0,
+        "avg_queue_wait_time": 3978.933991803019,
+        "max_queue_wait_time": 7055.245779384633,
+        "queue_wait_percentage": 99.17769348742557,
+        "dominant_bottleneck_id": "exit-lobby",
+        "dominant_bottleneck_label": "Exit '' (exit-lobby)",
+        "lobby_discharge_count": 739,
+        "lobby_discharge_rate": 0.009575528033946252,
+        "door_3_lobby_crossings": 259,
+        "door_7_lobby_crossings": 301,
+        "door_12_lobby_crossings": 179
+      },
+      {
+        "scenario_id": "scn-fa8dbad2c895997c",
+        "total_evacuation_time": 77039.95017374419,
+        "people_evacuated": 980,
+        "people_trapped": 104,
+        "peak_congestion_value": 76,
+        "congestion_duration": null,
+        "exit_utilization_balance": 1.0,
+        "avg_queue_wait_time": 4047.0706634383387,
+        "max_queue_wait_time": 7496.2544221363205,
+        "queue_wait_percentage": 99.19089228062745,
+        "dominant_bottleneck_id": "exit-lobby",
+        "dominant_bottleneck_label": "Exit '' (exit-lobby)",
+        "lobby_discharge_count": 750,
+        "lobby_discharge_rate": 0.009735208788538466,
+        "door_3_lobby_crossings": 267,
+        "door_7_lobby_crossings": 310,
+        "door_12_lobby_crossings": 173
+      },
+      {
+        "scenario_id": "scn-3e5843d270d7d107",
+        "total_evacuation_time": 75975.37331031222,
+        "people_evacuated": 961,
+        "people_trapped": 123,
+        "peak_congestion_value": 74,
+        "congestion_duration": null,
+        "exit_utilization_balance": 1.0,
+        "avg_queue_wait_time": 3972.7943162013676,
+        "max_queue_wait_time": 6996.802673639057,
+        "queue_wait_percentage": 99.17888517782475,
+        "dominant_bottleneck_id": "exit-lobby",
+        "dominant_bottleneck_label": "Exit '' (exit-lobby)",
+        "lobby_discharge_count": 736,
+        "lobby_discharge_rate": 0.009687349570417997,
+        "door_3_lobby_crossings": 260,
+        "door_7_lobby_crossings": 296,
+        "door_12_lobby_crossings": 180
+      }
+    ]
+  }
+}

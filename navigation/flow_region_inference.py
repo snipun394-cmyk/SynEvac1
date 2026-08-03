@@ -1,7 +1,7 @@
 from collections import deque
 from typing import Dict, List, Tuple
 
-from navigation.flow_region import FlowRegion
+from navigation.flow_region import FlowRegion, FlowRegionMember
 from navigation.node import Node
 
 
@@ -82,10 +82,10 @@ class FlowRegionInferencer:
             return {}
 
         distances = FlowRegionInferencer._distances_from_outside(graph)
-        out_edges, in_edges = FlowRegionInferencer._orient_edges(graph, distances)
+        out_edges, in_edges, orientation = FlowRegionInferencer._orient_edges(graph, distances)
         groups, merge_marked = FlowRegionInferencer._group_edges(graph, out_edges, in_edges)
 
-        return FlowRegionInferencer._build_regions(graph, groups, merge_marked)
+        return FlowRegionInferencer._build_regions(graph, groups, merge_marked, orientation)
 
     # =====================================================
 
@@ -124,7 +124,7 @@ class FlowRegionInferencer:
     # =====================================================
 
     @staticmethod
-    def _orient_edges(graph, distances) -> Tuple[Dict[str, List[str]], Dict[str, List[str]]]:
+    def _orient_edges(graph, distances):
 
         # out_edges[node] -- edges leaving `node` heading strictly
         # closer to Outside ("downstream"). in_edges[node] -- edges
@@ -137,8 +137,16 @@ class FlowRegionInferencer:
         # because they all happen to share the one synthetic Outside
         # node -- the merge rule below only ever fires on a real,
         # single physical node, never on the universal exterior sink.
+        #
+        # Flow Region Capacity Formula V2 -- `orientation` is the same
+        # per-edge (upstream, downstream) pair as out_edges/in_edges
+        # already encode in aggregate, just retained per edge id
+        # instead of being discarded once grouping is done, so
+        # _build_regions() can hand each FlowRegion enough topology to
+        # reconstruct its own internal flow network later.
         out_edges: Dict[str, List[str]] = {}
         in_edges: Dict[str, List[str]] = {}
+        orientation: Dict[str, Tuple[str, str]] = {}
 
         for edge in graph.edges:
 
@@ -158,8 +166,9 @@ class FlowRegionInferencer:
 
             out_edges.setdefault(upstream, []).append(edge.id)
             in_edges.setdefault(downstream, []).append(edge.id)
+            orientation[edge.id] = (upstream, downstream)
 
-        return out_edges, in_edges
+        return out_edges, in_edges, orientation
 
     # =====================================================
 
@@ -200,7 +209,7 @@ class FlowRegionInferencer:
     # =====================================================
 
     @staticmethod
-    def _build_regions(graph, groups, merge_marked) -> Dict[str, FlowRegion]:
+    def _build_regions(graph, groups, merge_marked, orientation) -> Dict[str, FlowRegion]:
 
         edges_by_id = {edge.id: edge for edge in graph.edges}
         mapping: Dict[str, FlowRegion] = {}
@@ -231,12 +240,32 @@ class FlowRegionInferencer:
             ]
             representative_width = min(widths) if widths else None
 
+            # Flow Region Capacity Formula V2 -- an edge only has an
+            # entry in `orientation` if it was actually oriented (see
+            # _orient_edges()'s own docstring); an edge that was
+            # non-traversable or part of an equal-distance tie
+            # contributes nothing here, which for a SINGLE-kind region
+            # simply leaves member_edges empty -- exactly right, since
+            # that region never reaches a region-level capacity formula
+            # in the first place (see FlowRegion.member_edges' own
+            # comment).
+            region_member_edges = tuple(
+                FlowRegionMember(
+                    edge=edges_by_id[edge_id],
+                    upstream_node_id=orientation[edge_id][0],
+                    downstream_node_id=orientation[edge_id][1],
+                )
+                for edge_id in member_ids
+                if edge_id in orientation
+            )
+
             region = FlowRegion(
                 id=f"flow-region-{member_ids[0]}",
                 edge_ids=member_ids,
                 region_kind=region_kind,
                 total_length=total_length,
                 representative_width=representative_width,
+                member_edges=region_member_edges,
             )
 
             for edge_id in member_ids:
