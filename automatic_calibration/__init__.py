@@ -1,5 +1,6 @@
 from automatic_calibration.budget import AutoCalibrationBudget
 from automatic_calibration.engine import AutoCalibrationEngine
+from automatic_calibration.grid_search import GridSearchStrategy
 from automatic_calibration.objectives import CalibrationObjective, ObjectiveDirection, PublishedValueObjective
 from automatic_calibration.run import (
     AutoCalibrationRun,
@@ -30,6 +31,7 @@ __all__ = [
     "CorruptedRunRecordError",
     "AutoCalibrationStrategy",
     "AutoCalibrationEngine",
+    "GridSearchStrategy",
     "save_run",
     "load_run",
     "list_runs",
