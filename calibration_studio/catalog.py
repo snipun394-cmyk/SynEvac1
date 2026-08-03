@@ -1,6 +1,13 @@
 import csv
 
-from calibration_studio.paths import project_json_filename, projects_catalog_path, session_json_filename, sessions_catalog_path
+from calibration_studio.paths import (
+    benchmark_json_filename,
+    benchmarks_catalog_path,
+    project_json_filename,
+    projects_catalog_path,
+    session_json_filename,
+    sessions_catalog_path,
+)
 
 
 # =====================================================
@@ -27,6 +34,7 @@ from calibration_studio.paths import project_json_filename, projects_catalog_pat
 
 PROJECT_CATALOG_COLUMNS = ("project_id", "json_filename", "created_at")
 SESSION_CATALOG_COLUMNS = ("session_id", "project_id", "json_filename", "created_at")
+BENCHMARK_CATALOG_COLUMNS = ("benchmark_id", "json_filename", "created_at")
 
 
 def read_project_catalog_rows(storage_root) -> list:
@@ -99,4 +107,40 @@ def append_session_catalog_row_if_new(storage_root, session) -> None:
             "project_id": session.project_id or "",
             "json_filename": session_json_filename(session.session_id),
             "created_at": session.created_at,
+        })
+
+
+def read_benchmark_catalog_rows(storage_root) -> list:
+
+    path = benchmarks_catalog_path(storage_root)
+
+    if not path.exists():
+        return []
+
+    with open(path, "r", newline="", encoding="utf-8") as handle:
+        return list(csv.DictReader(handle))
+
+
+def append_benchmark_catalog_row_if_new(storage_root, benchmark) -> None:
+
+    path = benchmarks_catalog_path(storage_root)
+    existing_ids = {row.get("benchmark_id") for row in read_benchmark_catalog_rows(storage_root)}
+
+    if benchmark.benchmark_id in existing_ids:
+        return
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    write_header = not path.exists()
+
+    with open(path, "a", newline="", encoding="utf-8") as handle:
+
+        writer = csv.DictWriter(handle, fieldnames=BENCHMARK_CATALOG_COLUMNS)
+
+        if write_header:
+            writer.writeheader()
+
+        writer.writerow({
+            "benchmark_id": benchmark.benchmark_id,
+            "json_filename": benchmark_json_filename(benchmark.benchmark_id),
+            "created_at": benchmark.created_at,
         })

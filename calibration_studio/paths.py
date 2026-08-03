@@ -21,9 +21,11 @@ from pathlib import Path
 
 PROJECTS_SUBDIRECTORY = "projects"
 SESSIONS_SUBDIRECTORY = "sessions"
+BENCHMARKS_SUBDIRECTORY = "benchmarks"
 
 PROJECTS_CATALOG_FILENAME = "projects_catalog.csv"
 SESSIONS_CATALOG_FILENAME = "sessions_catalog.csv"
+BENCHMARKS_CATALOG_FILENAME = "benchmarks_catalog.csv"
 
 
 def project_json_filename(project_id: str) -> str:
@@ -54,3 +56,18 @@ def projects_catalog_path(storage_root) -> Path:
 def sessions_catalog_path(storage_root) -> Path:
 
     return Path(storage_root) / SESSIONS_CATALOG_FILENAME
+
+
+def benchmark_json_filename(benchmark_id: str) -> str:
+
+    return f"{benchmark_id}.json"
+
+
+def benchmark_json_path(storage_root, benchmark_id: str) -> Path:
+
+    return Path(storage_root) / BENCHMARKS_SUBDIRECTORY / benchmark_json_filename(benchmark_id)
+
+
+def benchmarks_catalog_path(storage_root) -> Path:
+
+    return Path(storage_root) / BENCHMARKS_CATALOG_FILENAME

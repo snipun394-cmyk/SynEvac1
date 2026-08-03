@@ -5,13 +5,16 @@ from typing import Optional, Tuple
 from serialization.json_reader import JsonReader
 from serialization.json_writer import JsonWriter
 
+from calibration_studio.benchmark import SUPPORTED_SCHEMA_VERSIONS as SUPPORTED_BENCHMARK_SCHEMA_VERSIONS, PublishedBenchmark
 from calibration_studio.catalog import (
+    append_benchmark_catalog_row_if_new,
     append_project_catalog_row_if_new,
     append_session_catalog_row_if_new,
+    read_benchmark_catalog_rows,
     read_project_catalog_rows,
     read_session_catalog_rows,
 )
-from calibration_studio.paths import project_json_path, session_json_path
+from calibration_studio.paths import benchmark_json_path, project_json_path, session_json_path
 from calibration_studio.project import SUPPORTED_SCHEMA_VERSIONS as SUPPORTED_PROJECT_SCHEMA_VERSIONS, CalibrationProject
 from calibration_studio.session import SUPPORTED_SCHEMA_VERSIONS as SUPPORTED_SESSION_SCHEMA_VERSIONS, CalibrationSession
 
@@ -190,3 +193,56 @@ def list_sessions(storage_root, *, project_id: Optional[str] = None) -> Tuple[Ca
             continue
 
     return tuple(sessions)
+
+
+# =====================================================
+# Published Benchmarks -- Phase 3. Identical shape/discipline to
+# Projects/Sessions above: reuses _read_record_json()/
+# _check_schema_version() as-is, overwrite-in-place save, append-if-new
+# catalog. Registration/lookup (in-memory, duplicate detection) live on
+# PublishedBenchmarkLibrary (calibration_studio/benchmark_library.py),
+# not here -- this module only ever knows about disk.
+# =====================================================
+
+
+def save_benchmark(benchmark: PublishedBenchmark, storage_root) -> Path:
+
+    storage_root = Path(storage_root)
+    json_path = benchmark_json_path(storage_root, benchmark.benchmark_id)
+    json_path.parent.mkdir(parents=True, exist_ok=True)
+
+    JsonWriter.write(str(json_path), benchmark.to_dict())
+    append_benchmark_catalog_row_if_new(storage_root, benchmark)
+
+    return json_path
+
+
+def load_benchmark(benchmark_id: str, storage_root) -> PublishedBenchmark:
+
+    storage_root = Path(storage_root)
+    json_path = benchmark_json_path(storage_root, benchmark_id)
+
+    data = _read_record_json(json_path)
+    _check_schema_version(data, "benchmark", SUPPORTED_BENCHMARK_SCHEMA_VERSIONS, benchmark_id)
+
+    return PublishedBenchmark.from_dict(data)
+
+
+def list_benchmarks(storage_root) -> Tuple[PublishedBenchmark, ...]:
+
+    storage_root = Path(storage_root)
+    benchmarks = []
+
+    for row in read_benchmark_catalog_rows(storage_root):
+
+        benchmark_id = row.get("benchmark_id")
+
+        if not benchmark_id:
+            continue
+
+        try:
+            benchmarks.append(load_benchmark(benchmark_id, storage_root))
+        except FileNotFoundError:
+            continue
+
+    return tuple(benchmarks)
