@@ -1,11 +1,14 @@
+from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
+import calibration_studio.storage as storage
 from calibration_studio.project import CalibrationProject
 from calibration_studio.session import CalibrationSession
 
 
 # =====================================================
-# Calibration Studio Phase 1 -- Core Architecture.
+# Calibration Studio Phase 1 -- Core Architecture; Phase 2 --
+# Persistence Layer.
 #
 # CalibrationStudio is the single public entry point this milestone's
 # own brief requires -- a coordinating facade, never a second
@@ -15,12 +18,18 @@ from calibration_studio.session import CalibrationSession
 #
 # Deliberately holds nothing calibration_benchmark/research_framework/
 # Replay Studio/Dataset Builder already own: no simulation composition,
-# no statistics, no report rendering, no scenario storage. What it owns
-# in this phase is exactly the in-process bookkeeping needed to satisfy
-# "CalibrationStudio can create projects" -- a plain dict, not
-# persistence (nothing here is written to disk; a restart loses
-# everything, precisely because Phase 2 -- durable storage -- is
-# explicitly out of scope for this milestone).
+# no statistics, no report rendering. In-process bookkeeping (`_projects`)
+# and durable storage (`save_project()`/`load_project()`/... below,
+# calibration_studio/storage.py) are two separate, explicit layers, not
+# one hidden auto-persisting mechanism: create_project() never writes to
+# disk on its own, and save_project()/save_session() never happen
+# implicitly as a side effect of anything else. A caller decides exactly
+# when a project or a session is durable, the same "no hidden magic"
+# discipline this codebase already applies to human-approval gates
+# elsewhere. `storage_root` is optional -- a CalibrationStudio built
+# without one behaves exactly as it did in Phase 1 (in-memory only);
+# calling any persistence method on one raises a clear error rather than
+# silently doing nothing.
 #
 # run_published_benchmark()/run_parameter_sweep()/open_in_replay_studio()/
 # generate_validation_dashboard() are the four orchestration methods the
@@ -33,9 +42,58 @@ from calibration_studio.session import CalibrationSession
 
 class CalibrationStudio:
 
-    def __init__(self):
+    def __init__(self, *, storage_root=None):
 
         self._projects: Dict[str, CalibrationProject] = {}
+        self._storage_root = Path(storage_root) if storage_root is not None else None
+
+    def _require_storage_root(self) -> Path:
+
+        if self._storage_root is None:
+            raise ValueError(
+                "This CalibrationStudio has no storage_root configured -- construct it as "
+                "CalibrationStudio(storage_root=...) to use persistence methods.",
+            )
+
+        return self._storage_root
+
+    # =====================================================
+    # Persistence -- thin delegation to calibration_studio/storage.py,
+    # which owns the actual file layout/catalog logic; this facade only
+    # decides where storage_root comes from and keeps the in-process
+    # `_projects` registry in sync with whatever gets loaded, so a
+    # reopened project is immediately visible to get_project()/
+    # list_projects() too, not just to whoever called load_project()
+    # directly.
+    # =====================================================
+
+    def save_project(self, project: CalibrationProject) -> Path:
+
+        return storage.save_project(project, self._require_storage_root())
+
+    def load_project(self, project_id: str) -> CalibrationProject:
+
+        project = storage.load_project(project_id, self._require_storage_root())
+        self._projects[project.project_id] = project
+
+        return project
+
+    def list_persisted_projects(self) -> Tuple[CalibrationProject, ...]:
+
+        projects = storage.list_projects(self._require_storage_root())
+
+        for project in projects:
+            self._projects[project.project_id] = project
+
+        return projects
+
+    def save_session(self, session: CalibrationSession) -> Path:
+
+        return storage.save_session(session, self._require_storage_root())
+
+    def load_session(self, session_id: str) -> CalibrationSession:
+
+        return storage.load_session(session_id, self._require_storage_root())
 
     # =====================================================
     # Projects
