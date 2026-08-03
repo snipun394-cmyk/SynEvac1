@@ -1,5 +1,7 @@
 import unittest
 
+from behavior.route_choice import ShortestRouteChoiceStrategy
+from behavior_library.route_choice_strategies import StaticHerdingRouteChoiceStrategy
 from behaviour_profile_resolver.registry import DEFAULT_PROFILE_REGISTRY
 from crowd_intelligence.models import DensityThresholds
 from simulator.capacity import DefaultCapacityModel, StairCapacityModel
@@ -7,12 +9,17 @@ from simulator.congestion import DefaultCongestionModel, StairAwareCongestionMod
 from simulator.flow_region_capacity import FlowRegionCapacityModel
 from simulator.flow_region_congestion import FlowRegionCongestionModel
 
+from navigation.edge import Edge
+
 from calibration_benchmark.candidates import (
     CapacityWidthCandidate,
+    ComplianceLevelCandidate,
     CongestionMinimumSpeedFactorCandidate,
     DensityThresholdCandidate,
     FlowRegionCapacityCandidate,
+    HerdingFollowProbabilityCandidate,
     PreMovementDelayCandidate,
+    StairCounterflowPenaltyCandidate,
     WalkingSpeedCandidate,
 )
 
@@ -138,11 +145,126 @@ class DensityThresholdCandidateTests(unittest.TestCase):
         self.assertEqual(candidate.candidate_density_thresholds(), thresholds)
 
 
+class ComplianceLevelCandidateTests(unittest.TestCase):
+
+    def test_baseline_registry_is_the_untouched_production_default(self):
+
+        candidate = ComplianceLevelCandidate("Adult_Default", 0.5, "source", "rationale")
+
+        self.assertIs(candidate.baseline_registry(), DEFAULT_PROFILE_REGISTRY)
+
+    def test_candidate_registry_overrides_only_the_named_profiles_compliance_level(self):
+
+        candidate = ComplianceLevelCandidate("Child_Default", 0.3, "source", "rationale")
+        registry = candidate.candidate_registry()
+
+        self.assertEqual(registry["Child_Default"].compliance_level, 0.3)
+
+        for profile_id, template in DEFAULT_PROFILE_REGISTRY.items():
+            if profile_id != "Child_Default":
+                self.assertEqual(registry[profile_id], template)
+
+    def test_original_registry_is_never_mutated(self):
+
+        original_level = DEFAULT_PROFILE_REGISTRY["Child_Default"].compliance_level
+
+        ComplianceLevelCandidate("Child_Default", 0.3, "source", "rationale").candidate_registry()
+
+        self.assertEqual(DEFAULT_PROFILE_REGISTRY["Child_Default"].compliance_level, original_level)
+
+    def test_current_value_is_read_from_the_real_registry(self):
+
+        candidate = ComplianceLevelCandidate("Adult_Default", 0.5, "source", "rationale")
+
+        self.assertEqual(candidate.current_value, DEFAULT_PROFILE_REGISTRY["Adult_Default"].compliance_level)
+
+    def test_unknown_profile_id_raises(self):
+
+        with self.assertRaises(KeyError):
+            ComplianceLevelCandidate("Not_A_Real_Profile", 0.5, "source", "rationale")
+
+
+class HerdingFollowProbabilityCandidateTests(unittest.TestCase):
+
+    def test_current_value_is_zero_when_the_profile_uses_no_herding_strategy_today(self):
+
+        # Every DEFAULT_PROFILE_REGISTRY profile uses ShortestRouteChoiceStrategy
+        # today -- current_value must document that honestly as zero
+        # herding influence, not raise or fabricate a number.
+        candidate = HerdingFollowProbabilityCandidate("Adult_Default", 0.8, "source", "rationale")
+
+        self.assertEqual(candidate.current_value, 0.0)
+
+    def test_candidate_registry_installs_a_herding_strategy_with_the_given_follow_probability(self):
+
+        candidate = HerdingFollowProbabilityCandidate("Adult_Default", 0.8, "source", "rationale")
+        registry = candidate.candidate_registry()
+
+        new_strategy = registry["Adult_Default"].route_choice_strategy
+        self.assertIsInstance(new_strategy, StaticHerdingRouteChoiceStrategy)
+        self.assertEqual(new_strategy.follow_probability, 0.8)
+
+    def test_other_profiles_are_untouched(self):
+
+        candidate = HerdingFollowProbabilityCandidate("Adult_Default", 0.8, "source", "rationale")
+        registry = candidate.candidate_registry()
+
+        for profile_id, template in DEFAULT_PROFILE_REGISTRY.items():
+            if profile_id != "Adult_Default":
+                self.assertEqual(registry[profile_id], template)
+
+    def test_original_registry_is_never_mutated(self):
+
+        HerdingFollowProbabilityCandidate("Adult_Default", 0.8, "source", "rationale").candidate_registry()
+
+        self.assertIsInstance(
+            DEFAULT_PROFILE_REGISTRY["Adult_Default"].route_choice_strategy, ShortestRouteChoiceStrategy,
+        )
+
+    def test_unknown_profile_id_raises(self):
+
+        with self.assertRaises(KeyError):
+            HerdingFollowProbabilityCandidate("Not_A_Real_Profile", 0.8, "source", "rationale")
+
+
+class StairCounterflowPenaltyCandidateTests(unittest.TestCase):
+
+    def test_candidate_congestion_model_uses_the_new_penalty(self):
+
+        candidate = StairCounterflowPenaltyCandidate(0.4, "source", "rationale")
+        model = candidate.candidate_congestion_model()
+
+        self.assertEqual(model.COUNTERFLOW_PENALTY_PER_OPPOSING, 0.4)
+
+    def test_production_class_is_never_mutated(self):
+
+        StairCounterflowPenaltyCandidate(0.4, "source", "rationale").candidate_congestion_model()
+
+        self.assertEqual(StairAwareCongestionModel.COUNTERFLOW_PENALTY_PER_OPPOSING, 0.15)
+
+    def test_the_new_penalty_actually_changes_speed_factor_for_opposing_stair_traffic(self):
+
+        # Unlike StairCapacityModel's stair-only constants (see
+        # candidates.py's own Phase 8 header comment),
+        # StairAwareCongestionModel.speed_factor() reads
+        # self.COUNTERFLOW_PENALTY_PER_OPPOSING polymorphically -- this
+        # test proves the override actually changes simulated behaviour,
+        # not just the constructed model object's own class attribute.
+        stair_edge = Edge(id="s1", edge_type=Edge.STAIR, from_node="a", to_node="b")
+
+        baseline_model = StairCounterflowPenaltyCandidate(0.4, "source", "rationale").baseline_congestion_model()
+        candidate_model = StairCounterflowPenaltyCandidate(0.4, "source", "rationale").candidate_congestion_model()
+
+        baseline_factor = baseline_model.speed_factor(stair_edge, other_occupants=1, capacity=5, opposing_occupants=1)
+        candidate_factor = candidate_model.speed_factor(stair_edge, other_occupants=1, capacity=5, opposing_occupants=1)
+
+        self.assertLess(candidate_factor, baseline_factor)
+
+
 class BaseParameterCandidateFlowRegionDefaultsTests(unittest.TestCase):
 
-    # None of the five candidates above override these -- every one of
-    # them must inherit the same "off" default, unchanged by this
-    # milestone.
+    # None of the candidates above override these -- every one of them
+    # must inherit the same "off" default, unchanged by this milestone.
 
     def test_every_existing_candidate_defaults_flow_regions_off_on_both_arms(self):
 
@@ -152,6 +274,9 @@ class BaseParameterCandidateFlowRegionDefaultsTests(unittest.TestCase):
             CapacityWidthCandidate(3.0, "source", "rationale"),
             CongestionMinimumSpeedFactorCandidate(0.1, "source", "rationale"),
             DensityThresholdCandidate(DensityThresholds(), "source", "rationale"),
+            ComplianceLevelCandidate("Adult_Default", 0.5, "source", "rationale"),
+            HerdingFollowProbabilityCandidate("Adult_Default", 0.8, "source", "rationale"),
+            StairCounterflowPenaltyCandidate(0.4, "source", "rationale"),
         )
 
         for candidate in candidates:

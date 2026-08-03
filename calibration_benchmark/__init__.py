@@ -1,9 +1,12 @@
 from calibration_benchmark.candidates import (
     CapacityWidthCandidate,
+    ComplianceLevelCandidate,
     CongestionMinimumSpeedFactorCandidate,
     DensityThresholdCandidate,
+    HerdingFollowProbabilityCandidate,
     ParameterCandidate,
     PreMovementDelayCandidate,
+    StairCounterflowPenaltyCandidate,
     WalkingSpeedCandidate,
 )
 from calibration_benchmark.harness import CalibrationBenchmarkResult, MetricComparison, run_calibration_benchmark
@@ -24,6 +27,9 @@ __all__ = [
     "CapacityWidthCandidate",
     "CongestionMinimumSpeedFactorCandidate",
     "DensityThresholdCandidate",
+    "ComplianceLevelCandidate",
+    "HerdingFollowProbabilityCandidate",
+    "StairCounterflowPenaltyCandidate",
     "run_with_overrides",
     "MetricSample",
     "extract_metrics",

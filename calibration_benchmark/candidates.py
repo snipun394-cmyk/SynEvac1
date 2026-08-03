@@ -2,6 +2,7 @@ from dataclasses import dataclass, replace
 from typing import Any, Dict, Optional
 
 from behavior_library.pre_movement_strategies import ProbabilisticPreMovementDelay
+from behavior_library.route_choice_strategies import StaticHerdingRouteChoiceStrategy
 from behaviour_profile_resolver.registry import DEFAULT_PROFILE_REGISTRY
 from crowd_intelligence.models import DensityThresholds
 from simulator.capacity import DefaultCapacityModel, StairCapacityModel
@@ -381,3 +382,212 @@ class FlowRegionCapacityCandidate(ParameterCandidate):
 
     def candidate_use_flow_regions(self) -> bool:
         return True
+
+
+# =====================================================
+# Calibration Studio Phase 8 -- Complete ParameterCandidate Coverage.
+# Three genuinely missing, genuinely calibratable parameters, found by
+# auditing every class constant/profile field currently read by
+# MultiAgentSimulation's own capacity/congestion/behaviour machinery
+# and comparing that list against the six candidates above. Each
+# follows the exact same shape as an existing candidate it is closest
+# to (ComplianceLevelCandidate mirrors WalkingSpeedCandidate;
+# StairCounterflowPenaltyCandidate mirrors CongestionMinimumSpeedFactorCandidate);
+# no new mechanism, hook, or persistence format is introduced.
+#
+# A fourth candidate -- a "stair vertical distance step" parameter,
+# targeting StairCapacityModel.VERTICAL_DISTANCE_STEP_M -- was
+# investigated and deliberately NOT added. simulator/capacity.py's
+# derive_stair_capacity() (the function StairCapacityModel.capacity()
+# delegates to for every Stair edge) reads
+# StairCapacityModel.PEOPLE_PER_METER_OF_WIDTH/VERTICAL_DISTANCE_STEP_M
+# by their literal class name, not polymorphically off `self`/
+# `type(self)` -- so runtime-subclassing StairCapacityModel with an
+# overridden class constant (the exact mechanism CapacityWidthCandidate
+# already uses for its own stair_specific=True arm, and the only
+# mechanism available here without modifying simulator/capacity.py
+# itself) has NO effect on simulated Stair capacity. This was verified
+# empirically, not just read: constructing
+# CapacityWidthCandidate(5.0, ..., stair_specific=True).candidate_capacity_model()
+# and calling .capacity() on a real Stair edge returns the SAME value
+# as the untouched production default, proving CapacityWidthCandidate's
+# own stair_specific=True arm has always been a silent no-op for actual
+# simulated behaviour (its constructed model's own class attribute is
+# set correctly; derive_stair_capacity() simply never reads it). This
+# is a genuine, pre-existing latent bug, disclosed here rather than
+# fixed -- simulator/capacity.py is frozen production code this
+# milestone's own brief does not ask to be touched, and fixing
+# derive_stair_capacity() to read its constants polymorphically is a
+# targeted bug-fix task in its own right, not part of "add missing
+# ParameterCandidate coverage." StairCounterflowPenaltyCandidate below
+# was independently verified NOT to share this defect:
+# StairAwareCongestionModel.speed_factor() reads
+# `self.COUNTERFLOW_PENALTY_PER_OPPOSING`, genuinely polymorphic.
+# =====================================================
+
+
+def _registry_with_compliance_level(profile_id: str, compliance_level: float) -> Dict[str, Any]:
+
+    if profile_id not in DEFAULT_PROFILE_REGISTRY:
+
+        raise KeyError(
+            f"{profile_id!r} is not a profile in DEFAULT_PROFILE_REGISTRY -- "
+            f"choose one of {sorted(DEFAULT_PROFILE_REGISTRY)}.",
+        )
+
+    registry = dict(DEFAULT_PROFILE_REGISTRY)
+    registry[profile_id] = replace(registry[profile_id], compliance_level=compliance_level)
+
+    return registry
+
+
+class ComplianceLevelCandidate(ParameterCandidate):
+
+    # BehaviorProfileTemplate.compliance_level -- read by
+    # ComplianceDecisionStrategy.decide() as the per-step probability an
+    # occupant complies with evacuation instructions rather than
+    # falling through to its own noncompliant_strategy. Every profile
+    # in DEFAULT_PROFILE_REGISTRY already carries a real compliance_level
+    # (Adult_Default=0.9, Child_Default=0.5, ...), exactly the same
+    # "already-used-by-production, just not yet calibratable" shape
+    # WalkingSpeedCandidate was built for -- this candidate follows that
+    # class's exact pattern (_registry_with_compliance_level mirrors
+    # _registry_with_walking_speed verbatim).
+
+    def __init__(self, profile_id: str, candidate_compliance_level: float, dataset_source: str, rationale: str):
+
+        self.profile_id = profile_id
+
+        super().__init__(
+            name=f"{profile_id}.compliance_level",
+            subsystem="Compliance Model",
+            calibration_tier="Tier 2",
+            dataset_source=dataset_source,
+            current_value=DEFAULT_PROFILE_REGISTRY[profile_id].compliance_level,
+            candidate_value=candidate_compliance_level,
+            unit="probability (dimensionless)",
+            rationale=rationale,
+        )
+
+    def baseline_registry(self):
+        return DEFAULT_PROFILE_REGISTRY
+
+    def candidate_registry(self):
+        return _registry_with_compliance_level(self.profile_id, self.candidate_value)
+
+
+# =====================================================
+
+
+def _registry_with_herding_follow_probability(profile_id: str, follow_probability: float) -> Dict[str, Any]:
+
+    if profile_id not in DEFAULT_PROFILE_REGISTRY:
+
+        raise KeyError(
+            f"{profile_id!r} is not a profile in DEFAULT_PROFILE_REGISTRY -- "
+            f"choose one of {sorted(DEFAULT_PROFILE_REGISTRY)}.",
+        )
+
+    registry = dict(DEFAULT_PROFILE_REGISTRY)
+    registry[profile_id] = replace(
+        registry[profile_id],
+        route_choice_strategy=StaticHerdingRouteChoiceStrategy(follow_probability=follow_probability),
+    )
+
+    return registry
+
+
+class HerdingFollowProbabilityCandidate(ParameterCandidate):
+
+    # "Herding strength" -- StaticHerdingRouteChoiceStrategy.follow_probability
+    # (behavior_library/route_choice_strategies.py), the probability an
+    # occupant routes toward whichever Exit the majority of
+    # already-resolved occupants used rather than its own fallback
+    # (ShortestRouteChoiceStrategy by default). No profile in
+    # DEFAULT_PROFILE_REGISTRY uses StaticHerdingRouteChoiceStrategy
+    # today -- every profile's route_choice_strategy is
+    # ShortestRouteChoiceStrategy, which never looks at the herd at
+    # all. current_value=0.0 documents that honestly (today's default
+    # behaviour is equivalent to zero herding influence) rather than
+    # requiring a herding strategy to already be present the way
+    # PreMovementDelayCandidate requires an existing
+    # ProbabilisticPreMovementDelay -- "how much herding influence
+    # should this profile have" is a well-formed calibration question
+    # even when today's answer is "none", the same reasoning
+    # FlowRegionCapacityCandidate already applies to an architecture
+    # that is "off" by default.
+
+    def __init__(self, profile_id: str, candidate_follow_probability: float, dataset_source: str, rationale: str):
+
+        if profile_id not in DEFAULT_PROFILE_REGISTRY:
+
+            raise KeyError(
+                f"{profile_id!r} is not a profile in DEFAULT_PROFILE_REGISTRY -- "
+                f"choose one of {sorted(DEFAULT_PROFILE_REGISTRY)}.",
+            )
+
+        self.profile_id = profile_id
+        current_strategy = DEFAULT_PROFILE_REGISTRY[profile_id].route_choice_strategy
+
+        current_value = (
+            current_strategy.follow_probability
+            if isinstance(current_strategy, StaticHerdingRouteChoiceStrategy)
+            else 0.0
+        )
+
+        super().__init__(
+            name=f"{profile_id}.route_choice_strategy.follow_probability",
+            subsystem="Route Choice Model",
+            calibration_tier="Tier 2",
+            dataset_source=dataset_source,
+            current_value=current_value,
+            candidate_value=candidate_follow_probability,
+            unit="probability (dimensionless)",
+            rationale=rationale,
+        )
+
+    def baseline_registry(self):
+        return DEFAULT_PROFILE_REGISTRY
+
+    def candidate_registry(self):
+        return _registry_with_herding_follow_probability(self.profile_id, self.candidate_value)
+
+
+# =====================================================
+
+
+class StairCounterflowPenaltyCandidate(ParameterCandidate):
+
+    # StairAwareCongestionModel.COUNTERFLOW_PENALTY_PER_OPPOSING -- the
+    # fixed speed-factor reduction applied per opposing occupant sharing
+    # a Stair edge. Unlike StairCapacityModel's stair-only constants
+    # (see this section's own header comment), StairAwareCongestionModel.
+    # speed_factor() reads `self.COUNTERFLOW_PENALTY_PER_OPPOSING`
+    # (genuinely polymorphic, verified directly in simulator/congestion.py)
+    # -- runtime-subclassing therefore works exactly like
+    # CongestionMinimumSpeedFactorCandidate's own mechanism, applied one
+    # class up the wrapper chain.
+
+    def __init__(self, candidate_counterflow_penalty: float, dataset_source: str, rationale: str):
+
+        super().__init__(
+            name="StairAwareCongestionModel.COUNTERFLOW_PENALTY_PER_OPPOSING",
+            subsystem="Congestion Model",
+            calibration_tier="Tier 2",
+            dataset_source=dataset_source,
+            current_value=StairAwareCongestionModel.COUNTERFLOW_PENALTY_PER_OPPOSING,
+            candidate_value=candidate_counterflow_penalty,
+            unit="speed factor reduction per opposing occupant",
+            rationale=rationale,
+        )
+
+    def baseline_congestion_model(self):
+        return StairAwareCongestionModel()
+
+    def candidate_congestion_model(self):
+
+        candidate_cls = type(
+            "CandidateStairAwareCongestionModel", (StairAwareCongestionModel,),
+            {"COUNTERFLOW_PENALTY_PER_OPPOSING": self.candidate_value},
+        )
+        return candidate_cls()
