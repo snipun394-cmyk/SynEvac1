@@ -9,13 +9,17 @@ from calibration_studio.benchmark import PublishedBenchmark
 from calibration_studio.benchmark_library import BenchmarkNotFoundError, PublishedBenchmarkLibrary
 from calibration_studio.geometry_resolution import resolve_geometry_reference
 from calibration_studio.project import CalibrationProject
+from calibration_studio.replay_integration import (
+    open_in_replay_studio as open_in_replay_studio_impl,
+    record_session_replay as record_session_replay_impl,
+)
 from calibration_studio.session import CalibrationSession
 
 
 # =====================================================
 # Calibration Studio Phase 1 -- Core Architecture; Phase 2 --
 # Persistence Layer; Phase 3 -- Published Benchmark Library; Phase 4 --
-# Calibration Runner.
+# Calibration Runner; Phase 5 -- Replay Studio Integration.
 #
 # CalibrationStudio is the single public entry point this milestone's
 # own brief requires -- a coordinating facade, never a second
@@ -48,9 +52,15 @@ from calibration_studio.session import CalibrationSession
 # and calls it exactly once, in `_execute()`, and defines no function
 # whose name or body resembles a comparison/statistics primitive.
 #
-# open_in_replay_studio()/generate_validation_dashboard() remain
-# NotImplementedError placeholders -- explicitly out of this
-# milestone's scope.
+# record_session_replay()/open_in_replay_studio() are real now too --
+# thin delegation to calibration_studio/replay_integration.py, which
+# owns every actual call into calibration_benchmark/simulation_recording/
+# scenario_storage/serialization/replay_studio/command_center. Replay
+# Studio remains the sole visualization engine; nothing here renders
+# anything.
+#
+# generate_validation_dashboard() remains a NotImplementedError
+# placeholder -- explicitly out of this milestone's scope.
 # =====================================================
 
 
@@ -339,16 +349,33 @@ class CalibrationStudio:
         session.update_progress(result.n_completed_pairs)
         session.mark_completed(result)
 
-    def open_in_replay_studio(self, *args, **kwargs):
+    # =====================================================
+    # Replay Studio Integration -- Phase 5. Thin delegation to
+    # calibration_studio/replay_integration.py, which owns every actual
+    # call into calibration_benchmark/simulation_recording/
+    # scenario_storage/serialization/replay_studio/command_center --
+    # this facade only looks the session up. Replay Studio remains the
+    # sole visualization engine; nothing here renders anything.
+    # =====================================================
 
-        # Will resolve a session's recorded scenario artifacts and hand
-        # them to replay_studio.session.resolve_scenario_artifacts(),
-        # unmodified -- Replay Studio itself is never reimplemented.
-        raise NotImplementedError(
-            "open_in_replay_studio() is not implemented until Calibration Studio's "
-            "replay-integration phase; it will call replay_studio directly, never "
-            "reimplement playback.",
-        )
+    def record_session_replay(
+        self, *, session: CalibrationSession, scenario, building, output_dir, arm: str = "candidate", dt: float = 5.0,
+    ) -> None:
+
+        record_session_replay_impl(session, scenario, building, output_dir, arm=arm, dt=dt)
+
+    def open_in_replay_studio(self, session_id: str):
+
+        session = self.get_session(session_id)
+
+        if session is None:
+            raise ValueError(
+                f"No session {session_id!r} is known to this Studio -- it must be reachable "
+                f"through one of this Studio's own projects (create_session()'d or loaded via "
+                f"load_project()), not just load_session()'d standalone.",
+            )
+
+        return open_in_replay_studio_impl(session)
 
     def generate_validation_dashboard(self, *args, **kwargs):
 

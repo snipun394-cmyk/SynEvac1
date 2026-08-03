@@ -10,7 +10,9 @@ from calibration_studio.git_provenance import GitProvenance, capture_git_provena
 
 # =====================================================
 # Calibration Studio Phase 1 -- Core Architecture; Phase 2 --
-# Persistence Layer.
+# Persistence Layer; Phase 5 -- Replay Studio Integration (the
+# replay_output_dir/replay_scenario_id fields and set_replay_reference()
+# near the bottom of this class).
 #
 # CalibrationSession is the object model for one reproducible unit of
 # calibration work -- Phase 3 of the approved persistent data model.
@@ -102,6 +104,7 @@ _KNOWN_TOP_LEVEL_KEYS = frozenset({
     "master_seed", "simulator_id", "git_provenance", "created_at", "status",
     "n_scenarios_completed", "n_scenarios_total", "progress", "reproducible",
     "result", "failure_reason", "started_at", "completed_at", "extra",
+    "replay_output_dir", "replay_scenario_id",
 })
 
 
@@ -136,6 +139,8 @@ class CalibrationSession:
         failure_reason: Optional[str] = None,
         started_at: Optional[str] = None,
         completed_at: Optional[str] = None,
+        replay_output_dir: Optional[str] = None,
+        replay_scenario_id: Optional[str] = None,
     ):
 
         # Identity + configuration -- set once, at creation (or restored
@@ -167,6 +172,13 @@ class CalibrationSession:
         self._failure_reason = failure_reason
         self._started_at = started_at
         self._completed_at = completed_at
+
+        # Phase 5 -- Replay Studio Integration. Set together, only via
+        # set_replay_reference() below (never at construction by a live
+        # caller -- these two restoration-only parameters exist purely
+        # for from_dict() to restore an already-recorded reference).
+        self._replay_output_dir = replay_output_dir
+        self._replay_scenario_id = replay_scenario_id
 
     # =====================================================
     # Identity (read-only properties -- see __init__'s own comment)
@@ -287,6 +299,48 @@ class CalibrationSession:
         return self._completed_at
 
     # =====================================================
+    # Replay reference -- Phase 5. Purely a pointer (an on-disk
+    # location + which scenario_id within it) this session's own
+    # replay artifacts were recorded at, if any -- never the artifacts
+    # themselves, and never anything this class resolves, validates, or
+    # opens itself (that is calibration_studio/replay_integration.py's
+    # job, kept separate from this plain data-holding object exactly
+    # like execution itself is kept out of this class).
+    # =====================================================
+
+    @property
+    def replay_output_dir(self) -> Optional[str]:
+        return self._replay_output_dir
+
+    @property
+    def replay_scenario_id(self) -> Optional[str]:
+        return self._replay_scenario_id
+
+    def set_replay_reference(self, output_dir: str, scenario_id: str) -> None:
+
+        # Integrity check, not a formality: "Replay receives the correct
+        # scenario" (this milestone's own VERIFY requirement) starts
+        # here -- a scenario_id that isn't actually one this session's
+        # own completed result produced is refused, not silently
+        # accepted. Only checked when a result exists (a still-running
+        # or not-yet-executed session has nothing to check against
+        # yet).
+        if self._result is not None:
+
+            known_scenario_ids = {sample.scenario_id for sample in self._result.baseline_samples}
+            known_scenario_ids.update(sample.scenario_id for sample in self._result.candidate_samples)
+
+            if scenario_id not in known_scenario_ids:
+                raise ValueError(
+                    f"scenario_id {scenario_id!r} was not produced by session {self._session_id}'s "
+                    f"own result -- refusing to record a replay reference for a scenario this "
+                    f"session never actually ran.",
+                )
+
+        self._replay_output_dir = output_dir
+        self._replay_scenario_id = scenario_id
+
+    # =====================================================
     # State transitions -- no execution logic behind any of these; a
     # later phase's runner calls them around its own real work, this
     # object only ever validates and records the transition.
@@ -361,6 +415,8 @@ class CalibrationSession:
             "failure_reason": self._failure_reason,
             "started_at": self._started_at,
             "completed_at": self._completed_at,
+            "replay_output_dir": self._replay_output_dir,
+            "replay_scenario_id": self._replay_scenario_id,
             "extra": dict(self.extra),
         }
 
@@ -421,6 +477,8 @@ class CalibrationSession:
             failure_reason=data.get("failure_reason"),
             started_at=data.get("started_at"),
             completed_at=data.get("completed_at"),
+            replay_output_dir=data.get("replay_output_dir"),
+            replay_scenario_id=data.get("replay_scenario_id"),
         )
 
     def __repr__(self) -> str:

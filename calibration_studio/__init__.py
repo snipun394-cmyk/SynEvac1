@@ -19,6 +19,7 @@ from calibration_studio.project import (
     ProjectNotActiveError,
     ProjectStatus,
 )
+from calibration_studio.replay_integration import ReplayArtifactsUnavailableError
 from calibration_studio.session import (
     CalibrationSession,
     CorruptedSessionRecordError,
@@ -73,4 +74,5 @@ __all__ = [
     "list_benchmarks",
     "IncompatibleSchemaVersionError",
     "CorruptedRecordFileError",
+    "ReplayArtifactsUnavailableError",
 ]
