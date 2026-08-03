@@ -1,14 +1,21 @@
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Sequence, Tuple
+
+from calibration_benchmark import CalibrationBenchmarkResult, ParameterCandidate, run_calibration_benchmark
+from calibration_benchmark.optional_metrics import AdditionalMetric
 
 import calibration_studio.storage as storage
+from calibration_studio.benchmark import PublishedBenchmark
+from calibration_studio.benchmark_library import BenchmarkNotFoundError, PublishedBenchmarkLibrary
+from calibration_studio.geometry_resolution import resolve_geometry_reference
 from calibration_studio.project import CalibrationProject
 from calibration_studio.session import CalibrationSession
 
 
 # =====================================================
 # Calibration Studio Phase 1 -- Core Architecture; Phase 2 --
-# Persistence Layer.
+# Persistence Layer; Phase 3 -- Published Benchmark Library; Phase 4 --
+# Calibration Runner.
 #
 # CalibrationStudio is the single public entry point this milestone's
 # own brief requires -- a coordinating facade, never a second
@@ -31,21 +38,38 @@ from calibration_studio.session import CalibrationSession
 # calling any persistence method on one raises a clear error rather than
 # silently doing nothing.
 #
-# run_published_benchmark()/run_parameter_sweep()/open_in_replay_studio()/
-# generate_validation_dashboard() are the four orchestration methods the
-# approved architecture blueprint names -- present here as placeholders
-# only, each documenting which existing system it will delegate to once
-# a later phase implements it, so the public API shape is stable before
-# any execution logic exists behind it.
+# run_published_benchmark()/run_parameter_sweep() (below) are real now.
+# Both delegate every scientific computation to
+# calibration_benchmark.run_calibration_benchmark() -- the ONE call
+# either method ever makes into calibration_benchmark. Nothing in this
+# module reimplements paired comparison, statistics, or recommendation
+# logic; grep-testable (see tests/test_calibration_studio_runner_
+# architecture.py) -- this file imports `run_calibration_benchmark`
+# and calls it exactly once, in `_execute()`, and defines no function
+# whose name or body resembles a comparison/statistics primitive.
+#
+# open_in_replay_studio()/generate_validation_dashboard() remain
+# NotImplementedError placeholders -- explicitly out of this
+# milestone's scope.
 # =====================================================
 
 
 class CalibrationStudio:
 
-    def __init__(self, *, storage_root=None):
+    def __init__(self, *, storage_root=None, benchmark_library: Optional[PublishedBenchmarkLibrary] = None):
 
         self._projects: Dict[str, CalibrationProject] = {}
         self._storage_root = Path(storage_root) if storage_root is not None else None
+
+        # Composition, not duplication -- CalibrationStudio never
+        # re-implements benchmark registration/lookup, it simply owns
+        # one PublishedBenchmarkLibrary instance (pointed at the same
+        # storage_root by default, so a Studio's data lives under one
+        # directory tree) and exposes it directly.
+        self.benchmarks = (
+            benchmark_library if benchmark_library is not None
+            else PublishedBenchmarkLibrary(storage_root=self._storage_root)
+        )
 
     def _require_storage_root(self) -> Path:
 
@@ -144,35 +168,176 @@ class CalibrationStudio:
         return None
 
     # =====================================================
-    # Orchestration placeholders -- no algorithm lives in this package;
-    # each of these will, in a later phase, delegate to the real,
-    # already-existing system named in its own docstring. Calling one
-    # today raises NotImplementedError rather than silently doing
-    # nothing, so a caller can never mistake "not built yet" for "ran
-    # and did nothing."
+    # Calibration Runner -- Phase 4.
+    #
+    # PublishedBenchmark -> CalibrationSession -> calibration_benchmark
+    # -> research_framework.statistics -> recommendation ->
+    # CalibrationSession Result, exactly the chain this milestone's own
+    # brief names. Every step after "look up the benchmark" and "create
+    # the session" is calibration_benchmark's own, unmodified code,
+    # called through its own public API
+    # (calibration_benchmark.run_calibration_benchmark(), which itself
+    # already calls research_framework.statistics and
+    # calibration_benchmark.recommendation internally -- this module
+    # never touches either directly).
     # =====================================================
 
-    def run_published_benchmark(self, *args, **kwargs):
+    def run_published_benchmark(
+        self,
+        *,
+        project: CalibrationProject,
+        benchmark_id: str,
+        candidate: ParameterCandidate,
+        definition,
+        definition_id: str,
+        master_seed: int,
+        n_scenarios: int,
+        dt: float = 5.0,
+        building=None,
+        additional_metrics: Sequence[AdditionalMetric] = (),
+    ) -> CalibrationSession:
 
-        # Will delegate to calibration_benchmark.run_calibration_benchmark()
-        # (a real, published-value comparison generalization of it, per
-        # the approved architecture blueprint's Phase 4/7) -- never a
-        # reimplementation of paired-comparison logic.
-        raise NotImplementedError(
-            "run_published_benchmark() is not implemented until Calibration Studio's "
-            "execution phase; it will delegate to calibration_benchmark, never duplicate it.",
-        )
+        benchmark = self.benchmarks.get(benchmark_id)
 
-    def run_parameter_sweep(self, *args, **kwargs):
+        if benchmark is None:
+            raise BenchmarkNotFoundError(
+                f"No benchmark registered at benchmark_id {benchmark_id!r} -- register() or "
+                f"load_benchmark() it into this Studio's benchmark library first.",
+            )
 
-        # Will orchestrate multiple CalibrationSession runs, each one
-        # still delegating to calibration_benchmark.run_calibration_benchmark()
-        # for its own actual comparison.
-        raise NotImplementedError(
-            "run_parameter_sweep() is not implemented until Calibration Studio's "
-            "execution phase; it will orchestrate calibration_benchmark runs, never "
-            "duplicate its statistics.",
-        )
+        # `building` lets a caller always override or supply one
+        # directly (required for a DATASET_VALIDATION benchmark, which
+        # has no geometry_reference at all -- the same "compared
+        # against a synthetic single-bottleneck fixture, not the
+        # dataset's own 'geometry'" shape calibration_benchmark's own
+        # existing Julich demo already uses). Only resolved from the
+        # benchmark's own geometry_reference when the caller didn't
+        # supply one.
+        resolved_building = building if building is not None else resolve_geometry_reference(benchmark.geometry_reference)
+
+        if resolved_building is None:
+            raise ValueError(
+                f"Benchmark {benchmark_id!r} has no geometry_reference and no building was "
+                f"supplied -- pass building=... explicitly (required for a DATASET_VALIDATION "
+                f"benchmark, or any benchmark you want run against a different building).",
+            )
+
+        session = project.create_session(benchmark_id=benchmark_id, candidate=candidate, master_seed=master_seed)
+
+        self._execute(session, candidate, resolved_building, definition, definition_id, master_seed, n_scenarios, dt, additional_metrics)
+
+        # Append-only, idempotent (PublishedBenchmark.add_calibration_session()'s
+        # own guarantee) -- recorded whether the run completed or
+        # failed; a failed attempt is still part of this benchmark's
+        # own calibration history, not something to hide. Never
+        # auto-saved -- persisting the benchmark's updated history is
+        # the caller's own explicit choice, exactly like every other
+        # save_*() call in this package.
+        benchmark.add_calibration_session(session.session_id)
+
+        return session
+
+    def run_parameter_sweep(
+        self,
+        *,
+        project: CalibrationProject,
+        candidates: Sequence[ParameterCandidate],
+        building,
+        definition,
+        definition_id: str,
+        master_seed: int,
+        n_scenarios: int,
+        dt: float = 5.0,
+        benchmark_id: Optional[str] = None,
+        additional_metrics: Sequence[AdditionalMetric] = (),
+    ) -> Tuple[CalibrationSession, ...]:
+
+        # benchmark_id is optional here (a sweep need not reference a
+        # real-world benchmark at all -- e.g. "compare five candidate
+        # walking speeds against production defaults") but, if given,
+        # must resolve -- treated as a real reference, not a free-text
+        # label, the same discipline run_published_benchmark() applies.
+        benchmark: Optional[PublishedBenchmark] = None
+
+        if benchmark_id is not None:
+
+            benchmark = self.benchmarks.get(benchmark_id)
+
+            if benchmark is None:
+                raise BenchmarkNotFoundError(
+                    f"No benchmark registered at benchmark_id {benchmark_id!r} -- register() or "
+                    f"load_benchmark() it into this Studio's benchmark library first.",
+                )
+
+        sessions = []
+
+        # Every candidate runs against the identical building/definition/
+        # master_seed -- calibration_benchmark.run_calibration_benchmark()
+        # deterministically regenerates the identical scenario batch each
+        # call given the same (definition, definition_id, building,
+        # master_seed, n_scenarios) (Phase 0's own verified guarantee),
+        # so every candidate in the sweep is compared against the same
+        # scenarios, not independently-sampled ones.
+        for candidate in candidates:
+
+            session = project.create_session(benchmark_id=benchmark_id, candidate=candidate, master_seed=master_seed)
+
+            self._execute(session, candidate, building, definition, definition_id, master_seed, n_scenarios, dt, additional_metrics)
+
+            if benchmark is not None:
+                benchmark.add_calibration_session(session.session_id)
+
+            sessions.append(session)
+
+        return tuple(sessions)
+
+    def _execute(
+        self,
+        session: CalibrationSession,
+        candidate: ParameterCandidate,
+        building,
+        definition,
+        definition_id: str,
+        master_seed: int,
+        n_scenarios: int,
+        dt: float,
+        additional_metrics: Sequence[AdditionalMetric],
+    ) -> None:
+
+        # Queued -> Running -> Completed/Failed, exactly this
+        # milestone's own SESSION LIFECYCLE. Progress reporting is
+        # necessarily coarse (0/n at the start, n_completed_pairs/n once
+        # the call below returns), not per-scenario -- true per-scenario
+        # progress would require either modifying calibration_benchmark.
+        # harness.run_calibration_benchmark() itself (out of scope: "Do
+        # NOT redesign calibration_benchmark") or reimplementing its
+        # per-scenario loop out here (calibration_benchmark/harness.py's
+        # own comparison/pairing logic -- _compare()/_paired_non_none()
+        # -- is private, not exported, and duplicating it is exactly
+        # what this milestone's own brief forbids: "No duplicated
+        # comparison logic"). Two honest, real progress readings beat
+        # a fabricated smooth one.
+        session.mark_running(n_scenarios_total=n_scenarios)
+        session.update_progress(0)
+
+        try:
+            result: CalibrationBenchmarkResult = run_calibration_benchmark(
+                candidate, building, definition, definition_id, master_seed, n_scenarios,
+                dt=dt, additional_metrics=additional_metrics,
+            )
+        except Exception as exc:
+            # Caught, recorded, not re-raised -- a candidate/scenario
+            # combination failing to simulate is a normal, expected
+            # experiment outcome (this milestone's own lifecycle diagram
+            # shows Completed/Failed as two equally-valid terminal
+            # states), not a Calibration Studio bug. A caller who needs
+            # to react to failure reads session.status, exactly like
+            # they would for a completed run's recommendation.
+            session.mark_failed(f"{type(exc).__name__}: {exc}")
+            return
+
+        session.update_progress(result.n_completed_pairs)
+        session.mark_completed(result)
 
     def open_in_replay_studio(self, *args, **kwargs):
 

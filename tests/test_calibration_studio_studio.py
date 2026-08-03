@@ -114,21 +114,14 @@ class CalibrationStudioSessionAccessTests(unittest.TestCase):
 
 class CalibrationStudioOrchestrationPlaceholderTests(unittest.TestCase):
 
-    # These prove the public API SHAPE exists (per this milestone's own
-    # "most methods may remain placeholders" allowance) while also
-    # proving calling one does not silently run, or duplicate, any real
-    # calibration_benchmark/research_framework/Replay Studio/Dataset
-    # Builder logic.
-
-    def test_run_published_benchmark_is_not_implemented(self):
-
-        with self.assertRaises(NotImplementedError):
-            CalibrationStudio().run_published_benchmark()
-
-    def test_run_parameter_sweep_is_not_implemented(self):
-
-        with self.assertRaises(NotImplementedError):
-            CalibrationStudio().run_parameter_sweep()
+    # run_published_benchmark()/run_parameter_sweep() were placeholders
+    # at Phase 1 (this file's own original scope); Phase 4 -- Calibration
+    # Runner -- implemented both for real (see tests/
+    # test_calibration_studio_runner_integration.py and
+    # test_calibration_studio_runner_architecture.py for their actual
+    # behavior and the guard proving they duplicate nothing). Only
+    # open_in_replay_studio()/generate_validation_dashboard() remain
+    # NotImplementedError placeholders, still correctly proven here.
 
     def test_open_in_replay_studio_is_not_implemented(self):
 
