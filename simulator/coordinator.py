@@ -35,6 +35,15 @@ class MultiAgentSimulation:
     TRY_ENTER_EDGE = "try_enter_edge"
     ARRIVE_AT_NODE = "arrive_at_node"
 
+    # Admission Control V4 -- Dual Constraint Architecture. A third
+    # event kind, keyed by admission_key (not occupant_id/generation
+    # like the two above) -- see _schedule_retry()/_handle_retry_admission()
+    # below. Only ever scheduled when discharge_model is supplied;
+    # never reachable when it is None, which is exactly what keeps
+    # every existing caller's event ordering byte-identical to before
+    # this milestone.
+    RETRY_ADMISSION = "retry_admission"
+
     def __init__(
         self,
         engine,
@@ -42,6 +51,7 @@ class MultiAgentSimulation:
         capacity_model=None,
         congestion_model=None,
         flow_region_map=None,
+        discharge_model=None,
     ):
 
         self.engine = engine
@@ -50,6 +60,22 @@ class MultiAgentSimulation:
         self.occupant_simulator = occupant_simulator or OccupantSimulator(engine)
         self.capacity_model = capacity_model or DefaultCapacityModel()
         self.congestion_model = congestion_model or DefaultCongestionModel()
+
+        # Admission Control V4 -- Dual Constraint Architecture. The new
+        # THROUGHPUT constraint, entirely independent of and additive to
+        # capacity_model's own STORAGE constraint above -- see
+        # simulator/discharge.py's own module docstring for the full
+        # architectural rationale (the root problem CapacityModel.
+        # capacity() alone conflated: one integer standing in for both
+        # "how many can be here at once" and "how fast can they leave").
+        # None (every existing caller today, and every caller through
+        # Calibration Studio/Automatic Calibration Engine/calibration_
+        # benchmark, none of which pass this parameter) means admission
+        # control is governed by capacity_model ALONE, structurally
+        # identical to this coordinator before this milestone -- see
+        # _can_admit() below, which never even calls discharge_model
+        # when this is None.
+        self.discharge_model = discharge_model
 
         # Hybrid Flow Regions (Option D), Milestone 3 -- optional,
         # edge.id -> FlowRegion (see navigation/flow_region.py), the
@@ -104,6 +130,17 @@ class MultiAgentSimulation:
         # behind merge/chain admission control.
         self._admission_occupancy = {}
         self._admission_queues = {}
+
+        # Admission Control V4 -- Dual Constraint Architecture. The
+        # discharge-side admission-control state, both keyed by the
+        # same admission_key as the two dicts above. _last_admission_time
+        # records when an admission_key last actually admitted someone
+        # (never touched when discharge_model is None); _pending_retry
+        # tracks which admission_keys already have a RETRY_ADMISSION
+        # event scheduled, so a discharge-blocked queue never
+        # accumulates redundant duplicate timers.
+        self._last_admission_time = {}
+        self._pending_retry = set()
 
         self._queue_join_time = {}
 
@@ -296,6 +333,21 @@ class MultiAgentSimulation:
         )
 
     # =====================================================
+
+    def _schedule_retry(self, time, admission_key):
+
+        # Admission Control V4 -- Dual Constraint Architecture. Not
+        # occupant-keyed (an admission_key may outlive, or be shared
+        # across, any one occupant) -- generation is a literal None
+        # sentinel, never checked the way an occupant event's is (see
+        # _process_next_event(), which dispatches on `kind` before ever
+        # looking at generation).
+        heapq.heappush(
+            self._event_heap,
+            (time, next(self._counter), self.RETRY_ADMISSION, admission_key, None),
+        )
+
+    # =====================================================
     # Execution
     # =====================================================
 
@@ -313,7 +365,19 @@ class MultiAgentSimulation:
 
     def _process_next_event(self):
 
-        time, _, kind, occupant_id, generation = heapq.heappop(self._event_heap)
+        time, _, kind, payload, generation = heapq.heappop(self._event_heap)
+
+        if kind == self.RETRY_ADMISSION:
+            # Admission Control V4 -- Dual Constraint Architecture. Not
+            # occupant-keyed -- dispatched before the occupant-generation
+            # check below, which only ever applies to TRY_ENTER_EDGE/
+            # ARRIVE_AT_NODE events. Only ever reached when discharge_model
+            # is not None (see _maybe_schedule_discharge_retry()); dead
+            # code otherwise.
+            self._handle_retry_admission(time, payload)
+            return
+
+        occupant_id = payload
 
         if generation != self._generation.get(occupant_id):
             # Stale -- this occupant_id was re-registered (a later
@@ -378,12 +442,12 @@ class MultiAgentSimulation:
         edge = occupant.route.edges[occupant.current_edge_index]
         admission_object, admission_key = self._resolve_admission(edge)
 
-        capacity = self.capacity_model.capacity(admission_object)
-        current_admitted = len(self._admission_occupancy.get(admission_key, ()))
-
-        if current_admitted < capacity:
+        if self._can_admit(admission_object, admission_key, time):
 
             self._admit_onto_edge(time, occupant, edge)
+
+            if self.discharge_model is not None:
+                self._last_admission_time[admission_key] = time
 
         else:
 
@@ -394,6 +458,130 @@ class MultiAgentSimulation:
 
             occupant.state = OccupantState.QUEUED
             self._total_queue_events += 1
+
+            self._maybe_schedule_discharge_retry(admission_object, admission_key, time)
+
+    # =====================================================
+
+    def _can_admit(self, admission_object, admission_key, time):
+
+        # Admission Control V4 -- Dual Constraint Architecture. STORAGE
+        # (capacity_model) and THROUGHPUT (discharge_model) are two
+        # fully independent checks -- both must pass, neither is ever
+        # derived from the other. When discharge_model is None, this
+        # reduces to exactly the single comparison this coordinator has
+        # always made (current_admitted < capacity), byte-identical to
+        # every existing caller's own behavior.
+
+        capacity = self.capacity_model.capacity(admission_object)
+        current_admitted = len(self._admission_occupancy.get(admission_key, ()))
+
+        if current_admitted >= capacity:
+            return False
+
+        if self.discharge_model is None:
+            return True
+
+        discharge_rate = self.discharge_model.discharge_rate(admission_object)
+
+        if not discharge_rate or discharge_rate <= 0:
+            # No genuine rate constraint derivable for this edge/region
+            # (None, zero, or negative) -- fails OPEN, storage alone
+            # governs, exactly like DefaultCapacityModel/StairCapacityModel's
+            # own "None means not derivable, fall back to a safe
+            # default" convention. A misconfigured/undefined discharge
+            # rate must never silently deadlock a queue.
+            return True
+
+        last_time = self._last_admission_time.get(admission_key)
+
+        if last_time is None:
+            # This admission_key has never admitted anyone yet -- no
+            # prior admission to measure a gap from.
+            return True
+
+        return (time - last_time) >= (1.0 / discharge_rate)
+
+    # =====================================================
+
+    def _maybe_schedule_discharge_retry(self, admission_object, admission_key, time):
+
+        # Admission Control V4 -- Dual Constraint Architecture. Called
+        # whenever an admission attempt is blocked. If the block is
+        # STORAGE-driven (the edge/region is genuinely full), no timer
+        # is needed -- the next occupant to LEAVE will free a slot and
+        # re-trigger admission on its own, exactly as this coordinator
+        # already guarantees for every existing (non-discharge-gated)
+        # caller. Only a genuinely DISCHARGE-driven block (storage has
+        # room, but not enough time has elapsed since the last
+        # admission) needs an explicit timer, since nothing else in the
+        # event-driven simulation would otherwise ever revisit this
+        # admission_key at exactly the moment the gate opens.
+
+        if self.discharge_model is None:
+            return
+
+        if admission_key in self._pending_retry:
+            # A retry is already scheduled for this admission_key --
+            # never stack redundant duplicate timers.
+            return
+
+        capacity = self.capacity_model.capacity(admission_object)
+        current_admitted = len(self._admission_occupancy.get(admission_key, ()))
+
+        if current_admitted >= capacity:
+            return
+
+        discharge_rate = self.discharge_model.discharge_rate(admission_object)
+
+        if not discharge_rate or discharge_rate <= 0:
+            return
+
+        last_time = self._last_admission_time.get(admission_key)
+
+        if last_time is None:
+            return
+
+        retry_time = max(time, last_time + (1.0 / discharge_rate))
+
+        self._pending_retry.add(admission_key)
+        self._schedule_retry(retry_time, admission_key)
+
+    # =====================================================
+
+    def _handle_retry_admission(self, time, admission_key):
+
+        # Admission Control V4 -- Dual Constraint Architecture. Only
+        # ever reached via a RETRY_ADMISSION event, which is only ever
+        # scheduled by _maybe_schedule_discharge_retry() -- a no-op
+        # when discharge_model is None, so this method is unreachable
+        # (dead code) in that case, preserving every existing caller's
+        # behavior exactly.
+
+        self._pending_retry.discard(admission_key)
+
+        queue = self._admission_queues.get(admission_key)
+
+        if not queue:
+            return
+
+        occupant_id = queue[0]
+        occupant = self._occupants[occupant_id]
+        edge = occupant.route.edges[occupant.current_edge_index]
+        admission_object, _ = self._resolve_admission(edge)
+
+        if self._can_admit(admission_object, admission_key, time):
+
+            queue.popleft()
+            self._admit_onto_edge(time, occupant, edge)
+            self._last_admission_time[admission_key] = time
+
+            if queue:
+                self._maybe_schedule_discharge_retry(admission_object, admission_key, time)
+
+        else:
+
+            self._maybe_schedule_discharge_retry(admission_object, admission_key, time)
 
     # =====================================================
 
@@ -525,7 +713,7 @@ class MultiAgentSimulation:
         edge_occupants = self._edge_occupancy.get(edge.id, set())
         edge_occupants.discard(occupant.occupant_id)
 
-        _, admission_key = self._resolve_admission(edge)
+        admission_object, admission_key = self._resolve_admission(edge)
 
         admission_occupants = self._admission_occupancy.get(admission_key, set())
         admission_occupants.discard(occupant.occupant_id)
@@ -534,9 +722,25 @@ class MultiAgentSimulation:
 
         if queue:
 
-            next_occupant_id = queue.popleft()
+            # Admission Control V4 -- Dual Constraint Architecture. Peek
+            # (never blindly pop) so a discharge-blocked queue head is
+            # never popped only to be re-queued at the BACK by
+            # _handle_try_enter_edge()'s own queueing branch, which
+            # would silently break FIFO order for whoever is behind
+            # them. When discharge_model is None, _can_admit() reduces
+            # to exactly "current_admitted < capacity", which is always
+            # True here (exactly one slot just freed, by construction)
+            # -- so this branch is taken unconditionally, preserving
+            # the original pop-then-schedule behavior byte-for-byte.
+            if self._can_admit(admission_object, admission_key, time):
 
-            self._schedule(time, self.TRY_ENTER_EDGE, next_occupant_id)
+                next_occupant_id = queue.popleft()
+
+                self._schedule(time, self.TRY_ENTER_EDGE, next_occupant_id)
+
+            else:
+
+                self._maybe_schedule_discharge_retry(admission_object, admission_key, time)
 
         self._add_node_occupant(to_node.id, occupant.occupant_id)
 

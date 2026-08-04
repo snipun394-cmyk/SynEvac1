@@ -1,0 +1,1103 @@
+{
+  "summary": {
+    "published_evacuation_time_s": 1022.0,
+    "n_seeds": 9,
+    "old_overprediction_ratio": 3.0513492279212184,
+    "new_overprediction_ratio": 3.0513492279212184,
+    "comparisons": {
+      "total_evacuation_time": {
+        "n_pairs": 9,
+        "old_mean": 3118.478910935485,
+        "new_mean": 3118.478910935485,
+        "old_ci": {
+          "mean": 3118.478910935485,
+          "lower": 3081.505250870678,
+          "upper": 3155.452571000292,
+          "confidence": 0.95,
+          "n": 9
+        },
+        "new_ci": {
+          "mean": 3118.478910935485,
+          "lower": 3081.505250870678,
+          "upper": 3155.452571000292,
+          "confidence": 0.95,
+          "n": 9
+        },
+        "paired": {
+          "t_statistic": NaN,
+          "p_value": NaN,
+          "mean_difference": 0.0,
+          "n": 9
+        },
+        "effect_size_cohens_d": {
+          "cohens_d": 0.0,
+          "n_a": 9,
+          "n_b": 9
+        }
+      },
+      "avg_queue_wait_time": {
+        "n_pairs": 9,
+        "old_mean": 233.88795750164672,
+        "new_mean": 233.88795750164672,
+        "old_ci": {
+          "mean": 233.88795750164672,
+          "lower": 231.69367288624525,
+          "upper": 236.0822421170482,
+          "confidence": 0.95,
+          "n": 9
+        },
+        "new_ci": {
+          "mean": 233.88795750164672,
+          "lower": 231.69367288624525,
+          "upper": 236.0822421170482,
+          "confidence": 0.95,
+          "n": 9
+        },
+        "paired": {
+          "t_statistic": NaN,
+          "p_value": NaN,
+          "mean_difference": 0.0,
+          "n": 9
+        },
+        "effect_size_cohens_d": {
+          "cohens_d": 0.0,
+          "n_a": 9,
+          "n_b": 9
+        }
+      },
+      "max_queue_wait_time": {
+        "n_pairs": 9,
+        "old_mean": 843.9876605571708,
+        "new_mean": 843.9876605571708,
+        "old_ci": {
+          "mean": 843.9876605571708,
+          "lower": 831.2730188600088,
+          "upper": 856.7023022543327,
+          "confidence": 0.95,
+          "n": 9
+        },
+        "new_ci": {
+          "mean": 843.9876605571708,
+          "lower": 831.2730188600088,
+          "upper": 856.7023022543327,
+          "confidence": 0.95,
+          "n": 9
+        },
+        "paired": {
+          "t_statistic": NaN,
+          "p_value": NaN,
+          "mean_difference": 0.0,
+          "n": 9
+        },
+        "effect_size_cohens_d": {
+          "cohens_d": 0.0,
+          "n_a": 9,
+          "n_b": 9
+        }
+      },
+      "queue_wait_percentage": {
+        "n_pairs": 9,
+        "old_mean": 94.62294065065883,
+        "new_mean": 94.62294065065883,
+        "old_ci": {
+          "mean": 94.62294065065883,
+          "lower": 94.56149246986809,
+          "upper": 94.68438883144958,
+          "confidence": 0.95,
+          "n": 9
+        },
+        "new_ci": {
+          "mean": 94.62294065065883,
+          "lower": 94.56149246986809,
+          "upper": 94.68438883144958,
+          "confidence": 0.95,
+          "n": 9
+        },
+        "paired": {
+          "t_statistic": NaN,
+          "p_value": NaN,
+          "mean_difference": 0.0,
+          "n": 9
+        },
+        "effect_size_cohens_d": {
+          "cohens_d": 0.0,
+          "n_a": 9,
+          "n_b": 9
+        }
+      },
+      "peak_congestion_value": {
+        "n_pairs": 9,
+        "old_mean": 106.33333333333333,
+        "new_mean": 106.33333333333333,
+        "old_ci": {
+          "mean": 106.33333333333333,
+          "lower": 104.37360665269472,
+          "upper": 108.29306001397194,
+          "confidence": 0.95,
+          "n": 9
+        },
+        "new_ci": {
+          "mean": 106.33333333333333,
+          "lower": 104.37360665269472,
+          "upper": 108.29306001397194,
+          "confidence": 0.95,
+          "n": 9
+        },
+        "paired": {
+          "t_statistic": NaN,
+          "p_value": NaN,
+          "mean_difference": 0.0,
+          "n": 9
+        },
+        "effect_size_cohens_d": {
+          "cohens_d": 0.0,
+          "n_a": 9,
+          "n_b": 9
+        }
+      },
+      "congestion_duration": {
+        "n_pairs": 0,
+        "old_mean": null,
+        "new_mean": null,
+        "old_ci": null,
+        "new_ci": null,
+        "paired": null,
+        "effect_size_cohens_d": null
+      },
+      "exit_utilization_balance": {
+        "n_pairs": 9,
+        "old_mean": 1.0,
+        "new_mean": 1.0,
+        "old_ci": {
+          "mean": 1.0,
+          "lower": 1.0,
+          "upper": 1.0,
+          "confidence": 0.95,
+          "n": 9
+        },
+        "new_ci": {
+          "mean": 1.0,
+          "lower": 1.0,
+          "upper": 1.0,
+          "confidence": 0.95,
+          "n": 9
+        },
+        "paired": {
+          "t_statistic": NaN,
+          "p_value": NaN,
+          "mean_difference": 0.0,
+          "n": 9
+        },
+        "effect_size_cohens_d": {
+          "cohens_d": 0.0,
+          "n_a": 9,
+          "n_b": 9
+        }
+      },
+      "people_evacuated": {
+        "n_pairs": 9,
+        "old_mean": 719.4444444444445,
+        "new_mean": 719.4444444444445,
+        "old_ci": {
+          "mean": 719.4444444444445,
+          "lower": 712.9776763270695,
+          "upper": 725.9112125618194,
+          "confidence": 0.95,
+          "n": 9
+        },
+        "new_ci": {
+          "mean": 719.4444444444445,
+          "lower": 712.9776763270695,
+          "upper": 725.9112125618194,
+          "confidence": 0.95,
+          "n": 9
+        },
+        "paired": {
+          "t_statistic": NaN,
+          "p_value": NaN,
+          "mean_difference": 0.0,
+          "n": 9
+        },
+        "effect_size_cohens_d": {
+          "cohens_d": 0.0,
+          "n_a": 9,
+          "n_b": 9
+        }
+      },
+      "people_trapped": {
+        "n_pairs": 9,
+        "old_mean": 84.55555555555556,
+        "new_mean": 84.55555555555556,
+        "old_ci": {
+          "mean": 84.55555555555556,
+          "lower": 78.08878743818063,
+          "upper": 91.02232367293048,
+          "confidence": 0.95,
+          "n": 9
+        },
+        "new_ci": {
+          "mean": 84.55555555555556,
+          "lower": 78.08878743818063,
+          "upper": 91.02232367293048,
+          "confidence": 0.95,
+          "n": 9
+        },
+        "paired": {
+          "t_statistic": NaN,
+          "p_value": NaN,
+          "mean_difference": 0.0,
+          "n": 9
+        },
+        "effect_size_cohens_d": {
+          "cohens_d": 0.0,
+          "n_a": 9,
+          "n_b": 9
+        }
+      },
+      "peak_edge_occupancy_mean": {
+        "n_pairs": 9,
+        "old_mean": 1.15,
+        "new_mean": 1.15,
+        "old_ci": {
+          "mean": 1.15,
+          "lower": 1.15,
+          "upper": 1.15,
+          "confidence": 0.95,
+          "n": 9
+        },
+        "new_ci": {
+          "mean": 1.15,
+          "lower": 1.15,
+          "upper": 1.15,
+          "confidence": 0.95,
+          "n": 9
+        },
+        "paired": {
+          "t_statistic": NaN,
+          "p_value": NaN,
+          "mean_difference": 0.0,
+          "n": 9
+        },
+        "effect_size_cohens_d": {
+          "cohens_d": 0.0,
+          "n_a": 9,
+          "n_b": 9
+        }
+      },
+      "peak_edge_occupancy_max": {
+        "n_pairs": 9,
+        "old_mean": 4.0,
+        "new_mean": 4.0,
+        "old_ci": {
+          "mean": 4.0,
+          "lower": 4.0,
+          "upper": 4.0,
+          "confidence": 0.95,
+          "n": 9
+        },
+        "new_ci": {
+          "mean": 4.0,
+          "lower": 4.0,
+          "upper": 4.0,
+          "confidence": 0.95,
+          "n": 9
+        },
+        "paired": {
+          "t_statistic": NaN,
+          "p_value": NaN,
+          "mean_difference": 0.0,
+          "n": 9
+        },
+        "effect_size_cohens_d": {
+          "cohens_d": 0.0,
+          "n_a": 9,
+          "n_b": 9
+        }
+      },
+      "mean_flow_rate_people_per_s": {
+        "n_pairs": 9,
+        "old_mean": 0.23072465215066684,
+        "new_mean": 0.23072465215066684,
+        "old_ci": {
+          "mean": 0.23072465215066684,
+          "lower": 0.22893684464481912,
+          "upper": 0.23251245965651457,
+          "confidence": 0.95,
+          "n": 9
+        },
+        "new_ci": {
+          "mean": 0.23072465215066684,
+          "lower": 0.22893684464481912,
+          "upper": 0.23251245965651457,
+          "confidence": 0.95,
+          "n": 9
+        },
+        "paired": {
+          "t_statistic": NaN,
+          "p_value": NaN,
+          "mean_difference": 0.0,
+          "n": 9
+        },
+        "effect_size_cohens_d": {
+          "cohens_d": 0.0,
+          "n_a": 9,
+          "n_b": 9
+        }
+      }
+    },
+    "old_exit_flow_mean": {
+      "exit-a": 389.3333333333333,
+      "exit-b": 330.1111111111111
+    },
+    "new_exit_flow_mean": {
+      "exit-a": 389.3333333333333,
+      "exit-b": 330.1111111111111
+    },
+    "old_stair_flow_mean": {
+      "stair-a-10": 42.55555555555556,
+      "stair-a-9": 85.77777777777777,
+      "stair-a-8": 128.11111111111111,
+      "stair-a-7": 171.22222222222223,
+      "stair-a-6": 213.88888888888889,
+      "stair-a-5": 257.22222222222223,
+      "stair-a-4": 300.8888888888889,
+      "stair-a-3": 346.77777777777777,
+      "stair-a-2": 389.3333333333333,
+      "stair-b-10": 35.0,
+      "stair-b-9": 71.55555555555556,
+      "stair-b-8": 106.88888888888889,
+      "stair-b-7": 144.0,
+      "stair-b-6": 182.0,
+      "stair-b-5": 218.66666666666666,
+      "stair-b-4": 255.77777777777777,
+      "stair-b-3": 293.0,
+      "stair-b-2": 330.1111111111111
+    },
+    "new_stair_flow_mean": {
+      "stair-a-10": 42.55555555555556,
+      "stair-a-9": 85.77777777777777,
+      "stair-a-8": 128.11111111111111,
+      "stair-a-7": 171.22222222222223,
+      "stair-a-6": 213.88888888888889,
+      "stair-a-5": 257.22222222222223,
+      "stair-a-4": 300.8888888888889,
+      "stair-a-3": 346.77777777777777,
+      "stair-a-2": 389.3333333333333,
+      "stair-b-10": 35.0,
+      "stair-b-9": 71.55555555555556,
+      "stair-b-8": 106.88888888888889,
+      "stair-b-7": 144.0,
+      "stair-b-6": 182.0,
+      "stair-b-5": 218.66666666666666,
+      "stair-b-4": 255.77777777777777,
+      "stair-b-3": 293.0,
+      "stair-b-2": 330.1111111111111
+    }
+  },
+  "old_records": [
+    {
+      "scenario_id": "scn-852fdb940aa797f7",
+      "total_evacuation_time": 3054.3944717131462,
+      "people_evacuated": 717,
+      "people_trapped": 87,
+      "peak_congestion_value": 106,
+      "congestion_duration": null,
+      "exit_utilization_balance": 1.0,
+      "avg_queue_wait_time": 233.43547234713046,
+      "max_queue_wait_time": 834.5581130438709,
+      "queue_wait_percentage": 94.57606846764372,
+      "peak_edge_occupancy_mean": 1.15,
+      "peak_edge_occupancy_max": 4,
+      "mean_flow_rate_people_per_s": 0.23474374598309486,
+      "exit_flow": {
+        "exit-a": 381,
+        "exit-b": 336
+      },
+      "stair_flow": {
+        "stair-a-10": 42,
+        "stair-a-9": 84,
+        "stair-a-8": 125,
+        "stair-a-7": 164,
+        "stair-a-6": 207,
+        "stair-a-5": 251,
+        "stair-a-4": 295,
+        "stair-a-3": 339,
+        "stair-a-2": 381,
+        "stair-b-10": 36,
+        "stair-b-9": 71,
+        "stair-b-8": 108,
+        "stair-b-7": 147,
+        "stair-b-6": 184,
+        "stair-b-5": 218,
+        "stair-b-4": 257,
+        "stair-b-3": 296,
+        "stair-b-2": 336
+      }
+    },
+    {
+      "scenario_id": "scn-2abcde0702b4b74e",
+      "total_evacuation_time": 3160.1226427319584,
+      "people_evacuated": 727,
+      "people_trapped": 77,
+      "peak_congestion_value": 104,
+      "congestion_duration": null,
+      "exit_utilization_balance": 1.0,
+      "avg_queue_wait_time": 236.16069295344178,
+      "max_queue_wait_time": 836.8989038418599,
+      "queue_wait_percentage": 94.69427503176188,
+      "peak_edge_occupancy_mean": 1.15,
+      "peak_edge_occupancy_max": 4,
+      "mean_flow_rate_people_per_s": 0.23005436250141895,
+      "exit_flow": {
+        "exit-a": 394,
+        "exit-b": 333
+      },
+      "stair_flow": {
+        "stair-a-10": 45,
+        "stair-a-9": 84,
+        "stair-a-8": 128,
+        "stair-a-7": 171,
+        "stair-a-6": 216,
+        "stair-a-5": 260,
+        "stair-a-4": 305,
+        "stair-a-3": 353,
+        "stair-a-2": 394,
+        "stair-b-10": 36,
+        "stair-b-9": 73,
+        "stair-b-8": 109,
+        "stair-b-7": 147,
+        "stair-b-6": 182,
+        "stair-b-5": 217,
+        "stair-b-4": 255,
+        "stair-b-3": 294,
+        "stair-b-2": 333
+      }
+    },
+    {
+      "scenario_id": "scn-2c6993edb1cfcbb4",
+      "total_evacuation_time": 3137.4625495826076,
+      "people_evacuated": 718,
+      "people_trapped": 86,
+      "peak_congestion_value": 104,
+      "congestion_duration": null,
+      "exit_utilization_balance": 1.0,
+      "avg_queue_wait_time": 232.50876951123823,
+      "max_queue_wait_time": 831.2822796787873,
+      "queue_wait_percentage": 94.56438699950036,
+      "peak_edge_occupancy_mean": 1.15,
+      "peak_edge_occupancy_max": 4,
+      "mean_flow_rate_people_per_s": 0.228847353124747,
+      "exit_flow": {
+        "exit-a": 393,
+        "exit-b": 325
+      },
+      "stair_flow": {
+        "stair-a-10": 43,
+        "stair-a-9": 86,
+        "stair-a-8": 131,
+        "stair-a-7": 175,
+        "stair-a-6": 219,
+        "stair-a-5": 263,
+        "stair-a-4": 307,
+        "stair-a-3": 353,
+        "stair-a-2": 393,
+        "stair-b-10": 33,
+        "stair-b-9": 69,
+        "stair-b-8": 104,
+        "stair-b-7": 141,
+        "stair-b-6": 180,
+        "stair-b-5": 216,
+        "stair-b-4": 256,
+        "stair-b-3": 293,
+        "stair-b-2": 325
+      }
+    },
+    {
+      "scenario_id": "scn-e56b28243bccc568",
+      "total_evacuation_time": 3118.230507788874,
+      "people_evacuated": 715,
+      "people_trapped": 89,
+      "peak_congestion_value": 103,
+      "congestion_duration": null,
+      "exit_utilization_balance": 1.0,
+      "avg_queue_wait_time": 230.11746761347146,
+      "max_queue_wait_time": 825.6983799205213,
+      "queue_wait_percentage": 94.53431987764876,
+      "peak_edge_occupancy_mean": 1.15,
+      "peak_edge_occupancy_max": 4,
+      "mean_flow_rate_people_per_s": 0.22929671113602307,
+      "exit_flow": {
+        "exit-a": 388,
+        "exit-b": 327
+      },
+      "stair_flow": {
+        "stair-a-10": 42,
+        "stair-a-9": 87,
+        "stair-a-8": 128,
+        "stair-a-7": 175,
+        "stair-a-6": 218,
+        "stair-a-5": 262,
+        "stair-a-4": 306,
+        "stair-a-3": 348,
+        "stair-a-2": 388,
+        "stair-b-10": 36,
+        "stair-b-9": 73,
+        "stair-b-8": 107,
+        "stair-b-7": 143,
+        "stair-b-6": 183,
+        "stair-b-5": 219,
+        "stair-b-4": 255,
+        "stair-b-3": 292,
+        "stair-b-2": 327
+      }
+    },
+    {
+      "scenario_id": "scn-6925e784263d55f2",
+      "total_evacuation_time": 3142.4072947590025,
+      "people_evacuated": 730,
+      "people_trapped": 74,
+      "peak_congestion_value": 109,
+      "congestion_duration": null,
+      "exit_utilization_balance": 1.0,
+      "avg_queue_wait_time": 236.29737070812422,
+      "max_queue_wait_time": 870.0007265609324,
+      "queue_wait_percentage": 94.71576480915776,
+      "peak_edge_occupancy_mean": 1.15,
+      "peak_edge_occupancy_max": 4,
+      "mean_flow_rate_people_per_s": 0.23230597803712938,
+      "exit_flow": {
+        "exit-a": 394,
+        "exit-b": 336
+      },
+      "stair_flow": {
+        "stair-a-10": 45,
+        "stair-a-9": 86,
+        "stair-a-8": 127,
+        "stair-a-7": 172,
+        "stair-a-6": 215,
+        "stair-a-5": 259,
+        "stair-a-4": 302,
+        "stair-a-3": 348,
+        "stair-a-2": 394,
+        "stair-b-10": 39,
+        "stair-b-9": 75,
+        "stair-b-8": 110,
+        "stair-b-7": 148,
+        "stair-b-6": 187,
+        "stair-b-5": 226,
+        "stair-b-4": 262,
+        "stair-b-3": 299,
+        "stair-b-2": 336
+      }
+    },
+    {
+      "scenario_id": "scn-2d8c2a1df611ca24",
+      "total_evacuation_time": 3125.085171160971,
+      "people_evacuated": 719,
+      "people_trapped": 85,
+      "peak_congestion_value": 106,
+      "congestion_duration": null,
+      "exit_utilization_balance": 1.0,
+      "avg_queue_wait_time": 236.7398726276671,
+      "max_queue_wait_time": 846.3431260840321,
+      "queue_wait_percentage": 94.69607253818272,
+      "peak_edge_occupancy_mean": 1.15,
+      "peak_edge_occupancy_max": 4,
+      "mean_flow_rate_people_per_s": 0.23007372939307477,
+      "exit_flow": {
+        "exit-a": 388,
+        "exit-b": 331
+      },
+      "stair_flow": {
+        "stair-a-10": 39,
+        "stair-a-9": 83,
+        "stair-a-8": 126,
+        "stair-a-7": 171,
+        "stair-a-6": 212,
+        "stair-a-5": 257,
+        "stair-a-4": 298,
+        "stair-a-3": 345,
+        "stair-a-2": 388,
+        "stair-b-10": 33,
+        "stair-b-9": 66,
+        "stair-b-8": 102,
+        "stair-b-7": 141,
+        "stair-b-6": 180,
+        "stair-b-5": 218,
+        "stair-b-4": 257,
+        "stair-b-3": 292,
+        "stair-b-2": 331
+      }
+    },
+    {
+      "scenario_id": "scn-f75e92228c8440e2",
+      "total_evacuation_time": 3171.9458598030424,
+      "people_evacuated": 731,
+      "people_trapped": 73,
+      "peak_congestion_value": 111,
+      "congestion_duration": null,
+      "exit_utilization_balance": 1.0,
+      "avg_queue_wait_time": 236.95261793314626,
+      "max_queue_wait_time": 872.3022777189212,
+      "queue_wait_percentage": 94.67845375712089,
+      "peak_edge_occupancy_mean": 1.15,
+      "peak_edge_occupancy_max": 4,
+      "mean_flow_rate_people_per_s": 0.23045790574918276,
+      "exit_flow": {
+        "exit-a": 398,
+        "exit-b": 333
+      },
+      "stair_flow": {
+        "stair-a-10": 46,
+        "stair-a-9": 90,
+        "stair-a-8": 131,
+        "stair-a-7": 177,
+        "stair-a-6": 220,
+        "stair-a-5": 260,
+        "stair-a-4": 307,
+        "stair-a-3": 352,
+        "stair-a-2": 398,
+        "stair-b-10": 36,
+        "stair-b-9": 73,
+        "stair-b-8": 107,
+        "stair-b-7": 142,
+        "stair-b-6": 182,
+        "stair-b-5": 223,
+        "stair-b-4": 256,
+        "stair-b-3": 295,
+        "stair-b-2": 333
+      }
+    },
+    {
+      "scenario_id": "scn-84821300231d28d6",
+      "total_evacuation_time": 3131.2907108346344,
+      "people_evacuated": 712,
+      "people_trapped": 92,
+      "peak_congestion_value": 107,
+      "congestion_duration": null,
+      "exit_utilization_balance": 1.0,
+      "avg_queue_wait_time": 233.37589468324546,
+      "max_queue_wait_time": 835.6749502298821,
+      "queue_wait_percentage": 94.64648036323408,
+      "peak_edge_occupancy_mean": 1.15,
+      "peak_edge_occupancy_max": 4,
+      "mean_flow_rate_people_per_s": 0.22738227323844323,
+      "exit_flow": {
+        "exit-a": 390,
+        "exit-b": 322
+      },
+      "stair_flow": {
+        "stair-a-10": 42,
+        "stair-a-9": 87,
+        "stair-a-8": 130,
+        "stair-a-7": 171,
+        "stair-a-6": 214,
+        "stair-a-5": 256,
+        "stair-a-4": 301,
+        "stair-a-3": 350,
+        "stair-a-2": 390,
+        "stair-b-10": 32,
+        "stair-b-9": 72,
+        "stair-b-8": 106,
+        "stair-b-7": 139,
+        "stair-b-6": 174,
+        "stair-b-5": 211,
+        "stair-b-4": 248,
+        "stair-b-3": 283,
+        "stair-b-2": 322
+      }
+    },
+    {
+      "scenario_id": "scn-886b73f6695c5545",
+      "total_evacuation_time": 3025.3709900451313,
+      "people_evacuated": 706,
+      "people_trapped": 98,
+      "peak_congestion_value": 107,
+      "congestion_duration": null,
+      "exit_utilization_balance": 1.0,
+      "avg_queue_wait_time": 229.40345913735564,
+      "max_queue_wait_time": 843.1301879357297,
+      "queue_wait_percentage": 94.50064401167934,
+      "peak_edge_occupancy_mean": 1.15,
+      "peak_edge_occupancy_max": 4,
+      "mean_flow_rate_people_per_s": 0.2333598101928875,
+      "exit_flow": {
+        "exit-a": 378,
+        "exit-b": 328
+      },
+      "stair_flow": {
+        "stair-a-10": 39,
+        "stair-a-9": 85,
+        "stair-a-8": 127,
+        "stair-a-7": 165,
+        "stair-a-6": 204,
+        "stair-a-5": 247,
+        "stair-a-4": 287,
+        "stair-a-3": 333,
+        "stair-a-2": 378,
+        "stair-b-10": 34,
+        "stair-b-9": 72,
+        "stair-b-8": 109,
+        "stair-b-7": 148,
+        "stair-b-6": 186,
+        "stair-b-5": 220,
+        "stair-b-4": 256,
+        "stair-b-3": 293,
+        "stair-b-2": 328
+      }
+    }
+  ],
+  "new_records": [
+    {
+      "scenario_id": "scn-852fdb940aa797f7",
+      "total_evacuation_time": 3054.3944717131462,
+      "people_evacuated": 717,
+      "people_trapped": 87,
+      "peak_congestion_value": 106,
+      "congestion_duration": null,
+      "exit_utilization_balance": 1.0,
+      "avg_queue_wait_time": 233.43547234713046,
+      "max_queue_wait_time": 834.5581130438709,
+      "queue_wait_percentage": 94.57606846764372,
+      "peak_edge_occupancy_mean": 1.15,
+      "peak_edge_occupancy_max": 4,
+      "mean_flow_rate_people_per_s": 0.23474374598309486,
+      "exit_flow": {
+        "exit-a": 381,
+        "exit-b": 336
+      },
+      "stair_flow": {
+        "stair-a-10": 42,
+        "stair-a-9": 84,
+        "stair-a-8": 125,
+        "stair-a-7": 164,
+        "stair-a-6": 207,
+        "stair-a-5": 251,
+        "stair-a-4": 295,
+        "stair-a-3": 339,
+        "stair-a-2": 381,
+        "stair-b-10": 36,
+        "stair-b-9": 71,
+        "stair-b-8": 108,
+        "stair-b-7": 147,
+        "stair-b-6": 184,
+        "stair-b-5": 218,
+        "stair-b-4": 257,
+        "stair-b-3": 296,
+        "stair-b-2": 336
+      }
+    },
+    {
+      "scenario_id": "scn-2abcde0702b4b74e",
+      "total_evacuation_time": 3160.1226427319584,
+      "people_evacuated": 727,
+      "people_trapped": 77,
+      "peak_congestion_value": 104,
+      "congestion_duration": null,
+      "exit_utilization_balance": 1.0,
+      "avg_queue_wait_time": 236.16069295344178,
+      "max_queue_wait_time": 836.8989038418599,
+      "queue_wait_percentage": 94.69427503176188,
+      "peak_edge_occupancy_mean": 1.15,
+      "peak_edge_occupancy_max": 4,
+      "mean_flow_rate_people_per_s": 0.23005436250141895,
+      "exit_flow": {
+        "exit-a": 394,
+        "exit-b": 333
+      },
+      "stair_flow": {
+        "stair-a-10": 45,
+        "stair-a-9": 84,
+        "stair-a-8": 128,
+        "stair-a-7": 171,
+        "stair-a-6": 216,
+        "stair-a-5": 260,
+        "stair-a-4": 305,
+        "stair-a-3": 353,
+        "stair-a-2": 394,
+        "stair-b-10": 36,
+        "stair-b-9": 73,
+        "stair-b-8": 109,
+        "stair-b-7": 147,
+        "stair-b-6": 182,
+        "stair-b-5": 217,
+        "stair-b-4": 255,
+        "stair-b-3": 294,
+        "stair-b-2": 333
+      }
+    },
+    {
+      "scenario_id": "scn-2c6993edb1cfcbb4",
+      "total_evacuation_time": 3137.4625495826076,
+      "people_evacuated": 718,
+      "people_trapped": 86,
+      "peak_congestion_value": 104,
+      "congestion_duration": null,
+      "exit_utilization_balance": 1.0,
+      "avg_queue_wait_time": 232.50876951123823,
+      "max_queue_wait_time": 831.2822796787873,
+      "queue_wait_percentage": 94.56438699950036,
+      "peak_edge_occupancy_mean": 1.15,
+      "peak_edge_occupancy_max": 4,
+      "mean_flow_rate_people_per_s": 0.228847353124747,
+      "exit_flow": {
+        "exit-a": 393,
+        "exit-b": 325
+      },
+      "stair_flow": {
+        "stair-a-10": 43,
+        "stair-a-9": 86,
+        "stair-a-8": 131,
+        "stair-a-7": 175,
+        "stair-a-6": 219,
+        "stair-a-5": 263,
+        "stair-a-4": 307,
+        "stair-a-3": 353,
+        "stair-a-2": 393,
+        "stair-b-10": 33,
+        "stair-b-9": 69,
+        "stair-b-8": 104,
+        "stair-b-7": 141,
+        "stair-b-6": 180,
+        "stair-b-5": 216,
+        "stair-b-4": 256,
+        "stair-b-3": 293,
+        "stair-b-2": 325
+      }
+    },
+    {
+      "scenario_id": "scn-e56b28243bccc568",
+      "total_evacuation_time": 3118.230507788874,
+      "people_evacuated": 715,
+      "people_trapped": 89,
+      "peak_congestion_value": 103,
+      "congestion_duration": null,
+      "exit_utilization_balance": 1.0,
+      "avg_queue_wait_time": 230.11746761347146,
+      "max_queue_wait_time": 825.6983799205213,
+      "queue_wait_percentage": 94.53431987764876,
+      "peak_edge_occupancy_mean": 1.15,
+      "peak_edge_occupancy_max": 4,
+      "mean_flow_rate_people_per_s": 0.22929671113602307,
+      "exit_flow": {
+        "exit-a": 388,
+        "exit-b": 327
+      },
+      "stair_flow": {
+        "stair-a-10": 42,
+        "stair-a-9": 87,
+        "stair-a-8": 128,
+        "stair-a-7": 175,
+        "stair-a-6": 218,
+        "stair-a-5": 262,
+        "stair-a-4": 306,
+        "stair-a-3": 348,
+        "stair-a-2": 388,
+        "stair-b-10": 36,
+        "stair-b-9": 73,
+        "stair-b-8": 107,
+        "stair-b-7": 143,
+        "stair-b-6": 183,
+        "stair-b-5": 219,
+        "stair-b-4": 255,
+        "stair-b-3": 292,
+        "stair-b-2": 327
+      }
+    },
+    {
+      "scenario_id": "scn-6925e784263d55f2",
+      "total_evacuation_time": 3142.4072947590025,
+      "people_evacuated": 730,
+      "people_trapped": 74,
+      "peak_congestion_value": 109,
+      "congestion_duration": null,
+      "exit_utilization_balance": 1.0,
+      "avg_queue_wait_time": 236.29737070812422,
+      "max_queue_wait_time": 870.0007265609324,
+      "queue_wait_percentage": 94.71576480915776,
+      "peak_edge_occupancy_mean": 1.15,
+      "peak_edge_occupancy_max": 4,
+      "mean_flow_rate_people_per_s": 0.23230597803712938,
+      "exit_flow": {
+        "exit-a": 394,
+        "exit-b": 336
+      },
+      "stair_flow": {
+        "stair-a-10": 45,
+        "stair-a-9": 86,
+        "stair-a-8": 127,
+        "stair-a-7": 172,
+        "stair-a-6": 215,
+        "stair-a-5": 259,
+        "stair-a-4": 302,
+        "stair-a-3": 348,
+        "stair-a-2": 394,
+        "stair-b-10": 39,
+        "stair-b-9": 75,
+        "stair-b-8": 110,
+        "stair-b-7": 148,
+        "stair-b-6": 187,
+        "stair-b-5": 226,
+        "stair-b-4": 262,
+        "stair-b-3": 299,
+        "stair-b-2": 336
+      }
+    },
+    {
+      "scenario_id": "scn-2d8c2a1df611ca24",
+      "total_evacuation_time": 3125.085171160971,
+      "people_evacuated": 719,
+      "people_trapped": 85,
+      "peak_congestion_value": 106,
+      "congestion_duration": null,
+      "exit_utilization_balance": 1.0,
+      "avg_queue_wait_time": 236.7398726276671,
+      "max_queue_wait_time": 846.3431260840321,
+      "queue_wait_percentage": 94.69607253818272,
+      "peak_edge_occupancy_mean": 1.15,
+      "peak_edge_occupancy_max": 4,
+      "mean_flow_rate_people_per_s": 0.23007372939307477,
+      "exit_flow": {
+        "exit-a": 388,
+        "exit-b": 331
+      },
+      "stair_flow": {
+        "stair-a-10": 39,
+        "stair-a-9": 83,
+        "stair-a-8": 126,
+        "stair-a-7": 171,
+        "stair-a-6": 212,
+        "stair-a-5": 257,
+        "stair-a-4": 298,
+        "stair-a-3": 345,
+        "stair-a-2": 388,
+        "stair-b-10": 33,
+        "stair-b-9": 66,
+        "stair-b-8": 102,
+        "stair-b-7": 141,
+        "stair-b-6": 180,
+        "stair-b-5": 218,
+        "stair-b-4": 257,
+        "stair-b-3": 292,
+        "stair-b-2": 331
+      }
+    },
+    {
+      "scenario_id": "scn-f75e92228c8440e2",
+      "total_evacuation_time": 3171.9458598030424,
+      "people_evacuated": 731,
+      "people_trapped": 73,
+      "peak_congestion_value": 111,
+      "congestion_duration": null,
+      "exit_utilization_balance": 1.0,
+      "avg_queue_wait_time": 236.95261793314626,
+      "max_queue_wait_time": 872.3022777189212,
+      "queue_wait_percentage": 94.67845375712089,
+      "peak_edge_occupancy_mean": 1.15,
+      "peak_edge_occupancy_max": 4,
+      "mean_flow_rate_people_per_s": 0.23045790574918276,
+      "exit_flow": {
+        "exit-a": 398,
+        "exit-b": 333
+      },
+      "stair_flow": {
+        "stair-a-10": 46,
+        "stair-a-9": 90,
+        "stair-a-8": 131,
+        "stair-a-7": 177,
+        "stair-a-6": 220,
+        "stair-a-5": 260,
+        "stair-a-4": 307,
+        "stair-a-3": 352,
+        "stair-a-2": 398,
+        "stair-b-10": 36,
+        "stair-b-9": 73,
+        "stair-b-8": 107,
+        "stair-b-7": 142,
+        "stair-b-6": 182,
+        "stair-b-5": 223,
+        "stair-b-4": 256,
+        "stair-b-3": 295,
+        "stair-b-2": 333
+      }
+    },
+    {
+      "scenario_id": "scn-84821300231d28d6",
+      "total_evacuation_time": 3131.2907108346344,
+      "people_evacuated": 712,
+      "people_trapped": 92,
+      "peak_congestion_value": 107,
+      "congestion_duration": null,
+      "exit_utilization_balance": 1.0,
+      "avg_queue_wait_time": 233.37589468324546,
+      "max_queue_wait_time": 835.6749502298821,
+      "queue_wait_percentage": 94.64648036323408,
+      "peak_edge_occupancy_mean": 1.15,
+      "peak_edge_occupancy_max": 4,
+      "mean_flow_rate_people_per_s": 0.22738227323844323,
+      "exit_flow": {
+        "exit-a": 390,
+        "exit-b": 322
+      },
+      "stair_flow": {
+        "stair-a-10": 42,
+        "stair-a-9": 87,
+        "stair-a-8": 130,
+        "stair-a-7": 171,
+        "stair-a-6": 214,
+        "stair-a-5": 256,
+        "stair-a-4": 301,
+        "stair-a-3": 350,
+        "stair-a-2": 390,
+        "stair-b-10": 32,
+        "stair-b-9": 72,
+        "stair-b-8": 106,
+        "stair-b-7": 139,
+        "stair-b-6": 174,
+        "stair-b-5": 211,
+        "stair-b-4": 248,
+        "stair-b-3": 283,
+        "stair-b-2": 322
+      }
+    },
+    {
+      "scenario_id": "scn-886b73f6695c5545",
+      "total_evacuation_time": 3025.3709900451313,
+      "people_evacuated": 706,
+      "people_trapped": 98,
+      "peak_congestion_value": 107,
+      "congestion_duration": null,
+      "exit_utilization_balance": 1.0,
+      "avg_queue_wait_time": 229.40345913735564,
+      "max_queue_wait_time": 843.1301879357297,
+      "queue_wait_percentage": 94.50064401167934,
+      "peak_edge_occupancy_mean": 1.15,
+      "peak_edge_occupancy_max": 4,
+      "mean_flow_rate_people_per_s": 0.2333598101928875,
+      "exit_flow": {
+        "exit-a": 378,
+        "exit-b": 328
+      },
+      "stair_flow": {
+        "stair-a-10": 39,
+        "stair-a-9": 85,
+        "stair-a-8": 127,
+        "stair-a-7": 165,
+        "stair-a-6": 204,
+        "stair-a-5": 247,
+        "stair-a-4": 287,
+        "stair-a-3": 333,
+        "stair-a-2": 378,
+        "stair-b-10": 34,
+        "stair-b-9": 72,
+        "stair-b-8": 109,
+        "stair-b-7": 148,
+        "stair-b-6": 186,
+        "stair-b-5": 220,
+        "stair-b-4": 256,
+        "stair-b-3": 293,
+        "stair-b-2": 328
+      }
+    }
+  ]
+}
