@@ -35,13 +35,13 @@ class MultiAgentSimulation:
     TRY_ENTER_EDGE = "try_enter_edge"
     ARRIVE_AT_NODE = "arrive_at_node"
 
-    # Admission Control V4 -- Dual Constraint Architecture. A third
-    # event kind, keyed by admission_key (not occupant_id/generation
-    # like the two above) -- see _schedule_retry()/_handle_retry_admission()
-    # below. Only ever scheduled when discharge_model is supplied;
-    # never reachable when it is None, which is exactly what keeps
-    # every existing caller's event ordering byte-identical to before
-    # this milestone.
+    # Admission Control V4/V7. A third event kind, keyed by
+    # admission_key (not occupant_id/generation like the two above) --
+    # see _schedule_retry()/_handle_retry_admission() below. Only ever
+    # scheduled when discharge_model or buffer_model is supplied; never
+    # reachable when both are None, which is exactly what keeps every
+    # existing caller's event ordering byte-identical to before either
+    # milestone.
     RETRY_ADMISSION = "retry_admission"
 
     def __init__(
@@ -52,6 +52,7 @@ class MultiAgentSimulation:
         congestion_model=None,
         flow_region_map=None,
         discharge_model=None,
+        buffer_model=None,
     ):
 
         self.engine = engine
@@ -76,6 +77,23 @@ class MultiAgentSimulation:
         # _can_admit() below, which never even calls discharge_model
         # when this is None.
         self.discharge_model = discharge_model
+
+        # Admission Control V7 -- Hybrid Buffer-Service Architecture.
+        # The new BUFFER constraint -- independent of, and additive to,
+        # BOTH capacity_model (service-zone storage) and discharge_model
+        # (service-zone throughput). See simulator/buffer.py's own
+        # module docstring for the full architectural rationale (the
+        # missing quantity Admission Control V5/V6 identified: queueing
+        # theory's own `K`, waiting-room/buffer size, gated at LANDING
+        # granularity -- a Node -- never at Edge/FlowRegion granularity).
+        # None (every existing caller today, and every caller through
+        # Calibration Studio/Automatic Calibration Engine/calibration_
+        # benchmark, none of which pass this parameter) means admission
+        # control is governed by capacity_model/discharge_model ALONE,
+        # structurally identical to this coordinator before this
+        # milestone -- see _can_admit() below, which never even calls
+        # buffer_model when this is None.
+        self.buffer_model = buffer_model
 
         # Hybrid Flow Regions (Option D), Milestone 3 -- optional,
         # edge.id -> FlowRegion (see navigation/flow_region.py), the
@@ -141,6 +159,30 @@ class MultiAgentSimulation:
         # accumulates redundant duplicate timers.
         self._last_admission_time = {}
         self._pending_retry = set()
+
+        # Admission Control V7 -- Hybrid Buffer-Service Architecture.
+        # occupant_ids currently "in flight" between being released from
+        # the FRONT of a queue (via the peek-then-defer pattern below)
+        # and their own deferred re-verification actually firing.
+        # Needed because buffer state (a DESTINATION node's occupancy)
+        # can change in that narrow window due to a completely
+        # UNRELATED occupant arriving there -- unlike storage/discharge,
+        # which only ever change via this SAME admission_key's own
+        # activity, and therefore could never flip between the peek and
+        # the re-check (Admission Control V4's own established
+        # invariant). If a requeued occupant's deferred check fails, it
+        # must return to the FRONT of the queue, not the back -- see
+        # _handle_try_enter_edge()'s own comment.
+        self._requeue_at_front = set()
+
+        # Admission Control V7 -- Hybrid Buffer-Service Architecture.
+        # node_id -> set of admission_keys currently blocked because
+        # THAT node's own buffer is full. Populated only by
+        # _maybe_schedule_retry() (never touched when buffer_model is
+        # None); drained by _on_node_occupancy_decreased() whenever
+        # that node's own occupancy drops, which is the only event that
+        # can ever make a full buffer un-full again.
+        self._buffer_waiters = {}
 
         self._queue_join_time = {}
 
@@ -368,12 +410,11 @@ class MultiAgentSimulation:
         time, _, kind, payload, generation = heapq.heappop(self._event_heap)
 
         if kind == self.RETRY_ADMISSION:
-            # Admission Control V4 -- Dual Constraint Architecture. Not
-            # occupant-keyed -- dispatched before the occupant-generation
-            # check below, which only ever applies to TRY_ENTER_EDGE/
-            # ARRIVE_AT_NODE events. Only ever reached when discharge_model
-            # is not None (see _maybe_schedule_discharge_retry()); dead
-            # code otherwise.
+            # Admission Control V4/V7. Not occupant-keyed -- dispatched
+            # before the occupant-generation check below, which only
+            # ever applies to TRY_ENTER_EDGE/ARRIVE_AT_NODE events. Only
+            # ever reached when discharge_model or buffer_model is not
+            # None (see _maybe_schedule_retry()); dead code otherwise.
             self._handle_retry_admission(time, payload)
             return
 
@@ -441,8 +482,17 @@ class MultiAgentSimulation:
 
         edge = occupant.route.edges[occupant.current_edge_index]
         admission_object, admission_key = self._resolve_admission(edge)
+        to_node = occupant.route.nodes[occupant.current_edge_index + 1]
 
-        if self._can_admit(admission_object, admission_key, time):
+        # Admission Control V7. True only for an occupant just released
+        # from the FRONT of this same queue (see _handle_arrive_at_node()'s
+        # own peek-then-defer comment) whose deferred re-verification,
+        # here, is about to run -- never true for a genuinely fresh
+        # admission attempt.
+        was_released_from_queue_front = occupant.occupant_id in self._requeue_at_front
+        self._requeue_at_front.discard(occupant.occupant_id)
+
+        if self._can_admit(admission_object, admission_key, to_node, time):
 
             self._admit_onto_edge(time, occupant, edge)
 
@@ -451,33 +501,78 @@ class MultiAgentSimulation:
 
         else:
 
-            self._admission_queues.setdefault(admission_key, deque()).append(
-                occupant.occupant_id
-            )
-            self._queue_join_time[occupant.occupant_id] = time
+            queue = self._admission_queues.setdefault(admission_key, deque())
+
+            if was_released_from_queue_front:
+                # A transient race, not a fresh arrival -- buffer state
+                # at to_node changed between the peek and this deferred
+                # re-check (an unrelated occupant arrived there in the
+                # interim). This occupant was already rightfully at the
+                # front; it must stay there, never be pushed behind
+                # occupants who were never released at all.
+                queue.appendleft(occupant.occupant_id)
+            else:
+                queue.append(occupant.occupant_id)
+
+            # setdefault, not unconditional assignment -- a requeued
+            # occupant's own original queue_join_time (from when they
+            # FIRST joined) must be preserved, never reset by a
+            # transient re-verification failure.
+            self._queue_join_time.setdefault(occupant.occupant_id, time)
 
             occupant.state = OccupantState.QUEUED
-            self._total_queue_events += 1
 
-            self._maybe_schedule_discharge_retry(admission_object, admission_key, time)
+            if not was_released_from_queue_front:
+                self._total_queue_events += 1
+
+            self._maybe_schedule_retry(admission_object, admission_key, to_node, time)
 
     # =====================================================
 
-    def _can_admit(self, admission_object, admission_key, time):
+    def _can_admit(self, admission_object, admission_key, to_node, time):
 
-        # Admission Control V4 -- Dual Constraint Architecture. STORAGE
-        # (capacity_model) and THROUGHPUT (discharge_model) are two
-        # fully independent checks -- both must pass, neither is ever
-        # derived from the other. When discharge_model is None, this
-        # reduces to exactly the single comparison this coordinator has
-        # always made (current_admitted < capacity), byte-identical to
-        # every existing caller's own behavior.
+        # Admission Control V4/V7. STORAGE (capacity_model), THROUGHPUT
+        # (discharge_model), and BUFFER (buffer_model) are three fully
+        # independent checks -- all three must pass, none is ever
+        # derived from another. When discharge_model and buffer_model
+        # are both None, this reduces to exactly the single comparison
+        # this coordinator has always made (current_admitted <
+        # capacity), byte-identical to every existing caller's own
+        # behavior.
 
         capacity = self.capacity_model.capacity(admission_object)
         current_admitted = len(self._admission_occupancy.get(admission_key, ()))
 
         if current_admitted >= capacity:
             return False
+
+        if self.buffer_model is not None:
+
+            # Admission Control V7 -- Hybrid Buffer-Service Architecture.
+            # Gates entry onto THIS edge/region by whether its own
+            # DESTINATION landing has room -- never by blocking arrival
+            # mid-traversal (no such mechanism exists in this
+            # coordinator's event model, and none is added here). This
+            # is a deliberate, disclosed approximation of true spillback:
+            # nobody is ever admitted onto an edge whose destination is
+            # already known to be full at the moment of admission, so
+            # nobody arrives at an already-full landing under ordinary
+            # circumstances -- but several occupants admitted onto the
+            # SAME edge in close succession, all converging on the same
+            # destination, could in principle still arrive together and
+            # briefly exceed it. Preferred over a much larger change
+            # (pausing an occupant already mid-edge) for exactly the
+            # reason this milestone asks for: the minimum new
+            # abstraction that reuses the existing edge-entry admission
+            # point, not a redesign of the event model itself.
+            buffer_capacity = self.buffer_model.buffer_capacity(to_node)
+
+            if buffer_capacity is not None and buffer_capacity > 0:
+
+                current_buffer_occupancy = len(self._node_occupancy.get(to_node.id, ()))
+
+                if current_buffer_occupancy >= buffer_capacity:
+                    return False
 
         if self.discharge_model is None:
             return True
@@ -504,26 +599,34 @@ class MultiAgentSimulation:
 
     # =====================================================
 
-    def _maybe_schedule_discharge_retry(self, admission_object, admission_key, time):
+    def _maybe_schedule_retry(self, admission_object, admission_key, to_node, time):
 
-        # Admission Control V4 -- Dual Constraint Architecture. Called
-        # whenever an admission attempt is blocked. If the block is
-        # STORAGE-driven (the edge/region is genuinely full), no timer
-        # is needed -- the next occupant to LEAVE will free a slot and
-        # re-trigger admission on its own, exactly as this coordinator
-        # already guarantees for every existing (non-discharge-gated)
-        # caller. Only a genuinely DISCHARGE-driven block (storage has
-        # room, but not enough time has elapsed since the last
-        # admission) needs an explicit timer, since nothing else in the
-        # event-driven simulation would otherwise ever revisit this
-        # admission_key at exactly the moment the gate opens.
-
-        if self.discharge_model is None:
-            return
+        # Admission Control V4/V7. Called whenever an admission attempt
+        # is blocked. If the block is STORAGE-driven (the edge/region
+        # is genuinely full), no explicit retry is needed at all -- the
+        # next occupant to LEAVE will free a slot and re-trigger
+        # admission on its own, exactly as this coordinator already
+        # guarantees for every existing (unconstrained) caller.
+        #
+        # A genuinely BUFFER-driven block (storage has room, but the
+        # destination landing does not) is resolved by registering this
+        # admission_key as a waiter on to_node -- _on_node_occupancy_
+        # decreased() retries it the moment that specific node's own
+        # occupancy drops, which is the only event that can ever make a
+        # full buffer un-full again.
+        #
+        # A genuinely DISCHARGE-driven block (storage and buffer both
+        # have room, but not enough time has elapsed since the last
+        # admission) is resolved exactly as Admission Control V4
+        # already does, with an explicit RETRY_ADMISSION timer.
+        #
+        # _pending_retry gates the WHOLE method, not just one reason --
+        # once ANY retry mechanism is pending for this admission_key
+        # (a buffer wait, a timer, or both), this returns immediately
+        # rather than registering redundant duplicates; _handle_retry_
+        # admission() clears it before re-evaluating from scratch.
 
         if admission_key in self._pending_retry:
-            # A retry is already scheduled for this admission_key --
-            # never stack redundant duplicate timers.
             return
 
         capacity = self.capacity_model.capacity(admission_object)
@@ -532,29 +635,72 @@ class MultiAgentSimulation:
         if current_admitted >= capacity:
             return
 
-        discharge_rate = self.discharge_model.discharge_rate(admission_object)
+        scheduled_something = False
 
-        if not discharge_rate or discharge_rate <= 0:
-            return
+        if self.buffer_model is not None:
 
-        last_time = self._last_admission_time.get(admission_key)
+            buffer_capacity = self.buffer_model.buffer_capacity(to_node)
 
-        if last_time is None:
-            return
+            if buffer_capacity is not None and buffer_capacity > 0:
 
-        retry_time = max(time, last_time + (1.0 / discharge_rate))
+                current_buffer_occupancy = len(self._node_occupancy.get(to_node.id, ()))
 
-        self._pending_retry.add(admission_key)
-        self._schedule_retry(retry_time, admission_key)
+                if current_buffer_occupancy >= buffer_capacity:
+                    self._buffer_waiters.setdefault(to_node.id, set()).add(admission_key)
+                    scheduled_something = True
+
+        if self.discharge_model is not None:
+
+            discharge_rate = self.discharge_model.discharge_rate(admission_object)
+
+            if discharge_rate and discharge_rate > 0:
+
+                last_time = self._last_admission_time.get(admission_key)
+
+                if last_time is not None:
+
+                    retry_time = max(time, last_time + (1.0 / discharge_rate))
+
+                    # Admission Control V7. Strictly-future check, new
+                    # with this milestone. Under V4 alone this branch
+                    # was only ever reached when discharge itself was
+                    # the reason _can_admit() failed -- which made
+                    # retry_time > time a structural guarantee (see
+                    # _can_admit(): discharge fails only when `time -
+                    # last_time < 1/discharge_rate`, so `last_time +
+                    # 1/discharge_rate` is necessarily still ahead of
+                    # `time`). V7's buffer check now sits BEFORE the
+                    # discharge check, so this branch can also be
+                    # reached while discharge's own gate is already
+                    # satisfied (buffer alone is what's blocking) --
+                    # in that case retry_time collapses to exactly
+                    # `time`, and scheduling it unconditionally created
+                    # a same-timestamp RETRY_ADMISSION that rescheduled
+                    # itself forever, forever failing the same buffer
+                    # check without buffer occupancy ever needing to
+                    # change (confirmed via instrumentation: heap size
+                    # and simulated time both frozen across 250,000+
+                    # processed events on the NIST 10-story building).
+                    # A retry timer must only ever fire strictly in the
+                    # future; when discharge is already satisfied, the
+                    # buffer-waiter registration above is the only
+                    # mechanism that can ever legitimately unblock this
+                    # admission_key.
+                    if retry_time > time:
+                        self._schedule_retry(retry_time, admission_key)
+                        scheduled_something = True
+
+        if scheduled_something:
+            self._pending_retry.add(admission_key)
 
     # =====================================================
 
     def _handle_retry_admission(self, time, admission_key):
 
-        # Admission Control V4 -- Dual Constraint Architecture. Only
-        # ever reached via a RETRY_ADMISSION event, which is only ever
-        # scheduled by _maybe_schedule_discharge_retry() -- a no-op
-        # when discharge_model is None, so this method is unreachable
+        # Admission Control V4/V7. Only ever reached via a
+        # RETRY_ADMISSION event, which is only ever scheduled by
+        # _maybe_schedule_retry() -- a no-op when both discharge_model
+        # and buffer_model are None, so this method is unreachable
         # (dead code) in that case, preserving every existing caller's
         # behavior exactly.
 
@@ -569,19 +715,28 @@ class MultiAgentSimulation:
         occupant = self._occupants[occupant_id]
         edge = occupant.route.edges[occupant.current_edge_index]
         admission_object, _ = self._resolve_admission(edge)
+        to_node = occupant.route.nodes[occupant.current_edge_index + 1]
 
-        if self._can_admit(admission_object, admission_key, time):
+        if self._can_admit(admission_object, admission_key, to_node, time):
 
             queue.popleft()
             self._admit_onto_edge(time, occupant, edge)
             self._last_admission_time[admission_key] = time
 
             if queue:
-                self._maybe_schedule_discharge_retry(admission_object, admission_key, time)
+
+                # The NEW queue head may be routed toward a different
+                # destination than the occupant just admitted (e.g. a
+                # shared FlowRegion's own branches) -- resolved fresh,
+                # never assumed to match.
+                new_head_occupant = self._occupants[queue[0]]
+                new_head_to_node = new_head_occupant.route.nodes[new_head_occupant.current_edge_index + 1]
+
+                self._maybe_schedule_retry(admission_object, admission_key, new_head_to_node, time)
 
         else:
 
-            self._maybe_schedule_discharge_retry(admission_object, admission_key, time)
+            self._maybe_schedule_retry(admission_object, admission_key, to_node, time)
 
     # =====================================================
 
@@ -590,7 +745,7 @@ class MultiAgentSimulation:
         from_node = occupant.route.nodes[occupant.current_edge_index]
         to_node = occupant.route.nodes[occupant.current_edge_index + 1]
 
-        self._remove_node_occupant(from_node.id, occupant.occupant_id)
+        self._remove_node_occupant(from_node.id, occupant.occupant_id, time)
 
         # Per-edge occupancy -- reporting only (peak_edge_occupancy),
         # never consulted for the admission decision below. See this
@@ -722,25 +877,40 @@ class MultiAgentSimulation:
 
         if queue:
 
-            # Admission Control V4 -- Dual Constraint Architecture. Peek
-            # (never blindly pop) so a discharge-blocked queue head is
-            # never popped only to be re-queued at the BACK by
-            # _handle_try_enter_edge()'s own queueing branch, which
-            # would silently break FIFO order for whoever is behind
-            # them. When discharge_model is None, _can_admit() reduces
-            # to exactly "current_admitted < capacity", which is always
-            # True here (exactly one slot just freed, by construction)
-            # -- so this branch is taken unconditionally, preserving
-            # the original pop-then-schedule behavior byte-for-byte.
-            if self._can_admit(admission_object, admission_key, time):
+            # Admission Control V4/V7. Peek (never blindly pop) so a
+            # blocked queue head is never popped only to be re-queued
+            # at the BACK by _handle_try_enter_edge()'s own queueing
+            # branch, which would silently break FIFO order for whoever
+            # is behind them. When discharge_model and buffer_model are
+            # both None, _can_admit() reduces to exactly
+            # "current_admitted < capacity", which is always True here
+            # (exactly one slot just freed, by construction) -- so this
+            # branch is taken unconditionally, preserving the original
+            # pop-then-schedule behavior byte-for-byte.
+            #
+            # The queue head's OWN to_node is resolved fresh, not
+            # assumed to match the departing occupant's edge -- a
+            # shared FlowRegion's admission_key can group occupants
+            # bound for different destinations.
+            head_occupant = self._occupants[queue[0]]
+            head_to_node = head_occupant.route.nodes[head_occupant.current_edge_index + 1]
+
+            if self._can_admit(admission_object, admission_key, head_to_node, time):
 
                 next_occupant_id = queue.popleft()
+
+                # Admission Control V7 -- see _handle_try_enter_edge()'s
+                # own comment: marks this occupant so that IF their
+                # deferred re-verification (about to be scheduled below)
+                # fails, they are returned to the FRONT of the queue,
+                # never the back.
+                self._requeue_at_front.add(next_occupant_id)
 
                 self._schedule(time, self.TRY_ENTER_EDGE, next_occupant_id)
 
             else:
 
-                self._maybe_schedule_discharge_retry(admission_object, admission_key, time)
+                self._maybe_schedule_retry(admission_object, admission_key, head_to_node, time)
 
         self._add_node_occupant(to_node.id, occupant.occupant_id)
 
@@ -750,7 +920,7 @@ class MultiAgentSimulation:
 
             occupant.state = OccupantState.ARRIVED
             self._arrival_time[occupant.occupant_id] = time
-            self._remove_node_occupant(to_node.id, occupant.occupant_id)
+            self._remove_node_occupant(to_node.id, occupant.occupant_id, time)
 
             return
 
@@ -771,9 +941,29 @@ class MultiAgentSimulation:
 
     # =====================================================
 
-    def _remove_node_occupant(self, node_id, occupant_id):
+    def _remove_node_occupant(self, node_id, occupant_id, time):
 
         self._node_occupancy.get(node_id, set()).discard(occupant_id)
+
+        self._on_node_occupancy_decreased(node_id, time)
+
+    # =====================================================
+
+    def _on_node_occupancy_decreased(self, node_id, time):
+
+        # Admission Control V7 -- Hybrid Buffer-Service Architecture.
+        # The only event that can ever make a full buffer un-full again
+        # -- called from every place this coordinator ever reduces a
+        # node's own occupancy. Always a cheap no-op when buffer_model
+        # is None (_buffer_waiters is never populated in that case).
+
+        waiters = self._buffer_waiters.pop(node_id, None)
+
+        if not waiters:
+            return
+
+        for admission_key in waiters:
+            self._schedule_retry(time, admission_key)
 
     # =====================================================
 

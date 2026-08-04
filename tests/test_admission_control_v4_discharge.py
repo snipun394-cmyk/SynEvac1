@@ -419,8 +419,11 @@ class FlowRegionDischargeTests(unittest.TestCase):
         # still within the 2.0s region-wide gap -- must be blocked,
         # proving the two edges share one discharge gate rather than
         # each tracking their own.
-        self.assertFalse(self.sim._can_admit(admission_object_b, admission_key, 11.0))
-        self.assertTrue(self.sim._can_admit(admission_object_b, admission_key, 12.0))
+        # to_node=None is safe here -- this sim has no buffer_model, so
+        # _can_admit() never dereferences it (Admission Control V7's
+        # own buffer check is gated on self.buffer_model is not None).
+        self.assertFalse(self.sim._can_admit(admission_object_b, admission_key, None, 11.0))
+        self.assertTrue(self.sim._can_admit(admission_object_b, admission_key, None, 12.0))
 
 
 if __name__ == "__main__":
