@@ -1,0 +1,390 @@
+{
+  "selected_congestion_floor": 0.1,
+  "selected_walking_speed": 1.4,
+  "per_building": {
+    "10-story": {
+      "building": "10-story",
+      "published_evacuation_time_s": 1022.0,
+      "n_scenarios": 15,
+      "arms": {
+        "original_simulator": {
+          "mean_evacuation_time": 3118.478910935485,
+          "overprediction_ratio": 3.0513492279212184,
+          "ci": {
+            "mean": 3118.478910935485,
+            "lower": 3081.505250870678,
+            "upper": 3155.452571000292,
+            "confidence": 0.95,
+            "n": 9
+          },
+          "residual_error_s": 2096.478910935485
+        },
+        "flow_region_default": {
+          "mean_evacuation_time": 420.78739960162443,
+          "overprediction_ratio": 0.4117293538176364,
+          "ci": {
+            "mean": 420.78739960162443,
+            "lower": 415.80360075705926,
+            "upper": 425.7711984461896,
+            "confidence": 0.95,
+            "n": 9
+          },
+          "residual_error_s": -601.2126003983756
+        },
+        "flow_region_calibrated_congestion": {
+          "mean_evacuation_time": 1115.9955131767613,
+          "overprediction_ratio": 1.0919721263960482,
+          "ci": {
+            "mean": 1115.9955131767613,
+            "lower": 1099.272636882923,
+            "upper": 1132.7183894705995,
+            "confidence": 0.95,
+            "n": 9
+          },
+          "residual_error_s": 93.99551317676128
+        },
+        "flow_region_calibrated_congestion_and_speed": {
+          "mean_evacuation_time": 954.7135191867578,
+          "overprediction_ratio": 0.9341619561514264,
+          "ci": {
+            "mean": 954.7135191867578,
+            "lower": 940.3134377693503,
+            "upper": 969.1136006041653,
+            "confidence": 0.95,
+            "n": 9
+          },
+          "residual_error_s": -67.28648081324218
+        }
+      },
+      "pairwise_significance": {
+        "original_simulator_vs_flow_region_default": {
+          "paired": {
+            "t_statistic": 167.2071784279026,
+            "p_value": 1.8311814013548197e-15,
+            "mean_difference": 2697.691511333861,
+            "n": 9
+          },
+          "effect_size_cohens_d": {
+            "cohens_d": -78.60382602298709,
+            "n_a": 9,
+            "n_b": 9
+          }
+        },
+        "flow_region_default_vs_flow_region_calibrated_congestion": {
+          "paired": {
+            "t_statistic": -120.51066209879193,
+            "p_value": 2.512772858330839e-14,
+            "mean_difference": -695.208113575137,
+            "n": 9
+          },
+          "effect_size_cohens_d": {
+            "cohens_d": 43.30919512143597,
+            "n_a": 9,
+            "n_b": 9
+          }
+        },
+        "flow_region_calibrated_congestion_vs_flow_region_calibrated_congestion_and_speed": {
+          "paired": {
+            "t_statistic": 90.99533795692973,
+            "p_value": 2.374406319485916e-13,
+            "mean_difference": 161.28199399000343,
+            "n": 9
+          },
+          "effect_size_cohens_d": {
+            "cohens_d": -7.94452025832188,
+            "n_a": 9,
+            "n_b": 9
+          }
+        }
+      }
+    },
+    "18-story": {
+      "building": "18-story",
+      "published_evacuation_time_s": 1192.0,
+      "n_scenarios": 15,
+      "arms": {
+        "original_simulator": {
+          "mean_evacuation_time": 19601.108176233185,
+          "overprediction_ratio": 16.443882698182204,
+          "ci": {
+            "mean": 19601.108176233185,
+            "lower": 19356.35094846503,
+            "upper": 19845.86540400134,
+            "confidence": 0.95,
+            "n": 15
+          },
+          "residual_error_s": 18409.108176233185
+        },
+        "flow_region_default": {
+          "mean_evacuation_time": 571.588243951475,
+          "overprediction_ratio": 0.4795203388854656,
+          "ci": {
+            "mean": 571.588243951475,
+            "lower": 561.4711202495308,
+            "upper": 581.7053676534191,
+            "confidence": 0.95,
+            "n": 15
+          },
+          "residual_error_s": -620.411756048525
+        },
+        "flow_region_calibrated_congestion": {
+          "mean_evacuation_time": 1290.0338851001027,
+          "overprediction_ratio": 1.0822431921980726,
+          "ci": {
+            "mean": 1290.0338851001027,
+            "lower": 1249.087716014079,
+            "upper": 1330.9800541861264,
+            "confidence": 0.95,
+            "n": 15
+          },
+          "residual_error_s": 98.03388510010268
+        },
+        "flow_region_calibrated_congestion_and_speed": {
+          "mean_evacuation_time": 1094.3015575941556,
+          "overprediction_ratio": 0.9180382194581842,
+          "ci": {
+            "mean": 1094.3015575941556,
+            "lower": 1061.5659508671972,
+            "upper": 1127.037164321114,
+            "confidence": 0.95,
+            "n": 15
+          },
+          "residual_error_s": -97.69844240584439
+        }
+      },
+      "pairwise_significance": {
+        "original_simulator_vs_flow_region_default": {
+          "paired": {
+            "t_statistic": 173.2359994008045,
+            "p_value": 1.0040614737080864e-24,
+            "mean_difference": 19029.519932281706,
+            "n": 15
+          },
+          "effect_size_cohens_d": {
+            "cohens_d": -60.838020798695524,
+            "n_a": 15,
+            "n_b": 15
+          }
+        },
+        "flow_region_default_vs_flow_region_calibrated_congestion": {
+          "paired": {
+            "t_statistic": -45.52752255170837,
+            "p_value": 1.285291032147338e-16,
+            "mean_difference": -718.4456411486276,
+            "n": 15
+          },
+          "effect_size_cohens_d": {
+            "cohens_d": 13.340316486534801,
+            "n_a": 15,
+            "n_b": 15
+          }
+        },
+        "flow_region_calibrated_congestion_vs_flow_region_calibrated_congestion_and_speed": {
+          "paired": {
+            "t_statistic": 37.256636066759626,
+            "p_value": 2.0824272456592e-15,
+            "mean_difference": 195.73232750594696,
+            "n": 15
+          },
+          "effect_size_cohens_d": {
+            "cohens_d": -2.9240929809047542,
+            "n_a": 15,
+            "n_b": 15
+          }
+        }
+      }
+    },
+    "24-story": {
+      "building": "24-story",
+      "published_evacuation_time_s": 1090.0,
+      "n_scenarios": 15,
+      "arms": {
+        "original_simulator": {
+          "mean_evacuation_time": 10263.338534467008,
+          "overprediction_ratio": 9.415906912355053,
+          "ci": {
+            "mean": 10263.338534467008,
+            "lower": 10163.2559688083,
+            "upper": 10363.421100125715,
+            "confidence": 0.95,
+            "n": 15
+          },
+          "residual_error_s": 9173.338534467008
+        },
+        "flow_region_default": {
+          "mean_evacuation_time": 378.98859120109876,
+          "overprediction_ratio": 0.34769595523036584,
+          "ci": {
+            "mean": 378.98859120109876,
+            "lower": 372.1196569389936,
+            "upper": 385.8575254632039,
+            "confidence": 0.95,
+            "n": 15
+          },
+          "residual_error_s": -711.0114087989012
+        },
+        "flow_region_calibrated_congestion": {
+          "mean_evacuation_time": 600.9068078995225,
+          "overprediction_ratio": 0.5512906494491032,
+          "ci": {
+            "mean": 600.9068078995225,
+            "lower": 588.6112828397626,
+            "upper": 613.2023329592824,
+            "confidence": 0.95,
+            "n": 15
+          },
+          "residual_error_s": -489.0931921004775
+        },
+        "flow_region_calibrated_congestion_and_speed": {
+          "mean_evacuation_time": 510.5124980458477,
+          "overprediction_ratio": 0.46836008995031897,
+          "ci": {
+            "mean": 510.5124980458477,
+            "lower": 499.48073692430313,
+            "upper": 521.5442591673922,
+            "confidence": 0.95,
+            "n": 15
+          },
+          "residual_error_s": -579.4875019541523
+        }
+      },
+      "pairwise_significance": {
+        "original_simulator_vs_flow_region_default": {
+          "paired": {
+            "t_statistic": 217.343592034514,
+            "p_value": 4.1987815196556765e-26,
+            "mean_difference": 9884.349943265908,
+            "n": 15
+          },
+          "effect_size_cohens_d": {
+            "cohens_d": -77.16541529157462,
+            "n_a": 15,
+            "n_b": 15
+          }
+        },
+        "flow_region_default_vs_flow_region_calibrated_congestion": {
+          "paired": {
+            "t_statistic": -38.14622960818988,
+            "p_value": 1.5011026683358336e-15,
+            "mean_difference": -221.91821669842372,
+            "n": 15
+          },
+          "effect_size_cohens_d": {
+            "cohens_d": 12.340051595192923,
+            "n_a": 15,
+            "n_b": 15
+          }
+        },
+        "flow_region_calibrated_congestion_vs_flow_region_calibrated_congestion_and_speed": {
+          "paired": {
+            "t_statistic": 109.70210552566738,
+            "p_value": 5.993775868875913e-22,
+            "mean_difference": 90.39430985367484,
+            "n": 15
+          },
+          "effect_size_cohens_d": {
+            "cohens_d": -4.285573625562283,
+            "n_a": 15,
+            "n_b": 15
+          }
+        }
+      }
+    },
+    "31-story": {
+      "building": "31-story",
+      "published_evacuation_time_s": 1002.0,
+      "n_scenarios": 15,
+      "arms": {
+        "original_simulator": {
+          "mean_evacuation_time": 11819.437965745872,
+          "overprediction_ratio": 11.795846273199473,
+          "ci": {
+            "mean": 11819.437965745872,
+            "lower": 11726.285730698592,
+            "upper": 11912.590200793153,
+            "confidence": 0.95,
+            "n": 15
+          },
+          "residual_error_s": 10817.437965745872
+        },
+        "flow_region_default": {
+          "mean_evacuation_time": 709.217354691315,
+          "overprediction_ratio": 0.7078017511889371,
+          "ci": {
+            "mean": 709.217354691315,
+            "lower": 702.3334598966687,
+            "upper": 716.1012494859613,
+            "confidence": 0.95,
+            "n": 15
+          },
+          "residual_error_s": -292.782645308685
+        },
+        "flow_region_calibrated_congestion": {
+          "mean_evacuation_time": 1757.7008175615883,
+          "overprediction_ratio": 1.754192432696196,
+          "ci": {
+            "mean": 1757.7008175615883,
+            "lower": 1739.6247651113156,
+            "upper": 1775.776870011861,
+            "confidence": 0.95,
+            "n": 15
+          },
+          "residual_error_s": 755.7008175615883
+        },
+        "flow_region_calibrated_congestion_and_speed": {
+          "mean_evacuation_time": 1505.0674940007525,
+          "overprediction_ratio": 1.50206336726622,
+          "ci": {
+            "mean": 1505.0674940007525,
+            "lower": 1489.691309486766,
+            "upper": 1520.443678514739,
+            "confidence": 0.95,
+            "n": 15
+          },
+          "residual_error_s": 503.0674940007525
+        }
+      },
+      "pairwise_significance": {
+        "original_simulator_vs_flow_region_default": {
+          "paired": {
+            "t_statistic": 271.0842755468217,
+            "p_value": 1.9055489101497925e-27,
+            "mean_difference": 11110.220611054558,
+            "n": 15
+          },
+          "effect_size_cohens_d": {
+            "cohens_d": -93.15372704096033,
+            "n_a": 15,
+            "n_b": 15
+          }
+        },
+        "flow_region_default_vs_flow_region_calibrated_congestion": {
+          "paired": {
+            "t_statistic": -187.71202193027668,
+            "p_value": 3.265894800394894e-25,
+            "mean_difference": -1048.4834628702733,
+            "n": 15
+          },
+          "effect_size_cohens_d": {
+            "cohens_d": 42.452455638436916,
+            "n_a": 15,
+            "n_b": 15
+          }
+        },
+        "flow_region_calibrated_congestion_vs_flow_region_calibrated_congestion_and_speed": {
+          "paired": {
+            "t_statistic": 196.27969208689703,
+            "p_value": 1.7487709550710952e-25,
+            "mean_difference": 252.63332356083595,
+            "n": 15
+          },
+          "effect_size_cohens_d": {
+            "cohens_d": -8.337274003823472,
+            "n_a": 15,
+            "n_b": 15
+          }
+        }
+      }
+    }
+  }
+}

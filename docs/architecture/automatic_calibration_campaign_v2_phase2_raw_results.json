@@ -1,0 +1,477 @@
+{
+  "per_building": {
+    "10-story": {
+      "building": "10-story",
+      "published_evacuation_time_s": 1022.0,
+      "n_scenarios": 8,
+      "run_status": "COMPLETED",
+      "best_session_id": "cd53ae56-4e41-4ae9-89ab-96f57f4f302f",
+      "best_score": 63.68345794671711,
+      "per_value_results": [
+        {
+          "grid_value": 0.6,
+          "session_status": "COMPLETED",
+          "candidate_mean_evacuation_time": 2254.2061233911477,
+          "baseline_mean_evacuation_time": 1120.5083276945918,
+          "overprediction_ratio": 2.2056811383475026,
+          "candidate_ci": {
+            "mean": 2254.2061233911477,
+            "lower": 2225.5879528000482,
+            "upper": 2282.824293982247,
+            "confidence": 0.95,
+            "n": 6
+          },
+          "p_value_vs_baseline": 1.9408252119978137e-11,
+          "cohens_d_vs_baseline": 45.459820393456475,
+          "score_distance_from_published": 1232.2061233911477,
+          "recommendation": "REJECT"
+        },
+        {
+          "grid_value": 0.8,
+          "session_status": "COMPLETED",
+          "candidate_mean_evacuation_time": 1689.4719925269756,
+          "baseline_mean_evacuation_time": 1120.5083276945918,
+          "overprediction_ratio": 1.6531037108874516,
+          "candidate_ci": {
+            "mean": 1689.4719925269756,
+            "lower": 1647.0060219105628,
+            "upper": 1731.9379631433883,
+            "confidence": 0.95,
+            "n": 6
+          },
+          "p_value_vs_baseline": 1.890867386615482e-08,
+          "cohens_d_vs_baseline": 17.403258560216976,
+          "score_distance_from_published": 667.4719925269756,
+          "recommendation": "REJECT"
+        },
+        {
+          "grid_value": 1.0,
+          "session_status": "COMPLETED",
+          "candidate_mean_evacuation_time": 1347.6597028210574,
+          "baseline_mean_evacuation_time": 1120.5083276945918,
+          "overprediction_ratio": 1.3186494156761814,
+          "candidate_ci": {
+            "mean": 1347.6597028210574,
+            "lower": 1315.3868215751809,
+            "upper": 1379.932584066934,
+            "confidence": 0.95,
+            "n": 6
+          },
+          "p_value_vs_baseline": 6.427882055922552e-08,
+          "cohens_d_vs_baseline": 8.44808403776789,
+          "score_distance_from_published": 325.6597028210574,
+          "recommendation": "REJECT"
+        },
+        {
+          "grid_value": 1.2,
+          "session_status": "COMPLETED",
+          "candidate_mean_evacuation_time": 1120.5083276945918,
+          "baseline_mean_evacuation_time": 1120.5083276945918,
+          "overprediction_ratio": 1.0963877961786612,
+          "candidate_ci": {
+            "mean": 1120.5083276945918,
+            "lower": 1097.0376048498078,
+            "upper": 1143.9790505393757,
+            "confidence": 0.95,
+            "n": 6
+          },
+          "p_value_vs_baseline": NaN,
+          "cohens_d_vs_baseline": 0.0,
+          "score_distance_from_published": 98.5083276945918,
+          "recommendation": "INCONCLUSIVE"
+        },
+        {
+          "grid_value": 1.4,
+          "session_status": "COMPLETED",
+          "candidate_mean_evacuation_time": 958.3165420532829,
+          "baseline_mean_evacuation_time": 1120.5083276945918,
+          "overprediction_ratio": 0.9376874188388287,
+          "candidate_ci": {
+            "mean": 958.3165420532829,
+            "lower": 936.761141636108,
+            "upper": 979.8719424704577,
+            "confidence": 0.95,
+            "n": 6
+          },
+          "p_value_vs_baseline": 6.137246890772324e-09,
+          "cohens_d_vs_baseline": -7.553661774078199,
+          "score_distance_from_published": 63.68345794671711,
+          "recommendation": "ADOPT"
+        },
+        {
+          "grid_value": 1.6,
+          "session_status": "COMPLETED",
+          "candidate_mean_evacuation_time": 836.977943563497,
+          "baseline_mean_evacuation_time": 1120.5083276945918,
+          "overprediction_ratio": 0.8189608058351242,
+          "candidate_ci": {
+            "mean": 836.977943563497,
+            "lower": 819.010559997509,
+            "upper": 854.945327129485,
+            "confidence": 0.95,
+            "n": 6
+          },
+          "p_value_vs_baseline": 5.153189457247742e-09,
+          "cohens_d_vs_baseline": -14.236027627872856,
+          "score_distance_from_published": 185.02205643650302,
+          "recommendation": "ADOPT"
+        }
+      ]
+    },
+    "18-story": {
+      "building": "18-story",
+      "published_evacuation_time_s": 1192.0,
+      "n_scenarios": 8,
+      "run_status": "COMPLETED",
+      "best_session_id": "8bc31419-5897-4ceb-ba73-a98d5cf792ba",
+      "best_score": 93.36397558674071,
+      "per_value_results": [
+        {
+          "grid_value": 0.6,
+          "session_status": "COMPLETED",
+          "candidate_mean_evacuation_time": 2834.6102895869053,
+          "baseline_mean_evacuation_time": 1285.3639755867407,
+          "overprediction_ratio": 2.3780287664319677,
+          "candidate_ci": {
+            "mean": 2834.6102895869053,
+            "lower": 2647.952316742399,
+            "upper": 3021.2682624314116,
+            "confidence": 0.95,
+            "n": 8
+          },
+          "p_value_vs_baseline": 1.668769526341567e-08,
+          "cohens_d_vs_baseline": 9.241238114217778,
+          "score_distance_from_published": 1642.6102895869053,
+          "recommendation": "REJECT"
+        },
+        {
+          "grid_value": 0.8,
+          "session_status": "COMPLETED",
+          "candidate_mean_evacuation_time": 2008.4733834943238,
+          "baseline_mean_evacuation_time": 1285.3639755867407,
+          "overprediction_ratio": 1.6849608921932246,
+          "candidate_ci": {
+            "mean": 2008.4733834943238,
+            "lower": 1883.3412219912293,
+            "upper": 2133.6055449974183,
+            "confidence": 0.95,
+            "n": 8
+          },
+          "p_value_vs_baseline": 1.8411364682164395e-08,
+          "cohens_d_vs_baseline": 6.029763903580466,
+          "score_distance_from_published": 816.4733834943238,
+          "recommendation": "REJECT"
+        },
+        {
+          "grid_value": 1.0,
+          "session_status": "COMPLETED",
+          "candidate_mean_evacuation_time": 1567.2371783311849,
+          "baseline_mean_evacuation_time": 1285.3639755867407,
+          "overprediction_ratio": 1.314796290546296,
+          "candidate_ci": {
+            "mean": 1567.2371783311849,
+            "lower": 1476.3488224865307,
+            "upper": 1658.125534175839,
+            "confidence": 0.95,
+            "n": 8
+          },
+          "p_value_vs_baseline": 4.5416859156861046e-08,
+          "cohens_d_vs_baseline": 2.9565088091970777,
+          "score_distance_from_published": 375.23717833118485,
+          "recommendation": "REJECT"
+        },
+        {
+          "grid_value": 1.2,
+          "session_status": "COMPLETED",
+          "candidate_mean_evacuation_time": 1285.3639755867407,
+          "baseline_mean_evacuation_time": 1285.3639755867407,
+          "overprediction_ratio": 1.0783254828747826,
+          "candidate_ci": {
+            "mean": 1285.3639755867407,
+            "lower": 1218.6898189231613,
+            "upper": 1352.0381322503201,
+            "confidence": 0.95,
+            "n": 8
+          },
+          "p_value_vs_baseline": NaN,
+          "cohens_d_vs_baseline": 0.0,
+          "score_distance_from_published": 93.36397558674071,
+          "recommendation": "INCONCLUSIVE"
+        },
+        {
+          "grid_value": 1.4,
+          "session_status": "COMPLETED",
+          "candidate_mean_evacuation_time": 1090.0890850024746,
+          "baseline_mean_evacuation_time": 1285.3639755867407,
+          "overprediction_ratio": 0.9145042659416733,
+          "candidate_ci": {
+            "mean": 1090.0890850024746,
+            "lower": 1033.0910488172183,
+            "upper": 1147.0871211877309,
+            "confidence": 0.95,
+            "n": 8
+          },
+          "p_value_vs_baseline": 1.115663323847387e-09,
+          "cohens_d_vs_baseline": -2.6320629190175184,
+          "score_distance_from_published": 101.91091499752542,
+          "recommendation": "ADOPT"
+        },
+        {
+          "grid_value": 1.6,
+          "session_status": "COMPLETED",
+          "candidate_mean_evacuation_time": 946.8689608410783,
+          "baseline_mean_evacuation_time": 1285.3639755867407,
+          "overprediction_ratio": 0.7943531550680187,
+          "candidate_ci": {
+            "mean": 946.8689608410783,
+            "lower": 898.5596088071284,
+            "upper": 995.1783128750283,
+            "confidence": 0.95,
+            "n": 8
+          },
+          "p_value_vs_baseline": 1.0281705774485888e-09,
+          "cohens_d_vs_baseline": -4.860646340085498,
+          "score_distance_from_published": 245.13103915892168,
+          "recommendation": "ADOPT"
+        }
+      ]
+    },
+    "24-story": {
+      "building": "24-story",
+      "published_evacuation_time_s": 1090.0,
+      "n_scenarios": 8,
+      "run_status": "COMPLETED",
+      "best_session_id": "d7dd2d4a-4fbf-42c7-be10-9a2d8b6b5c64",
+      "best_score": 129.4075896836166,
+      "per_value_results": [
+        {
+          "grid_value": 0.6,
+          "session_status": "COMPLETED",
+          "candidate_mean_evacuation_time": 1219.4075896836166,
+          "baseline_mean_evacuation_time": 594.0322965294994,
+          "overprediction_ratio": 1.1187225593427674,
+          "candidate_ci": {
+            "mean": 1219.4075896836166,
+            "lower": 1185.8598276972689,
+            "upper": 1252.9553516699643,
+            "confidence": 0.95,
+            "n": 8
+          },
+          "p_value_vs_baseline": 1.7115099119580527e-12,
+          "cohens_d_vs_baseline": 18.887703856972017,
+          "score_distance_from_published": 129.4075896836166,
+          "recommendation": "REJECT"
+        },
+        {
+          "grid_value": 0.8,
+          "session_status": "COMPLETED",
+          "candidate_mean_evacuation_time": 906.6826862618417,
+          "baseline_mean_evacuation_time": 594.0322965294994,
+          "overprediction_ratio": 0.8318189782218731,
+          "candidate_ci": {
+            "mean": 906.6826862618417,
+            "lower": 880.2436547828744,
+            "upper": 933.121717740809,
+            "confidence": 0.95,
+            "n": 8
+          },
+          "p_value_vs_baseline": 1.686592632793319e-12,
+          "cohens_d_vs_baseline": 11.11498465156958,
+          "score_distance_from_published": 183.3173137381583,
+          "recommendation": "REJECT"
+        },
+        {
+          "grid_value": 1.0,
+          "session_status": "COMPLETED",
+          "candidate_mean_evacuation_time": 719.0860015254054,
+          "baseline_mean_evacuation_time": 594.0322965294994,
+          "overprediction_ratio": 0.6597119280049591,
+          "candidate_ci": {
+            "mean": 719.0860015254054,
+            "lower": 696.4235585394915,
+            "upper": 741.7484445113193,
+            "confidence": 0.95,
+            "n": 8
+          },
+          "p_value_vs_baseline": 2.657280815114273e-12,
+          "cohens_d_vs_baseline": 4.872996470560094,
+          "score_distance_from_published": 370.91399847459456,
+          "recommendation": "REJECT"
+        },
+        {
+          "grid_value": 1.2,
+          "session_status": "COMPLETED",
+          "candidate_mean_evacuation_time": 594.0322965294994,
+          "baseline_mean_evacuation_time": 594.0322965294994,
+          "overprediction_ratio": 0.5449837582839444,
+          "candidate_ci": {
+            "mean": 594.0322965294994,
+            "lower": 573.8580186329121,
+            "upper": 614.2065744260866,
+            "confidence": 0.95,
+            "n": 8
+          },
+          "p_value_vs_baseline": NaN,
+          "cohens_d_vs_baseline": 0.0,
+          "score_distance_from_published": 495.9677034705006,
+          "recommendation": "INCONCLUSIVE"
+        },
+        {
+          "grid_value": 1.4,
+          "session_status": "COMPLETED",
+          "candidate_mean_evacuation_time": 504.05182668644113,
+          "baseline_mean_evacuation_time": 594.0322965294994,
+          "overprediction_ratio": 0.46243286851967075,
+          "candidate_ci": {
+            "mean": 504.05182668644113,
+            "lower": 485.89095030845,
+            "upper": 522.2127030644323,
+            "confidence": 0.95,
+            "n": 8
+          },
+          "p_value_vs_baseline": 2.8399045617399552e-11,
+          "cohens_d_vs_baseline": -3.9192233678692356,
+          "score_distance_from_published": 585.9481733135589,
+          "recommendation": "ADOPT"
+        },
+        {
+          "grid_value": 1.6,
+          "session_status": "COMPLETED",
+          "candidate_mean_evacuation_time": 436.15195376886675,
+          "baseline_mean_evacuation_time": 594.0322965294994,
+          "overprediction_ratio": 0.4001394071274007,
+          "candidate_ci": {
+            "mean": 436.15195376886675,
+            "lower": 419.507034055614,
+            "upper": 452.7968734821195,
+            "confidence": 0.95,
+            "n": 8
+          },
+          "p_value_vs_baseline": 5.6377801456490986e-12,
+          "cohens_d_vs_baseline": -7.136984342704323,
+          "score_distance_from_published": 653.8480462311333,
+          "recommendation": "ADOPT"
+        }
+      ]
+    },
+    "31-story": {
+      "building": "31-story",
+      "published_evacuation_time_s": 1002.0,
+      "n_scenarios": 8,
+      "run_status": "COMPLETED",
+      "best_session_id": "ca66dc03-ecd8-4d7e-aa04-e775facf3b59",
+      "best_score": 320.9769129497163,
+      "per_value_results": [
+        {
+          "grid_value": 0.6,
+          "session_status": "COMPLETED",
+          "candidate_mean_evacuation_time": 3545.740627133782,
+          "baseline_mean_evacuation_time": 1767.935226939592,
+          "overprediction_ratio": 3.538663300532716,
+          "candidate_ci": {
+            "mean": 3545.740627133782,
+            "lower": 3483.1400086846934,
+            "upper": 3608.34124558287,
+            "confidence": 0.95,
+            "n": 8
+          },
+          "p_value_vs_baseline": 4.57902211675585e-13,
+          "cohens_d_vs_baseline": 30.261304531912263,
+          "score_distance_from_published": 2543.740627133782,
+          "recommendation": "REJECT"
+        },
+        {
+          "grid_value": 0.8,
+          "session_status": "COMPLETED",
+          "candidate_mean_evacuation_time": 2656.5795072108517,
+          "baseline_mean_evacuation_time": 1767.935226939592,
+          "overprediction_ratio": 2.6512769533042433,
+          "candidate_ci": {
+            "mean": 2656.5795072108517,
+            "lower": 2610.190420587162,
+            "upper": 2702.9685938345415,
+            "confidence": 0.95,
+            "n": 8
+          },
+          "p_value_vs_baseline": 4.678363887946096e-13,
+          "cohens_d_vs_baseline": 19.000499102877164,
+          "score_distance_from_published": 1654.5795072108517,
+          "recommendation": "REJECT"
+        },
+        {
+          "grid_value": 1.0,
+          "session_status": "COMPLETED",
+          "candidate_mean_evacuation_time": 2122.8762863713105,
+          "baseline_mean_evacuation_time": 1767.935226939592,
+          "overprediction_ratio": 2.1186390083546014,
+          "candidate_ci": {
+            "mean": 2122.8762863713105,
+            "lower": 2086.2979277484283,
+            "upper": 2159.4546449941927,
+            "confidence": 0.95,
+            "n": 8
+          },
+          "p_value_vs_baseline": 4.722706256191119e-13,
+          "cohens_d_vs_baseline": 8.859442492800344,
+          "score_distance_from_published": 1120.8762863713105,
+          "recommendation": "REJECT"
+        },
+        {
+          "grid_value": 1.2,
+          "session_status": "COMPLETED",
+          "candidate_mean_evacuation_time": 1767.935226939592,
+          "baseline_mean_evacuation_time": 1767.935226939592,
+          "overprediction_ratio": 1.7644064141113693,
+          "candidate_ci": {
+            "mean": 1767.935226939592,
+            "lower": 1737.840052538375,
+            "upper": 1798.030401340809,
+            "confidence": 0.95,
+            "n": 8
+          },
+          "p_value_vs_baseline": NaN,
+          "cohens_d_vs_baseline": 0.0,
+          "score_distance_from_published": 765.935226939592,
+          "recommendation": "INCONCLUSIVE"
+        },
+        {
+          "grid_value": 1.4,
+          "session_status": "COMPLETED",
+          "candidate_mean_evacuation_time": 1513.6921450155219,
+          "baseline_mean_evacuation_time": 1767.935226939592,
+          "overprediction_ratio": 1.5106708034087044,
+          "candidate_ci": {
+            "mean": 1513.6921450155219,
+            "lower": 1488.0126375678128,
+            "upper": 1539.371652463231,
+            "confidence": 0.95,
+            "n": 8
+          },
+          "p_value_vs_baseline": 3.710163362806182e-13,
+          "cohens_d_vs_baseline": -7.598054182129986,
+          "score_distance_from_published": 511.6921450155219,
+          "recommendation": "ADOPT"
+        },
+        {
+          "grid_value": 1.6,
+          "session_status": "COMPLETED",
+          "candidate_mean_evacuation_time": 1322.9769129497163,
+          "baseline_mean_evacuation_time": 1767.935226939592,
+          "overprediction_ratio": 1.3203362404687786,
+          "candidate_ci": {
+            "mean": 1322.9769129497163,
+            "lower": 1300.464817415944,
+            "upper": 1345.4890084834885,
+            "confidence": 0.95,
+            "n": 8
+          },
+          "p_value_vs_baseline": 3.1278517181687886e-13,
+          "cohens_d_vs_baseline": -13.997648840367061,
+          "score_distance_from_published": 320.9769129497163,
+          "recommendation": "ADOPT"
+        }
+      ]
+    }
+  },
+  "selected_walking_speed": 1.4
+}
