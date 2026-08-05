@@ -1,0 +1,2012 @@
+{
+  "10-story": {
+    "summary": {
+      "building": "10-story",
+      "published_evacuation_time_s": 1022.0,
+      "n_scenarios": 9,
+      "congestion_floor": 0.1,
+      "walking_speed": 1.4,
+      "mean_evacuation_time": 2674.2475057575903,
+      "overprediction_ratio": 2.616680534009384,
+      "deviation_from_published_s": 1652.2475057575903,
+      "deviation_from_published_pct": 161.6680534009384,
+      "field_stats": {
+        "total_evacuation_time": {
+          "mean": 2674.2475057575903,
+          "ci": {
+            "mean": 2674.2475057575903,
+            "lower": 2642.397350051712,
+            "upper": 2706.0976614634687,
+            "confidence": 0.95,
+            "n": 9
+          }
+        },
+        "avg_queue_wait_time": {
+          "mean": 200.04012491989553,
+          "ci": {
+            "mean": 200.04012491989553,
+            "lower": 198.14894097316238,
+            "upper": 201.93130886662868,
+            "confidence": 0.95,
+            "n": 9
+          }
+        },
+        "max_queue_wait_time": {
+          "mean": 723.4736601963656,
+          "ci": {
+            "mean": 723.4736601963656,
+            "lower": 712.373766129175,
+            "upper": 734.5735542635562,
+            "confidence": 0.95,
+            "n": 9
+          }
+        },
+        "queue_wait_percentage": {
+          "mean": 94.57292644087812,
+          "ci": {
+            "mean": 94.57292644087812,
+            "lower": 94.50822781908893,
+            "upper": 94.63762506266731,
+            "confidence": 0.95,
+            "n": 9
+          }
+        },
+        "mean_movement_time_s": {
+          "mean": 39.27974006277023,
+          "ci": {
+            "mean": 39.27974006277023,
+            "lower": 39.09689594376519,
+            "upper": 39.46258418177527,
+            "confidence": 0.95,
+            "n": 9
+          }
+        },
+        "peak_congestion_value": {
+          "mean": 106.33333333333333,
+          "ci": {
+            "mean": 106.33333333333333,
+            "lower": 104.37360665269472,
+            "upper": 108.29306001397194,
+            "confidence": 0.95,
+            "n": 9
+          }
+        },
+        "congestion_duration": {
+          "mean": null,
+          "ci": null
+        },
+        "exit_utilization_balance": {
+          "mean": 1.0,
+          "ci": {
+            "mean": 1.0,
+            "lower": 1.0,
+            "upper": 1.0,
+            "confidence": 0.95,
+            "n": 9
+          }
+        },
+        "peak_edge_occupancy_mean": {
+          "mean": 1.15,
+          "ci": {
+            "mean": 1.15,
+            "lower": 1.15,
+            "upper": 1.15,
+            "confidence": 0.95,
+            "n": 9
+          }
+        },
+        "peak_edge_occupancy_max": {
+          "mean": 4.0,
+          "ci": {
+            "mean": 4.0,
+            "lower": 4.0,
+            "upper": 4.0,
+            "confidence": 0.95,
+            "n": 9
+          }
+        },
+        "peak_node_occupancy_mean": {
+          "mean": 40.41798941798942,
+          "ci": {
+            "mean": 40.41798941798942,
+            "lower": 40.079643105619176,
+            "upper": 40.75633573035966,
+            "confidence": 0.95,
+            "n": 9
+          }
+        },
+        "peak_node_occupancy_max": {
+          "mean": 106.33333333333333,
+          "ci": {
+            "mean": 106.33333333333333,
+            "lower": 104.37360665269472,
+            "upper": 108.29306001397194,
+            "confidence": 0.95,
+            "n": 9
+          }
+        },
+        "dominant_bottleneck_achieved_rate_people_per_s": {
+          "mean": 0.1455846843547238,
+          "ci": {
+            "mean": 0.1455846843547238,
+            "lower": 0.14519006040039278,
+            "upper": 0.1459793083090548,
+            "confidence": 0.95,
+            "n": 9
+          }
+        },
+        "dominant_bottleneck_discharge_rate_people_per_s": {
+          "mean": 1.0001600000000002,
+          "ci": {
+            "mean": 1.0001600000000002,
+            "lower": 1.0001600000000002,
+            "upper": 1.0001600000000002,
+            "confidence": 0.95,
+            "n": 9
+          }
+        },
+        "dominant_bottleneck_discharge_utilization": {
+          "mean": 0.14556139453159872,
+          "ci": {
+            "mean": 0.14556139453159872,
+            "lower": 0.14516683370699962,
+            "upper": 0.14595595535619782,
+            "confidence": 0.95,
+            "n": 9
+          }
+        },
+        "mean_flow_rate_people_per_s": {
+          "mean": 0.26905171250530385,
+          "ci": {
+            "mean": 0.26905171250530385,
+            "lower": 0.26695973988515775,
+            "upper": 0.27114368512544995,
+            "confidence": 0.95,
+            "n": 9
+          }
+        },
+        "people_evacuated": {
+          "mean": 719.4444444444445,
+          "ci": {
+            "mean": 719.4444444444445,
+            "lower": 712.9776763270695,
+            "upper": 725.9112125618194,
+            "confidence": 0.95,
+            "n": 9
+          }
+        },
+        "people_trapped": {
+          "mean": 84.55555555555556,
+          "ci": {
+            "mean": 84.55555555555556,
+            "lower": 78.08878743818063,
+            "upper": 91.02232367293048,
+            "confidence": 0.95,
+            "n": 9
+          }
+        }
+      },
+      "dominant_bottleneck": "Stair '' (stair-a-2)"
+    },
+    "records": [
+      {
+        "scenario_id": "scn-852fdb940aa797f7",
+        "total_evacuation_time": 2618.6318190921666,
+        "people_evacuated": 717,
+        "people_trapped": 87,
+        "peak_congestion_value": 106,
+        "congestion_duration": null,
+        "exit_utilization_balance": 1.0,
+        "avg_queue_wait_time": 199.54237795548562,
+        "max_queue_wait_time": 715.4673101380392,
+        "queue_wait_percentage": 94.51394832998933,
+        "mean_movement_time_s": 39.24781254309649,
+        "peak_edge_occupancy_mean": 1.15,
+        "peak_edge_occupancy_max": 4,
+        "peak_node_occupancy_mean": 40.142857142857146,
+        "peak_node_occupancy_max": 106,
+        "dominant_bottleneck_id": "stair-a-2",
+        "dominant_bottleneck_label": "Stair '' (stair-a-2)",
+        "dominant_bottleneck_achieved_rate_people_per_s": 0.14549582618761808,
+        "dominant_bottleneck_discharge_rate_people_per_s": 1.0001600000000002,
+        "dominant_bottleneck_discharge_utilization": 0.14547255057952532,
+        "mean_flow_rate_people_per_s": 0.27380710597512375
+      },
+      {
+        "scenario_id": "scn-2abcde0702b4b74e",
+        "total_evacuation_time": 2709.82647555941,
+        "people_evacuated": 727,
+        "people_trapped": 77,
+        "peak_congestion_value": 104,
+        "congestion_duration": null,
+        "exit_utilization_balance": 1.0,
+        "avg_queue_wait_time": 201.96555732172112,
+        "max_queue_wait_time": 716.7675124415139,
+        "queue_wait_percentage": 94.64860356803051,
+        "mean_movement_time_s": 39.25887964250018,
+        "peak_edge_occupancy_mean": 1.15,
+        "peak_edge_occupancy_max": 4,
+        "peak_node_occupancy_mean": 40.57142857142857,
+        "peak_node_occupancy_max": 104,
+        "dominant_bottleneck_id": "stair-a-2",
+        "dominant_bottleneck_label": "Stair '' (stair-a-2)",
+        "dominant_bottleneck_achieved_rate_people_per_s": 0.14539676379782346,
+        "dominant_bottleneck_discharge_rate_people_per_s": 1.0001600000000002,
+        "dominant_bottleneck_discharge_utilization": 0.1453735040371775,
+        "mean_flow_rate_people_per_s": 0.2682828611193342
+      },
+      {
+        "scenario_id": "scn-2c6993edb1cfcbb4",
+        "total_evacuation_time": 2690.4581066230508,
+        "people_evacuated": 718,
+        "people_trapped": 86,
+        "peak_congestion_value": 104,
+        "congestion_duration": null,
+        "exit_utilization_balance": 1.0,
+        "avg_queue_wait_time": 198.886436386276,
+        "max_queue_wait_time": 712.4371813920723,
+        "queue_wait_percentage": 94.50959135107156,
+        "mean_movement_time_s": 39.23220206401101,
+        "peak_edge_occupancy_mean": 1.15,
+        "peak_edge_occupancy_max": 4,
+        "peak_node_occupancy_mean": 40.61904761904762,
+        "peak_node_occupancy_max": 104,
+        "dominant_bottleneck_id": "stair-a-2",
+        "dominant_bottleneck_label": "Stair '' (stair-a-2)",
+        "dominant_bottleneck_achieved_rate_people_per_s": 0.14607177827172227,
+        "dominant_bottleneck_discharge_rate_people_per_s": 1.0001600000000002,
+        "dominant_bottleneck_discharge_utilization": 0.1460484105260381,
+        "mean_flow_rate_people_per_s": 0.26686905037938063
+      },
+      {
+        "scenario_id": "scn-e56b28243bccc568",
+        "total_evacuation_time": 2674.149409900438,
+        "people_evacuated": 715,
+        "people_trapped": 89,
+        "peak_congestion_value": 103,
+        "congestion_duration": null,
+        "exit_utilization_balance": 1.0,
+        "avg_queue_wait_time": 196.81203488309433,
+        "max_queue_wait_time": 707.6802042104403,
+        "queue_wait_percentage": 94.48618071516093,
+        "mean_movement_time_s": 39.77755840677525,
+        "peak_edge_occupancy_mean": 1.15,
+        "peak_edge_occupancy_max": 4,
+        "peak_node_occupancy_mean": 40.142857142857146,
+        "peak_node_occupancy_max": 103,
+        "dominant_bottleneck_id": "stair-a-2",
+        "dominant_bottleneck_label": "Stair '' (stair-a-2)",
+        "dominant_bottleneck_achieved_rate_people_per_s": 0.1450928652540943,
+        "dominant_bottleneck_discharge_rate_people_per_s": 1.0001600000000002,
+        "dominant_bottleneck_discharge_utilization": 0.14506965410943676,
+        "mean_flow_rate_people_per_s": 0.2673747388058696
+      },
+      {
+        "scenario_id": "scn-6925e784263d55f2",
+        "total_evacuation_time": 2695.190116507506,
+        "people_evacuated": 730,
+        "people_trapped": 74,
+        "peak_congestion_value": 109,
+        "congestion_duration": null,
+        "exit_utilization_balance": 1.0,
+        "avg_queue_wait_time": 202.1600714192114,
+        "max_queue_wait_time": 746.1268694590835,
+        "queue_wait_percentage": 94.6754270801879,
+        "mean_movement_time_s": 39.336306775154306,
+        "peak_edge_occupancy_mean": 1.15,
+        "peak_edge_occupancy_max": 4,
+        "peak_node_occupancy_mean": 40.80952380952381,
+        "peak_node_occupancy_max": 109,
+        "dominant_bottleneck_id": "stair-a-2",
+        "dominant_bottleneck_label": "Stair '' (stair-a-2)",
+        "dominant_bottleneck_achieved_rate_people_per_s": 0.1461863478894598,
+        "dominant_bottleneck_discharge_rate_people_per_s": 1.0001600000000002,
+        "dominant_bottleneck_discharge_utilization": 0.1461629618155693,
+        "mean_flow_rate_people_per_s": 0.2708528780693037
+      },
+      {
+        "scenario_id": "scn-2d8c2a1df611ca24",
+        "total_evacuation_time": 2679.4626308947704,
+        "people_evacuated": 719,
+        "people_trapped": 85,
+        "peak_congestion_value": 106,
+        "congestion_duration": null,
+        "exit_utilization_balance": 1.0,
+        "avg_queue_wait_time": 202.46717752165765,
+        "max_queue_wait_time": 724.9538844379249,
+        "queue_wait_percentage": 94.64253043672895,
+        "mean_movement_time_s": 39.13479173695872,
+        "peak_edge_occupancy_mean": 1.15,
+        "peak_edge_occupancy_max": 4,
+        "peak_node_occupancy_mean": 40.57142857142857,
+        "peak_node_occupancy_max": 106,
+        "dominant_bottleneck_id": "stair-a-2",
+        "dominant_bottleneck_label": "Stair '' (stair-a-2)",
+        "dominant_bottleneck_achieved_rate_people_per_s": 0.14480515440905128,
+        "dominant_bottleneck_discharge_rate_people_per_s": 1.0001600000000002,
+        "dominant_bottleneck_discharge_utilization": 0.14478198929076475,
+        "mean_flow_rate_people_per_s": 0.26833738664976253
+      },
+      {
+        "scenario_id": "scn-f75e92228c8440e2",
+        "total_evacuation_time": 2720.7870217977056,
+        "people_evacuated": 731,
+        "people_trapped": 73,
+        "peak_congestion_value": 111,
+        "congestion_duration": null,
+        "exit_utilization_balance": 1.0,
+        "avg_queue_wait_time": 202.72702043849392,
+        "max_queue_wait_time": 748.418152771842,
+        "queue_wait_percentage": 94.62871406375287,
+        "mean_movement_time_s": 38.948481494941085,
+        "peak_edge_occupancy_mean": 1.15,
+        "peak_edge_occupancy_max": 4,
+        "peak_node_occupancy_mean": 41.142857142857146,
+        "peak_node_occupancy_max": 111,
+        "dominant_bottleneck_id": "stair-a-2",
+        "dominant_bottleneck_label": "Stair '' (stair-a-2)",
+        "dominant_bottleneck_achieved_rate_people_per_s": 0.14628120349421156,
+        "dominant_bottleneck_discharge_rate_people_per_s": 1.0001600000000002,
+        "dominant_bottleneck_discharge_utilization": 0.1462578022458522,
+        "mean_flow_rate_people_per_s": 0.2686722606891172
+      },
+      {
+        "scenario_id": "scn-84821300231d28d6",
+        "total_evacuation_time": 2685.2309717077287,
+        "people_evacuated": 712,
+        "people_trapped": 92,
+        "peak_congestion_value": 107,
+        "congestion_duration": null,
+        "exit_utilization_balance": 1.0,
+        "avg_queue_wait_time": 199.62606062692313,
+        "max_queue_wait_time": 716.3955080600358,
+        "queue_wait_percentage": 94.60631037190166,
+        "mean_movement_time_s": 39.1078692866933,
+        "peak_edge_occupancy_mean": 1.15,
+        "peak_edge_occupancy_max": 4,
+        "peak_node_occupancy_mean": 40.04761904761905,
+        "peak_node_occupancy_max": 107,
+        "dominant_bottleneck_id": "stair-a-2",
+        "dominant_bottleneck_label": "Stair '' (stair-a-2)",
+        "dominant_bottleneck_achieved_rate_people_per_s": 0.1452389027644692,
+        "dominant_bottleneck_discharge_rate_people_per_s": 1.0001600000000002,
+        "dominant_bottleneck_discharge_utilization": 0.14521566825754798,
+        "mean_flow_rate_people_per_s": 0.2651540994059028
+      },
+      {
+        "scenario_id": "scn-886b73f6695c5545",
+        "total_evacuation_time": 2594.490999735536,
+        "people_evacuated": 706,
+        "people_trapped": 98,
+        "peak_congestion_value": 107,
+        "congestion_duration": null,
+        "exit_utilization_balance": 1.0,
+        "avg_queue_wait_time": 196.17438772619673,
+        "max_queue_wait_time": 723.0163188563386,
+        "queue_wait_percentage": 94.44503205107938,
+        "mean_movement_time_s": 39.47375861480173,
+        "peak_edge_occupancy_mean": 1.15,
+        "peak_edge_occupancy_max": 4,
+        "peak_node_occupancy_mean": 39.714285714285715,
+        "peak_node_occupancy_max": 107,
+        "dominant_bottleneck_id": "stair-a-2",
+        "dominant_bottleneck_label": "Stair '' (stair-a-2)",
+        "dominant_bottleneck_achieved_rate_people_per_s": 0.14569331712406425,
+        "dominant_bottleneck_discharge_rate_people_per_s": 1.0001600000000002,
+        "dominant_bottleneck_discharge_utilization": 0.14567000992247664,
+        "mean_flow_rate_people_per_s": 0.2721150314539401
+      }
+    ]
+  },
+  "18-story": {
+    "summary": {
+      "building": "18-story",
+      "published_evacuation_time_s": 1192.0,
+      "n_scenarios": 15,
+      "congestion_floor": 0.1,
+      "walking_speed": 1.4,
+      "mean_evacuation_time": 16802.087831266035,
+      "overprediction_ratio": 14.095711267840633,
+      "deviation_from_published_s": 15610.087831266035,
+      "deviation_from_published_pct": 1309.5711267840634,
+      "field_stats": {
+        "total_evacuation_time": {
+          "mean": 16802.087831266035,
+          "ci": {
+            "mean": 16802.087831266035,
+            "lower": 16592.258317120337,
+            "upper": 17011.917345411734,
+            "confidence": 0.95,
+            "n": 15
+          }
+        },
+        "avg_queue_wait_time": {
+          "mean": 528.8615526572829,
+          "ci": {
+            "mean": 528.8615526572829,
+            "lower": 519.0441630466253,
+            "upper": 538.6789422679406,
+            "confidence": 0.95,
+            "n": 15
+          }
+        },
+        "max_queue_wait_time": {
+          "mean": 15366.692499519011,
+          "ci": {
+            "mean": 15366.692499519011,
+            "lower": 15173.782309975331,
+            "upper": 15559.60268906269,
+            "confidence": 0.95,
+            "n": 15
+          }
+        },
+        "queue_wait_percentage": {
+          "mean": 93.6024837791268,
+          "ci": {
+            "mean": 93.6024837791268,
+            "lower": 93.50627110065318,
+            "upper": 93.69869645760042,
+            "confidence": 0.95,
+            "n": 15
+          }
+        },
+        "mean_movement_time_s": {
+          "mean": 87.77312722703145,
+          "ci": {
+            "mean": 87.77312722703145,
+            "lower": 87.33156137203095,
+            "upper": 88.21469308203196,
+            "confidence": 0.95,
+            "n": 15
+          }
+        },
+        "peak_congestion_value": {
+          "mean": 282.6,
+          "ci": {
+            "mean": 282.6,
+            "lower": 279.2852313560346,
+            "upper": 285.91476864396543,
+            "confidence": 0.95,
+            "n": 15
+          }
+        },
+        "congestion_duration": {
+          "mean": null,
+          "ci": null
+        },
+        "exit_utilization_balance": {
+          "mean": 1.0,
+          "ci": {
+            "mean": 1.0,
+            "lower": 1.0,
+            "upper": 1.0,
+            "confidence": 0.95,
+            "n": 15
+          }
+        },
+        "peak_edge_occupancy_mean": {
+          "mean": 1.0,
+          "ci": {
+            "mean": 1.0,
+            "lower": 1.0,
+            "upper": 1.0,
+            "confidence": 0.95,
+            "n": 15
+          }
+        },
+        "peak_edge_occupancy_max": {
+          "mean": 1.0,
+          "ci": {
+            "mean": 1.0,
+            "lower": 1.0,
+            "upper": 1.0,
+            "confidence": 0.95,
+            "n": 15
+          }
+        },
+        "peak_node_occupancy_mean": {
+          "mean": 25.158823529411766,
+          "ci": {
+            "mean": 25.158823529411766,
+            "lower": 24.92849722814954,
+            "upper": 25.389149830673993,
+            "confidence": 0.95,
+            "n": 15
+          }
+        },
+        "peak_node_occupancy_max": {
+          "mean": 282.6,
+          "ci": {
+            "mean": 282.6,
+            "lower": 279.2852313560346,
+            "upper": 285.91476864396543,
+            "confidence": 0.95,
+            "n": 15
+          }
+        },
+        "dominant_bottleneck_achieved_rate_people_per_s": {
+          "mean": 0.01831211768729568,
+          "ci": {
+            "mean": 0.01831211768729568,
+            "lower": 0.018251874152419356,
+            "upper": 0.018372361222172007,
+            "confidence": 0.95,
+            "n": 15
+          }
+        },
+        "dominant_bottleneck_discharge_rate_people_per_s": {
+          "mean": 0.89488,
+          "ci": {
+            "mean": 0.89488,
+            "lower": 0.8948799999999999,
+            "upper": 0.8948800000000001,
+            "confidence": 0.95,
+            "n": 15
+          }
+        },
+        "dominant_bottleneck_discharge_utilization": {
+          "mean": 0.020463210360378688,
+          "ci": {
+            "mean": 0.020463210360378688,
+            "lower": 0.020395890122049162,
+            "upper": 0.020530530598708213,
+            "confidence": 0.95,
+            "n": 15
+          }
+        },
+        "mean_flow_rate_people_per_s": {
+          "mean": 0.031955988544596504,
+          "ci": {
+            "mean": 0.031955988544596504,
+            "lower": 0.03169827958343234,
+            "upper": 0.03221369750576067,
+            "confidence": 0.95,
+            "n": 15
+          }
+        },
+        "people_evacuated": {
+          "mean": 536.8,
+          "ci": {
+            "mean": 536.8,
+            "lower": 532.4435405107388,
+            "upper": 541.1564594892611,
+            "confidence": 0.95,
+            "n": 15
+          }
+        },
+        "people_trapped": {
+          "mean": 58.2,
+          "ci": {
+            "mean": 58.2,
+            "lower": 53.84354051073888,
+            "upper": 62.55645948926112,
+            "confidence": 0.95,
+            "n": 15
+          }
+        }
+      },
+      "dominant_bottleneck": "Door '' (door-7-lobby)"
+    },
+    "records": [
+      {
+        "scenario_id": "scn-437694cfb333235a",
+        "total_evacuation_time": 16659.796064066,
+        "people_evacuated": 526,
+        "people_trapped": 69,
+        "peak_congestion_value": 282,
+        "congestion_duration": null,
+        "exit_utilization_balance": 1.0,
+        "avg_queue_wait_time": 526.2380485918075,
+        "max_queue_wait_time": 15248.683306242694,
+        "queue_wait_percentage": 93.62555459074173,
+        "mean_movement_time_s": 88.87424478605094,
+        "peak_edge_occupancy_mean": 1.0,
+        "peak_edge_occupancy_max": 1,
+        "peak_node_occupancy_mean": 24.764705882352942,
+        "peak_node_occupancy_max": 282,
+        "dominant_bottleneck_id": "door-7-lobby",
+        "dominant_bottleneck_label": "Door '' (door-7-lobby)",
+        "dominant_bottleneck_achieved_rate_people_per_s": 0.018427596521555102,
+        "dominant_bottleneck_discharge_rate_people_per_s": 0.89488,
+        "dominant_bottleneck_discharge_utilization": 0.02059225429281591,
+        "mean_flow_rate_people_per_s": 0.03157301553856021
+      },
+      {
+        "scenario_id": "scn-7f67fe61f11dee01",
+        "total_evacuation_time": 17060.72621319568,
+        "people_evacuated": 544,
+        "people_trapped": 51,
+        "peak_congestion_value": 284,
+        "congestion_duration": null,
+        "exit_utilization_balance": 1.0,
+        "avg_queue_wait_time": 529.5109792279915,
+        "max_queue_wait_time": 15592.51407617721,
+        "queue_wait_percentage": 93.39630754952663,
+        "mean_movement_time_s": 88.27427371319796,
+        "peak_edge_occupancy_mean": 1.0,
+        "peak_edge_occupancy_max": 1,
+        "peak_node_occupancy_mean": 25.647058823529413,
+        "peak_node_occupancy_max": 284,
+        "dominant_bottleneck_id": "door-7-lobby",
+        "dominant_bottleneck_label": "Door '' (door-7-lobby)",
+        "dominant_bottleneck_achieved_rate_people_per_s": 0.018111772977225483,
+        "dominant_bottleneck_discharge_rate_people_per_s": 0.89488,
+        "dominant_bottleneck_discharge_utilization": 0.020239331505034732,
+        "mean_flow_rate_people_per_s": 0.03188609870424163
+      },
+      {
+        "scenario_id": "scn-52287d116f9ddb38",
+        "total_evacuation_time": 17022.529428996026,
+        "people_evacuated": 543,
+        "people_trapped": 52,
+        "peak_congestion_value": 285,
+        "congestion_duration": null,
+        "exit_utilization_balance": 1.0,
+        "avg_queue_wait_time": 530.2817320725442,
+        "max_queue_wait_time": 15583.69304096617,
+        "queue_wait_percentage": 93.44918959718413,
+        "mean_movement_time_s": 88.24803277750134,
+        "peak_edge_occupancy_mean": 1.0,
+        "peak_edge_occupancy_max": 1,
+        "peak_node_occupancy_mean": 25.38235294117647,
+        "peak_node_occupancy_max": 285,
+        "dominant_bottleneck_id": "door-7-lobby",
+        "dominant_bottleneck_label": "Door '' (door-7-lobby)",
+        "dominant_bottleneck_achieved_rate_people_per_s": 0.01826990526274229,
+        "dominant_bottleneck_discharge_rate_people_per_s": 0.89488,
+        "dominant_bottleneck_discharge_utilization": 0.020416039315597944,
+        "mean_flow_rate_people_per_s": 0.03189890211469152
+      },
+      {
+        "scenario_id": "scn-25b966f0e8bb5be4",
+        "total_evacuation_time": 16515.577434430386,
+        "people_evacuated": 538,
+        "people_trapped": 57,
+        "peak_congestion_value": 276,
+        "congestion_duration": null,
+        "exit_utilization_balance": 1.0,
+        "avg_queue_wait_time": 505.75859557857905,
+        "max_queue_wait_time": 15100.519836248606,
+        "queue_wait_percentage": 93.41971955414735,
+        "mean_movement_time_s": 87.33673741866467,
+        "peak_edge_occupancy_mean": 1.0,
+        "peak_edge_occupancy_max": 1,
+        "peak_node_occupancy_mean": 24.91176470588235,
+        "peak_node_occupancy_max": 276,
+        "dominant_bottleneck_id": "door-7-lobby",
+        "dominant_bottleneck_label": "Door '' (door-7-lobby)",
+        "dominant_bottleneck_achieved_rate_people_per_s": 0.018225218052170474,
+        "dominant_bottleneck_discharge_rate_people_per_s": 0.89488,
+        "dominant_bottleneck_discharge_utilization": 0.02036610277598167,
+        "mean_flow_rate_people_per_s": 0.032575306684610346
+      },
+      {
+        "scenario_id": "scn-41dfd952559cf82b",
+        "total_evacuation_time": 16850.98261336221,
+        "people_evacuated": 540,
+        "people_trapped": 55,
+        "peak_congestion_value": 285,
+        "congestion_duration": null,
+        "exit_utilization_balance": 1.0,
+        "avg_queue_wait_time": 535.0726466490186,
+        "max_queue_wait_time": 15411.657880264678,
+        "queue_wait_percentage": 93.6801319957821,
+        "mean_movement_time_s": 86.95543308274749,
+        "peak_edge_occupancy_mean": 1.0,
+        "peak_edge_occupancy_max": 1,
+        "peak_node_occupancy_mean": 25.38235294117647,
+        "peak_node_occupancy_max": 285,
+        "dominant_bottleneck_id": "door-7-lobby",
+        "dominant_bottleneck_label": "Door '' (door-7-lobby)",
+        "dominant_bottleneck_achieved_rate_people_per_s": 0.01839655331162596,
+        "dominant_bottleneck_discharge_rate_people_per_s": 0.89488,
+        "dominant_bottleneck_discharge_utilization": 0.02055756449091047,
+        "mean_flow_rate_people_per_s": 0.03204560899444522
+      },
+      {
+        "scenario_id": "scn-656114d599ed3df6",
+        "total_evacuation_time": 16126.38324297182,
+        "people_evacuated": 521,
+        "people_trapped": 74,
+        "peak_congestion_value": 272,
+        "congestion_duration": null,
+        "exit_utilization_balance": 1.0,
+        "avg_queue_wait_time": 499.9512839186086,
+        "max_queue_wait_time": 14731.21606235152,
+        "queue_wait_percentage": 93.39854422217269,
+        "mean_movement_time_s": 87.34145182793496,
+        "peak_edge_occupancy_mean": 1.0,
+        "peak_edge_occupancy_max": 1,
+        "peak_node_occupancy_mean": 24.264705882352942,
+        "peak_node_occupancy_max": 272,
+        "dominant_bottleneck_id": "door-7-lobby",
+        "dominant_bottleneck_label": "Door '' (door-7-lobby)",
+        "dominant_bottleneck_achieved_rate_people_per_s": 0.01835501460806485,
+        "dominant_bottleneck_discharge_rate_people_per_s": 0.89488,
+        "dominant_bottleneck_discharge_utilization": 0.020511146307957324,
+        "mean_flow_rate_people_per_s": 0.032307306117573605
+      },
+      {
+        "scenario_id": "scn-ce8e7ac1d64ababd",
+        "total_evacuation_time": 17315.038414358907,
+        "people_evacuated": 541,
+        "people_trapped": 54,
+        "peak_congestion_value": 289,
+        "congestion_duration": null,
+        "exit_utilization_balance": 1.0,
+        "avg_queue_wait_time": 559.563249793065,
+        "max_queue_wait_time": 15826.735226828405,
+        "queue_wait_percentage": 93.83199171425385,
+        "mean_movement_time_s": 88.2648055751506,
+        "peak_edge_occupancy_mean": 1.0,
+        "peak_edge_occupancy_max": 1,
+        "peak_node_occupancy_mean": 25.441176470588236,
+        "peak_node_occupancy_max": 289,
+        "dominant_bottleneck_id": "door-7-lobby",
+        "dominant_bottleneck_label": "Door '' (door-7-lobby)",
+        "dominant_bottleneck_achieved_rate_people_per_s": 0.018192278438076047,
+        "dominant_bottleneck_discharge_rate_people_per_s": 0.89488,
+        "dominant_bottleneck_discharge_utilization": 0.020329293802605987,
+        "mean_flow_rate_people_per_s": 0.031244516301584573
+      },
+      {
+        "scenario_id": "scn-d5d24be9afcfdc82",
+        "total_evacuation_time": 16852.104339572452,
+        "people_evacuated": 529,
+        "people_trapped": 66,
+        "peak_congestion_value": 285,
+        "congestion_duration": null,
+        "exit_utilization_balance": 1.0,
+        "avg_queue_wait_time": 537.8478839050283,
+        "max_queue_wait_time": 15416.672466550483,
+        "queue_wait_percentage": 93.56059144596938,
+        "mean_movement_time_s": 88.76545180076683,
+        "peak_edge_occupancy_mean": 1.0,
+        "peak_edge_occupancy_max": 1,
+        "peak_node_occupancy_mean": 24.941176470588236,
+        "peak_node_occupancy_max": 285,
+        "dominant_bottleneck_id": "door-7-lobby",
+        "dominant_bottleneck_label": "Door '' (door-7-lobby)",
+        "dominant_bottleneck_achieved_rate_people_per_s": 0.018335989012030977,
+        "dominant_bottleneck_discharge_rate_people_per_s": 0.89488,
+        "dominant_bottleneck_discharge_utilization": 0.020489885808187665,
+        "mean_flow_rate_people_per_s": 0.03139073847043491
+      },
+      {
+        "scenario_id": "scn-0979bacf3d6eb84e",
+        "total_evacuation_time": 17016.408584526573,
+        "people_evacuated": 547,
+        "people_trapped": 48,
+        "peak_congestion_value": 287,
+        "congestion_duration": null,
+        "exit_utilization_balance": 1.0,
+        "avg_queue_wait_time": 537.4262556539758,
+        "max_queue_wait_time": 15569.88354357909,
+        "queue_wait_percentage": 93.5998702720265,
+        "mean_movement_time_s": 87.2816814615255,
+        "peak_edge_occupancy_mean": 1.0,
+        "peak_edge_occupancy_max": 1,
+        "peak_node_occupancy_mean": 25.529411764705884,
+        "peak_node_occupancy_max": 287,
+        "dominant_bottleneck_id": "door-7-lobby",
+        "dominant_bottleneck_label": "Door '' (door-7-lobby)",
+        "dominant_bottleneck_achieved_rate_people_per_s": 0.01839401060718643,
+        "dominant_bottleneck_discharge_rate_people_per_s": 0.89488,
+        "dominant_bottleneck_discharge_utilization": 0.020554723099394812,
+        "mean_flow_rate_people_per_s": 0.03214544345728747
+      },
+      {
+        "scenario_id": "scn-1258af9c0ddc1552",
+        "total_evacuation_time": 17139.09809698603,
+        "people_evacuated": 546,
+        "people_trapped": 49,
+        "peak_congestion_value": 290,
+        "congestion_duration": null,
+        "exit_utilization_balance": 1.0,
+        "avg_queue_wait_time": 549.8205393351476,
+        "max_queue_wait_time": 15675.561615661476,
+        "queue_wait_percentage": 93.89467182806614,
+        "mean_movement_time_s": 87.61033847735605,
+        "peak_edge_occupancy_mean": 1.0,
+        "peak_edge_occupancy_max": 1,
+        "peak_node_occupancy_mean": 25.61764705882353,
+        "peak_node_occupancy_max": 290,
+        "dominant_bottleneck_id": "door-7-lobby",
+        "dominant_bottleneck_label": "Door '' (door-7-lobby)",
+        "dominant_bottleneck_achieved_rate_people_per_s": 0.018437376238343003,
+        "dominant_bottleneck_discharge_rate_people_per_s": 0.89488,
+        "dominant_bottleneck_discharge_utilization": 0.02060318281595633,
+        "mean_flow_rate_people_per_s": 0.031856985525744556
+      },
+      {
+        "scenario_id": "scn-0c5995d01dab686b",
+        "total_evacuation_time": 16136.309685194852,
+        "people_evacuated": 530,
+        "people_trapped": 65,
+        "peak_congestion_value": 274,
+        "congestion_duration": null,
+        "exit_utilization_balance": 1.0,
+        "avg_queue_wait_time": 502.1984684958836,
+        "max_queue_wait_time": 14752.12507794377,
+        "queue_wait_percentage": 93.57678278163492,
+        "mean_movement_time_s": 86.31552070772234,
+        "peak_edge_occupancy_mean": 1.0,
+        "peak_edge_occupancy_max": 1,
+        "peak_node_occupancy_mean": 24.705882352941178,
+        "peak_node_occupancy_max": 274,
+        "dominant_bottleneck_id": "door-7-lobby",
+        "dominant_bottleneck_label": "Door '' (door-7-lobby)",
+        "dominant_bottleneck_achieved_rate_people_per_s": 0.018467667379575427,
+        "dominant_bottleneck_discharge_rate_people_per_s": 0.89488,
+        "dominant_bottleneck_discharge_utilization": 0.02063703220496092,
+        "mean_flow_rate_people_per_s": 0.032845180238842205
+      },
+      {
+        "scenario_id": "scn-80648ef4a7b0d098",
+        "total_evacuation_time": 16841.519166214755,
+        "people_evacuated": 534,
+        "people_trapped": 61,
+        "peak_congestion_value": 281,
+        "congestion_duration": null,
+        "exit_utilization_balance": 1.0,
+        "avg_queue_wait_time": 528.5231917957075,
+        "max_queue_wait_time": 15403.656239985916,
+        "queue_wait_percentage": 93.47708299561832,
+        "mean_movement_time_s": 88.23974222987702,
+        "peak_edge_occupancy_mean": 1.0,
+        "peak_edge_occupancy_max": 1,
+        "peak_node_occupancy_mean": 24.91176470588235,
+        "peak_node_occupancy_max": 281,
+        "dominant_bottleneck_id": "door-7-lobby",
+        "dominant_bottleneck_label": "Door '' (door-7-lobby)",
+        "dominant_bottleneck_achieved_rate_people_per_s": 0.018169382285527842,
+        "dominant_bottleneck_discharge_rate_people_per_s": 0.89488,
+        "dominant_bottleneck_discharge_utilization": 0.020303708078767926,
+        "mean_flow_rate_people_per_s": 0.03170735340023486
+      },
+      {
+        "scenario_id": "scn-2687e93ce153f8c3",
+        "total_evacuation_time": 16785.963017293412,
+        "people_evacuated": 539,
+        "people_trapped": 56,
+        "peak_congestion_value": 281,
+        "congestion_duration": null,
+        "exit_utilization_balance": 1.0,
+        "avg_queue_wait_time": 525.904847992527,
+        "max_queue_wait_time": 15362.961589370774,
+        "queue_wait_percentage": 93.90109830273904,
+        "mean_movement_time_s": 87.42016297919896,
+        "peak_edge_occupancy_mean": 1.0,
+        "peak_edge_occupancy_max": 1,
+        "peak_node_occupancy_mean": 25.323529411764707,
+        "peak_node_occupancy_max": 281,
+        "dominant_bottleneck_id": "door-7-lobby",
+        "dominant_bottleneck_label": "Door '' (door-7-lobby)",
+        "dominant_bottleneck_achieved_rate_people_per_s": 0.018229517108118817,
+        "dominant_bottleneck_discharge_rate_people_per_s": 0.89488,
+        "dominant_bottleneck_discharge_utilization": 0.020370906834568676,
+        "mean_flow_rate_people_per_s": 0.032110162487830204
+      },
+      {
+        "scenario_id": "scn-0199fb9266014de7",
+        "total_evacuation_time": 16376.179062086028,
+        "people_evacuated": 531,
+        "people_trapped": 64,
+        "peak_congestion_value": 276,
+        "congestion_duration": null,
+        "exit_utilization_balance": 1.0,
+        "avg_queue_wait_time": 513.6848201110171,
+        "max_queue_wait_time": 14978.597760041388,
+        "queue_wait_percentage": 93.49153018097087,
+        "mean_movement_time_s": 86.78628435983765,
+        "peak_edge_occupancy_mean": 1.0,
+        "peak_edge_occupancy_max": 1,
+        "peak_node_occupancy_mean": 24.91176470588235,
+        "peak_node_occupancy_max": 276,
+        "dominant_bottleneck_id": "door-7-lobby",
+        "dominant_bottleneck_label": "Door '' (door-7-lobby)",
+        "dominant_bottleneck_achieved_rate_people_per_s": 0.018380355933996367,
+        "dominant_bottleneck_discharge_rate_people_per_s": 0.89488,
+        "dominant_bottleneck_discharge_utilization": 0.020539464435450974,
+        "mean_flow_rate_people_per_s": 0.03242514618256502
+      },
+      {
+        "scenario_id": "scn-98af983c88f0aa5f",
+        "total_evacuation_time": 17332.70210573541,
+        "people_evacuated": 543,
+        "people_trapped": 52,
+        "peak_congestion_value": 292,
+        "congestion_duration": null,
+        "exit_utilization_balance": 1.0,
+        "avg_queue_wait_time": 551.1407467383422,
+        "max_queue_wait_time": 15845.909770572986,
+        "queue_wait_percentage": 93.73418965606841,
+        "mean_movement_time_s": 88.88274720793943,
+        "peak_edge_occupancy_mean": 1.0,
+        "peak_edge_occupancy_max": 1,
+        "peak_node_occupancy_mean": 25.647058823529413,
+        "peak_node_occupancy_max": 292,
+        "dominant_bottleneck_id": "door-7-lobby",
+        "dominant_bottleneck_label": "Door '' (door-7-lobby)",
+        "dominant_bottleneck_achieved_rate_people_per_s": 0.018289127573196125,
+        "dominant_bottleneck_discharge_rate_people_per_s": 0.89488,
+        "dominant_bottleneck_discharge_utilization": 0.020437519637488966,
+        "mean_flow_rate_people_per_s": 0.031328063950301244
+      }
+    ]
+  },
+  "24-story": {
+    "summary": {
+      "building": "24-story",
+      "published_evacuation_time_s": 1090.0,
+      "n_scenarios": 15,
+      "congestion_floor": 0.1,
+      "walking_speed": 1.4,
+      "mean_evacuation_time": 8798.81329286246,
+      "overprediction_ratio": 8.072305773268312,
+      "deviation_from_published_s": 7708.81329286246,
+      "deviation_from_published_pct": 707.2305773268312,
+      "field_stats": {
+        "total_evacuation_time": {
+          "mean": 8798.81329286246,
+          "ci": {
+            "mean": 8798.81329286246,
+            "lower": 8713.008939755411,
+            "upper": 8884.617645969509,
+            "confidence": 0.95,
+            "n": 15
+          }
+        },
+        "avg_queue_wait_time": {
+          "mean": 186.71337243533773,
+          "ci": {
+            "mean": 186.71337243533773,
+            "lower": 184.48970868304724,
+            "upper": 188.93703618762822,
+            "confidence": 0.95,
+            "n": 15
+          }
+        },
+        "max_queue_wait_time": {
+          "mean": 7006.914460340461,
+          "ci": {
+            "mean": 7006.914460340461,
+            "lower": 6940.2511130504945,
+            "upper": 7073.577807630428,
+            "confidence": 0.95,
+            "n": 15
+          }
+        },
+        "queue_wait_percentage": {
+          "mean": 93.27853262311054,
+          "ci": {
+            "mean": 93.27853262311054,
+            "lower": 93.19593420937933,
+            "upper": 93.36113103684174,
+            "confidence": 0.95,
+            "n": 15
+          }
+        },
+        "mean_movement_time_s": {
+          "mean": 95.42641392529202,
+          "ci": {
+            "mean": 95.42641392529202,
+            "lower": 94.9694523649709,
+            "upper": 95.88337548561314,
+            "confidence": 0.95,
+            "n": 15
+          }
+        },
+        "peak_congestion_value": {
+          "mean": 181.2,
+          "ci": {
+            "mean": 181.2,
+            "lower": 179.3609306517364,
+            "upper": 183.03906934826358,
+            "confidence": 0.95,
+            "n": 15
+          }
+        },
+        "congestion_duration": {
+          "mean": null,
+          "ci": null
+        },
+        "exit_utilization_balance": {
+          "mean": 1.0,
+          "ci": {
+            "mean": 1.0,
+            "lower": 1.0,
+            "upper": 1.0,
+            "confidence": 0.95,
+            "n": 15
+          }
+        },
+        "peak_edge_occupancy_mean": {
+          "mean": 1.0208333333333333,
+          "ci": {
+            "mean": 1.0208333333333333,
+            "lower": 1.020833333333333,
+            "upper": 1.0208333333333335,
+            "confidence": 0.95,
+            "n": 15
+          }
+        },
+        "peak_edge_occupancy_max": {
+          "mean": 2.0,
+          "ci": {
+            "mean": 2.0,
+            "lower": 2.0,
+            "upper": 2.0,
+            "confidence": 0.95,
+            "n": 15
+          }
+        },
+        "peak_node_occupancy_mean": {
+          "mean": 18.68299319727891,
+          "ci": {
+            "mean": 18.68299319727891,
+            "lower": 18.557443192334034,
+            "upper": 18.808543202223788,
+            "confidence": 0.95,
+            "n": 15
+          }
+        },
+        "peak_node_occupancy_max": {
+          "mean": 181.2,
+          "ci": {
+            "mean": 181.2,
+            "lower": 179.3609306517364,
+            "upper": 183.03906934826358,
+            "confidence": 0.95,
+            "n": 15
+          }
+        },
+        "dominant_bottleneck_achieved_rate_people_per_s": {
+          "mean": 0.02559488052778781,
+          "ci": {
+            "mean": 0.02559488052778781,
+            "lower": 0.025516396952407486,
+            "upper": 0.025673364103168134,
+            "confidence": 0.95,
+            "n": 15
+          }
+        },
+        "dominant_bottleneck_discharge_rate_people_per_s": {
+          "mean": 1.0001600000000002,
+          "ci": {
+            "mean": 1.0001600000000002,
+            "lower": 1.00016,
+            "upper": 1.0001600000000004,
+            "confidence": 0.95,
+            "n": 15
+          }
+        },
+        "dominant_bottleneck_discharge_utilization": {
+          "mean": 0.025590786002027483,
+          "ci": {
+            "mean": 0.025590786002027483,
+            "lower": 0.025512314982010363,
+            "upper": 0.025669257022044603,
+            "confidence": 0.95,
+            "n": 15
+          }
+        },
+        "mean_flow_rate_people_per_s": {
+          "mean": 0.06198003867969552,
+          "ci": {
+            "mean": 0.06198003867969552,
+            "lower": 0.06144042049554705,
+            "upper": 0.06251965686384399,
+            "confidence": 0.95,
+            "n": 15
+          }
+        },
+        "people_evacuated": {
+          "mean": 545.2666666666667,
+          "ci": {
+            "mean": 545.2666666666667,
+            "lower": 540.7218648237008,
+            "upper": 549.8114685096325,
+            "confidence": 0.95,
+            "n": 15
+          }
+        },
+        "people_trapped": {
+          "mean": 59.733333333333334,
+          "ci": {
+            "mean": 59.733333333333334,
+            "lower": 55.188531490367446,
+            "upper": 64.27813517629922,
+            "confidence": 0.95,
+            "n": 15
+          }
+        }
+      },
+      "dominant_bottleneck": "Door '' (door-a-lobby)"
+    },
+    "records": [
+      {
+        "scenario_id": "scn-a30623773164a90f",
+        "total_evacuation_time": 8781.351208253342,
+        "people_evacuated": 529,
+        "people_trapped": 76,
+        "peak_congestion_value": 181,
+        "congestion_duration": null,
+        "exit_utilization_balance": 1.0,
+        "avg_queue_wait_time": 187.27053466508252,
+        "max_queue_wait_time": 6996.388724030784,
+        "queue_wait_percentage": 93.12841119190234,
+        "mean_movement_time_s": 95.99097318588395,
+        "peak_edge_occupancy_mean": 1.0208333333333333,
+        "peak_edge_occupancy_max": 2,
+        "peak_node_occupancy_mean": 18.346938775510203,
+        "peak_node_occupancy_max": 181,
+        "dominant_bottleneck_id": "door-a-lobby",
+        "dominant_bottleneck_label": "Door '' (door-a-lobby)",
+        "dominant_bottleneck_achieved_rate_people_per_s": 0.025736358180001848,
+        "dominant_bottleneck_discharge_rate_people_per_s": 1.0001600000000002,
+        "dominant_bottleneck_discharge_utilization": 0.025732241021438413,
+        "mean_flow_rate_people_per_s": 0.06024129857177424
+      },
+      {
+        "scenario_id": "scn-55657feeb69e227c",
+        "total_evacuation_time": 8513.650225645899,
+        "people_evacuated": 532,
+        "people_trapped": 73,
+        "peak_congestion_value": 174,
+        "congestion_duration": null,
+        "exit_utilization_balance": 1.0,
+        "avg_queue_wait_time": 178.16465790937477,
+        "max_queue_wait_time": 6784.089068863712,
+        "queue_wait_percentage": 93.01700641322033,
+        "mean_movement_time_s": 95.6755948793185,
+        "peak_edge_occupancy_mean": 1.0208333333333333,
+        "peak_edge_occupancy_max": 2,
+        "peak_node_occupancy_mean": 18.244897959183675,
+        "peak_node_occupancy_max": 174,
+        "dominant_bottleneck_id": "door-a-lobby",
+        "dominant_bottleneck_label": "Door '' (door-a-lobby)",
+        "dominant_bottleneck_achieved_rate_people_per_s": 0.02548847958849954,
+        "dominant_bottleneck_discharge_rate_people_per_s": 1.0001600000000002,
+        "dominant_bottleneck_discharge_utilization": 0.02548440208416607,
+        "mean_flow_rate_people_per_s": 0.06248788544277307
+      },
+      {
+        "scenario_id": "scn-57970c849595f1df",
+        "total_evacuation_time": 8745.417470568827,
+        "people_evacuated": 555,
+        "people_trapped": 50,
+        "peak_congestion_value": 180,
+        "congestion_duration": null,
+        "exit_utilization_balance": 1.0,
+        "avg_queue_wait_time": 186.37271336082765,
+        "max_queue_wait_time": 6954.191118272767,
+        "queue_wait_percentage": 93.48411408445635,
+        "mean_movement_time_s": 93.89110352941167,
+        "peak_edge_occupancy_mean": 1.0208333333333333,
+        "peak_edge_occupancy_max": 2,
+        "peak_node_occupancy_mean": 18.775510204081634,
+        "peak_node_occupancy_max": 180,
+        "dominant_bottleneck_id": "door-a-lobby",
+        "dominant_bottleneck_label": "Door '' (door-a-lobby)",
+        "dominant_bottleneck_achieved_rate_people_per_s": 0.025727759796167322,
+        "dominant_bottleneck_discharge_rate_people_per_s": 1.0001600000000002,
+        "dominant_bottleneck_discharge_utilization": 0.025723644013125217,
+        "mean_flow_rate_people_per_s": 0.06346180749721272
+      },
+      {
+        "scenario_id": "scn-c39ba35c647fa0cb",
+        "total_evacuation_time": 9034.502611304571,
+        "people_evacuated": 549,
+        "people_trapped": 56,
+        "peak_congestion_value": 186,
+        "congestion_duration": null,
+        "exit_utilization_balance": 1.0,
+        "avg_queue_wait_time": 191.65774485676346,
+        "max_queue_wait_time": 7186.235920629275,
+        "queue_wait_percentage": 93.22820213757234,
+        "mean_movement_time_s": 95.98812993727354,
+        "peak_edge_occupancy_mean": 1.0208333333333333,
+        "peak_edge_occupancy_max": 2,
+        "peak_node_occupancy_mean": 18.857142857142858,
+        "peak_node_occupancy_max": 186,
+        "dominant_bottleneck_id": "door-a-lobby",
+        "dominant_bottleneck_label": "Door '' (door-a-lobby)",
+        "dominant_bottleneck_achieved_rate_people_per_s": 0.025457959324978078,
+        "dominant_bottleneck_discharge_rate_people_per_s": 1.0001600000000002,
+        "dominant_bottleneck_discharge_utilization": 0.025453886703105576,
+        "mean_flow_rate_people_per_s": 0.06076704204092593
+      },
+      {
+        "scenario_id": "scn-847a4dbbac15e881",
+        "total_evacuation_time": 8801.875389680969,
+        "people_evacuated": 548,
+        "people_trapped": 57,
+        "peak_congestion_value": 182,
+        "congestion_duration": null,
+        "exit_utilization_balance": 1.0,
+        "avg_queue_wait_time": 186.6249645710476,
+        "max_queue_wait_time": 7005.029539236589,
+        "queue_wait_percentage": 93.29970256870672,
+        "mean_movement_time_s": 95.63140643164245,
+        "peak_edge_occupancy_mean": 1.0208333333333333,
+        "peak_edge_occupancy_max": 2,
+        "peak_node_occupancy_mean": 18.755102040816325,
+        "peak_node_occupancy_max": 182,
+        "dominant_bottleneck_id": "door-a-lobby",
+        "dominant_bottleneck_label": "Door '' (door-a-lobby)",
+        "dominant_bottleneck_achieved_rate_people_per_s": 0.025676346232412585,
+        "dominant_bottleneck_discharge_rate_people_per_s": 1.0001600000000002,
+        "dominant_bottleneck_discharge_utilization": 0.025672238674224704,
+        "mean_flow_rate_people_per_s": 0.06225945900602698
+      },
+      {
+        "scenario_id": "scn-f8cad62311066d14",
+        "total_evacuation_time": 9034.280909264282,
+        "people_evacuated": 554,
+        "people_trapped": 51,
+        "peak_congestion_value": 186,
+        "congestion_duration": null,
+        "exit_utilization_balance": 1.0,
+        "avg_queue_wait_time": 193.28572564262632,
+        "max_queue_wait_time": 7183.2039056852855,
+        "queue_wait_percentage": 93.49850405832426,
+        "mean_movement_time_s": 95.15455302052246,
+        "peak_edge_occupancy_mean": 1.0208333333333333,
+        "peak_edge_occupancy_max": 2,
+        "peak_node_occupancy_mean": 19.0,
+        "peak_node_occupancy_max": 186,
+        "dominant_bottleneck_id": "door-a-lobby",
+        "dominant_bottleneck_label": "Door '' (door-a-lobby)",
+        "dominant_bottleneck_achieved_rate_people_per_s": 0.025569273561454022,
+        "dominant_bottleneck_discharge_rate_people_per_s": 1.0001600000000002,
+        "dominant_bottleneck_discharge_utilization": 0.025565183132152874,
+        "mean_flow_rate_people_per_s": 0.06132198074911484
+      },
+      {
+        "scenario_id": "scn-b8278bb3da514ea9",
+        "total_evacuation_time": 8948.16755649344,
+        "people_evacuated": 542,
+        "people_trapped": 63,
+        "peak_congestion_value": 183,
+        "congestion_duration": null,
+        "exit_utilization_balance": 1.0,
+        "avg_queue_wait_time": 188.9370891170935,
+        "max_queue_wait_time": 7132.024902525108,
+        "queue_wait_percentage": 93.21122314869095,
+        "mean_movement_time_s": 96.65568761429373,
+        "peak_edge_occupancy_mean": 1.0208333333333333,
+        "peak_edge_occupancy_max": 2,
+        "peak_node_occupancy_mean": 18.775510204081634,
+        "peak_node_occupancy_max": 183,
+        "dominant_bottleneck_id": "door-a-lobby",
+        "dominant_bottleneck_label": "Door '' (door-a-lobby)",
+        "dominant_bottleneck_achieved_rate_people_per_s": 0.025480077184579168,
+        "dominant_bottleneck_discharge_rate_people_per_s": 1.0001600000000002,
+        "dominant_bottleneck_discharge_utilization": 0.025476001024415256,
+        "mean_flow_rate_people_per_s": 0.06057106067562241
+      },
+      {
+        "scenario_id": "scn-4809c432bc81c600",
+        "total_evacuation_time": 8615.883349963742,
+        "people_evacuated": 544,
+        "people_trapped": 61,
+        "peak_congestion_value": 177,
+        "congestion_duration": null,
+        "exit_utilization_balance": 1.0,
+        "avg_queue_wait_time": 182.38350025947005,
+        "max_queue_wait_time": 6868.150590205351,
+        "queue_wait_percentage": 93.12450650147173,
+        "mean_movement_time_s": 94.98351534859013,
+        "peak_edge_occupancy_mean": 1.0208333333333333,
+        "peak_edge_occupancy_max": 2,
+        "peak_node_occupancy_mean": 18.571428571428573,
+        "peak_node_occupancy_max": 177,
+        "dominant_bottleneck_id": "door-a-lobby",
+        "dominant_bottleneck_label": "Door '' (door-a-lobby)",
+        "dominant_bottleneck_achieved_rate_people_per_s": 0.02553423613852964,
+        "dominant_bottleneck_discharge_rate_people_per_s": 1.0001600000000002,
+        "dominant_bottleneck_discharge_utilization": 0.025530151314319346,
+        "mean_flow_rate_people_per_s": 0.06313920208800057
+      },
+      {
+        "scenario_id": "scn-c413dbf82c2e68bf",
+        "total_evacuation_time": 8938.343058820266,
+        "people_evacuated": 553,
+        "people_trapped": 52,
+        "peak_congestion_value": 185,
+        "congestion_duration": null,
+        "exit_utilization_balance": 1.0,
+        "avg_queue_wait_time": 191.43921546400588,
+        "max_queue_wait_time": 7118.3896904361,
+        "queue_wait_percentage": 93.44388070835907,
+        "mean_movement_time_s": 95.21526959476502,
+        "peak_edge_occupancy_mean": 1.0208333333333333,
+        "peak_edge_occupancy_max": 2,
+        "peak_node_occupancy_mean": 19.0,
+        "peak_node_occupancy_max": 185,
+        "dominant_bottleneck_id": "door-a-lobby",
+        "dominant_bottleneck_label": "Door '' (door-a-lobby)",
+        "dominant_bottleneck_achieved_rate_people_per_s": 0.025731838494723956,
+        "dominant_bottleneck_discharge_rate_people_per_s": 1.0001600000000002,
+        "dominant_bottleneck_discharge_utilization": 0.02572772205919448,
+        "mean_flow_rate_people_per_s": 0.06186828994601021
+      },
+      {
+        "scenario_id": "scn-e41505e84ac901ed",
+        "total_evacuation_time": 8881.903286199595,
+        "people_evacuated": 553,
+        "people_trapped": 52,
+        "peak_congestion_value": 181,
+        "congestion_duration": null,
+        "exit_utilization_balance": 1.0,
+        "avg_queue_wait_time": 188.0089049870907,
+        "max_queue_wait_time": 7075.049946087767,
+        "queue_wait_percentage": 93.38929478654218,
+        "mean_movement_time_s": 95.56584715723253,
+        "peak_edge_occupancy_mean": 1.0208333333333333,
+        "peak_edge_occupancy_max": 2,
+        "peak_node_occupancy_mean": 18.836734693877553,
+        "peak_node_occupancy_max": 181,
+        "dominant_bottleneck_id": "door-a-lobby",
+        "dominant_bottleneck_label": "Door '' (door-a-lobby)",
+        "dominant_bottleneck_achieved_rate_people_per_s": 0.025219819759582807,
+        "dominant_bottleneck_discharge_rate_people_per_s": 1.0001600000000002,
+        "dominant_bottleneck_discharge_utilization": 0.02521578523394537,
+        "mean_flow_rate_people_per_s": 0.062261430031470055
+      },
+      {
+        "scenario_id": "scn-3ea85c0b658d1afe",
+        "total_evacuation_time": 8656.569452185357,
+        "people_evacuated": 542,
+        "people_trapped": 63,
+        "peak_congestion_value": 178,
+        "congestion_duration": null,
+        "exit_utilization_balance": 1.0,
+        "avg_queue_wait_time": 181.36149585676645,
+        "max_queue_wait_time": 6895.576982105695,
+        "queue_wait_percentage": 93.21255022076788,
+        "mean_movement_time_s": 96.37297236920968,
+        "peak_edge_occupancy_mean": 1.0208333333333333,
+        "peak_edge_occupancy_max": 2,
+        "peak_node_occupancy_mean": 18.551020408163264,
+        "peak_node_occupancy_max": 178,
+        "dominant_bottleneck_id": "door-a-lobby",
+        "dominant_bottleneck_label": "Door '' (door-a-lobby)",
+        "dominant_bottleneck_achieved_rate_people_per_s": 0.02564526296776328,
+        "dominant_bottleneck_discharge_rate_people_per_s": 1.0001600000000002,
+        "dominant_bottleneck_discharge_utilization": 0.02564116038210214,
+        "mean_flow_rate_people_per_s": 0.06261140778616081
+      },
+      {
+        "scenario_id": "scn-c79a1ddca6e7cfa9",
+        "total_evacuation_time": 8635.388196258453,
+        "people_evacuated": 545,
+        "people_trapped": 60,
+        "peak_congestion_value": 179,
+        "congestion_duration": null,
+        "exit_utilization_balance": 1.0,
+        "avg_queue_wait_time": 186.64604651069348,
+        "max_queue_wait_time": 6883.650203407222,
+        "queue_wait_percentage": 93.3949776074877,
+        "mean_movement_time_s": 93.55840287630005,
+        "peak_edge_occupancy_mean": 1.0208333333333333,
+        "peak_edge_occupancy_max": 2,
+        "peak_node_occupancy_mean": 18.693877551020407,
+        "peak_node_occupancy_max": 179,
+        "dominant_bottleneck_id": "door-a-lobby",
+        "dominant_bottleneck_label": "Door '' (door-a-lobby)",
+        "dominant_bottleneck_achieved_rate_people_per_s": 0.025708166784695136,
+        "dominant_bottleneck_discharge_rate_people_per_s": 1.0001600000000002,
+        "dominant_bottleneck_discharge_utilization": 0.025704054136033366,
+        "mean_flow_rate_people_per_s": 0.06311239143089571
+      },
+      {
+        "scenario_id": "scn-1ab59acb71c99045",
+        "total_evacuation_time": 8824.661100718322,
+        "people_evacuated": 543,
+        "people_trapped": 62,
+        "peak_congestion_value": 183,
+        "congestion_duration": null,
+        "exit_utilization_balance": 1.0,
+        "avg_queue_wait_time": 188.3962955618383,
+        "max_queue_wait_time": 7027.00027609895,
+        "queue_wait_percentage": 93.2777663051274,
+        "mean_movement_time_s": 95.83506524684982,
+        "peak_edge_occupancy_mean": 1.0208333333333333,
+        "peak_edge_occupancy_max": 2,
+        "peak_node_occupancy_mean": 18.632653061224488,
+        "peak_node_occupancy_max": 183,
+        "dominant_bottleneck_id": "door-a-lobby",
+        "dominant_bottleneck_label": "Door '' (door-a-lobby)",
+        "dominant_bottleneck_achieved_rate_people_per_s": 0.025610048637630257,
+        "dominant_bottleneck_discharge_rate_people_per_s": 1.0001600000000002,
+        "dominant_bottleneck_discharge_utilization": 0.025605951685360596,
+        "mean_flow_rate_people_per_s": 0.06153210800988155
+      },
+      {
+        "scenario_id": "scn-392c80ef262577b6",
+        "total_evacuation_time": 8712.661789131786,
+        "people_evacuated": 536,
+        "people_trapped": 69,
+        "peak_congestion_value": 181,
+        "congestion_duration": null,
+        "exit_utilization_balance": 1.0,
+        "avg_queue_wait_time": 184.96284371639592,
+        "max_queue_wait_time": 6938.4567835361395,
+        "queue_wait_percentage": 93.09766540046932,
+        "mean_movement_time_s": 95.29904377102447,
+        "peak_edge_occupancy_mean": 1.0208333333333333,
+        "peak_edge_occupancy_max": 2,
+        "peak_node_occupancy_mean": 18.387755102040817,
+        "peak_node_occupancy_max": 181,
+        "dominant_bottleneck_id": "door-a-lobby",
+        "dominant_bottleneck_label": "Door '' (door-a-lobby)",
+        "dominant_bottleneck_achieved_rate_people_per_s": 0.025709709090213813,
+        "dominant_bottleneck_discharge_rate_people_per_s": 1.0001600000000002,
+        "dominant_bottleneck_discharge_utilization": 0.025705596194822638,
+        "mean_flow_rate_people_per_s": 0.061519661037297335
+      },
+      {
+        "scenario_id": "scn-d6727d04b1e9b617",
+        "total_evacuation_time": 8857.54378844805,
+        "people_evacuated": 554,
+        "people_trapped": 51,
+        "peak_congestion_value": 182,
+        "congestion_duration": null,
+        "exit_utilization_balance": 1.0,
+        "avg_queue_wait_time": 185.18885405098948,
+        "max_queue_wait_time": 7056.279253986176,
+        "queue_wait_percentage": 93.37018421355936,
+        "mean_movement_time_s": 95.57864391706224,
+        "peak_edge_occupancy_mean": 1.0208333333333333,
+        "peak_edge_occupancy_max": 2,
+        "peak_node_occupancy_mean": 18.816326530612244,
+        "peak_node_occupancy_max": 182,
+        "dominant_bottleneck_id": "door-a-lobby",
+        "dominant_bottleneck_label": "Door '' (door-a-lobby)",
+        "dominant_bottleneck_achieved_rate_people_per_s": 0.02562787217558573,
+        "dominant_bottleneck_discharge_rate_people_per_s": 1.0001600000000002,
+        "dominant_bottleneck_discharge_utilization": 0.025623772372006203,
+        "mean_flow_rate_people_per_s": 0.06254555588226648
+      }
+    ]
+  },
+  "31-story": {
+    "summary": {
+      "building": "31-story",
+      "published_evacuation_time_s": 1002.0,
+      "n_scenarios": 15,
+      "congestion_floor": 0.1,
+      "walking_speed": 1.4,
+      "mean_evacuation_time": 10132.379819548842,
+      "overprediction_ratio": 10.112155508531778,
+      "deviation_from_published_s": 9130.379819548842,
+      "deviation_from_published_pct": 911.2155508531778,
+      "field_stats": {
+        "total_evacuation_time": {
+          "mean": 10132.379819548842,
+          "ci": {
+            "mean": 10132.379819548842,
+            "lower": 10052.561187670131,
+            "upper": 10212.198451427552,
+            "confidence": 0.95,
+            "n": 15
+          }
+        },
+        "avg_queue_wait_time": {
+          "mean": 212.1376535155359,
+          "ci": {
+            "mean": 212.1376535155359,
+            "lower": 210.33870761962874,
+            "upper": 213.93659941144307,
+            "confidence": 0.95,
+            "n": 15
+          }
+        },
+        "max_queue_wait_time": {
+          "mean": 5788.688271093176,
+          "ci": {
+            "mean": 5788.688271093176,
+            "lower": 5742.813419527609,
+            "upper": 5834.563122658743,
+            "confidence": 0.95,
+            "n": 15
+          }
+        },
+        "queue_wait_percentage": {
+          "mean": 94.73987574454978,
+          "ci": {
+            "mean": 94.73987574454978,
+            "lower": 94.71063691928008,
+            "upper": 94.76911456981948,
+            "confidence": 0.95,
+            "n": 15
+          }
+        },
+        "mean_movement_time_s": {
+          "mean": 94.7934547817036,
+          "ci": {
+            "mean": 94.7934547817036,
+            "lower": 94.49440518633745,
+            "upper": 95.09250437706976,
+            "confidence": 0.95,
+            "n": 15
+          }
+        },
+        "peak_congestion_value": {
+          "mean": 362.0,
+          "ci": {
+            "mean": 362.0,
+            "lower": 359.5500922051875,
+            "upper": 364.4499077948125,
+            "confidence": 0.95,
+            "n": 15
+          }
+        },
+        "congestion_duration": {
+          "mean": null,
+          "ci": null
+        },
+        "exit_utilization_balance": {
+          "mean": 1.0,
+          "ci": {
+            "mean": 1.0,
+            "lower": 1.0,
+            "upper": 1.0,
+            "confidence": 0.95,
+            "n": 15
+          }
+        },
+        "peak_edge_occupancy_mean": {
+          "mean": 1.0655737704918034,
+          "ci": {
+            "mean": 1.0655737704918034,
+            "lower": 1.0655737704918031,
+            "upper": 1.0655737704918036,
+            "confidence": 0.95,
+            "n": 15
+          }
+        },
+        "peak_edge_occupancy_max": {
+          "mean": 4.0,
+          "ci": {
+            "mean": 4.0,
+            "lower": 4.0,
+            "upper": 4.0,
+            "confidence": 0.95,
+            "n": 15
+          }
+        },
+        "peak_node_occupancy_mean": {
+          "mean": 30.11720430107527,
+          "ci": {
+            "mean": 30.11720430107527,
+            "lower": 29.984917058866838,
+            "upper": 30.2494915432837,
+            "confidence": 0.95,
+            "n": 15
+          }
+        },
+        "peak_node_occupancy_max": {
+          "mean": 362.0,
+          "ci": {
+            "mean": 362.0,
+            "lower": 359.5500922051875,
+            "upper": 364.4499077948125,
+            "confidence": 0.95,
+            "n": 15
+          }
+        },
+        "dominant_bottleneck_achieved_rate_people_per_s": {
+          "mean": 0.06226443903170006,
+          "ci": {
+            "mean": 0.06226443903170006,
+            "lower": 0.06208672357886212,
+            "upper": 0.06244215448453799,
+            "confidence": 0.95,
+            "n": 15
+          }
+        },
+        "dominant_bottleneck_discharge_rate_people_per_s": {
+          "mean": 1.0001600000000002,
+          "ci": {
+            "mean": 1.0001600000000002,
+            "lower": 1.00016,
+            "upper": 1.0001600000000004,
+            "confidence": 0.95,
+            "n": 15
+          }
+        },
+        "dominant_bottleneck_discharge_utilization": {
+          "mean": 0.062254478315169615,
+          "ci": {
+            "mean": 0.062254478315169615,
+            "lower": 0.062076791292255344,
+            "upper": 0.062432165338083885,
+            "confidence": 0.95,
+            "n": 15
+          }
+        },
+        "mean_flow_rate_people_per_s": {
+          "mean": 0.11009072453143796,
+          "ci": {
+            "mean": 0.11009072453143796,
+            "lower": 0.10939289958773753,
+            "upper": 0.1107885494751384,
+            "confidence": 0.95,
+            "n": 15
+          }
+        },
+        "people_evacuated": {
+          "mean": 1115.3333333333333,
+          "ci": {
+            "mean": 1115.3333333333333,
+            "lower": 1111.0250763184406,
+            "upper": 1119.641590348226,
+            "confidence": 0.95,
+            "n": 15
+          }
+        },
+        "people_trapped": {
+          "mean": 126.66666666666667,
+          "ci": {
+            "mean": 126.66666666666667,
+            "lower": 122.35840965177411,
+            "upper": 130.97492368155923,
+            "confidence": 0.95,
+            "n": 15
+          }
+        }
+      },
+      "dominant_bottleneck": "Door '' (door-north-lobby)"
+    },
+    "records": [
+      {
+        "scenario_id": "scn-a202e7ae30e4f552",
+        "total_evacuation_time": 10022.131967749843,
+        "people_evacuated": 1110,
+        "people_trapped": 132,
+        "peak_congestion_value": 357,
+        "congestion_duration": null,
+        "exit_utilization_balance": 1.0,
+        "avg_queue_wait_time": 207.7109653369422,
+        "max_queue_wait_time": 5723.422849448294,
+        "queue_wait_percentage": 94.67206550696854,
+        "mean_movement_time_s": 95.11990142345216,
+        "peak_edge_occupancy_mean": 1.0655737704918034,
+        "peak_edge_occupancy_max": 4,
+        "peak_node_occupancy_mean": 29.838709677419356,
+        "peak_node_occupancy_max": 357,
+        "dominant_bottleneck_id": "door-north-lobby",
+        "dominant_bottleneck_label": "Door '' (door-north-lobby)",
+        "dominant_bottleneck_achieved_rate_people_per_s": 0.062262201496444645,
+        "dominant_bottleneck_discharge_rate_people_per_s": 1.0001600000000002,
+        "dominant_bottleneck_discharge_utilization": 0.062252241137862575,
+        "mean_flow_rate_people_per_s": 0.1107548776619448
+      },
+      {
+        "scenario_id": "scn-9171d27273d0ee18",
+        "total_evacuation_time": 10104.817609469368,
+        "people_evacuated": 1116,
+        "people_trapped": 126,
+        "peak_congestion_value": 358,
+        "congestion_duration": null,
+        "exit_utilization_balance": 1.0,
+        "avg_queue_wait_time": 211.42945429959505,
+        "max_queue_wait_time": 5770.690331673875,
+        "queue_wait_percentage": 94.79954719687514,
+        "mean_movement_time_s": 95.39829012503559,
+        "peak_edge_occupancy_mean": 1.0655737704918034,
+        "peak_edge_occupancy_max": 4,
+        "peak_node_occupancy_mean": 30.080645161290324,
+        "peak_node_occupancy_max": 358,
+        "dominant_bottleneck_id": "door-north-lobby",
+        "dominant_bottleneck_label": "Door '' (door-north-lobby)",
+        "dominant_bottleneck_achieved_rate_people_per_s": 0.06195064811594091,
+        "dominant_bottleneck_discharge_rate_people_per_s": 1.0001600000000002,
+        "dominant_bottleneck_discharge_utilization": 0.061940737597925226,
+        "mean_flow_rate_people_per_s": 0.11044236948464864
+      },
+      {
+        "scenario_id": "scn-db66916a9a959fa6",
+        "total_evacuation_time": 10081.000778799811,
+        "people_evacuated": 1110,
+        "people_trapped": 132,
+        "peak_congestion_value": 356,
+        "congestion_duration": null,
+        "exit_utilization_balance": 1.0,
+        "avg_queue_wait_time": 211.47635644877073,
+        "max_queue_wait_time": 5755.091859267711,
+        "queue_wait_percentage": 94.77173496476135,
+        "mean_movement_time_s": 94.96147439993678,
+        "peak_edge_occupancy_mean": 1.0655737704918034,
+        "peak_edge_occupancy_max": 4,
+        "peak_node_occupancy_mean": 29.887096774193548,
+        "peak_node_occupancy_max": 356,
+        "dominant_bottleneck_id": "door-north-lobby",
+        "dominant_bottleneck_label": "Door '' (door-north-lobby)",
+        "dominant_bottleneck_achieved_rate_people_per_s": 0.0617002233853663,
+        "dominant_bottleneck_discharge_rate_people_per_s": 1.0001600000000002,
+        "dominant_bottleneck_discharge_utilization": 0.061690352928897664,
+        "mean_flow_rate_people_per_s": 0.11010811568771156
+      },
+      {
+        "scenario_id": "scn-159c9cac1fed6986",
+        "total_evacuation_time": 10298.361213824648,
+        "people_evacuated": 1119,
+        "people_trapped": 123,
+        "peak_congestion_value": 366,
+        "congestion_duration": null,
+        "exit_utilization_balance": 1.0,
+        "avg_queue_wait_time": 215.1336482036335,
+        "max_queue_wait_time": 5886.029775171858,
+        "queue_wait_percentage": 94.7754555177776,
+        "mean_movement_time_s": 95.14856342730745,
+        "peak_edge_occupancy_mean": 1.0655737704918034,
+        "peak_edge_occupancy_max": 4,
+        "peak_node_occupancy_mean": 30.467741935483872,
+        "peak_node_occupancy_max": 366,
+        "dominant_bottleneck_id": "door-north-lobby",
+        "dominant_bottleneck_label": "Door '' (door-north-lobby)",
+        "dominant_bottleneck_achieved_rate_people_per_s": 0.06214581006741694,
+        "dominant_bottleneck_discharge_rate_people_per_s": 1.0001600000000002,
+        "dominant_bottleneck_discharge_utilization": 0.062135868328484375,
+        "mean_flow_rate_people_per_s": 0.10865806478974932
+      },
+      {
+        "scenario_id": "scn-da056008fb31d6ad",
+        "total_evacuation_time": 10391.98810806028,
+        "people_evacuated": 1127,
+        "people_trapped": 115,
+        "peak_congestion_value": 370,
+        "congestion_duration": null,
+        "exit_utilization_balance": 1.0,
+        "avg_queue_wait_time": 215.50611348697774,
+        "max_queue_wait_time": 5939.111464389069,
+        "queue_wait_percentage": 94.70143984200273,
+        "mean_movement_time_s": 95.48061303898646,
+        "peak_edge_occupancy_mean": 1.0655737704918034,
+        "peak_edge_occupancy_max": 4,
+        "peak_node_occupancy_mean": 30.516129032258064,
+        "peak_node_occupancy_max": 370,
+        "dominant_bottleneck_id": "door-north-lobby",
+        "dominant_bottleneck_label": "Door '' (door-north-lobby)",
+        "dominant_bottleneck_achieved_rate_people_per_s": 0.06206704562139772,
+        "dominant_bottleneck_discharge_rate_people_per_s": 1.0001600000000002,
+        "dominant_bottleneck_discharge_utilization": 0.062057116482760466,
+        "mean_flow_rate_people_per_s": 0.10844893087645771
+      },
+      {
+        "scenario_id": "scn-b62c1de7054b1154",
+        "total_evacuation_time": 10318.788004423008,
+        "people_evacuated": 1130,
+        "people_trapped": 112,
+        "peak_congestion_value": 366,
+        "congestion_duration": null,
+        "exit_utilization_balance": 1.0,
+        "avg_queue_wait_time": 217.50980328377756,
+        "max_queue_wait_time": 5893.921612383049,
+        "queue_wait_percentage": 94.81531498949214,
+        "mean_movement_time_s": 94.51014514817062,
+        "peak_edge_occupancy_mean": 1.0655737704918034,
+        "peak_edge_occupancy_max": 4,
+        "peak_node_occupancy_mean": 30.516129032258064,
+        "peak_node_occupancy_max": 366,
+        "dominant_bottleneck_id": "door-north-lobby",
+        "dominant_bottleneck_label": "Door '' (door-north-lobby)",
+        "dominant_bottleneck_achieved_rate_people_per_s": 0.06192587731486502,
+        "dominant_bottleneck_discharge_rate_people_per_s": 1.0001600000000002,
+        "dominant_bottleneck_discharge_utilization": 0.061915970759543484,
+        "mean_flow_rate_people_per_s": 0.10950898492300074
+      },
+      {
+        "scenario_id": "scn-0e00a42391c56f64",
+        "total_evacuation_time": 10236.732731098271,
+        "people_evacuated": 1116,
+        "people_trapped": 126,
+        "peak_congestion_value": 366,
+        "congestion_duration": null,
+        "exit_utilization_balance": 1.0,
+        "avg_queue_wait_time": 216.70439524230375,
+        "max_queue_wait_time": 5847.525782927998,
+        "queue_wait_percentage": 94.74711967644176,
+        "mean_movement_time_s": 94.02217036765148,
+        "peak_edge_occupancy_mean": 1.0655737704918034,
+        "peak_edge_occupancy_max": 4,
+        "peak_node_occupancy_mean": 30.129032258064516,
+        "peak_node_occupancy_max": 366,
+        "dominant_bottleneck_id": "door-north-lobby",
+        "dominant_bottleneck_label": "Door '' (door-north-lobby)",
+        "dominant_bottleneck_achieved_rate_people_per_s": 0.062324573353548005,
+        "dominant_bottleneck_discharge_rate_people_per_s": 1.0001600000000002,
+        "dominant_bottleneck_discharge_utilization": 0.06231460301706526,
+        "mean_flow_rate_people_per_s": 0.10901915965918428
+      },
+      {
+        "scenario_id": "scn-bc5816354993dd12",
+        "total_evacuation_time": 10149.003270030144,
+        "people_evacuated": 1122,
+        "people_trapped": 120,
+        "peak_congestion_value": 363,
+        "congestion_duration": null,
+        "exit_utilization_balance": 1.0,
+        "avg_queue_wait_time": 211.48832770739256,
+        "max_queue_wait_time": 5800.152637128692,
+        "queue_wait_percentage": 94.71410472592584,
+        "mean_movement_time_s": 94.89565856180197,
+        "peak_edge_occupancy_mean": 1.0655737704918034,
+        "peak_edge_occupancy_max": 4,
+        "peak_node_occupancy_mean": 30.096774193548388,
+        "peak_node_occupancy_max": 363,
+        "dominant_bottleneck_id": "door-north-lobby",
+        "dominant_bottleneck_label": "Door '' (door-north-lobby)",
+        "dominant_bottleneck_achieved_rate_people_per_s": 0.06237065681801873,
+        "dominant_bottleneck_discharge_rate_people_per_s": 1.0001600000000002,
+        "dominant_bottleneck_discharge_utilization": 0.062360679109361224,
+        "mean_flow_rate_people_per_s": 0.11055272819876306
+      },
+      {
+        "scenario_id": "scn-7a1682379bdef024",
+        "total_evacuation_time": 10037.692750267159,
+        "people_evacuated": 1119,
+        "people_trapped": 123,
+        "peak_congestion_value": 362,
+        "congestion_duration": null,
+        "exit_utilization_balance": 1.0,
+        "avg_queue_wait_time": 210.90288325629484,
+        "max_queue_wait_time": 5734.059152668926,
+        "queue_wait_percentage": 94.78953808112219,
+        "mean_movement_time_s": 93.77731149746322,
+        "peak_edge_occupancy_mean": 1.0655737704918034,
+        "peak_edge_occupancy_max": 4,
+        "peak_node_occupancy_mean": 30.241935483870968,
+        "peak_node_occupancy_max": 362,
+        "dominant_bottleneck_id": "door-north-lobby",
+        "dominant_bottleneck_label": "Door '' (door-north-lobby)",
+        "dominant_bottleneck_achieved_rate_people_per_s": 0.06296267635639465,
+        "dominant_bottleneck_discharge_rate_people_per_s": 1.0001600000000002,
+        "dominant_bottleneck_discharge_utilization": 0.06295260393976428,
+        "mean_flow_rate_people_per_s": 0.11147980196646458
+      },
+      {
+        "scenario_id": "scn-20938539697f11c3",
+        "total_evacuation_time": 10031.960878560469,
+        "people_evacuated": 1099,
+        "people_trapped": 143,
+        "peak_congestion_value": 360,
+        "congestion_duration": null,
+        "exit_utilization_balance": 1.0,
+        "avg_queue_wait_time": 210.07177577169887,
+        "max_queue_wait_time": 5731.839606226728,
+        "queue_wait_percentage": 94.64441743690217,
+        "mean_movement_time_s": 94.96551103130192,
+        "peak_edge_occupancy_mean": 1.0655737704918034,
+        "peak_edge_occupancy_max": 4,
+        "peak_node_occupancy_mean": 29.70967741935484,
+        "peak_node_occupancy_max": 360,
+        "dominant_bottleneck_id": "door-north-lobby",
+        "dominant_bottleneck_label": "Door '' (door-north-lobby)",
+        "dominant_bottleneck_achieved_rate_people_per_s": 0.06230088091109901,
+        "dominant_bottleneck_discharge_rate_people_per_s": 1.0001600000000002,
+        "dominant_bottleneck_discharge_utilization": 0.06229091436480064,
+        "mean_flow_rate_people_per_s": 0.10954986899407651
+      },
+      {
+        "scenario_id": "scn-87cea0d707c23af3",
+        "total_evacuation_time": 10108.885295781196,
+        "people_evacuated": 1113,
+        "people_trapped": 129,
+        "peak_congestion_value": 362,
+        "congestion_duration": null,
+        "exit_utilization_balance": 1.0,
+        "avg_queue_wait_time": 213.40089905244122,
+        "max_queue_wait_time": 5775.922750699893,
+        "queue_wait_percentage": 94.74299177784809,
+        "mean_movement_time_s": 94.0414399492345,
+        "peak_edge_occupancy_mean": 1.0655737704918034,
+        "peak_edge_occupancy_max": 4,
+        "peak_node_occupancy_mean": 30.14516129032258,
+        "peak_node_occupancy_max": 362,
+        "dominant_bottleneck_id": "door-north-lobby",
+        "dominant_bottleneck_label": "Door '' (door-north-lobby)",
+        "dominant_bottleneck_achieved_rate_people_per_s": 0.062222488592535964,
+        "dominant_bottleneck_discharge_rate_people_per_s": 1.0001600000000002,
+        "dominant_bottleneck_discharge_utilization": 0.06221253458700204,
+        "mean_flow_rate_people_per_s": 0.11010116025992453
+      },
+      {
+        "scenario_id": "scn-d7b22258d25717ce",
+        "total_evacuation_time": 10279.018414825026,
+        "people_evacuated": 1114,
+        "people_trapped": 128,
+        "peak_congestion_value": 366,
+        "congestion_duration": null,
+        "exit_utilization_balance": 1.0,
+        "avg_queue_wait_time": 214.49448364839535,
+        "max_queue_wait_time": 5872.3119048850585,
+        "queue_wait_percentage": 94.74902082729578,
+        "mean_movement_time_s": 95.31199095789981,
+        "peak_edge_occupancy_mean": 1.0655737704918034,
+        "peak_edge_occupancy_max": 4,
+        "peak_node_occupancy_mean": 30.080645161290324,
+        "peak_node_occupancy_max": 366,
+        "dominant_bottleneck_id": "door-north-lobby",
+        "dominant_bottleneck_label": "Door '' (door-north-lobby)",
+        "dominant_bottleneck_achieved_rate_people_per_s": 0.06206818338605538,
+        "dominant_bottleneck_discharge_rate_people_per_s": 1.0001600000000002,
+        "dominant_bottleneck_discharge_utilization": 0.062058254065404904,
+        "mean_flow_rate_people_per_s": 0.10837610704085532
+      },
+      {
+        "scenario_id": "scn-117d7e82ae3a9b75",
+        "total_evacuation_time": 10039.077786385185,
+        "people_evacuated": 1113,
+        "people_trapped": 129,
+        "peak_congestion_value": 362,
+        "congestion_duration": null,
+        "exit_utilization_balance": 1.0,
+        "avg_queue_wait_time": 210.40245247522995,
+        "max_queue_wait_time": 5736.395157394966,
+        "queue_wait_percentage": 94.75724518809028,
+        "mean_movement_time_s": 94.40807505228993,
+        "peak_edge_occupancy_mean": 1.0655737704918034,
+        "peak_edge_occupancy_max": 4,
+        "peak_node_occupancy_mean": 29.93548387096774,
+        "peak_node_occupancy_max": 362,
+        "dominant_bottleneck_id": "door-north-lobby",
+        "dominant_bottleneck_label": "Door '' (door-north-lobby)",
+        "dominant_bottleneck_achieved_rate_people_per_s": 0.06275476825713956,
+        "dominant_bottleneck_discharge_rate_people_per_s": 1.0001600000000002,
+        "dominant_bottleneck_discharge_utilization": 0.06274472910048347,
+        "mean_flow_rate_people_per_s": 0.1108667572542799
+      },
+      {
+        "scenario_id": "scn-c4cea8dd1bc14006",
+        "total_evacuation_time": 10023.681558263204,
+        "people_evacuated": 1106,
+        "people_trapped": 136,
+        "peak_congestion_value": 362,
+        "congestion_duration": null,
+        "exit_utilization_balance": 1.0,
+        "avg_queue_wait_time": 209.52201368525994,
+        "max_queue_wait_time": 5730.335390662907,
+        "queue_wait_percentage": 94.65062784754303,
+        "mean_movement_time_s": 95.25863404606802,
+        "peak_edge_occupancy_mean": 1.0655737704918034,
+        "peak_edge_occupancy_max": 4,
+        "peak_node_occupancy_mean": 30.032258064516128,
+        "peak_node_occupancy_max": 362,
+        "dominant_bottleneck_id": "door-north-lobby",
+        "dominant_bottleneck_label": "Door '' (door-north-lobby)",
+        "dominant_bottleneck_achieved_rate_people_per_s": 0.06245210368678816,
+        "dominant_bottleneck_discharge_rate_people_per_s": 1.0001600000000002,
+        "dominant_bottleneck_discharge_utilization": 0.062442112948716356,
+        "mean_flow_rate_people_per_s": 0.11033870076291967
+      },
+      {
+        "scenario_id": "scn-663b5b0db026f1a3",
+        "total_evacuation_time": 9862.556925695026,
+        "people_evacuated": 1116,
+        "people_trapped": 126,
+        "peak_congestion_value": 354,
+        "congestion_duration": null,
+        "exit_utilization_balance": 1.0,
+        "avg_queue_wait_time": 206.31123083432524,
+        "max_queue_wait_time": 5633.513791468607,
+        "queue_wait_percentage": 94.7675125892,
+        "mean_movement_time_s": 94.60204269895411,
+        "peak_edge_occupancy_mean": 1.0655737704918034,
+        "peak_edge_occupancy_max": 4,
+        "peak_node_occupancy_mean": 30.080645161290324,
+        "peak_node_occupancy_max": 354,
+        "dominant_bottleneck_id": "door-north-lobby",
+        "dominant_bottleneck_label": "Door '' (door-north-lobby)",
+        "dominant_bottleneck_achieved_rate_people_per_s": 0.06245844811248983,
+        "dominant_bottleneck_discharge_rate_people_per_s": 1.0001600000000002,
+        "dominant_bottleneck_discharge_utilization": 0.062448456359472305,
+        "mean_flow_rate_people_per_s": 0.11315524041158873
+      }
+    ]
+  }
+}

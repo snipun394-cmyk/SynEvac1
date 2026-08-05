@@ -87,7 +87,88 @@ class FlowRegionCapacityModel(CapacityModel):
 # =====================================================
 
 
-def _min_cut_capacity(member_edges, edge_capacities):
+def _collapse_sequential_ties(candidate_ids, member_edges):
+
+    # Admission Control V10 -- Storage-Throughput Separation. Both min-
+    # cut identification paths below (the clean residual-graph cut, and
+    # the tie-aware minimum-capacity fallback) can legitimately return
+    # MULTIPLE tied edges. Two structurally different reasons produce a
+    # tie, and only one of them should survive as an active throughput-
+    # gating point:
+    #
+    # - SEQUENTIAL tie: a uniform-width chain (e.g. every flight of one
+    #   straight stairwell built to the same code-minimum width) --
+    #   every member has the identical capacity purely because ONE
+    #   occupant crosses ALL of them, one after another, at the same
+    #   narrow width throughout. Gating every one of them would re-admit-
+    #   check (and re-touch the region's shared discharge clock) at
+    #   every single internal flight boundary -- exactly the self-
+    #   throttling bug this whole redesign exists to eliminate, just
+    #   reintroduced via a tie instead of via "any first entry". Only
+    #   the LAST tied edge in the sequence (the one closest to the
+    #   region's own sink) needs to remain a bottleneck -- gating it
+    #   once enforces the identical rate as gating all nine would, since
+    #   they are already identical in capacity.
+    # - PARALLEL tie: a merge's independently narrow converging branches
+    #   (e.g. three equally-narrow stairs feeding one wider shared
+    #   door) -- these are NOT the same occupant crossing multiple
+    #   points in sequence; they are multiple, simultaneously-active,
+    #   physically independent streams that happen to tie in capacity.
+    #   All of them must remain individually gated, or two of the three
+    #   streams would flow completely ungated past the region's own
+    #   throughput constraint.
+    #
+    # Distinguished structurally, not by region_kind (diagnostic-only,
+    # see FlowRegion's own docstring): an edge is sequential-redundant
+    # if its own downstream_node_id equals some OTHER candidate edge's
+    # upstream_node_id -- i.e. it feeds directly into another candidate,
+    # meaning the same occupant necessarily crosses both, one right
+    # after the other. Iteratively removing such edges leaves exactly
+    # the "final" edge of every sequential run, while never touching
+    # edges that only share a downstream node (true parallel siblings,
+    # never satisfying "my downstream feeds an eligible upstream").
+
+    if len(candidate_ids) <= 1:
+        return frozenset(candidate_ids)
+
+    by_id = {member.edge.id: member for member in member_edges}
+    candidates = set(candidate_ids)
+
+    # Fixed, never-shrinking index: for each node, every candidate edge
+    # whose OWN upstream is that node. Deliberately built once, up
+    # front, against the full original candidate set -- checking each
+    # candidate's redundancy against a set that shrinks as edges are
+    # removed is order-dependent and wrong (removing a middle edge of a
+    # run first would spare its own upstream neighbor, which no longer
+    # appears to "feed into" anything once its true successor is
+    # already gone). Checking against the fixed original set instead
+    # means every candidate's redundancy is decided once, independent
+    # of iteration order.
+    upstream_index = {}
+
+    for candidate_id in candidates:
+        upstream_index.setdefault(by_id[candidate_id].upstream_node_id, set()).add(candidate_id)
+
+    redundant = set()
+
+    for candidate_id in candidates:
+
+        downstream = by_id[candidate_id].downstream_node_id
+        successors = upstream_index.get(downstream, set()) - {candidate_id}
+
+        if successors:
+            # Some OTHER candidate edge starts exactly where this one
+            # ends -- the same occupant necessarily crosses both, in
+            # sequence, so gating this earlier one is redundant with
+            # gating whichever candidate comes after it.
+            redundant.add(candidate_id)
+
+    survivors = candidates - redundant
+
+    return frozenset(survivors) if survivors else frozenset(candidate_ids)
+
+
+def _min_cut_capacity_and_bottleneck_edges(member_edges, edge_capacities):
 
     # Computes the min-cut (== max-flow, by the max-flow/min-cut
     # theorem) of a FlowRegion's own internal flow network: each member
@@ -117,12 +198,28 @@ def _min_cut_capacity(member_edges, edge_capacities):
     # Region sizes seen in any real building are tiny (at most a
     # handful of converging branches per merge point) -- this is not a
     # performance concern, exactly as the design investigation noted.
+    #
+    # Admission Control V10 -- Storage-Throughput Separation. In
+    # addition to the min-cut VALUE (used, as before, only as a
+    # descriptive/diagnostic number -- see FlowRegionCapacityModelV2.
+    # capacity()'s own docstring for why this number is no longer the
+    # active admission ceiling under V10), this now also returns the
+    # SET of member edge ids that actually constitute the cut -- the
+    # coordinator needs to know exactly WHERE the region's true
+    # bottleneck is, not merely its capacity, so that the throughput
+    # constraint can be applied at that specific crossing (Design
+    # Review-mandated correction #2) instead of at every member edge or
+    # only at the region's outer boundary. Recovered from the exact
+    # same Edmonds-Karp residual graph already computed for the value
+    # itself -- no second algorithm, no extra pass beyond one final
+    # reachability BFS.
 
     if not member_edges:
-        return 0
+        return 0, frozenset()
 
     if len(member_edges) == 1:
-        return edge_capacities[member_edges[0].edge.id]
+        only_id = member_edges[0].edge.id
+        return edge_capacities[only_id], frozenset({only_id})
 
     downstream_nodes = {member.downstream_node_id for member in member_edges}
     upstream_nodes = {member.upstream_node_id for member in member_edges}
@@ -134,12 +231,19 @@ def _min_cut_capacity(member_edges, edge_capacities):
     # doesn't hold (a future inferencer change, or a hand-built region
     # in a test), fall back to plain minimum-bottleneck across every
     # member -- still a safe, conservative answer, never an
-    # overestimate.
+    # overestimate. The bottleneck set in this fallback is every member
+    # edge that achieves that same minimum (ties included), since the
+    # network structure needed to identify a single true cut isn't
+    # available.
     sinks = downstream_nodes - upstream_nodes
     sources = upstream_nodes - downstream_nodes
 
     if len(sinks) != 1 or not sources:
-        return min(edge_capacities[member.edge.id] for member in member_edges)
+        min_capacity = min(edge_capacities[member.edge.id] for member in member_edges)
+        tied_ids = frozenset(
+            member.edge.id for member in member_edges if edge_capacities[member.edge.id] == min_capacity
+        )
+        return min_capacity, _collapse_sequential_ties(tied_ids, member_edges)
 
     sink = next(iter(sinks))
 
@@ -214,7 +318,48 @@ def _min_cut_capacity(member_edges, edge_capacities):
 
         max_flow += path_flow
 
-    return int(max_flow)
+    # Min-cut edge identification: standard max-flow/min-cut recovery --
+    # one final BFS over the now-saturated residual graph from
+    # super_source finds the set of nodes still reachable (S); the
+    # min-cut is exactly the set of original member edges whose
+    # upstream node is in S and downstream node is not (the arcs
+    # crossing from the source side to the sink side). Synthetic
+    # super_source->source arcs are never member edges and are
+    # naturally excluded, since the loop below only ever inspects real
+    # `member_edges`.
+    reachable = {super_source}
+    queue = deque([super_source])
+
+    while queue:
+
+        current = queue.popleft()
+
+        for neighbor in adjacency[current]:
+
+            if neighbor not in reachable and residual[(current, neighbor)] > 0:
+
+                reachable.add(neighbor)
+                queue.append(neighbor)
+
+    cut_ids = frozenset(
+        member.edge.id
+        for member in member_edges
+        if member.upstream_node_id in reachable and member.downstream_node_id not in reachable
+    )
+
+    if not cut_ids:
+        # Degenerate case: the reachable-set BFS above finds nothing
+        # (observed in practice for a uniformly-tied chain, where the
+        # very first super_source arc already saturates at max_flow,
+        # leaving no real node reachable at all) -- never silently
+        # return "nowhere", fall back to the same tie-aware minimum-
+        # capacity identification the earlier fallback uses.
+        min_capacity = min(edge_capacities[member.edge.id] for member in member_edges)
+        cut_ids = frozenset(
+            member.edge.id for member in member_edges if edge_capacities[member.edge.id] == min_capacity
+        )
+
+    return int(max_flow), _collapse_sequential_ties(cut_ids, member_edges)
 
 
 class FlowRegionCapacityModelV2(CapacityModel):
@@ -222,6 +367,24 @@ class FlowRegionCapacityModelV2(CapacityModel):
     # Same dual-acceptance shape as FlowRegionCapacityModel (V1): an
     # Edge is delegated straight through to base_model unchanged; only
     # a FlowRegion triggers the region-level (here, min-cut) formula.
+    #
+    # Admission Control V10 -- Storage-Throughput Separation. capacity()
+    # itself is UNCHANGED (same public behavior, same return value, same
+    # tests) -- kept exactly as validated by the FlowRegionCapacityModel
+    # V2 Automatic Calibration Campaign, and still exposed for research/
+    # diagnostic use. But the V10 coordinator no longer calls capacity()
+    # on a FlowRegion at all for admission purposes: storage is always
+    # local (per edge, see simulator/coordinator.py's own V10 comments),
+    # so this scalar is no longer the active admission ceiling for a
+    # merged region -- it remains available as a descriptive number
+    # (informally: "how many people this whole footprint's true
+    # bottleneck could sustain if pooled," the same historical
+    # Milestone-5-derived quantity this class has always computed) but
+    # is not consumed by MultiAgentSimulation's V10 admission path.
+    # What V10 DOES consume is the new bottleneck_edges() method below,
+    # which reuses the identical min-cut computation for what it is
+    # actually reliable at: identifying WHERE a region's true bottleneck
+    # sits, not asserting how many people may occupy the whole region.
 
     MINIMUM_CAPACITY = DefaultCapacityModel.MINIMUM_CAPACITY
 
@@ -232,24 +395,42 @@ class FlowRegionCapacityModelV2(CapacityModel):
     def capacity(self, edge_or_region):
 
         if isinstance(edge_or_region, FlowRegion):
-            return self._region_capacity(edge_or_region)
+            capacity, _ = self._region_capacity_and_bottleneck(edge_or_region)
+            return capacity
 
         return self.base_model.capacity(edge_or_region)
 
-    def _region_capacity(self, region: FlowRegion):
+    def bottleneck_edges(self, edge_or_region):
+
+        # Admission Control V10 -- returns the frozenset of member edge
+        # ids that constitute this region's own true min-cut bottleneck
+        # (possibly more than one, on a genuine tie). A plain Edge
+        # (not a FlowRegion) is trivially its own sole bottleneck --
+        # this keeps the method total over CapacityModel's own dual-
+        # accepted argument shape, so a caller never needs to branch on
+        # isinstance(...) itself before calling it.
+
+        if isinstance(edge_or_region, FlowRegion):
+            _, bottleneck_ids = self._region_capacity_and_bottleneck(edge_or_region)
+            return bottleneck_ids
+
+        return frozenset({edge_or_region.id})
+
+    def _region_capacity_and_bottleneck(self, region: FlowRegion):
 
         if not region.member_edges:
             # No orientation data was derivable for every member (see
             # FlowRegion.member_edges' own comment) -- fall back to the
             # same safe floor DefaultCapacityModel/StairCapacityModel
-            # already use rather than fabricate a number.
-            return self.MINIMUM_CAPACITY
+            # already use rather than fabricate a number. No bottleneck
+            # edge can be identified either, for the same reason.
+            return self.MINIMUM_CAPACITY, frozenset()
 
         edge_capacities = {
             member.edge.id: max(self.base_model.capacity(member.edge), 0)
             for member in region.member_edges
         }
 
-        min_cut = _min_cut_capacity(region.member_edges, edge_capacities)
+        min_cut, bottleneck_ids = _min_cut_capacity_and_bottleneck_edges(region.member_edges, edge_capacities)
 
-        return max(min_cut, self.MINIMUM_CAPACITY)
+        return max(min_cut, self.MINIMUM_CAPACITY), bottleneck_ids

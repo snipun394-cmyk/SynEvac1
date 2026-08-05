@@ -178,14 +178,31 @@ class FlowRegionCapacityCandidateEndToEndTests(unittest.TestCase):
             via_candidate_movement.total_evacuation_time,
         )
 
-    def test_candidate_arm_differs_from_baseline_because_a_real_region_is_shared(self):
+    def test_candidate_arm_now_matches_baseline_under_admission_control_v10(self):
 
-        # Not a strict requirement of every possible building, but for
-        # THIS fixture's genuine 2-edge chain, sharing one admission
-        # unit across door-a+exit-a is expected to change at least one
-        # of the headline metrics relative to today's independent
-        # per-edge admission control -- otherwise the wiring would be
-        # silently inert even when a real region exists.
+        # Admission Control V10 -- Storage-Throughput Separation
+        # supersedes this test's own pre-V10 premise. FlowRegionCapacityCandidate
+        # wires only capacity_model/congestion_model/use_flow_regions --
+        # it never configures a discharge_model. Under V10, storage is
+        # always local per edge (capacity_model.capacity() is now
+        # always called with the edge itself, never the region, so
+        # FlowRegionCapacityModel's own dual-accept delegates straight
+        # to its base_model -- byte-identical to the baseline arm's
+        # StairCapacityModel) and congestion is always per-edge too
+        # (FlowRegionCongestionModel likewise always delegates to its
+        # own base_model). With no discharge_model configured to
+        # exercise the one piece V10 still lets a FlowRegion genuinely
+        # change (throughput, gated only at an identified bottleneck),
+        # sharing this fixture's real door-a+exit-a chain now produces
+        # NO behavioral difference at all -- correctly reduced to a
+        # true architectural no-op, not "silently inert" but
+        # CORRECTLY inert, which is exactly what the V10 Design Review
+        # concluded storage pooling should never have done in the
+        # first place. A candidate that also configures a discharge_model
+        # (exercising V10's own bottleneck-gated throughput) would
+        # still observe a real difference -- see
+        # tests/test_admission_control_v4_discharge.py's own
+        # FlowRegionDischargeTests for that behavior directly.
         candidate = FlowRegionCapacityCandidate("test", "test rationale")
 
         result = run_calibration_benchmark(
@@ -198,7 +215,7 @@ class FlowRegionCapacityCandidateEndToEndTests(unittest.TestCase):
             if comparison.baseline_mean is not None and comparison.candidate_mean is not None
         )
 
-        self.assertTrue(differs_somewhere)
+        self.assertFalse(differs_somewhere)
 
 
 if __name__ == "__main__":

@@ -15,7 +15,7 @@ from pathfinding.engine import PathfindingEngine
 
 from simulator.coordinator import MultiAgentSimulation
 from simulator.discharge import DefaultDischargeModel, DischargeModel
-from simulator.flow_region_capacity import FlowRegionCapacityModel
+from simulator.flow_region_capacity import FlowRegionCapacityModel, FlowRegionCapacityModelV2
 
 
 def make_zone(name, **kwargs):
@@ -353,34 +353,37 @@ class NarrowStorageStillBindsWithDischargeModelTests(unittest.TestCase):
 
 class FlowRegionDischargeTests(unittest.TestCase):
 
-    # Discharge gating applies at the REGION level (shared across
-    # member edges) when a flow_region_map is supplied, exactly like
-    # capacity_model/congestion_model already do. _resolve_admission()
-    # itself is entirely unmodified by this milestone (already
-    # exhaustively covered by the 102 pre-existing, still-passing
-    # admission-control/flow-region tests) -- what these tests verify
-    # directly is that discharge state (_last_admission_time,
-    # _pending_retry) lives on that SAME admission_key a region
-    # resolves to, so two different member edges of one region
-    # genuinely share one discharge gate rather than each getting their
-    # own.
+    # Admission Control V10 -- Storage-Throughput Separation supersedes
+    # this class's own pre-V10 assumption (discharge gating shared,
+    # unconditionally, across EVERY member edge of a region). The
+    # Design Review that produced V10 found that assumption was exactly
+    # the mechanism behind Admission Control V9's own regression: an
+    # occupant's internal continuation from one member edge to the next
+    # re-triggered the SAME shared discharge clock they had themselves
+    # just satisfied moments earlier, self-throttling against their own
+    # prior admission. V10's fix: throughput applies only when crossing
+    # a region's own IDENTIFIED bottleneck edge (FlowRegionCapacityModelV2.
+    # bottleneck_edges()) -- an internal continuation across any OTHER
+    # member edge never touches the shared clock at all. These tests
+    # verify that distinction directly, using two edges of genuinely
+    # different width so the bottleneck is unambiguous.
 
     def setUp(self):
 
-        self.edge_a = _make_edge("a", width=4.0, walking_distance=1.0)
-        self.edge_b = _make_edge("b", width=4.0, walking_distance=1.0)
+        self.wide_edge = _make_edge("wide", width=4.0, walking_distance=1.0)     # not the bottleneck
+        self.narrow_edge = _make_edge("narrow", width=0.91, walking_distance=1.0)  # the true bottleneck
 
         self.region = FlowRegion(
-            id="region-1", edge_ids=("a", "b"), region_kind=FlowRegion.CHAIN,
-            total_length=2.0, representative_width=4.0,
+            id="region-1", edge_ids=("wide", "narrow"), region_kind=FlowRegion.CHAIN,
+            total_length=2.0, representative_width=0.91,
             member_edges=(
-                FlowRegionMember(edge=self.edge_a, upstream_node_id="u", downstream_node_id="v"),
-                FlowRegionMember(edge=self.edge_b, upstream_node_id="v", downstream_node_id="w"),
+                FlowRegionMember(edge=self.wide_edge, upstream_node_id="u", downstream_node_id="v"),
+                FlowRegionMember(edge=self.narrow_edge, upstream_node_id="v", downstream_node_id="w"),
             ),
         )
-        flow_region_map = {"a": self.region, "b": self.region}
+        self.flow_region_map = {"wide": self.region, "narrow": self.region}
 
-        self.discharge_model = _FixedRateDischargeModel(rate=0.5)  # min gap = 2.0s, region-wide
+        self.discharge_model = _FixedRateDischargeModel(rate=0.5)  # min gap = 2.0s
 
         # A minimal fake engine -- only .graph is read by
         # MultiAgentSimulation's own __init__ (never used by the
@@ -388,42 +391,140 @@ class FlowRegionDischargeTests(unittest.TestCase):
         engine = SimpleNamespace(graph=SimpleNamespace())
 
         self.sim = MultiAgentSimulation(
-            engine, capacity_model=FlowRegionCapacityModel(), discharge_model=self.discharge_model,
-            flow_region_map=flow_region_map,
+            engine, capacity_model=FlowRegionCapacityModelV2(), discharge_model=self.discharge_model,
+            flow_region_map=self.flow_region_map,
         )
 
-    def test_both_member_edges_resolve_to_the_same_admission_key(self):
+    def test_storage_resolution_is_always_the_edge_itself_never_the_region(self):
 
-        _, key_a = self.sim._resolve_admission(self.edge_a)
-        _, key_b = self.sim._resolve_admission(self.edge_b)
+        # Design Review correction #1 -- storage is always local.
+        admission_object_wide, key_wide = self.sim._resolve_admission(self.wide_edge)
+        admission_object_narrow, key_narrow = self.sim._resolve_admission(self.narrow_edge)
 
-        self.assertEqual(key_a, key_b)
-        self.assertEqual(key_a, self.region.id)
+        self.assertIs(admission_object_wide, self.wide_edge)
+        self.assertEqual(key_wide, self.wide_edge.id)
+        self.assertIs(admission_object_narrow, self.narrow_edge)
+        self.assertEqual(key_narrow, self.narrow_edge.id)
+        self.assertNotEqual(key_wide, key_narrow)
 
-    def test_admission_object_handed_to_discharge_model_is_the_region_not_the_edge(self):
+    def test_only_the_narrow_edge_is_identified_as_the_bottleneck(self):
 
-        admission_object, _ = self.sim._resolve_admission(self.edge_a)
+        throughput_object_wide, applies_wide = self.sim._resolve_throughput(self.wide_edge)
+        throughput_object_narrow, applies_narrow = self.sim._resolve_throughput(self.narrow_edge)
 
-        self.assertIs(admission_object, self.region)
+        self.assertFalse(applies_wide)
+        self.assertTrue(applies_narrow)
+        self.assertIs(throughput_object_narrow, self.region)
 
-    def test_an_admission_recorded_via_edge_a_blocks_a_subsequent_attempt_via_edge_b(self):
+    def test_admission_via_the_non_bottleneck_edge_never_touches_the_shared_clock(self):
 
-        admission_object_a, admission_key = self.sim._resolve_admission(self.edge_a)
-        admission_object_b, _ = self.sim._resolve_admission(self.edge_b)
+        wide_edge_only_sim_route_time = 5.0
 
-        # Simulate an admission having just happened through edge_a's
-        # own member of the region.
-        self.sim._last_admission_time[admission_key] = 10.0
+        self.assertTrue(self.sim._can_admit(self.wide_edge, None, wide_edge_only_sim_route_time))
 
-        # An attempt through edge_b, the OTHER member edge, 1s later --
-        # still within the 2.0s region-wide gap -- must be blocked,
-        # proving the two edges share one discharge gate rather than
-        # each tracking their own.
+        # _can_admit() alone never mutates state -- exercise the actual
+        # admission-recording path (_admit_onto_edge()'s own throughput
+        # bookkeeping) instead of hand-writing to _last_admission_time.
+        _admit_stub_occupant(self.sim, self.wide_edge, wide_edge_only_sim_route_time)
+
+        self.assertNotIn(self.region.id, self.sim._last_admission_time)
+
+    def test_admission_via_the_bottleneck_edge_updates_the_shared_clock(self):
+
+        _admit_stub_occupant(self.sim, self.narrow_edge, 5.0)
+
+        self.assertEqual(self.sim._last_admission_time.get(self.region.id), 5.0)
+
+    def test_an_admission_via_the_bottleneck_blocks_a_subsequent_bottleneck_attempt(self):
+
+        _admit_stub_occupant(self.sim, self.narrow_edge, 10.0)
+
+        # 1s later -- still within the 2.0s gap -- a second attempt
+        # through the SAME bottleneck edge must be blocked.
         # to_node=None is safe here -- this sim has no buffer_model, so
         # _can_admit() never dereferences it (Admission Control V7's
         # own buffer check is gated on self.buffer_model is not None).
-        self.assertFalse(self.sim._can_admit(admission_object_b, admission_key, None, 11.0))
-        self.assertTrue(self.sim._can_admit(admission_object_b, admission_key, None, 12.0))
+        self.assertFalse(self.sim._can_admit(self.narrow_edge, None, 11.0))
+        self.assertTrue(self.sim._can_admit(self.narrow_edge, None, 12.0))
+
+    def test_an_admission_via_the_bottleneck_never_blocks_the_non_bottleneck_edge(self):
+
+        _admit_stub_occupant(self.sim, self.narrow_edge, 10.0)
+
+        # The wide edge has its own, independent, always-ample storage
+        # (StairCapacityModel's own default base_model on a 4.0m-wide
+        # door) and is never throughput-gated at all -- the bottleneck's
+        # own recent admission must have zero effect on it.
+        self.assertTrue(self.sim._can_admit(self.wide_edge, None, 10.5))
+
+
+class FlowRegionDischargeWithoutBottleneckIdentificationTests(unittest.TestCase):
+
+    # Design Review correction #4's own fail-safe: FlowRegionCapacityModel
+    # (V1) exposes no bottleneck_edges() method at all. Pairing it with
+    # a discharge_model must never crash and must never guess -- every
+    # member edge of a CHAIN/MERGE region simply never has throughput
+    # applied to it, reducing to storage-only (per edge) + buffer,
+    # exactly the legacy per-edge behavior.
+
+    def test_no_member_edge_is_ever_treated_as_a_bottleneck_without_v2(self):
+
+        edge_a = _make_edge("a", width=4.0, walking_distance=1.0)
+        edge_b = _make_edge("b", width=0.91, walking_distance=1.0)
+
+        region = FlowRegion(
+            id="region-1", edge_ids=("a", "b"), region_kind=FlowRegion.CHAIN,
+            total_length=2.0, representative_width=0.91,
+            member_edges=(
+                FlowRegionMember(edge=edge_a, upstream_node_id="u", downstream_node_id="v"),
+                FlowRegionMember(edge=edge_b, upstream_node_id="v", downstream_node_id="w"),
+            ),
+        )
+
+        engine = SimpleNamespace(graph=SimpleNamespace())
+
+        sim = MultiAgentSimulation(
+            engine, capacity_model=FlowRegionCapacityModel(),
+            discharge_model=_FixedRateDischargeModel(rate=0.5),
+            flow_region_map={"a": region, "b": region},
+        )
+
+        _, applies_a = sim._resolve_throughput(edge_a)
+        _, applies_b = sim._resolve_throughput(edge_b)
+
+        self.assertFalse(applies_a)
+        self.assertFalse(applies_b)
+
+
+def _admit_stub_occupant(sim, edge, time):
+
+    # Minimal stand-in for a real registered Occupant, sufficient for
+    # _admit_onto_edge()'s own bookkeeping (edge/admission occupancy,
+    # throughput clock, congestion-driven duration/timeline entry) --
+    # these tests only need the SIDE EFFECTS on shared coordinator
+    # state, not a full route/timeline.
+    from simulator.occupant import Occupant
+
+    occupant = Occupant(occupant_id=f"stub-{edge.id}-{time}", walking_speed=1.2, route=None, depart_time=time)
+    occupant.current_edge_index = 0
+    occupant.route = SimpleNamespace(
+        nodes=[SimpleNamespace(id="from"), SimpleNamespace(id="to")], edges=[edge],
+    )
+    sim._occupants[occupant.occupant_id] = occupant
+    sim._timelines[occupant.occupant_id] = []
+    sim._generation[occupant.occupant_id] = 0
+
+    sim._admit_onto_edge(time, occupant, edge)
+
+    # Immediately vacate the edge's own STORAGE pool (as if this stub
+    # occupant had already finished crossing) -- these tests isolate
+    # the THROUGHPUT clock's own side effect (_last_admission_time),
+    # which _admit_onto_edge() sets regardless of how long the occupant
+    # subsequently stays; leaving them "on" the edge would make a
+    # second admission attempt fail on STORAGE grounds instead of the
+    # discharge-rate gap this test actually exercises.
+    sim._admission_occupancy.get(edge.id, set()).discard(occupant.occupant_id)
+    sim._edge_occupancy.get(edge.id, set()).discard(occupant.occupant_id)
 
 
 if __name__ == "__main__":

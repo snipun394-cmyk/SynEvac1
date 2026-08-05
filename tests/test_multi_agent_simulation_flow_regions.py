@@ -1,5 +1,7 @@
 import unittest
 
+from types import SimpleNamespace
+
 from models.building import Building
 from models.door import Door
 from models.exit import Exit
@@ -14,9 +16,19 @@ from pathfinding.engine import PathfindingEngine
 
 from simulator.congestion import StairAwareCongestionModel
 from simulator.coordinator import MultiAgentSimulation
-from simulator.flow_region_capacity import FlowRegionCapacityModel
+from simulator.discharge import DischargeModel
+from simulator.flow_region_capacity import FlowRegionCapacityModel, FlowRegionCapacityModelV2
 from simulator.flow_region_congestion import FlowRegionCongestionModel
 from simulator.occupant import OccupantState
+
+
+class _FixedRateDischargeModelForTests(DischargeModel):
+
+    def __init__(self, rate):
+        self.rate = rate
+
+    def discharge_rate(self, edge_or_region):
+        return self.rate
 
 
 def make_zone(name, **kwargs):
@@ -192,12 +204,18 @@ class BackwardCompatibilityTests(unittest.TestCase):
         )
 
 
-class MergePointSharedQueueTests(unittest.TestCase):
+class MergePointStorageIndependenceTests(unittest.TestCase):
 
-    # The core new capability: two structurally different edges (two
-    # separate Stairs) sharing one FlowRegion must share one admission
-    # slot and one FIFO queue, even though neither occupant is ever on
-    # the other's physical edge.
+    # Admission Control V10 -- Storage-Throughput Separation supersedes
+    # this class's own pre-V10 name and premise (Milestone 3's "two
+    # structurally different edges sharing one FlowRegion must share
+    # one admission slot" was exactly the pooled-storage mechanism the
+    # V10 Design Review traced FlowRegionCapacityModelV2's own
+    # regression to). Storage is now always LOCAL, per edge, regardless
+    # of flow_region_map -- two separate Stairs converging on one
+    # FlowRegion no longer share any storage slot at all, even when
+    # that region's own (now storage-irrelevant) capacity number is
+    # deliberately tiny.
 
     def setUp(self):
 
@@ -214,7 +232,10 @@ class MergePointSharedQueueTests(unittest.TestCase):
         self.graph = NavigationGraphGenerator().build(self.building)
 
         # capacity 1: total_length=1.0 * representative_width=0.5 * 2.0
-        # (JAM_DENSITY_PEOPLE_PER_SQUARE_METER) = 1.0 -> int() = 1.
+        # (JAM_DENSITY_PEOPLE_PER_SQUARE_METER) = 1.0 -> int() = 1. This
+        # number is deliberately tiny to prove it has NO effect on
+        # storage under V10 -- pre-V10 it would have forced on_b to
+        # queue behind on_a; V10 never even consults it for storage.
         self.region = make_shared_region(
             edge_ids=(self.stair_a.id, self.stair_b.id, self.exit_obj.id),
             total_length=1.0,
@@ -236,7 +257,7 @@ class MergePointSharedQueueTests(unittest.TestCase):
             flow_region_map=self.flow_region_map,
         )
 
-    def test_capacity_is_shared_across_both_stairs(self):
+    def test_both_occupants_admitted_immediately_despite_a_tiny_shared_region_capacity(self):
 
         sim = self.make_sim()
 
@@ -248,37 +269,34 @@ class MergePointSharedQueueTests(unittest.TestCase):
         on_a_stair_step = result.occupants["on_a"].steps[0]
         on_b_stair_step = result.occupants["on_b"].steps[0]
 
-        # on_a registered first, and the shared region's capacity is 1
-        # -- on_b must queue for the SAME slot even though it is trying
-        # to enter a completely different edge (Stair B, not Stair A).
+        # Neither occupant queues, even though the (now storage-
+        # irrelevant) shared region capacity is 1 -- each Stair's own
+        # storage is evaluated independently, exactly as if no
+        # flow_region_map were supplied at all (see the control test
+        # below).
         self.assertEqual(on_a_stair_step.queue_wait_time, 0.0)
-        self.assertGreater(on_b_stair_step.queue_wait_time, 0.0)
+        self.assertEqual(on_b_stair_step.queue_wait_time, 0.0)
 
-    def test_queued_occupant_is_released_by_a_departure_on_the_other_member_edge(self):
+    def test_storage_resolution_never_returns_the_region_for_either_stair(self):
 
         sim = self.make_sim()
 
-        sim.add_occupant(self.zone_a.id, occupant_id="on_a")
-        sim.add_occupant(self.zone_b.id, occupant_id="on_b")
+        admission_object_a, key_a = sim._resolve_admission(self.stair_a)
+        admission_object_b, key_b = sim._resolve_admission(self.stair_b)
 
-        result = sim.run()
+        self.assertIs(admission_object_a, self.stair_a)
+        self.assertIs(admission_object_b, self.stair_b)
+        self.assertEqual(key_a, self.stair_a.id)
+        self.assertEqual(key_b, self.stair_b.id)
 
-        on_a_step = result.occupants["on_a"].steps[0]
-        on_b_step = result.occupants["on_b"].steps[0]
-
-        # on_b (queued for Stair B) is released exactly when on_a
-        # finishes crossing Stair A -- a departure on a DIFFERENT edge
-        # than the one on_b is actually waiting for.
-        self.assertAlmostEqual(on_b_step.queue_wait_time, on_a_step.end_time)
-        self.assertAlmostEqual(on_b_step.start_time, on_a_step.end_time)
-
-    def test_without_a_shared_region_both_occupants_are_admitted_immediately(self):
+    def test_matches_the_no_flow_region_map_control_case_exactly(self):
 
         # Control case: the same two occupants, same topology, but
-        # WITHOUT the flow_region_map -- each Stair has its own
-        # independent (and, by default, ample) capacity, so neither
-        # should need to queue at all. Demonstrates the shared-queueing
-        # behavior above is caused by the FlowRegion, not the topology.
+        # WITHOUT the flow_region_map. Under V10, storage behavior is
+        # now IDENTICAL with or without the map (both occupants admitted
+        # immediately either way) -- demonstrating the map no longer
+        # changes storage admission at all, only (conditionally)
+        # throughput.
         sim = MultiAgentSimulation(PathfindingEngine(self.graph))
 
         sim.add_occupant(self.zone_a.id, occupant_id="on_a")
@@ -288,6 +306,88 @@ class MergePointSharedQueueTests(unittest.TestCase):
 
         self.assertEqual(result.occupants["on_a"].steps[0].queue_wait_time, 0.0)
         self.assertEqual(result.occupants["on_b"].steps[0].queue_wait_time, 0.0)
+
+
+class MergePointBottleneckThroughputTests(unittest.TestCase):
+
+    # Admission Control V10 -- the genuinely new region-scale capability
+    # storage independence (above) replaces: THROUGHPUT gating at the
+    # region's own real, min-cut-identified bottleneck edge(s)
+    # (FlowRegionCapacityModelV2.bottleneck_edges()), using the REAL
+    # inferred graph.flow_regions for this same merge-building topology
+    # (not a hand-built stub) so the identification is genuine, not
+    # assumed.
+
+    def setUp(self):
+
+        (
+            self.building,
+            self.zone_a,
+            self.zone_b,
+            self.lobby,
+            self.stair_a,
+            self.stair_b,
+            self.exit_obj,
+        ) = make_merge_building()
+
+        self.graph = NavigationGraphGenerator().build(self.building)
+        self.region = self.graph.flow_regions[self.exit_obj.id]
+
+        self.assertEqual(self.region.region_kind, FlowRegion.MERGE)
+
+    def test_both_stairs_are_identified_as_the_parallel_bottleneck_not_the_exit(self):
+
+        # With this fixture's default widths (both Stairs 1.5m, Exit
+        # narrower), the true min-cut is the SUM of what the two
+        # converging Stairs can each deliver, not the Exit's own single
+        # width -- so both Stairs, not the Exit, are the region's real
+        # bottleneck. Asserted directly (not assumed) since this
+        # depends on the building's own authored widths.
+        model = FlowRegionCapacityModelV2()
+        bottleneck_ids = model.bottleneck_edges(self.region)
+
+        self.assertEqual(bottleneck_ids, {self.stair_a.id, self.stair_b.id})
+        self.assertNotIn(self.exit_obj.id, bottleneck_ids)
+
+    def test_exit_admission_never_touches_the_throughput_clock(self):
+
+        sim = MultiAgentSimulation(
+            SimpleNamespace(graph=self.graph),
+            capacity_model=FlowRegionCapacityModelV2(),
+            discharge_model=_FixedRateDischargeModelForTests(rate=0.5),
+            flow_region_map=self.graph.flow_regions,
+        )
+
+        throughput_object, applies = sim._resolve_throughput(self.exit_obj)
+
+        self.assertFalse(applies)
+
+    def test_both_stairs_currently_share_one_throughput_clock_a_disclosed_v10_scope_limit(self):
+
+        # Both Stairs tie as PARALLEL (not sequential) bottleneck
+        # members -- physically independent, simultaneous streams that
+        # happen to tie in capacity. The Admission Control V10 Design
+        # Review explicitly scoped "supporting multiple independent
+        # bottleneck-rate clocks" as future work, not required for V10
+        # (local per-edge storage was judged sufficient backstop for
+        # this specific gap) -- so today, both Stairs correctly resolve
+        # to the SAME throughput_object (the region) and therefore the
+        # SAME shared _last_admission_time clock, which is a known,
+        # disclosed simplification, not an oversight.
+        sim = MultiAgentSimulation(
+            SimpleNamespace(graph=self.graph),
+            capacity_model=FlowRegionCapacityModelV2(),
+            discharge_model=_FixedRateDischargeModelForTests(rate=0.5),
+            flow_region_map=self.graph.flow_regions,
+        )
+
+        throughput_object_a, applies_a = sim._resolve_throughput(self.stair_a)
+        throughput_object_b, applies_b = sim._resolve_throughput(self.stair_b)
+
+        self.assertTrue(applies_a)
+        self.assertTrue(applies_b)
+        self.assertIs(throughput_object_a, self.region)
+        self.assertIs(throughput_object_b, self.region)
 
 
 class DualTrackingPeakEdgeOccupancyTests(unittest.TestCase):

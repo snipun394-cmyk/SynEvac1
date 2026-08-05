@@ -447,16 +447,20 @@ class FlowRegionBufferTests(unittest.TestCase):
 
     def test_landing_a_full_does_not_block_admission_toward_landing_b(self):
 
-        admission_object, admission_key = self.sim._resolve_admission(self.edge_a)
+        # Admission Control V10 -- Storage-Throughput Separation.
+        # _can_admit()'s own signature simplified to (edge, to_node,
+        # time): storage is always resolved from the edge itself now
+        # (never a FlowRegion), so there is no separate admission_object/
+        # admission_key to pass in. Buffer gating itself -- the actual
+        # behavior under test here -- is completely unchanged: still
+        # keyed on the destination node's own occupancy, independent of
+        # which member edge is being entered.
 
         # Fill landing-a to its buffer capacity.
         self.sim._node_occupancy["landing-a"] = {"occ-1", "occ-2"}
 
-        node_a = _make_node("landing-a")
-        node_b = _make_node("landing-b")
-
-        self.assertFalse(self.sim._can_admit(admission_object, admission_key, node_a, 0.0))
-        self.assertTrue(self.sim._can_admit(admission_object, admission_key, node_b, 0.0))
+        self.assertFalse(self.sim._can_admit(self.edge_a, _make_node("landing-a"), 0.0))
+        self.assertTrue(self.sim._can_admit(self.edge_a, _make_node("landing-b"), 0.0))
 
 
 if __name__ == "__main__":
