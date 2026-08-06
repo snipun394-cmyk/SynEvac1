@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from PyQt6.QtCore import QRectF, Qt
 from PyQt6.QtGui import QColor, QImage, QPainter, QPen, QPixmap
 from PyQt6.QtWidgets import QLabel, QVBoxLayout, QWidget
@@ -97,8 +99,11 @@ class CameraTileWidget(QWidget):
         fps = self._update_fps(frame.timestamp)
         resolution = f"{frame.width}x{frame.height}" if frame.width and frame.height else "-"
         fps_text = f"{fps:.1f} fps" if fps is not None else "- fps"
+        timestamp_text = self._format_timestamp(frame.timestamp)
 
-        self.detail_label.setText(f"{resolution}   |   {fps_text}   |   {len(tile_data.detections)} detected")
+        self.detail_label.setText(
+            f"{resolution}   |   {fps_text}   |   {len(tile_data.detections)} detected   |   {timestamp_text}"
+        )
 
     # =====================================================
     # Never leave a stale frame displayed once the camera is no longer
@@ -201,3 +206,22 @@ class CameraTileWidget(QWidget):
             return None
 
         return (len(self._frame_timestamps) - 1) / span
+
+    # =====================================================
+    # Multi-Camera Streaming Architecture milestone -- the frame's own
+    # timestamp (CameraFrame.timestamp, already set once by whichever
+    # CameraFrameSource produced it -- see RTSPFrameSource.read_frame())
+    # was already used internally for the FPS rolling average above but
+    # never itself shown to the operator. A wall-clock HH:MM:SS render
+    # of that SAME existing value -- never a second clock read, never a
+    # new timestamp of any kind. Defensively guarded: an unexpected
+    # timestamp value (None, or not a real epoch float) must never
+    # crash the tile, only fall back to "-".
+    # =====================================================
+
+    def _format_timestamp(self, timestamp) -> str:
+
+        try:
+            return datetime.fromtimestamp(timestamp).strftime("%H:%M:%S")
+        except (TypeError, ValueError, OSError):
+            return "-"
