@@ -386,13 +386,22 @@ class PropertyPanel(QWidget):
 
         self.camera_active = QCheckBox()
 
-        # Assigned Zone -- reuses the same _populate_zone_combo() Door's
-        # Zone A/Zone B combos already establish, resolved from the
-        # camera's own floor_id. V1 assigns a single zone through this
-        # combo; the model underneath (Camera.zone_ids) already holds a
-        # tuple so a future multi-select UI can widen this without any
-        # model change.
-        self.camera_zone = QComboBox()
+        # Camera -> Zone Assignment milestone -- widened from a single
+        # QComboBox to the same genuine multi-select checklist pattern
+        # Speaker.zone_ids already established (_populate_zone_checklist()),
+        # for the same reason: a camera's field of view routinely reaches
+        # more than one zone, and Camera.zone_ids was already a tuple with
+        # no cardinality limit -- only the old UI silently capped it at one.
+        # No model change; Camera.zone_ids/EngineeringAsset.zone_ids is
+        # reused exactly as-is.
+        self.camera_zone = QListWidget()
+        self.camera_zone.setMaximumHeight(90)
+
+        self.camera_zone_warning = QLabel(
+            "Zone assignment required for live operation."
+        )
+        self.camera_zone_warning.setWordWrap(True)
+        self.camera_zone_warning.setStyleSheet("color: #b45309;")
 
         self.camera_resolution = QLineEdit()
         self.camera_fps = QLineEdit()
@@ -428,7 +437,8 @@ class PropertyPanel(QWidget):
 
         layout.addRow("Active", self.camera_active)
 
-        layout.addRow("Assigned Zone", self.camera_zone)
+        layout.addRow("Assigned Zone(s)", self.camera_zone)
+        layout.addRow("", self.camera_zone_warning)
 
         layout.addRow("Resolution", self.camera_resolution)
         layout.addRow("FPS", self.camera_fps)
@@ -476,6 +486,7 @@ class PropertyPanel(QWidget):
             self.camera_mount_height,
             self.camera_active,
             self.camera_zone,
+            self.camera_zone_warning,
             self.camera_resolution,
             self.camera_fps,
             self.camera_mode,
@@ -779,10 +790,11 @@ class PropertyPanel(QWidget):
 
         self.sign_active = QCheckBox()
 
-        # Single-zone assignment, same V1 simplicity convention as
-        # self.camera_zone above -- Sign.zone_ids already holds a tuple,
-        # so a future multi-select UI can widen this without any model
-        # change.
+        # Single-zone assignment, same V1 simplicity convention Camera's
+        # own zone assignment used before the Camera -> Zone Assignment
+        # milestone widened it to a checklist -- Sign.zone_ids already
+        # holds a tuple, so a future multi-select UI can widen this the
+        # same way, without any model change.
         self.sign_zone = QComboBox()
 
         layout.addRow("Position X (m)", self.sign_x)
@@ -1771,7 +1783,7 @@ class PropertyPanel(QWidget):
             self.update_camera_active
         )
 
-        self.camera_zone.currentIndexChanged.connect(
+        self.camera_zone.itemChanged.connect(
             self.update_camera_zone
         )
 
@@ -2744,12 +2756,8 @@ class PropertyPanel(QWidget):
                 model.active
             )
 
-            self._populate_zone_combo(
-                self.camera_zone,
-                model,
-                model.zone_ids[0] if model.zone_ids else "",
-                "",
-            )
+            self._populate_zone_checklist(self.camera_zone, model, model.zone_ids)
+            self._update_zone_warning(self.camera_zone_warning, model.zone_ids)
 
             self.camera_resolution.setText(model.resolution)
             self.camera_fps.setText(str(model.fps))
@@ -6007,6 +6015,7 @@ class PropertyPanel(QWidget):
         self.camera_zone.blockSignals(True)
         self.camera_zone.clear()
         self.camera_zone.blockSignals(False)
+        self.camera_zone_warning.setVisible(False)
 
         self.camera_resolution.clear()
         self.camera_fps.clear()
@@ -6986,7 +6995,7 @@ class PropertyPanel(QWidget):
 
     # =====================================================
 
-    def update_camera_zone(self, index):
+    def update_camera_zone(self):
 
         if self.current_item is None:
             return
@@ -6994,11 +7003,8 @@ class PropertyPanel(QWidget):
         if self.current_item.model is None:
             return
 
-        zone_id = self.camera_zone.itemData(index)
-
-        self.current_item.model.zone_ids = (
-            (zone_id,) if zone_id else ()
-        )
+        self.current_item.model.zone_ids = self._checked_zone_ids(self.camera_zone)
+        self._update_zone_warning(self.camera_zone_warning, self.current_item.model.zone_ids)
 
     # =====================================================
 

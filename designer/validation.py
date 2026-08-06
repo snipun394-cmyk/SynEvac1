@@ -40,6 +40,9 @@ def validate_building_authoring(building) -> ValidationReport:
         for stair in floor.stairs:
             _check_stair(report, floor, stair)
 
+        for camera in floor.cameras:
+            _check_zone_assignment(report, floor, camera, "Camera", "camera_missing_zone")
+
         for speaker in floor.speakers:
             _check_zone_assignment(report, floor, speaker, "Speaker", "speaker_missing_zone")
 

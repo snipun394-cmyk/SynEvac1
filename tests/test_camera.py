@@ -1,6 +1,7 @@
 import sys
 import unittest
 
+from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import QApplication
 
 # Module-level QApplication singleton -- same convention every other
@@ -255,7 +256,12 @@ class CameraPropertyPanelTests(unittest.TestCase):
 
         self.panel.show_camera(self.camera_item)
 
-        self.assertEqual(self.panel.camera_zone.currentData(), self.zone.id)
+        checked = {
+            self.panel.camera_zone.item(row).data(Qt.ItemDataRole.UserRole)
+            for row in range(self.panel.camera_zone.count())
+            if self.panel.camera_zone.item(row).checkState() == Qt.CheckState.Checked
+        }
+        self.assertEqual(checked, {self.zone.id})
         self.assertEqual(self.panel.camera_resolution.text(), "1280x720")
         self.assertEqual(self.panel.camera_fps.text(), "24")
         self.assertEqual(self.panel.camera_mode.currentText(), DeviceMode.LIVE)
@@ -264,14 +270,18 @@ class CameraPropertyPanelTests(unittest.TestCase):
         self.assertEqual(self.panel.camera_username.text(), "u")
         self.assertEqual(self.panel.camera_password.text(), "p")
 
-    def test_editing_the_zone_combo_assigns_the_zone_to_the_model(self):
+    def test_checking_the_zone_checklist_assigns_the_zone_to_the_model(self):
 
         self.panel.show_camera(self.camera_item)
 
-        index = self.panel.camera_zone.findData(self.zone.id)
-        self.assertNotEqual(index, -1)
+        list_widget = self.panel.camera_zone
+        matching_rows = [
+            row for row in range(list_widget.count())
+            if list_widget.item(row).data(Qt.ItemDataRole.UserRole) == self.zone.id
+        ]
+        self.assertEqual(len(matching_rows), 1)
 
-        self.panel.camera_zone.setCurrentIndex(index)
+        list_widget.item(matching_rows[0]).setCheckState(Qt.CheckState.Checked)
 
         self.assertEqual(self.camera.zone_ids, (self.zone.id,))
 

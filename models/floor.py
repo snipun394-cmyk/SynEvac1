@@ -170,6 +170,21 @@ class Floor:
         if zone in self.zones:
             self.zones.remove(zone)
 
+    # Camera -> Zone Assignment milestone -- mirrors Building.get_floor()'s
+    # own by-id lookup exactly (linear scan, None when not found). The one
+    # honest way to resolve an EngineeringAsset's zone_ids (Camera, Speaker,
+    # ...) into real Zone objects rather than bare id strings, for any
+    # runtime caller that wants "which Zones does this asset observe/serve"
+    # -- not camera-specific, so it belongs here, not on Camera itself.
+    def get_zone(self, zone_id: str):
+
+        for zone in self.zones:
+
+            if zone.id == zone_id:
+                return zone
+
+        return None
+
     # =====================================================
     # Exits
     # =====================================================

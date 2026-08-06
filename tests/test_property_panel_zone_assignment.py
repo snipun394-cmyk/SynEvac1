@@ -6,11 +6,13 @@ from PyQt6.QtWidgets import QApplication
 
 _app = QApplication.instance() or QApplication(sys.argv)
 
+from designer.items.camera_item import CameraItem
 from designer.items.heat_detector_item import HeatDetectorItem
 from designer.items.smoke_detector_item import SmokeDetectorItem
 from designer.items.speaker_item import SpeakerItem
 from designer.windows.main_window import MainWindow
 
+from models.camera import Camera
 from models.heat_detector import HeatDetector
 from models.smoke_detector import SmokeDetector
 from models.speaker import Speaker
@@ -208,6 +210,115 @@ class SpeakerMultiZoneUITests(unittest.TestCase):
                 list_widget.item(row).setCheckState(Qt.CheckState.Unchecked)
 
         self.assertEqual(model.zone_ids, ("Z-B",))
+
+
+class CameraMultiZoneUITests(unittest.TestCase):
+
+    # Camera -> Zone Assignment milestone -- the exact same coverage
+    # SpeakerMultiZoneUITests above already proves for Speaker.zone_ids,
+    # now proved for Camera.zone_ids: a camera's field of view routinely
+    # reaches more than one zone, so the widget must genuinely support
+    # checking more than one, never silently cap at one the way the old
+    # QComboBox did.
+
+    def test_current_assignment_visible_on_selection(self):
+
+        window, floor, zone_a, zone_b = _make_window_with_two_zones()
+
+        model = Camera(id="CAM-1", name="CAM-1", floor_id=floor.id, zone_ids=("Z-A", "Z-B"))
+        item = CameraItem(0, 0, model=model)
+
+        window.property_panel.show_camera(item)
+
+        checked = {
+            window.property_panel.camera_zone.item(row).data(Qt.ItemDataRole.UserRole)
+            for row in range(window.property_panel.camera_zone.count())
+            if window.property_panel.camera_zone.item(row).checkState() == Qt.CheckState.Checked
+        }
+        self.assertEqual(checked, {"Z-A", "Z-B"})
+
+    def test_checking_two_zones_persists_both_to_model(self):
+
+        window, floor, zone_a, zone_b = _make_window_with_two_zones()
+
+        model = Camera(id="CAM-1", name="CAM-1", floor_id=floor.id)
+        item = CameraItem(0, 0, model=model)
+
+        window.property_panel.show_camera(item)
+
+        list_widget = window.property_panel.camera_zone
+        for row in range(list_widget.count()):
+            list_widget.item(row).setCheckState(Qt.CheckState.Checked)
+
+        self.assertEqual(set(model.zone_ids), {"Z-A", "Z-B"})
+
+    def test_never_silently_reduced_to_a_single_zone(self):
+
+        # Explicit regression: the widget must be a QListWidget
+        # (multi-capable), never a QComboBox (single-select only) --
+        # the exact gap this milestone closes.
+        from PyQt6.QtWidgets import QComboBox, QListWidget
+
+        window, floor, zone_a, zone_b = _make_window_with_two_zones()
+
+        self.assertIsInstance(window.property_panel.camera_zone, QListWidget)
+        self.assertNotIsInstance(window.property_panel.camera_zone, QComboBox)
+
+    def test_warning_visible_when_no_zone_checked(self):
+
+        window, floor, zone_a, zone_b = _make_window_with_two_zones()
+
+        model = Camera(id="CAM-1", name="CAM-1", floor_id=floor.id)
+        item = CameraItem(0, 0, model=model)
+
+        window.property_panel.show_camera(item)
+
+        self.assertFalse(window.property_panel.camera_zone_warning.isHidden())
+
+    def test_warning_hidden_once_one_zone_checked(self):
+
+        window, floor, zone_a, zone_b = _make_window_with_two_zones()
+
+        model = Camera(id="CAM-1", name="CAM-1", floor_id=floor.id)
+        item = CameraItem(0, 0, model=model)
+
+        window.property_panel.show_camera(item)
+
+        window.property_panel.camera_zone.item(0).setCheckState(Qt.CheckState.Checked)
+
+        self.assertTrue(window.property_panel.camera_zone_warning.isHidden())
+
+    def test_unchecking_a_zone_removes_it(self):
+
+        window, floor, zone_a, zone_b = _make_window_with_two_zones()
+
+        model = Camera(id="CAM-1", name="CAM-1", floor_id=floor.id, zone_ids=("Z-A", "Z-B"))
+        item = CameraItem(0, 0, model=model)
+
+        window.property_panel.show_camera(item)
+
+        list_widget = window.property_panel.camera_zone
+        for row in range(list_widget.count()):
+            if list_widget.item(row).data(Qt.ItemDataRole.UserRole) == "Z-A":
+                list_widget.item(row).setCheckState(Qt.CheckState.Unchecked)
+
+        self.assertEqual(model.zone_ids, ("Z-B",))
+
+    def test_zero_hard_coded_zone_ids(self):
+
+        # No zone appears as a checklist choice unless it genuinely
+        # exists on the camera's own floor -- the checklist is always
+        # populated from the real Building, never a fixed list.
+        window, floor, zone_a, zone_b = _make_window_with_two_zones()
+
+        model = Camera(id="CAM-1", name="CAM-1", floor_id=floor.id)
+        item = CameraItem(0, 0, model=model)
+
+        window.property_panel.show_camera(item)
+
+        list_widget = window.property_panel.camera_zone
+        offered = {list_widget.item(row).data(Qt.ItemDataRole.UserRole) for row in range(list_widget.count())}
+        self.assertEqual(offered, {"Z-A", "Z-B"})
 
 
 class DeletedZoneReferenceTests(unittest.TestCase):

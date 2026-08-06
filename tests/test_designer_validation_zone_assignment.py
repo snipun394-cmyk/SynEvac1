@@ -4,6 +4,7 @@ from designer.validation import validate_building_authoring
 from navigation.validation import ValidationReport
 
 from models.building import Building
+from models.camera import Camera
 from models.floor import Floor
 from models.heat_detector import HeatDetector
 from models.smoke_detector import SmokeDetector
@@ -20,6 +21,16 @@ def _make_building_with_floor():
 
 
 class ZoneAssignmentWarningTests(unittest.TestCase):
+
+    def test_unassigned_camera_produces_warning(self):
+
+        building, floor = _make_building_with_floor()
+        floor.add_camera(Camera(id="CAM-1", name="CAM-1", floor_id="f1"))
+
+        report = validate_building_authoring(building)
+
+        codes = {issue.code for issue in report.warnings}
+        self.assertIn("camera_missing_zone", codes)
 
     def test_unassigned_speaker_produces_warning(self):
 
@@ -55,6 +66,7 @@ class ZoneAssignmentWarningTests(unittest.TestCase):
 
         building, floor = _make_building_with_floor()
         floor.add_zone(Zone(id="Z1", name="Z1", floor_id="f1"))
+        floor.add_camera(Camera(id="CAM-1", name="CAM-1", floor_id="f1", zone_ids=("Z1",)))
         floor.add_speaker(Speaker(id="SP-1", name="SP-1", floor_id="f1", zone_ids=("Z1",)))
         floor.add_smoke_detector(SmokeDetector(id="SD-1", name="SD-1", floor_id="f1", zone_ids=("Z1",)))
         floor.add_heat_detector(HeatDetector(id="HD-1", name="HD-1", floor_id="f1", zone_ids=("Z1",)))
@@ -62,6 +74,7 @@ class ZoneAssignmentWarningTests(unittest.TestCase):
         report = validate_building_authoring(building)
 
         codes = {issue.code for issue in report.warnings}
+        self.assertNotIn("camera_missing_zone", codes)
         self.assertNotIn("speaker_missing_zone", codes)
         self.assertNotIn("smoke_detector_missing_zone", codes)
         self.assertNotIn("heat_detector_missing_zone", codes)
