@@ -1,4 +1,5 @@
 import time
+from pathlib import Path
 
 from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtGui import QAction
@@ -65,6 +66,20 @@ from models.project import Project
 from serialization.serializer import Serializer
 
 from credential_store.local_file_store import LocalFileCredentialStore
+
+
+# Live CCTV Dashboard milestone -- root-cause fix for camera_pipeline
+# (and therefore every frame consumer: LiveCameraViewPanel, Command
+# Center's Live CCTV tab) staying permanently None for every real
+# Designer-driven Live session, regardless of a genuinely connected
+# camera. LiveRuntimeController never had a path to supply
+# human_detector_weights_path to LiveRuntimeSession at all -- this is
+# that path's one default. /weights/*.pt is gitignored (Real YOLO
+# Model Validation milestone) -- not guaranteed to exist on every
+# checkout, so this is resolved by checking the file is actually
+# present, never assumed; a checkout without it reproduces today's
+# exact prior behavior (camera_pipeline stays None), never crashes.
+_DEFAULT_YOLO_WEIGHTS_PATH = Path(__file__).resolve().parent.parent.parent / "weights" / "yolov8n.pt"
 
 
 class MainWindow(QMainWindow):
@@ -249,6 +264,9 @@ class MainWindow(QMainWindow):
             self.live_runtime_panel,
             lambda: self.canvas.scene_obj.project.building,
             credential_store=self._credential_store,
+            human_detector_weights_path=(
+                str(_DEFAULT_YOLO_WEIGHTS_PATH) if _DEFAULT_YOLO_WEIGHTS_PATH.is_file() else None
+            ),
         )
 
         # =====================================================

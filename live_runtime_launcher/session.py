@@ -1,3 +1,5 @@
+import time
+
 from camera_manager.connection_status import CameraConnectionState
 from camera_manager.manager import CameraManager
 
@@ -216,6 +218,30 @@ class LiveRuntimeSession:
             self.last_error = str(exc)
             return
 
+        # Live CCTV Dashboard milestone -- root-cause fix for "camera
+        # shows Online but the tile shows No signal": RTSPFrameSource.
+        # start() (just above, via LiveRuntime.start()) resolves
+        # CameraConnectionState synchronously and independently of any
+        # cycle, but LiveCameraPipeline.run_cycle() -- the ONLY thing
+        # that ever calls read_frame() and populates latest_frame()/
+        # latest_detections() -- is never invoked by start() itself.
+        # In the shipped application, the ONLY caller of run_cycle() is
+        # designer/live_runtime_controller.py's own QTimer (started when
+        # the Live Runtime panel's Start button is clicked) -- the exact
+        # same "run_cycle() was never actually driven anywhere" gap this
+        # launcher's own docstring already names as Phase 1's founding
+        # discovery, here recurring one layer up: a caller that opens
+        # Command Center's Live CCTV tab without that QTimer having
+        # ticked at least once yet sees a connected-but-frameless tile
+        # indefinitely, not just for one transient cycle. One priming
+        # run_cycle() call here -- the same call every subsequent tick
+        # already makes, unguarded, exactly like LiveRuntimeController.
+        # _on_tick() -- guarantees every consumer (Designer's panel,
+        # Command Center's gateway, or a caller with no UI tick at all)
+        # sees a real first frame as soon as start() returns, rather
+        # than depending on an external timer it has no knowledge of.
+        self.runtime.run_cycle(time.time())
+
         self.state = (
             RuntimeLifecycleState.DEGRADED if self._any_configured_camera_offline()
             else RuntimeLifecycleState.RUNNING
@@ -257,6 +283,7 @@ class LiveRuntimeSession:
 
         self._command_center_window.enable_live_mode(
             self.runtime.command_center_data_source, self.runtime.operator_action_gateway,
+            self.runtime.camera_view_gateway,
         )
 
         return self._command_center_window

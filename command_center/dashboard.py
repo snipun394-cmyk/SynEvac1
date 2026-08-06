@@ -11,6 +11,7 @@ from command_center.human_panel import HumanPanel
 from command_center.incident_panel import IncidentPanel
 from command_center.incident_status_bar import IncidentStatusBar
 from command_center.live_ai_panel import LiveAIPanel
+from command_center.live_camera_grid_panel import LiveCameraGridPanel
 from command_center.live_events_panel import LiveEventsPanel
 from command_center.live_evacuation_progress_panel import LiveEvacuationProgressPanel
 from command_center.live_emergency_response_panel import LiveEmergencyResponsePanel
@@ -76,6 +77,13 @@ class Dashboard(QWidget):
         # discipline this class already applies to `decision_policy`.
         self._operator_action_gateway = None
 
+        # Live CCTV Dashboard milestone -- the SAME "opaque, caller-
+        # constructed, never inspected here" discipline as
+        # _operator_action_gateway immediately above. None (the
+        # default) means the Live CCTV tab shows its own honest
+        # "no live camera session active" empty state.
+        self._camera_gateway = None
+
         self.status_bar = IncidentStatusBar()
 
         self.building_view = BuildingView()
@@ -110,6 +118,7 @@ class Dashboard(QWidget):
         self.live_evacuation_guidance_panel = LiveEvacuationGuidancePanel()
         self.live_dynamic_signage_panel = LiveDynamicSignagePanel()
         self.live_events_panel = LiveEventsPanel()
+        self.live_camera_grid_panel = LiveCameraGridPanel()
 
         self.side_tabs = QTabWidget()
         self.side_tabs.addTab(self.recommendation_center, "Recommendation Center")
@@ -132,6 +141,7 @@ class Dashboard(QWidget):
         self.side_tabs.addTab(self.live_evacuation_guidance_panel, "Live Evacuation Guidance")
         self.side_tabs.addTab(self.live_dynamic_signage_panel, "Live Dynamic Signage")
         self.side_tabs.addTab(self.live_events_panel, "Live Events")
+        self.side_tabs.addTab(self.live_camera_grid_panel, "Live CCTV")
 
         # Tabs that only make sense against a completed-run IncidentData
         # (GroundTruth-derived metrics, the raw whole-run DecisionPolicy,
@@ -145,6 +155,7 @@ class Dashboard(QWidget):
         )
         self._live_only_tabs = (
             self.live_status_panel, self.live_ai_panel, self.live_events_panel, self.live_dynamic_signage_panel,
+            self.live_camera_grid_panel,
         )
 
         for widget in self._live_only_tabs:
@@ -281,6 +292,26 @@ class Dashboard(QWidget):
 
     # =====================================================
 
+    def set_camera_gateway(self, gateway) -> None:
+
+        self._camera_gateway = gateway
+
+    # =====================================================
+
+    def refresh_camera_grid(self) -> None:
+
+        # Live CCTV Dashboard Refresh Rate milestone -- the one call
+        # site for the camera grid's own faster (MainWindow.
+        # camera_refresh_timer, ~10Hz) refresh cadence, kept separate
+        # from apply_snapshot()'s own ~1Hz cadence (see that method's
+        # own comment). A no-op, harmless call when no gateway/live
+        # session exists yet (LiveCameraGridPanel.show_live(None)
+        # already renders its own honest empty state).
+
+        self.live_camera_grid_panel.show_live(self._camera_gateway)
+
+    # =====================================================
+
     def set_mode(self, mode: CommandCenterMode) -> None:
 
         self.mode = mode
@@ -330,6 +361,15 @@ class Dashboard(QWidget):
         if frame is not None:
             self.building_view.show_frame(frame)
 
+        # Live CCTV Digital Twin milestone -- already-computed
+        # live_occupants.models.LiveOccupantsSnapshot, already sitting
+        # on CommandCenterSnapshot every live cycle (see
+        # live_system/live_command_center_gateway.py). Forwarded
+        # unconditionally (None in Replay mode, or before the first
+        # live tick, is the honest default -- BuildingView.
+        # set_live_occupants(None) already renders nothing for it).
+        self.building_view.set_live_occupants(snapshot.live_occupants)
+
         # Phase 14 -- a STALE cycle (BuildingState/AI/Advisory
         # timestamps disagree) never renders its carried-over AdvisoryReport
         # as though it were current; every AdvisoryReport-driven panel
@@ -361,6 +401,16 @@ class Dashboard(QWidget):
             snapshot.dynamic_signage, snapshot.evacuation_guidance, self._operator_action_gateway, snapshot.timestamp,
         )
         self.live_events_panel.show_recent_events(snapshot.recent_events)
+
+        # Live CCTV Dashboard Refresh Rate milestone -- deliberately NOT
+        # called here anymore. The camera grid now has its own, faster,
+        # dedicated MainWindow.camera_refresh_timer (100ms vs this
+        # method's own ~1Hz cadence) calling refresh_camera_grid()
+        # directly -- calling show_live() from both places would be
+        # harmless (idempotent) but redundant on every 10th tick; single
+        # ownership of the display-refresh call site mirrors the same
+        # discipline LiveCameraPipeline.acquire_frames() now holds for
+        # RTSPFrameSource.read_frame().
 
         self.live_consistency_banner.setText(_consistency_banner_text(snapshot))
 

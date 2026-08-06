@@ -43,6 +43,7 @@ class LiveRuntime:
         orchestrator,
         command_center_data_source,
         operator_action_gateway,
+        camera_view_gateway=None,
         voice_evacuation_controller,
         building_control_controller,
         sign_manager=None,
@@ -123,6 +124,14 @@ class LiveRuntime:
         # MainWindow.enable_live_mode(data_source, operator_action_gateway).
         self.command_center_data_source = command_center_data_source
         self.operator_action_gateway = operator_action_gateway
+
+        # Live CCTV Dashboard milestone -- the same "exact same instance
+        # a caller hands to command_center.main_window.MainWindow.
+        # enable_live_mode()" discipline as operator_action_gateway
+        # immediately above. None whenever no CameraManager was
+        # supplied to build_live_runtime() (Phase 1's own "None whenever
+        # no provider was supplied" convention).
+        self.camera_view_gateway = camera_view_gateway
         self.voice_evacuation_controller = voice_evacuation_controller
         self.building_control_controller = building_control_controller
 

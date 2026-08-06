@@ -328,5 +328,148 @@ class LiveCameraPipelineLatestFrameCacheTests(unittest.TestCase):
         self.assertEqual(call_count["count"], 1)
 
 
+class LiveCameraPipelineLatestDetectionsCacheTests(unittest.TestCase):
+
+    # Live CCTV Dashboard milestone -- proves the single-slot
+    # latest_detections() cache added to run_cycle() above without a
+    # second detect() call: the cached tuple is exactly what
+    # human_detector.detect() already produced this cycle (post-tracker
+    # local_track_id when a tracker is configured), never a fresh
+    # computation, and a cycle with no frame this camera leaves the
+    # previous entry in place -- same "last known good" convention as
+    # latest_frame().
+
+    def setUp(self):
+
+        self.cam_a = FakeFrameSource("CAM-A")
+        self.pipeline = LiveCameraPipeline(
+            frame_sources={"CAM-A": self.cam_a},
+            human_detector=FakeHumanDetector(),
+            identity_resolver=MappingIdentityResolver({}),
+            detection_provider=LiveCameraPipelineDetectionProvider(),
+        )
+
+    def test_latest_detections_is_empty_before_any_cycle(self):
+
+        self.assertEqual(self.pipeline.latest_detections("CAM-A"), ())
+
+    def test_latest_detections_is_empty_for_an_unknown_camera_id(self):
+
+        self.cam_a.queue_frame(1.0, 1, payload_ref=[{"local_track_id": "t1"}])
+        self.pipeline.run_cycle(1.0)
+
+        self.assertEqual(self.pipeline.latest_detections("CAM-B"), ())
+
+    def test_latest_detections_reflects_this_cycles_detector_output(self):
+
+        self.cam_a.queue_frame(1.0, 1, payload_ref=[{"local_track_id": "t1"}])
+        self.pipeline.run_cycle(1.0)
+
+        detections = self.pipeline.latest_detections("CAM-A")
+        self.assertEqual(len(detections), 1)
+        self.assertEqual(detections[0].local_track_id, "t1")
+
+    def test_a_cycle_with_no_frame_leaves_the_previous_detections_cached(self):
+
+        self.cam_a.queue_frame(1.0, 1, payload_ref=[{"local_track_id": "t1"}])
+        self.pipeline.run_cycle(1.0)
+
+        # Nothing queued this cycle -- read_frame() returns None, so
+        # this camera is skipped entirely inside run_cycle()'s loop.
+        self.pipeline.run_cycle(2.0)
+
+        detections = self.pipeline.latest_detections("CAM-A")
+        self.assertEqual(len(detections), 1)
+        self.assertEqual(detections[0].local_track_id, "t1")
+
+    def test_a_frame_with_zero_detections_clears_the_cache_to_empty(self):
+
+        self.cam_a.queue_frame(1.0, 1, payload_ref=[{"local_track_id": "t1"}])
+        self.pipeline.run_cycle(1.0)
+        self.assertEqual(len(self.pipeline.latest_detections("CAM-A")), 1)
+
+        # FakeHumanDetector returns () for a payload_ref of None.
+        self.cam_a.queue_frame(2.0, 2, payload_ref=None)
+        self.pipeline.run_cycle(2.0)
+
+        self.assertEqual(self.pipeline.latest_detections("CAM-A"), ())
+
+
+class LiveCameraPipelineAcquireFramesTests(unittest.TestCase):
+
+    # Live CCTV Dashboard Refresh Rate milestone -- acquire_frames() is
+    # the SOLE owner of CameraFrameSource.read_frame() in this class:
+    # it only ever updates the frame cache, never runs detection/
+    # tracking/identity resolution/occupant updates. run_cycle() must
+    # keep composing it as its own first step (never a second,
+    # independent read) so every pre-existing caller of run_cycle()
+    # alone keeps its exact prior "one fresh read, then detect" behavior.
+
+    def setUp(self):
+
+        self.cam_a = FakeFrameSource("CAM-A")
+        self.pipeline = LiveCameraPipeline(
+            frame_sources={"CAM-A": self.cam_a},
+            human_detector=FakeHumanDetector(),
+            identity_resolver=MappingIdentityResolver({}),
+            detection_provider=LiveCameraPipelineDetectionProvider(),
+        )
+
+    def test_acquire_frames_updates_the_cache_without_running_detection(self):
+
+        self.cam_a.queue_frame(1.0, 1, payload_ref=[{"local_track_id": "t1"}])
+        self.pipeline.acquire_frames(1.0)
+
+        self.assertIsNotNone(self.pipeline.latest_frame("CAM-A"))
+        self.assertEqual(self.pipeline.latest_frame("CAM-A").frame_sequence, 1)
+
+        # No detection ran -- acquire_frames() never touches this cache.
+        self.assertEqual(self.pipeline.latest_detections("CAM-A"), ())
+
+    def test_run_cycle_consumes_whatever_acquire_frames_last_cached(self):
+
+        self.cam_a.queue_frame(1.0, 1, payload_ref=[{"local_track_id": "t1"}])
+        self.pipeline.acquire_frames(1.0)
+
+        # Nothing queued for run_cycle()'s own internal acquisition --
+        # it must still detect against the frame acquire_frames() just
+        # cached, not fail merely because read_frame() returns None
+        # on run_cycle()'s own composed acquire_frames() call.
+        self.pipeline.run_cycle(1.0)
+
+        detections = self.pipeline.latest_detections("CAM-A")
+        self.assertEqual(len(detections), 1)
+        self.assertEqual(detections[0].local_track_id, "t1")
+
+    def test_run_cycle_alone_still_reads_and_detects_in_one_call(self):
+
+        # Regression guard: every pre-existing caller that only ever
+        # calls run_cycle() (never acquire_frames() separately) must
+        # keep its exact prior behavior -- one fresh read per camera,
+        # then detect, all in a single run_cycle() call.
+
+        self.cam_a.queue_frame(1.0, 1, payload_ref=[{"local_track_id": "t1"}])
+        self.pipeline.run_cycle(1.0)
+
+        self.assertEqual(self.pipeline.latest_frame("CAM-A").frame_sequence, 1)
+        self.assertEqual(len(self.pipeline.latest_detections("CAM-A")), 1)
+
+    def test_run_cycle_calls_read_frame_exactly_once_per_camera_via_composition(self):
+
+        call_count = {"count": 0}
+        original_read_frame = self.cam_a.read_frame
+
+        def counting_read_frame():
+            call_count["count"] += 1
+            return original_read_frame()
+
+        self.cam_a.read_frame = counting_read_frame
+        self.cam_a.queue_frame(1.0, 1, payload_ref=[])
+
+        self.pipeline.run_cycle(1.0)
+
+        self.assertEqual(call_count["count"], 1)
+
+
 if __name__ == "__main__":
     unittest.main()

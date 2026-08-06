@@ -30,6 +30,8 @@ from perception.models.human_observation import BehaviorEvent, HumanClassificati
 
 from simulation_recording.occupant_position import BuildingPositionIndex
 
+from live_occupants.state import OccupantStatus
+
 
 # =====================================================
 # BuildingView -- a read-only floor-plan rendering of one Building
@@ -184,6 +186,76 @@ def _congestion_color(value):
     return _SAFE_COLOR
 
 
+_LIVE_OCCUPANT_MARKER_COLOR = QColor(90, 200, 220)
+
+# Live occupant statuses that count as "currently observed" for display
+# purposes -- the SAME set live_occupants.manager.LiveOccupantManager.
+# canonical_occupancy() already treats as active (mirrored, not
+# imported, to keep this read-only view's own dependency surface
+# minimal -- see command_center/live_occupant_panel.py's own identical
+# convention). TEMPORARILY_LOST/EXITED/removed occupants are excluded,
+# which is what makes a marker disappear the moment the runtime stops
+# observing that occupant -- no separate "clear the marker" logic
+# anywhere in this file.
+_LIVE_MARKER_STATUSES = (OccupantStatus.NEW, OccupantStatus.ACTIVE)
+
+
+def _find_camera_on_floor(floor, camera_id):
+
+    # A plain, read-only lookup over Floor.cameras -- never a
+    # camera_manager.manager.CameraManager import (command_center is
+    # mechanically forbidden from that; see tests/
+    # test_live_command_center.py::CommandCenterLiveIntegrationGuardTests).
+    # BuildingView already holds the Building/Floor objects it needs for
+    # this via set_building() -- no new state.
+
+    if floor is None:
+        return None
+
+    return next((camera for camera in floor.cameras if camera.id == camera_id), None)
+
+
+def estimate_display_position(occupant, floor):
+
+    # Live CCTV Digital Twin milestone, Phase 1 -- the ONE seam marker
+    # placement goes through, for every caller, for every future
+    # milestone. Today: honestly returns the occupant's current
+    # camera's own configured position, unmodified -- the milestone's
+    # own explicit "acceptable for the marker to appear at the
+    # configured camera location" allowance, never a fabricated or
+    # estimated world position (no homography, no triangulation, no
+    # FOV projection yet).
+    #
+    # Deliberately resolves the FULL Camera object (not just its
+    # position) even though only .position is used today -- camera.
+    # rotation/horizontal_fov/max_range are already sitting right here,
+    # unused, so a future milestone (projecting an occupant into the
+    # camera's field of view using its own bounding-box evidence) only
+    # ever needs to change what happens INSIDE this function. The
+    # renderer (_render_live_occupants below) and every other caller
+    # already only ever ask "where should this occupant's marker
+    # appear" -- they never reach into Camera fields themselves, so
+    # they stay completely unchanged when that day comes.
+    #
+    # Returns None (never a guessed position) whenever there is nothing
+    # honest to report -- no current camera, or that camera no longer
+    # exists on this floor.
+
+    if occupant.current_camera_id is None or floor is None:
+        return None
+
+    camera = _find_camera_on_floor(floor, occupant.current_camera_id)
+
+    if camera is None:
+        return None
+
+    # Milestone 1: camera position verbatim. Future milestones project
+    # from here using camera.rotation / camera.horizontal_fov /
+    # camera.max_range together with the occupant's own detection
+    # evidence -- this is the one line that changes, nothing upstream.
+    return camera.position
+
+
 class BuildingView(QWidget):
 
     # Simulation Replay Studio V1 -- emitted when the operator clicks an
@@ -234,6 +306,15 @@ class BuildingView(QWidget):
         self._position_index = None
         self._occupant_routes_by_id = {}
         self._selected_occupant_id = None
+
+        # Live CCTV Digital Twin milestone -- additive, LIVE-only
+        # occupant state. A live_occupants.models.LiveOccupantsSnapshot
+        # reference, never copied/re-shaped (same "opaque, caller-
+        # constructed, forwarded as-is" discipline every other Live
+        # panel already follows) -- None (Replay mode, or before the
+        # first live tick) means _render_live_occupants() below simply
+        # has nothing to draw.
+        self._live_occupants_snapshot = None
 
     # =====================================================
     # Public API -- pushed updates only.
@@ -300,6 +381,23 @@ class BuildingView(QWidget):
     def show_frame(self, frame):
 
         self._frame = frame
+        self._redraw()
+
+    # =====================================================
+
+    def set_live_occupants(self, snapshot):
+
+        # Live CCTV Digital Twin milestone -- the one call site Command
+        # Center's Dashboard.apply_snapshot() feeds with an already-
+        # computed live_occupants.models.LiveOccupantsSnapshot (already
+        # flowing onto CommandCenterSnapshot.live_occupants every live
+        # cycle -- see live_system/live_command_center_gateway.py). This
+        # widget never constructs, mutates, or re-derives occupancy --
+        # it only ever redraws from whatever it was last handed, same
+        # "dumb widget, pushed updates only" discipline as every other
+        # method on this class.
+
+        self._live_occupants_snapshot = snapshot
         self._redraw()
 
     # =====================================================
@@ -469,6 +567,7 @@ class BuildingView(QWidget):
         # or pan from frame to frame.
         self._render_selected_route(floor)
         self._render_occupants(floor)
+        self._render_live_occupants(floor)
 
     # =====================================================
 
@@ -530,6 +629,64 @@ class BuildingView(QWidget):
 
             item = self._add_marker((position.x, position.y), color, size, object_id=occupant_id)
             item.setToolTip(self._occupant_tooltip(occupant_id, position))
+
+    # =====================================================
+
+    def _render_live_occupants(self, floor):
+
+        # Live CCTV Digital Twin milestone -- the first real Digital
+        # Twin visualization of the production live runtime. A SECOND,
+        # fully independent marker path alongside _render_occupants()
+        # above (Replay-only) -- never touches self._frame, never
+        # touches occupant_positions, so Replay's existing rendering is
+        # completely unaffected. Only occupants LiveOccupantManager
+        # currently counts as observed (_LIVE_MARKER_STATUSES) get a
+        # marker; a TEMPORARILY_LOST/EXITED/expired-and-removed occupant
+        # produces no marker on the very next redraw, with no separate
+        # "clear" logic anywhere in this file -- disappearance is simply
+        # the honest absence of a reason to draw.
+        #
+        # Marker placement goes through exactly one seam,
+        # estimate_display_position() (module-level, above) -- this
+        # method never inspects Camera.position/rotation/fov itself.
+
+        snapshot = self._live_occupants_snapshot
+
+        if snapshot is None or floor is None:
+            return
+
+        for occupant in snapshot.occupants:
+
+            if occupant.status not in _LIVE_MARKER_STATUSES:
+                continue
+
+            if occupant.current_floor_id != floor.id:
+                continue
+
+            position = estimate_display_position(occupant, floor)
+
+            if position is None:
+                continue
+
+            item = self._add_marker(
+                position, _LIVE_OCCUPANT_MARKER_COLOR, _OCCUPANT_MARKER_SIZE, object_id=occupant.occupant_id,
+            )
+            item.setToolTip(self._live_occupant_tooltip(occupant))
+
+    # =====================================================
+
+    def _live_occupant_tooltip(self, occupant):
+
+        lines = [
+            f"Track: {occupant.current_track_id or occupant.occupant_id}",
+            f"Camera: {self._object_name(occupant.current_camera_id)}" if occupant.current_camera_id else "Camera: -",
+            f"Confidence: {occupant.confidence:.0%}",
+        ]
+
+        if occupant.current_zone_id is not None:
+            lines.append(f"Zone: {self._object_name(occupant.current_zone_id)}")
+
+        return "\n".join(lines)
 
     # =====================================================
 

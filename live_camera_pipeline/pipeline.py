@@ -1,11 +1,11 @@
 import dataclasses
-from typing import Dict, Mapping, Optional
+from typing import Dict, Mapping, Optional, Tuple
 
 from perception.models.human_observation import HumanClassification, HumanState
 
 from live_camera_pipeline.detection_provider import LiveCameraPipelineDetectionProvider
 from live_camera_pipeline.frame_source import CameraFrame, CameraFrameSource
-from live_camera_pipeline.human_detector import HumanDetector
+from live_camera_pipeline.human_detector import HumanDetector, RawHumanDetection
 from live_camera_pipeline.identity_resolver import IdentityResolver
 
 from tracking.tracker import SingleCameraTracker
@@ -238,6 +238,34 @@ class LiveCameraPipeline:
         # single overwritten slot per camera, never a growing buffer.
         self._latest_frames: Dict[str, CameraFrame] = {}
 
+        # Live CCTV Dashboard milestone -- the SAME single-slot "last
+        # known good" cache convention as _latest_frames above, one
+        # collaborator over: the FINAL per-camera RawHumanDetection
+        # tuple this cycle already computed (post-tracker when a
+        # tracker is configured, so bounding_box/confidence/
+        # local_track_id are exactly what a live overlay needs) --
+        # never a second detect()/tracker.update() call of any kind.
+        # Populated from THIS class's own existing run_cycle() loop
+        # only; a camera with no tracker still gets its raw detector
+        # output cached here, just without a frame-to-frame-stable
+        # local_track_id (the same honest limitation run_cycle() already
+        # has without a tracker).
+        self._latest_detections: Dict[str, Tuple[RawHumanDetection, ...]] = {}
+
+        # Live CCTV Dashboard Refresh Rate milestone -- tracks, per
+        # camera, the frame_sequence run_cycle() last actually ran
+        # detection against. _latest_frames deliberately keeps a STALE
+        # frame in place on a transient read miss (its own "last known
+        # good" contract, needed for display continuity) -- without
+        # this, run_cycle() would silently re-detect on that same
+        # stale frame every cycle a genuinely new one hasn't arrived,
+        # instead of honestly treating a miss as "nothing this cycle"
+        # for detection/tracking/occupancy purposes (proven by a real
+        # regression: a camera with no new frame must still be reported
+        # as missing to LiveOccupantManager.sweep_missing(), not
+        # silently re-confirmed via a stale re-detection).
+        self._last_processed_frame_sequence: Dict[str, int] = {}
+
     # =====================================================
 
     def latest_frame(self, camera_id: str) -> Optional[CameraFrame]:
@@ -246,19 +274,71 @@ class LiveCameraPipeline:
 
     # =====================================================
 
-    def run_cycle(self, time: float) -> None:
+    def latest_detections(self, camera_id: str) -> Tuple[RawHumanDetection, ...]:
 
-        raw_detections = []
-        pending_occupant_updates = []
+        return self._latest_detections.get(camera_id, ())
+
+    # =====================================================
+
+    def acquire_frames(self, time: float) -> None:
+
+        # Live CCTV Dashboard Refresh Rate milestone -- the SOLE owner
+        # of CameraFrameSource.read_frame() anywhere in this class, and
+        # (by extension, since run_cycle() below now composes this
+        # rather than reading frames itself) anywhere in the shipped
+        # application. Updates ONLY the single-slot "last known good
+        # frame" cache -- never runs detection, tracking, identity
+        # resolution, or occupant updates, so a caller may invoke this
+        # at a materially faster cadence than run_cycle() (e.g. a
+        # display-only 100ms poll) without touching AI processing cost
+        # at all. A transient miss (read_frame() returning None) leaves
+        # the previous entry in place, same "last known good" discipline
+        # _latest_frames already established.
 
         for camera_id, frame_source in self.frame_sources.items():
 
             frame = frame_source.read_frame()
 
+            if frame is not None:
+                self._latest_frames[camera_id] = frame
+
+    # =====================================================
+
+    def run_cycle(self, time: float) -> None:
+
+        # Composes acquire_frames() as its own first step (never a
+        # second, independent read) -- every existing caller that only
+        # ever calls run_cycle() (never acquire_frames() separately)
+        # keeps its exact prior behavior, byte for byte: one fresh read
+        # per camera, then detect/track/resolve against it, all in one
+        # call. A caller driving BOTH at different cadences (e.g.
+        # designer/live_runtime_controller.py's tick timer) must never
+        # call both in the same tick -- that would be a genuine second
+        # read within one interval, not a single acquisition shared by
+        # both. See LiveRuntimeController._on_tick()'s own if/elif.
+
+        self.acquire_frames(time)
+
+        raw_detections = []
+        pending_occupant_updates = []
+
+        for camera_id in self.frame_sources:
+
+            frame = self._latest_frames.get(camera_id)
+
             if frame is None:
                 continue
 
-            self._latest_frames[camera_id] = frame
+            if self._last_processed_frame_sequence.get(camera_id) == frame.frame_sequence:
+                # No genuinely NEW frame since the last run_cycle() pass
+                # -- the cache still holds a prior cycle's frame (its
+                # own honest "transient miss, keep last known good"
+                # behavior). Detecting on it again would be both wasted
+                # work and, worse, dishonest: this camera contributed
+                # nothing new this cycle and must be reported that way.
+                continue
+
+            self._last_processed_frame_sequence[camera_id] = frame.frame_sequence
 
             raw = self.human_detector.detect(frame)
 
@@ -266,6 +346,8 @@ class LiveCameraPipeline:
                 raw, camera_pending_updates = self._process_camera_cycle(camera_id, frame.timestamp, raw)
             else:
                 camera_pending_updates = [None] * len(raw)
+
+            self._latest_detections[camera_id] = raw
 
             raw_detections.extend(raw)
             pending_occupant_updates.extend(camera_pending_updates)

@@ -45,6 +45,7 @@ from live_system.live_occupants_gateway import EngineLiveOccupantsGateway
 from live_system.orchestrator import LiveOrchestrator
 
 from command_center.live_operator_action_gateway import LiveOperatorActionGateway
+from command_center.live_camera_view_gateway import LiveCameraViewGateway
 
 from live_occupants.manager import LiveOccupantManager
 
@@ -662,6 +663,18 @@ def build_live_runtime(
         recent_events_limit=recent_events_limit,
     )
 
+    # Live CCTV Dashboard milestone -- the read-only counterpart to
+    # operator_action_gateway above, threaded through the exact same
+    # LiveRuntime -> LiveRuntimeSession.open_command_center() ->
+    # MainWindow.enable_live_mode() path. None whenever no CameraManager
+    # was supplied (mirrors every other "None whenever no provider was
+    # supplied" seam in this function) -- never a second CameraManager
+    # or LiveCameraPipeline of any kind.
+    camera_view_gateway = (
+        LiveCameraViewGateway(camera_manager, camera_pipeline, frame_sources)
+        if camera_manager is not None else None
+    )
+
     return LiveRuntime(
         building=building,
         camera_manager=camera_manager,
@@ -671,6 +684,7 @@ def build_live_runtime(
         speaker_manager=speaker_manager,
         frame_sources=frame_sources,
         camera_pipeline=camera_pipeline,
+        camera_view_gateway=camera_view_gateway,
         orchestrator=orchestrator,
         command_center_data_source=command_center_data_source,
         operator_action_gateway=operator_action_gateway,

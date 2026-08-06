@@ -10,6 +10,19 @@ from command_center.theme import COMMAND_CENTER_STYLESHEET
 
 LIVE_REFRESH_INTERVAL_MS = 1000
 
+# Live CCTV Dashboard Refresh Rate milestone -- a SECOND, independent,
+# dedicated timer, faster than live_refresh_timer above, but scoped to
+# ONLY the camera grid's video display. Deliberately not a change to
+# LIVE_REFRESH_INTERVAL_MS itself -- every other Live panel (BuildingState,
+# AI, evacuation progress, etc.) still only has genuinely new data once
+# per ~1Hz run_cycle(), so re-rendering them at 10Hz would just repaint
+# identical state ~9 times out of 10 for no benefit. Camera video is the
+# one panel with materially fresher data available in between full
+# orchestrator cycles now that LiveCameraPipeline.acquire_frames()
+# (live_camera_pipeline package) is polled by Designer's own tick
+# timer at the same ~10Hz cadence.
+CAMERA_REFRESH_INTERVAL_MS = 100
+
 
 # =====================================================
 # MainWindow -- the Command Center's top-level window. Owns the one
@@ -58,6 +71,17 @@ class MainWindow(QMainWindow):
         self.live_refresh_timer = QTimer(self)
         self.live_refresh_timer.setInterval(LIVE_REFRESH_INTERVAL_MS)
         self.live_refresh_timer.timeout.connect(self._on_live_refresh_tick)
+
+        # Live CCTV Dashboard Refresh Rate milestone -- see
+        # CAMERA_REFRESH_INTERVAL_MS above. Reads ONLY the already-
+        # public camera_gateway reference Dashboard already holds
+        # (set_camera_gateway()) -- never touches live_data_source,
+        # never runs perception/fusion/AI inference, same "display-only"
+        # discipline live_refresh_timer itself already follows, just at
+        # a faster cadence for this one panel.
+        self.camera_refresh_timer = QTimer(self)
+        self.camera_refresh_timer.setInterval(CAMERA_REFRESH_INTERVAL_MS)
+        self.camera_refresh_timer.timeout.connect(self._on_camera_refresh_tick)
 
         self._create_actions()
         self._create_menu()
@@ -294,7 +318,7 @@ class MainWindow(QMainWindow):
     # left off, never re-loading or losing the loaded IncidentData.
     # =====================================================
 
-    def enable_live_mode(self, data_source, operator_action_gateway=None) -> None:
+    def enable_live_mode(self, data_source, operator_action_gateway=None, camera_gateway=None) -> None:
 
         # The one call a caller that has already constructed and
         # started a LiveOrchestrator (with its own StateManager) makes
@@ -313,11 +337,20 @@ class MainWindow(QMainWindow):
         # Dashboard.set_operator_action_gateway(). None (the default)
         # keeps every Live panel's honest NO_PROVIDER fallback, the same
         # as never calling this at all.
+        #
+        # camera_gateway (Live CCTV Dashboard milestone) is the same
+        # kind of opaque, caller-constructed object one collaborator
+        # over -- MainWindow never constructs or imports a
+        # command_center.live_camera_view_gateway.LiveCameraViewGateway
+        # itself either, only forwards it into Dashboard.
+        # set_camera_gateway(). None (the default) keeps the Live CCTV
+        # tab's own honest "no live camera session active" empty state.
 
         self.live_data_source = data_source
         self.live_mode_action.setEnabled(True)
 
         self.dashboard.set_operator_action_gateway(operator_action_gateway)
+        self.dashboard.set_camera_gateway(camera_gateway)
 
         data_source.start()
 
@@ -353,11 +386,21 @@ class MainWindow(QMainWindow):
         self._on_live_refresh_tick()
         self.live_refresh_timer.start()
 
+        self.dashboard.refresh_camera_grid()
+        self.camera_refresh_timer.start()
+
+    # =====================================================
+
+    def _on_camera_refresh_tick(self) -> None:
+
+        self.dashboard.refresh_camera_grid()
+
     # =====================================================
 
     def switch_to_replay_mode(self) -> None:
 
         self.live_refresh_timer.stop()
+        self.camera_refresh_timer.stop()
 
         if self.live_data_source is not None:
             self.live_data_source.stop()
@@ -381,6 +424,7 @@ class MainWindow(QMainWindow):
 
         self.pause_playback()
         self.live_refresh_timer.stop()
+        self.camera_refresh_timer.stop()
 
         if self.live_data_source is not None:
             self.live_data_source.stop()

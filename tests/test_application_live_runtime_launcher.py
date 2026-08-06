@@ -128,6 +128,34 @@ class LiveRuntimeSessionLifecycleTests(unittest.TestCase):
 
         self.assertEqual(session.state, RuntimeLifecycleState.STOPPED)
 
+    def test_start_primes_exactly_one_run_cycle(self):
+
+        # Live CCTV Dashboard milestone -- root-cause regression guard
+        # for "camera shows Online but its tile shows No signal":
+        # RTSPFrameSource.start() resolves CameraConnectionState
+        # synchronously, but LiveCameraPipeline.latest_frame()/
+        # latest_detections() are only ever populated by run_cycle()
+        # (via LiveCameraPipeline.run_cycle() inside fusion_result_
+        # provider) -- the ONLY pre-existing caller of which anywhere in
+        # the shipped application was designer/live_runtime_controller.
+        # py's own QTimer. A caller that never ticks that timer (e.g.
+        # Command Center's Live CCTV tab opened before the timer's first
+        # firing) would otherwise see a connected-but-frameless camera
+        # indefinitely. start() now calls run_cycle() exactly once
+        # itself, so every consumer sees a real first cycle immediately.
+
+        session = LiveRuntimeSession(ApplicationMode.OFFLINE_DEMO)
+        session.construct(self.building)
+
+        calls = []
+        original_run_cycle = session.runtime.run_cycle
+        session.runtime.run_cycle = lambda t: calls.append(t) or original_run_cycle(t)
+
+        session.start()
+
+        self.assertEqual(len(calls), 1)
+        session.stop()
+
     def test_zero_network_zero_hardware_by_default(self):
 
         # Neither mode ever supplies human_detector/identity_resolver,
@@ -659,6 +687,33 @@ class PanelAndControllerWiringTests(unittest.TestCase):
         self.assertEqual(len(calls), 1)
 
         self.panel.stop_button.click()
+
+    def test_non_full_cycle_ticks_call_acquire_frames_not_run_cycle(self):
+
+        # Live CCTV Dashboard Refresh Rate milestone -- ticks 2 through
+        # FULL_CYCLE_EVERY_N_TICKS only refresh the frame cache (~10Hz),
+        # never re-run YOLO/tracking/the full orchestrator (~1Hz).
+        # camera_pipeline is None here (Offline Demo, no RTSP/YOLO
+        # configured) -- this test only asserts run_cycle() itself was
+        # NOT called on these ticks, which needs no real camera_pipeline.
+
+        self.panel.start_button.click()
+        session = self.controller.session
+
+        run_cycle_calls = []
+        original_run_cycle = session.runtime.run_cycle
+        session.runtime.run_cycle = lambda t: run_cycle_calls.append(t) or original_run_cycle(t)
+
+        self.controller._on_tick()  # tick 1 -- full cycle (already proven above)
+        run_cycle_calls.clear()
+
+        self.controller._on_tick()  # tick 2 -- acquire-only
+        self.controller._on_tick()  # tick 3 -- acquire-only
+
+        self.assertEqual(run_cycle_calls, [])
+
+        self.panel.stop_button.click()
+
 
     def test_tick_does_nothing_before_any_session_is_constructed(self):
 

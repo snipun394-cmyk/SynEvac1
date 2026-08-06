@@ -6,11 +6,18 @@ from PyQt6.QtWidgets import QMessageBox
 from live_runtime_launcher.session import LiveRuntimeSession
 
 
-# Matches LiveOrchestrator's own default interval_seconds=1.0 (live_system/
-# orchestrator.py) and command_center.main_window.LIVE_REFRESH_INTERVAL_MS --
-# the existing "~1Hz live cycle" convention this milestone's own tick timer
-# reuses rather than inventing a second cadence.
-LIVE_CYCLE_INTERVAL_MS = 1000
+# Live CCTV Dashboard Refresh Rate milestone -- this timer now drives TWO
+# derived cadences from one tick, never two timers: acquire_frames() (frame
+# caching only, no AI) every tick, ~10Hz; the full run_cycle() (YOLO/
+# tracking/the whole LiveOrchestrator, unchanged cost) every FULL_CYCLE_
+# EVERY_N_TICKS'th tick, still ~1Hz overall -- matching LiveOrchestrator's
+# own default interval_seconds=1.0 (live_system/orchestrator.py) and
+# command_center.main_window.LIVE_REFRESH_INTERVAL_MS exactly as before,
+# just phased differently (see _on_tick()). ACQUISITION_INTERVAL_MS is the
+# new base cadence this class was previously called LIVE_CYCLE_INTERVAL_MS
+# under, before acquisition and the full cycle were decomposed.
+ACQUISITION_INTERVAL_MS = 100
+FULL_CYCLE_EVERY_N_TICKS = 10
 
 
 class LiveRuntimeController:
@@ -42,11 +49,31 @@ class LiveRuntimeController:
     # LiveRuntime.run_cycle() exactly once per interval; it performs no
     # tracking/fusion/state logic itself.
 
-    def __init__(self, panel, get_building, credential_store=None):
+    def __init__(self, panel, get_building, credential_store=None, human_detector_weights_path=None):
 
         self.panel = panel
         self.get_building = get_building
         self.credential_store = credential_store
+
+        # Live CCTV Dashboard milestone -- root-cause fix for "camera
+        # shows Online but every frame consumer (Designer's own
+        # LiveCameraViewPanel, and now Command Center's Live CCTV tab)
+        # shows nothing": on_start() below constructs LiveRuntimeSession
+        # WITHOUT this, ever, prior to this fix -- human_detector_
+        # weights_path had no path from this class's own __init__ to
+        # LiveRuntimeSession at all, so live_runtime.factory.
+        # build_live_runtime()'s own gate ("frame_sources and
+        # human_detector is not None and identity_resolver is not
+        # None") was permanently unsatisfiable through the real
+        # application, and camera_pipeline -- the ONLY thing that ever
+        # populates latest_frame()/latest_detections() -- was silently
+        # None for every real Designer-driven Live session that ever
+        # ran, regardless of a real, connected, Online RTSP camera.
+        # None (the default) reproduces every existing caller's/test's
+        # prior behavior exactly -- only a caller that explicitly opts
+        # in (designer/windows/main_window.py, when a real local
+        # weights file exists) gets a real camera_pipeline.
+        self.human_detector_weights_path = human_detector_weights_path
 
         self.session = None
 
@@ -57,8 +84,16 @@ class LiveRuntimeController:
         # on_camera_changed.
         self.on_cycle_callback = None
 
+        # Live CCTV Dashboard Refresh Rate milestone -- counts ticks so
+        # _on_tick() below can derive the slower (~1Hz) full-cycle
+        # cadence from this single fast (~10Hz) timer, phased so the
+        # FIRST tick after Start already runs a full cycle (matching
+        # this class's own prior single-cadence behavior exactly,
+        # rather than waiting FULL_CYCLE_EVERY_N_TICKS ticks for it).
+        self._tick_count = 0
+
         self._tick_timer = QTimer()
-        self._tick_timer.setInterval(LIVE_CYCLE_INTERVAL_MS)
+        self._tick_timer.setInterval(ACQUISITION_INTERVAL_MS)
         self._tick_timer.timeout.connect(self._on_tick)
 
         self.panel.start_button.clicked.connect(self.on_start)
@@ -72,12 +107,33 @@ class LiveRuntimeController:
 
     def _on_tick(self) -> None:
 
-        if self.session is not None and self.session.is_running:
+        if self.session is None or not self.session.is_running:
+            return
 
-            self.session.runtime.run_cycle(time.time())
+        runtime = self.session.runtime
+        self._tick_count += 1
+
+        # Live CCTV Dashboard Refresh Rate milestone -- exactly one of
+        # these two branches runs per tick, never both: run_cycle()
+        # already composes acquire_frames() as its own first step
+        # (live_camera_pipeline/pipeline.py), so calling both here
+        # would be a genuine second read within the same ~100ms tick,
+        # not a shared acquisition. YOLO/tracking/the full orchestrator
+        # still runs at the same ~1Hz cadence as before (phased so the
+        # very first tick already runs one, matching prior behavior);
+        # every other tick only refreshes the frame cache, ~10Hz, at
+        # essentially zero cost (no detection, no tracking, no
+        # orchestrator stages).
+        if self._tick_count % FULL_CYCLE_EVERY_N_TICKS == 1:
+
+            runtime.run_cycle(time.time())
 
             if self.on_cycle_callback is not None:
                 self.on_cycle_callback()
+
+        elif runtime.camera_pipeline is not None:
+
+            runtime.camera_pipeline.acquire_frames(time.time())
 
     # =====================================================
 
@@ -104,13 +160,17 @@ class LiveRuntimeController:
 
         if self.session is None:
 
-            self.session = LiveRuntimeSession(self.panel.selected_mode(), credential_store=self.credential_store)
+            self.session = LiveRuntimeSession(
+                self.panel.selected_mode(), credential_store=self.credential_store,
+                human_detector_weights_path=self.human_detector_weights_path,
+            )
             self.session.construct(building)
 
         if self.session.runtime is not None:
             self.session.start()
 
         if self.session.is_running:
+            self._tick_count = 0
             self._tick_timer.start()
 
         self._refresh_panel()
