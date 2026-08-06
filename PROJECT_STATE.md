@@ -2,14 +2,16 @@
 
 > **Purpose of this document**: a self-contained architectural summary of the SynEvac codebase, written so another AI (or a human) can understand the current state of the project without inspecting the repository. Update this file after every completed milestone. Do not rewrite from scratch — append/edit incrementally.
 
+> **Full architectural reference**: `docs/architecture/system_capability_inventory.md` — a comprehensive, verified, class-by-class inventory of all ~20 major subsystems (purpose, main classes, data model, runtime ownership, entry points, capabilities, limitations, tests, production-vs-dormant status), plus dependency graphs and a full capability matrix. This file (`PROJECT_STATE.md`) remains the quick-glance summary; consult the inventory doc for exact file/class references before extending any subsystem, to avoid duplicating something that already exists.
+
 ---
 
 ## Quick Snapshot
 
-- **Current Phase**: Camera -> Zone Assignment V1 Complete (Building Topology Foundation, Milestone 1 of N)
+- **Current Phase**: System Capability Inventory Complete (documentation-only milestone, no code changed)
 - **Current Version**: v0.9.1
-- **Last Completed Milestone**: Camera -> Zone Assignment V1 (Camera.zone_ids now genuinely multi-assignable and authorable in Studio; storage/serialization/query only, no coverage/topology/tracking reasoning yet)
-- **Next Planned Milestone**: TBD (further Building Topology Foundation milestones — camera coverage visualization, camera-to-camera overlap, etc. — explicitly deferred, not yet scoped)
+- **Last Completed Milestone**: SynEvac Capability & Architecture Inventory — a full, verified, class-by-class inventory of ~20 major subsystems, dependency graphs, and a capability matrix, written so future milestones extend existing architecture instead of duplicating it. See `docs/architecture/system_capability_inventory.md`. Previous milestone: Camera -> Zone Assignment V1 (Camera.zone_ids now genuinely multi-assignable and authorable in Studio; storage/serialization/query only, no coverage/topology/tracking reasoning yet).
+- **Next Planned Milestone**: TBD. The inventory's own §23 ("What Future Milestones Naturally Build Upon") lists the highest-leverage next steps: closing the perception dormancy chain (YOLO/Tracking/Cross-Camera-Identity/Live-Occupants are one config parameter away from activation), Camera Topology activation (now unblocked by Camera -> Zone Assignment V1), and camera-to-camera overlap (the one genuinely missing camera-reasoning concept, already designed in `docs/architecture/building_camera_topology_design.md`).
 - **Frozen Subsystems**: Builder, Navigation, Simulation, Perception, Crowd Intelligence, Designer, Evacuation Recommendation, Evacuation Guidance, Recommendation Layer, Execution Layer *(full list with rationale in §5)*
 - **Total Tests**: ~5967 passing, 2 known flaky/deselected, 25 skipped (pre-existing/unrelated) *(full suite run this session, all 430 test files covered across batched runs — see Known Flaky Tests below)*
 - **Known Flaky Tests**:
@@ -508,7 +510,8 @@ One paragraph per major package (grouped by pipeline stage; see §2 for full det
 - **`hazard/`, `hazard_evolution/`, `fire_growth/`, `smoke_propagation/`, `tenability/`** — hazard/fire/smoke evolution modeling.
 - **`scenario/`, `scenario_definition/`, `scenario_generator/`, `scenario_pipeline/`, `scenario_validator/`, `scenario_storage/`, `scenario_runner/`, `scenario_event_executor/`, `scenarios/`** — scenario authoring, generation, validation, storage, and execution for batch/research simulation runs.
 - **`behavior/`, `behavior_library/`, `behaviour_profile_resolver/`, `human_decision_engine/`** — occupant behavior modeling for simulation.
-- **`camera_calibration/`, `camera_manager/`, `camera_validation/`, `camera_coverage/`** — camera calibration, asset management, validation, and coverage-derivation.
+- **`camera_calibration/`, `camera_manager/`, `camera_validation/`, `camera_coverage/`** — camera geometry calibration (pinhole model, world-coordinate projection), asset management, validation, and coverage-derivation.
+- **`automatic_calibration/`, `calibration_studio/`, `calibration_benchmark/`** — a *different* sense of "calibration": grid-search tuning of the *simulator's own physics parameters* (walking speed, herding, congestion factors) against published evacuation-research benchmarks, with a full session/dashboard/report "studio." Substantial, tested (17+ dedicated test files), real research-arc work — previously undocumented in this file; surfaced by the System Capability Inventory milestone. See `docs/architecture/system_capability_inventory.md` §17.
 - **`live_camera_pipeline/`, `human_detection/`, `tracking/`, `multi_camera_fusion/`, `cross_camera_identity/`** — real-time camera ingestion, YOLO human detection, tracking, and multi-camera identity fusion.
 - **`live_perception/`, `perception/`, `sensor_manager/`, `sensor_fusion/`, `sensors/`** — perception evidence gateways and sensor fusion.
 - **`building_state/`, `live_occupants/`** — canonical live building-state and persistent occupant identity/lifecycle.
@@ -686,3 +689,33 @@ The following are **FROZEN** — do not modify unless a minimal, absolutely-unav
 **Tests added**: 7 new UI tests + 2 amended + 5 new validation tests + 11 new model/query/round-trip tests = 25 new/amended, all passing. **Full suite**: every one of the 430 files in `tests/` was run this session (in batches — a single unbroken `pytest tests/` invocation was not achievable in this environment/session, see below) — **zero failures caused by this milestone**. Exactly one genuine (pre-existing, environmental) failure surfaced and was root-caused: see "Known worktree-only test artifact" in the Quick Snapshot above. A second pre-existing gap was found and fixed as a byproduct (not a code change): this session's fresh git worktree was missing the gitignored `weights/yolov8n.pt` binary present in the main checkout, causing `tests/test_application_live_runtime_launcher.py`'s real-YOLO-pipeline test to fail purely from the missing file; copying the weights file from the main checkout resolved it (no repository change — `weights/*.pt` stays gitignored).
 
 **Known issues**: none new in this milestone's own code. **Environment note for future sessions**: full-suite `pytest tests/` runs in this session's background-bash environment were repeatedly killed by the harness partway through (at inconsistent points, 7%–52%) regardless of the explicit timeout passed — root cause not fully identified, but batching the suite into ~15 alphabetical-prefix groups (`test_a*.py test_b*.py`, `test_ca*.py`, etc.) reliably completed every batch. A single `pytest tests/ -x` (stop-on-first-failure) run did also complete normally in ~130s. Future sessions needing a full-suite confirmation in this environment should default to batching rather than one long invocation.
+
+---
+
+### Session: SynEvac Capability & Architecture Inventory
+
+**Date**: 2026-08-06 (immediately following Camera -> Zone Assignment V1, same worktree/branch `milestone-camera-zone-assignment`)
+
+**Subsystem**: documentation only. **No code was changed** — this milestone was explicitly scoped by the user as investigation-and-documentation-only, to give future milestones a verified architectural reference before extending anything further.
+
+**Context**: the user asked for a complete architectural inventory of the whole system — purpose, main classes, data model, runtime ownership, entry points, capabilities, limitations, tests, and production-vs-dormant status for ~20 major subsystems (Building Model, Navigation, Cameras, Live Runtime, CCTV, Human Detection, Live Occupants, Building State, Command Center, Designer, Simulation, Recommendation Layer, Execution Layer, Decision Engine, AI/reasoning modules, Cross-Camera Identity, Calibration, Geometry utilities, Visualization utilities, dormant/partial systems) — plus dependency graphs and a capability matrix, so future work extends the architecture instead of accidentally duplicating it.
+
+**Method**: own verified knowledge from the two immediately-preceding milestones (Building Model, Navigation, Camera model/coverage/topology, Cross-Camera Identity — all freshly investigated against real code this same session) combined with four parallel `Explore` subagent investigations, each independently verifying its own cluster against real source (exact file paths and class names throughout, entry points confirmed by grepping for actual non-test call sites, not just definitions) rather than trusting prior documentation blindly: (1) CCTV/Human Detection/Tracking/Identity/Live Occupants, (2) Live Runtime/Building State/Command Center, (3) Designer/Simulation/Decision-Engine/AI/Recommendation/Execution, (4) Calibration/Geometry/Visualization utilities + a dedicated dormant-and-partially-implemented-systems scan.
+
+**Files created**: `docs/architecture/system_capability_inventory.md` — the full inventory (23 numbered sections: 20 subsystem write-ups + 4 dependency graphs + 1 capability matrix + "what future milestones build upon this" summary).
+
+**Files modified**: `PROJECT_STATE.md` (this file) — added a pointer to the new inventory doc right under the purpose blockquote, updated the Quick Snapshot for this milestone, and folded in a real, previously-undocumented gap the inventory's dormant-systems scan found: `automatic_calibration/`, `calibration_studio/`, `calibration_benchmark/` (simulator-physics calibration against published evacuation research, 17+ dedicated test files) had zero mention anywhere in this file before now.
+
+**Key findings** (full detail in the inventory doc itself):
+- **A single, recurring dormancy pattern** across four independent subsystems (Human Detection, Tracking, Behavior Recognition, Cross-Camera Identity): all four are real, tested, correctly wired all the way through `live_runtime/factory.py::build_live_runtime()` — but `live_runtime_launcher/session.py::LiveRuntimeSession.construct()` only actually constructs them when a `human_detector_weights_path` is explicitly supplied, and `designer/live_runtime_controller.py::LiveRuntimeController.on_start()` never supplies one. One missing parameter gates four otherwise-complete subsystems from the shipped Designer app; each is proven only via `scripts/demo_*.py`/`scripts/benchmark_*.py` and the test suite.
+- **Camera Topology** (`cross_camera_identity/topology.py::build_topology_from_navigation_graph`) independently reconfirmed dormant (zero production callers) — consistent with the Building Topology investigation's own finding two milestones ago, now cross-verified from a different angle.
+- **Shadow-Mode AI** (`live_ai_gateway`) confirmed dormant in the shipped Designer app for the same reason as the perception chain — a real, tested, one-parameter-away-from-activation gap, not a missing feature.
+- **Camera-to-camera geometric overlap** reconfirmed genuinely missing (not merely dormant) — matches the Building Topology investigation's own finding.
+- **A real, previously-undocumented body of work found**: `automatic_calibration/`, `calibration_studio/`, `calibration_benchmark/` (simulator-physics calibration, not camera-geometry calibration) — substantial and tested, absent from `PROJECT_STATE.md`'s "Completed Subsystems" and "Future Roadmap" sections entirely until this session's fix.
+- **Evidence of uncommitted, in-progress work** found in the user's live working tree (outside this worktree's committed history): a Command Center multi-camera grid view (`camera_tile_widget.py`, `live_camera_grid_panel.py`, `live_camera_view_gateway.py` + modifications to `building_view.py`/`dashboard.py`/`main_window.py`) — flagged in the inventory (§9, §20) as evidence, not verified in depth (out of scope for a documentation-only milestone against a specific worktree).
+
+**Architectural decisions**: none — this was investigation and documentation only, per explicit user instruction. No files outside `docs/architecture/system_capability_inventory.md` and `PROJECT_STATE.md` were touched.
+
+**Tests added**: none (no code changed). **Tests passed**: not applicable — no code was run beyond the read-only investigation itself (agents used Read/Glob/Grep only, no test execution needed for a pure inventory task).
+
+**Known issues**: none new. The two not-yet-merged branches from this development arc (`worktree-building-camera-topology-design` for the Building/Camera Topology investigation doc, and this branch `milestone-camera-zone-assignment` for the Camera -> Zone Assignment milestone + this inventory) still need a merge decision — out of scope for this milestone, noted for whoever manages branch integration next.
