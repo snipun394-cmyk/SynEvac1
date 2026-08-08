@@ -1,0 +1,706 @@
+{
+  "Adult_Default": {
+    "10-story": {
+      "profile_id": "Adult_Default",
+      "building": "10-story",
+      "published_evacuation_time_s": 1022.0,
+      "n_scenarios": 8,
+      "grid": [
+        15.0,
+        20.0,
+        25.0,
+        30.0,
+        35.0,
+        45.0,
+        55.0
+      ],
+      "run_status": "COMPLETED",
+      "best_session_id": "02cd0485-3e90-4045-a74e-11a00db7db77",
+      "best_median_delay": 15.0,
+      "best_score": 2096.554233944937,
+      "best_evacuation_time": 3118.554233944937,
+      "best_overprediction_ratio": 3.0514229294960247,
+      "per_value_results": [
+        {
+          "median_delay": 15.0,
+          "session_status": "COMPLETED",
+          "candidate_mean_evacuation_time": 3118.554233944937,
+          "baseline_mean_evacuation_time": 3122.9504396227603,
+          "candidate_ci": {
+            "mean": 3118.554233944937,
+            "lower": 3080.138343153563,
+            "upper": 3156.9701247363114,
+            "confidence": 0.95,
+            "n": 6
+          },
+          "p_value_vs_production_default": 0.00012637062718697998,
+          "cohens_d_vs_production_default": -0.12010512724983263,
+          "score_distance_from_published": 2096.554233944937,
+          "overprediction_ratio": 3.0514229294960247,
+          "recommendation": "ADOPT",
+          "recommendation_summary": "ADOPT (candidate): candidate 'Adult_Default.pre_movement_strategy.median_delay' significantly improves evacuation_time with no significant regression on any other measured metric, across 6 paired scenarios. This is a recommendation for a human reviewer to act on -- SynEvac's own default (30.0 seconds) is NOT changed by running this benchmark."
+        },
+        {
+          "median_delay": 20.0,
+          "session_status": "COMPLETED",
+          "candidate_mean_evacuation_time": 3120.019635837545,
+          "baseline_mean_evacuation_time": 3122.9504396227603,
+          "candidate_ci": {
+            "mean": 3120.019635837545,
+            "lower": 3081.6092815243946,
+            "upper": 3158.4299901506956,
+            "confidence": 0.95,
+            "n": 6
+          },
+          "p_value_vs_production_default": 0.0001263706271868995,
+          "cohens_d_vs_production_default": -0.08007585589764474,
+          "score_distance_from_published": 2098.019635837545,
+          "overprediction_ratio": 3.0528567865338014,
+          "recommendation": "ADOPT",
+          "recommendation_summary": "ADOPT (candidate): candidate 'Adult_Default.pre_movement_strategy.median_delay' significantly improves evacuation_time with no significant regression on any other measured metric, across 6 paired scenarios. This is a recommendation for a human reviewer to act on -- SynEvac's own default (30.0 seconds) is NOT changed by running this benchmark."
+        },
+        {
+          "median_delay": 25.0,
+          "session_status": "COMPLETED",
+          "candidate_mean_evacuation_time": 3121.4850377301523,
+          "baseline_mean_evacuation_time": 3122.9504396227603,
+          "candidate_ci": {
+            "mean": 3121.4850377301523,
+            "lower": 3083.0769624558798,
+            "upper": 3159.893113004425,
+            "confidence": 0.95,
+            "n": 6
+          },
+          "p_value_vs_production_default": 0.00012637062718691826,
+          "cohens_d_vs_production_default": -0.04003911581130273,
+          "score_distance_from_published": 2099.4850377301523,
+          "overprediction_ratio": 3.0542906435715778,
+          "recommendation": "ADOPT",
+          "recommendation_summary": "ADOPT (candidate): candidate 'Adult_Default.pre_movement_strategy.median_delay' significantly improves evacuation_time with no significant regression on any other measured metric, across 6 paired scenarios. This is a recommendation for a human reviewer to act on -- SynEvac's own default (30.0 seconds) is NOT changed by running this benchmark."
+        },
+        {
+          "median_delay": 30.0,
+          "session_status": "COMPLETED",
+          "candidate_mean_evacuation_time": 3122.9504396227603,
+          "baseline_mean_evacuation_time": 3122.9504396227603,
+          "candidate_ci": {
+            "mean": 3122.9504396227603,
+            "lower": 3084.5413853681684,
+            "upper": 3161.359493877352,
+            "confidence": 0.95,
+            "n": 6
+          },
+          "p_value_vs_production_default": NaN,
+          "cohens_d_vs_production_default": 0.0,
+          "score_distance_from_published": 2100.9504396227603,
+          "overprediction_ratio": 3.0557245006093545,
+          "recommendation": "INCONCLUSIVE",
+          "recommendation_summary": "INCONCLUSIVE: no metric showed a statistically significant difference at alpha=0.05 across 6 paired scenarios. Either the sample size is too small to detect a real effect, or this candidate genuinely makes no measurable difference to SynEvac's own simulated outcomes."
+        },
+        {
+          "median_delay": 35.0,
+          "session_status": "COMPLETED",
+          "candidate_mean_evacuation_time": 3124.27860861226,
+          "baseline_mean_evacuation_time": 3122.9504396227603,
+          "candidate_ci": {
+            "mean": 3124.27860861226,
+            "lower": 3085.541543456028,
+            "upper": 3163.015673768492,
+            "confidence": 0.95,
+            "n": 6
+          },
+          "p_value_vs_production_default": 0.0009111620559023656,
+          "cohens_d_vs_production_default": 0.036134423492692865,
+          "score_distance_from_published": 2102.27860861226,
+          "overprediction_ratio": 3.057024078876967,
+          "recommendation": "REJECT",
+          "recommendation_summary": "REJECT: candidate 'Adult_Default.pre_movement_strategy.median_delay' significantly worsens at least one metric. A candidate is never adopted piecemeal -- see the per-metric verdicts below for exactly which trade-off is unacceptable."
+        },
+        {
+          "median_delay": 45.0,
+          "session_status": "COMPLETED",
+          "candidate_mean_evacuation_time": 3126.883696996647,
+          "baseline_mean_evacuation_time": 3122.9504396227603,
+          "candidate_ci": {
+            "mean": 3126.883696996647,
+            "lower": 3087.3594977024154,
+            "upper": 3166.4078962908784,
+            "confidence": 0.95,
+            "n": 6
+          },
+          "p_value_vs_production_default": 0.0012843888005695675,
+          "cohens_d_vs_production_default": 0.10591827696825563,
+          "score_distance_from_published": 2104.883696996647,
+          "overprediction_ratio": 3.0595730890378148,
+          "recommendation": "REJECT",
+          "recommendation_summary": "REJECT: candidate 'Adult_Default.pre_movement_strategy.median_delay' significantly worsens at least one metric. A candidate is never adopted piecemeal -- see the per-metric verdicts below for exactly which trade-off is unacceptable."
+        },
+        {
+          "median_delay": 55.0,
+          "session_status": "COMPLETED",
+          "candidate_mean_evacuation_time": 3129.488785381034,
+          "baseline_mean_evacuation_time": 3122.9504396227603,
+          "candidate_ci": {
+            "mean": 3129.488785381034,
+            "lower": 3089.1644676959672,
+            "upper": 3169.813103066101,
+            "confidence": 0.95,
+            "n": 6
+          },
+          "p_value_vs_production_default": 0.001374858615740389,
+          "cohens_d_vs_production_default": 0.17424742833638165,
+          "score_distance_from_published": 2107.488785381034,
+          "overprediction_ratio": 3.0621220991986635,
+          "recommendation": "REJECT",
+          "recommendation_summary": "REJECT: candidate 'Adult_Default.pre_movement_strategy.median_delay' significantly worsens at least one metric. A candidate is never adopted piecemeal -- see the per-metric verdicts below for exactly which trade-off is unacceptable."
+        }
+      ]
+    },
+    "18-story": {
+      "profile_id": "Adult_Default",
+      "building": "18-story",
+      "published_evacuation_time_s": 1192.0,
+      "n_scenarios": 8,
+      "grid": [
+        15.0,
+        20.0,
+        25.0,
+        30.0,
+        35.0,
+        45.0,
+        55.0
+      ],
+      "run_status": "COMPLETED",
+      "best_session_id": "dc118585-77c4-4bd5-8ae2-413262ef793c",
+      "best_median_delay": 15.0,
+      "best_score": 18403.400608305958,
+      "best_evacuation_time": 19595.400608305958,
+      "best_overprediction_ratio": 16.439094470055334,
+      "per_value_results": [
+        {
+          "median_delay": 15.0,
+          "session_status": "COMPLETED",
+          "candidate_mean_evacuation_time": 19595.400608305958,
+          "baseline_mean_evacuation_time": 19599.274513705477,
+          "candidate_ci": {
+            "mean": 19595.400608305958,
+            "lower": 19237.558876632942,
+            "upper": 19953.242339978973,
+            "confidence": 0.95,
+            "n": 8
+          },
+          "p_value_vs_production_default": 0.00015526294908398196,
+          "cohens_d_vs_production_default": -0.009050121277622693,
+          "score_distance_from_published": 18403.400608305958,
+          "overprediction_ratio": 16.439094470055334,
+          "recommendation": "ADOPT",
+          "recommendation_summary": "ADOPT (candidate): candidate 'Adult_Default.pre_movement_strategy.median_delay' significantly improves evacuation_time with no significant regression on any other measured metric, across 8 paired scenarios. This is a recommendation for a human reviewer to act on -- SynEvac's own default (30.0 seconds) is NOT changed by running this benchmark."
+        },
+        {
+          "median_delay": 20.0,
+          "session_status": "COMPLETED",
+          "candidate_mean_evacuation_time": 19596.691910105797,
+          "baseline_mean_evacuation_time": 19599.274513705477,
+          "candidate_ci": {
+            "mean": 19596.691910105797,
+            "lower": 19238.839249982786,
+            "upper": 19954.54457022881,
+            "confidence": 0.95,
+            "n": 8
+          },
+          "p_value_vs_production_default": 0.00015526294908351323,
+          "cohens_d_vs_production_default": -0.0060333220646701675,
+          "score_distance_from_published": 18404.691910105797,
+          "overprediction_ratio": 16.440177776934394,
+          "recommendation": "ADOPT",
+          "recommendation_summary": "ADOPT (candidate): candidate 'Adult_Default.pre_movement_strategy.median_delay' significantly improves evacuation_time with no significant regression on any other measured metric, across 8 paired scenarios. This is a recommendation for a human reviewer to act on -- SynEvac's own default (30.0 seconds) is NOT changed by running this benchmark."
+        },
+        {
+          "median_delay": 25.0,
+          "session_status": "COMPLETED",
+          "candidate_mean_evacuation_time": 19597.983211905637,
+          "baseline_mean_evacuation_time": 19599.274513705477,
+          "candidate_ci": {
+            "mean": 19597.983211905637,
+            "lower": 19240.119142058407,
+            "upper": 19955.847281752867,
+            "confidence": 0.95,
+            "n": 8
+          },
+          "p_value_vs_production_default": 0.00015526294908461377,
+          "cohens_d_vs_production_default": -0.003016612944450133,
+          "score_distance_from_published": 18405.983211905637,
+          "overprediction_ratio": 16.441261083813455,
+          "recommendation": "ADOPT",
+          "recommendation_summary": "ADOPT (candidate): candidate 'Adult_Default.pre_movement_strategy.median_delay' significantly improves evacuation_time with no significant regression on any other measured metric, across 8 paired scenarios. This is a recommendation for a human reviewer to act on -- SynEvac's own default (30.0 seconds) is NOT changed by running this benchmark."
+        },
+        {
+          "median_delay": 30.0,
+          "session_status": "COMPLETED",
+          "candidate_mean_evacuation_time": 19599.274513705477,
+          "baseline_mean_evacuation_time": 19599.274513705477,
+          "candidate_ci": {
+            "mean": 19599.274513705477,
+            "lower": 19241.398552905837,
+            "upper": 19957.150474505117,
+            "confidence": 0.95,
+            "n": 8
+          },
+          "p_value_vs_production_default": NaN,
+          "cohens_d_vs_production_default": 0.0,
+          "score_distance_from_published": 18407.274513705477,
+          "overprediction_ratio": 16.442344390692515,
+          "recommendation": "INCONCLUSIVE",
+          "recommendation_summary": "INCONCLUSIVE: no metric showed a statistically significant difference at alpha=0.05 across 8 paired scenarios. Either the sample size is too small to detect a real effect, or this candidate genuinely makes no measurable difference to SynEvac's own simulated outcomes."
+        },
+        {
+          "median_delay": 35.0,
+          "session_status": "COMPLETED",
+          "candidate_mean_evacuation_time": 19600.457588680714,
+          "baseline_mean_evacuation_time": 19599.274513705477,
+          "candidate_ci": {
+            "mean": 19600.457588680714,
+            "lower": 19242.58392067504,
+            "upper": 19958.33125668639,
+            "confidence": 0.95,
+            "n": 8
+          },
+          "p_value_vs_production_default": 1.9393683233372014e-05,
+          "cohens_d_vs_production_default": 0.0027637469621901176,
+          "score_distance_from_published": 18408.457588680714,
+          "overprediction_ratio": 16.443336903255634,
+          "recommendation": "REJECT",
+          "recommendation_summary": "REJECT: candidate 'Adult_Default.pre_movement_strategy.median_delay' significantly worsens at least one metric. A candidate is never adopted piecemeal -- see the per-metric verdicts below for exactly which trade-off is unacceptable."
+        },
+        {
+          "median_delay": 45.0,
+          "session_status": "COMPLETED",
+          "candidate_mean_evacuation_time": 19602.84853833742,
+          "baseline_mean_evacuation_time": 19599.274513705477,
+          "candidate_ci": {
+            "mean": 19602.84853833742,
+            "lower": 19244.975455026102,
+            "upper": 19960.72162164874,
+            "confidence": 0.95,
+            "n": 8
+          },
+          "p_value_vs_production_default": 2.0821382952052416e-05,
+          "cohens_d_vs_production_default": 0.008349181577775361,
+          "score_distance_from_published": 18410.84853833742,
+          "overprediction_ratio": 16.445342733504546,
+          "recommendation": "REJECT",
+          "recommendation_summary": "REJECT: candidate 'Adult_Default.pre_movement_strategy.median_delay' significantly worsens at least one metric. A candidate is never adopted piecemeal -- see the per-metric verdicts below for exactly which trade-off is unacceptable."
+        },
+        {
+          "median_delay": 55.0,
+          "session_status": "COMPLETED",
+          "candidate_mean_evacuation_time": 19605.23948799413,
+          "baseline_mean_evacuation_time": 19599.274513705477,
+          "candidate_ci": {
+            "mean": 19605.23948799413,
+            "lower": 19247.366091116382,
+            "upper": 19963.11288487188,
+            "confidence": 0.95,
+            "n": 8
+          },
+          "p_value_vs_production_default": 2.119018462829163e-05,
+          "cohens_d_vs_production_default": 0.013934607831010677,
+          "score_distance_from_published": 18413.23948799413,
+          "overprediction_ratio": 16.447348563753465,
+          "recommendation": "REJECT",
+          "recommendation_summary": "REJECT: candidate 'Adult_Default.pre_movement_strategy.median_delay' significantly worsens at least one metric. A candidate is never adopted piecemeal -- see the per-metric verdicts below for exactly which trade-off is unacceptable."
+        }
+      ]
+    },
+    "24-story": {
+      "profile_id": "Adult_Default",
+      "building": "24-story",
+      "published_evacuation_time_s": 1090.0,
+      "n_scenarios": 8,
+      "grid": [
+        15.0,
+        20.0,
+        25.0,
+        30.0,
+        35.0,
+        45.0,
+        55.0
+      ],
+      "run_status": "COMPLETED",
+      "best_session_id": "c8a2a0d5-2b42-4a11-a5ca-1e59d839606f",
+      "best_median_delay": 15.0,
+      "best_score": 9179.747494201903,
+      "best_evacuation_time": 10269.747494201903,
+      "best_overprediction_ratio": 9.421786691928352,
+      "per_value_results": [
+        {
+          "median_delay": 15.0,
+          "session_status": "COMPLETED",
+          "candidate_mean_evacuation_time": 10269.747494201903,
+          "baseline_mean_evacuation_time": 10275.622898985077,
+          "candidate_ci": {
+            "mean": 10269.747494201903,
+            "lower": 10085.24017001713,
+            "upper": 10454.254818386677,
+            "confidence": 0.95,
+            "n": 8
+          },
+          "p_value_vs_production_default": 1.0359720412974384e-06,
+          "cohens_d_vs_production_default": -0.026626123313964262,
+          "score_distance_from_published": 9179.747494201903,
+          "overprediction_ratio": 9.421786691928352,
+          "recommendation": "ADOPT",
+          "recommendation_summary": "ADOPT (candidate): candidate 'Adult_Default.pre_movement_strategy.median_delay' significantly improves evacuation_time with no significant regression on any other measured metric, across 8 paired scenarios. This is a recommendation for a human reviewer to act on -- SynEvac's own default (30.0 seconds) is NOT changed by running this benchmark."
+        },
+        {
+          "median_delay": 20.0,
+          "session_status": "COMPLETED",
+          "candidate_mean_evacuation_time": 10271.705962462962,
+          "baseline_mean_evacuation_time": 10275.622898985077,
+          "candidate_ci": {
+            "mean": 10271.705962462962,
+            "lower": 10087.217975066907,
+            "upper": 10456.193949859016,
+            "confidence": 0.95,
+            "n": 8
+          },
+          "p_value_vs_production_default": 1.0359720412969626e-06,
+          "cohens_d_vs_production_default": -0.017751679345247844,
+          "score_distance_from_published": 9181.705962462962,
+          "overprediction_ratio": 9.423583451800882,
+          "recommendation": "ADOPT",
+          "recommendation_summary": "ADOPT (candidate): candidate 'Adult_Default.pre_movement_strategy.median_delay' significantly improves evacuation_time with no significant regression on any other measured metric, across 8 paired scenarios. This is a recommendation for a human reviewer to act on -- SynEvac's own default (30.0 seconds) is NOT changed by running this benchmark."
+        },
+        {
+          "median_delay": 25.0,
+          "session_status": "COMPLETED",
+          "candidate_mean_evacuation_time": 10273.664430724019,
+          "baseline_mean_evacuation_time": 10275.622898985077,
+          "candidate_ci": {
+            "mean": 10273.664430724019,
+            "lower": 10089.195309612136,
+            "upper": 10458.133551835901,
+            "confidence": 0.95,
+            "n": 8
+          },
+          "p_value_vs_production_default": 1.0359720412914988e-06,
+          "cohens_d_vs_production_default": -0.008876293610646293,
+          "score_distance_from_published": 9183.664430724019,
+          "overprediction_ratio": 9.425380211673412,
+          "recommendation": "ADOPT",
+          "recommendation_summary": "ADOPT (candidate): candidate 'Adult_Default.pre_movement_strategy.median_delay' significantly improves evacuation_time with no significant regression on any other measured metric, across 8 paired scenarios. This is a recommendation for a human reviewer to act on -- SynEvac's own default (30.0 seconds) is NOT changed by running this benchmark."
+        },
+        {
+          "median_delay": 30.0,
+          "session_status": "COMPLETED",
+          "candidate_mean_evacuation_time": 10275.622898985077,
+          "baseline_mean_evacuation_time": 10275.622898985077,
+          "candidate_ci": {
+            "mean": 10275.622898985077,
+            "lower": 10091.172173508445,
+            "upper": 10460.07362446171,
+            "confidence": 0.95,
+            "n": 8
+          },
+          "p_value_vs_production_default": NaN,
+          "cohens_d_vs_production_default": 0.0,
+          "score_distance_from_published": 9185.622898985077,
+          "overprediction_ratio": 9.427176971545942,
+          "recommendation": "INCONCLUSIVE",
+          "recommendation_summary": "INCONCLUSIVE: no metric showed a statistically significant difference at alpha=0.05 across 8 paired scenarios. Either the sample size is too small to detect a real effect, or this candidate genuinely makes no measurable difference to SynEvac's own simulated outcomes."
+        },
+        {
+          "median_delay": 35.0,
+          "session_status": "COMPLETED",
+          "candidate_mean_evacuation_time": 10277.584443689817,
+          "baseline_mean_evacuation_time": 10275.622898985077,
+          "candidate_ci": {
+            "mean": 10277.584443689817,
+            "lower": 10093.098260867308,
+            "upper": 10462.070626512326,
+            "confidence": 0.95,
+            "n": 8
+          },
+          "p_value_vs_production_default": 1.1488208591432419e-05,
+          "cohens_d_vs_production_default": 0.008889825698715163,
+          "score_distance_from_published": 9187.584443689817,
+          "overprediction_ratio": 9.428976553843869,
+          "recommendation": "REJECT",
+          "recommendation_summary": "REJECT: candidate 'Adult_Default.pre_movement_strategy.median_delay' significantly worsens at least one metric. A candidate is never adopted piecemeal -- see the per-metric verdicts below for exactly which trade-off is unacceptable."
+        },
+        {
+          "median_delay": 45.0,
+          "session_status": "COMPLETED",
+          "candidate_mean_evacuation_time": 10281.642346901024,
+          "baseline_mean_evacuation_time": 10275.622898985077,
+          "candidate_ci": {
+            "mean": 10281.642346901024,
+            "lower": 10097.623996259175,
+            "upper": 10465.660697542873,
+            "confidence": 0.95,
+            "n": 8
+          },
+          "p_value_vs_production_default": 0.0018105871444229172,
+          "cohens_d_vs_production_default": 0.027315078826872206,
+          "score_distance_from_published": 9191.642346901024,
+          "overprediction_ratio": 9.432699400826628,
+          "recommendation": "REJECT",
+          "recommendation_summary": "REJECT: candidate 'Adult_Default.pre_movement_strategy.median_delay' significantly worsens at least one metric. A candidate is never adopted piecemeal -- see the per-metric verdicts below for exactly which trade-off is unacceptable."
+        },
+        {
+          "median_delay": 55.0,
+          "session_status": "COMPLETED",
+          "candidate_mean_evacuation_time": 10285.024687062172,
+          "baseline_mean_evacuation_time": 10275.622898985077,
+          "candidate_ci": {
+            "mean": 10285.024687062172,
+            "lower": 10100.976630488633,
+            "upper": 10469.072743635712,
+            "confidence": 0.95,
+            "n": 8
+          },
+          "p_value_vs_production_default": 6.278794887570322e-05,
+          "cohens_d_vs_production_default": 0.04266004243903568,
+          "score_distance_from_published": 9195.024687062172,
+          "overprediction_ratio": 9.435802465194653,
+          "recommendation": "REJECT",
+          "recommendation_summary": "REJECT: candidate 'Adult_Default.pre_movement_strategy.median_delay' significantly worsens at least one metric. A candidate is never adopted piecemeal -- see the per-metric verdicts below for exactly which trade-off is unacceptable."
+        }
+      ]
+    },
+    "31-story": {
+      "profile_id": "Adult_Default",
+      "building": "31-story",
+      "published_evacuation_time_s": 1002.0,
+      "n_scenarios": 8,
+      "grid": [
+        15.0,
+        20.0,
+        25.0,
+        30.0,
+        35.0,
+        45.0,
+        55.0
+      ],
+      "run_status": "COMPLETED",
+      "best_session_id": "be22f5a2-614c-4b4e-9336-5b395c11cdc7",
+      "best_median_delay": 15.0,
+      "best_score": 10891.44640688438,
+      "best_evacuation_time": 11893.44640688438,
+      "best_overprediction_ratio": 11.869706992898584,
+      "per_value_results": [
+        {
+          "median_delay": 15.0,
+          "session_status": "COMPLETED",
+          "candidate_mean_evacuation_time": 11893.44640688438,
+          "baseline_mean_evacuation_time": 11898.670442099028,
+          "candidate_ci": {
+            "mean": 11893.44640688438,
+            "lower": 11765.216836441694,
+            "upper": 12021.675977327068,
+            "confidence": 0.95,
+            "n": 8
+          },
+          "p_value_vs_production_default": 3.4950951174948334e-06,
+          "cohens_d_vs_production_default": -0.034140858603640765,
+          "score_distance_from_published": 10891.44640688438,
+          "overprediction_ratio": 11.869706992898584,
+          "recommendation": "ADOPT",
+          "recommendation_summary": "ADOPT (candidate): candidate 'Adult_Default.pre_movement_strategy.median_delay' significantly improves evacuation_time with no significant regression on any other measured metric, across 8 paired scenarios. This is a recommendation for a human reviewer to act on -- SynEvac's own default (30.0 seconds) is NOT changed by running this benchmark."
+        },
+        {
+          "median_delay": 20.0,
+          "session_status": "COMPLETED",
+          "candidate_mean_evacuation_time": 11895.187751955931,
+          "baseline_mean_evacuation_time": 11898.670442099028,
+          "candidate_ci": {
+            "mean": 11895.187751955931,
+            "lower": 11767.163217409005,
+            "upper": 12023.212286502858,
+            "confidence": 0.95,
+            "n": 8
+          },
+          "p_value_vs_production_default": 3.495095117498274e-06,
+          "cohens_d_vs_production_default": -0.02277886391412362,
+          "score_distance_from_published": 10893.187751955931,
+          "overprediction_ratio": 11.871444862231469,
+          "recommendation": "ADOPT",
+          "recommendation_summary": "ADOPT (candidate): candidate 'Adult_Default.pre_movement_strategy.median_delay' significantly improves evacuation_time with no significant regression on any other measured metric, across 8 paired scenarios. This is a recommendation for a human reviewer to act on -- SynEvac's own default (30.0 seconds) is NOT changed by running this benchmark."
+        },
+        {
+          "median_delay": 25.0,
+          "session_status": "COMPLETED",
+          "candidate_mean_evacuation_time": 11896.92909702748,
+          "baseline_mean_evacuation_time": 11898.670442099028,
+          "candidate_ci": {
+            "mean": 11896.92909702748,
+            "lower": 11769.109156097973,
+            "upper": 12024.749037956986,
+            "confidence": 0.95,
+            "n": 8
+          },
+          "p_value_vs_production_default": 3.495095117463173e-06,
+          "cohens_d_vs_production_default": -0.011398565357768781,
+          "score_distance_from_published": 10894.92909702748,
+          "overprediction_ratio": 11.87318273156435,
+          "recommendation": "ADOPT",
+          "recommendation_summary": "ADOPT (candidate): candidate 'Adult_Default.pre_movement_strategy.median_delay' significantly improves evacuation_time with no significant regression on any other measured metric, across 8 paired scenarios. This is a recommendation for a human reviewer to act on -- SynEvac's own default (30.0 seconds) is NOT changed by running this benchmark."
+        },
+        {
+          "median_delay": 30.0,
+          "session_status": "COMPLETED",
+          "candidate_mean_evacuation_time": 11898.670442099028,
+          "baseline_mean_evacuation_time": 11898.670442099028,
+          "candidate_ci": {
+            "mean": 11898.670442099028,
+            "lower": 11771.054650381418,
+            "upper": 12026.286233816638,
+            "confidence": 0.95,
+            "n": 8
+          },
+          "p_value_vs_production_default": NaN,
+          "cohens_d_vs_production_default": 0.0,
+          "score_distance_from_published": 10896.670442099028,
+          "overprediction_ratio": 11.874920600897234,
+          "recommendation": "INCONCLUSIVE",
+          "recommendation_summary": "INCONCLUSIVE: no metric showed a statistically significant difference at alpha=0.05 across 8 paired scenarios. Either the sample size is too small to detect a real effect, or this candidate genuinely makes no measurable difference to SynEvac's own simulated outcomes."
+        },
+        {
+          "median_delay": 35.0,
+          "session_status": "COMPLETED",
+          "candidate_mean_evacuation_time": 11900.411787170578,
+          "baseline_mean_evacuation_time": 11898.670442099028,
+          "candidate_ci": {
+            "mean": 11900.411787170578,
+            "lower": 11772.999698123163,
+            "upper": 12027.823876217994,
+            "confidence": 0.95,
+            "n": 8
+          },
+          "p_value_vs_production_default": 3.4950951174947987e-06,
+          "cohens_d_vs_production_default": 0.01141679445265558,
+          "score_distance_from_published": 10898.411787170578,
+          "overprediction_ratio": 11.876658470230119,
+          "recommendation": "REJECT",
+          "recommendation_summary": "REJECT: candidate 'Adult_Default.pre_movement_strategy.median_delay' significantly worsens at least one metric. A candidate is never adopted piecemeal -- see the per-metric verdicts below for exactly which trade-off is unacceptable."
+        },
+        {
+          "median_delay": 45.0,
+          "session_status": "COMPLETED",
+          "candidate_mean_evacuation_time": 11903.682693085095,
+          "baseline_mean_evacuation_time": 11898.670442099028,
+          "candidate_ci": {
+            "mean": 11903.682693085095,
+            "lower": 11776.400972140224,
+            "upper": 12030.964414029966,
+            "confidence": 0.95,
+            "n": 8
+          },
+          "p_value_vs_production_default": 2.9396291856458877e-07,
+          "cohens_d_vs_production_default": 0.032878650295012156,
+          "score_distance_from_published": 10901.682693085095,
+          "overprediction_ratio": 11.879922847390315,
+          "recommendation": "REJECT",
+          "recommendation_summary": "REJECT: candidate 'Adult_Default.pre_movement_strategy.median_delay' significantly worsens at least one metric. A candidate is never adopted piecemeal -- see the per-metric verdicts below for exactly which trade-off is unacceptable."
+        },
+        {
+          "median_delay": 55.0,
+          "session_status": "COMPLETED",
+          "candidate_mean_evacuation_time": 11907.023949867302,
+          "baseline_mean_evacuation_time": 11898.670442099028,
+          "candidate_ci": {
+            "mean": 11907.023949867302,
+            "lower": 11779.963384022281,
+            "upper": 12034.084515712322,
+            "confidence": 0.95,
+            "n": 8
+          },
+          "p_value_vs_production_default": 2.935965183089433e-07,
+          "cohens_d_vs_production_default": 0.05484365124117718,
+          "score_distance_from_published": 10905.023949867302,
+          "overprediction_ratio": 11.883257434997308,
+          "recommendation": "REJECT",
+          "recommendation_summary": "REJECT: candidate 'Adult_Default.pre_movement_strategy.median_delay' significantly worsens at least one metric. A candidate is never adopted piecemeal -- see the per-metric verdicts below for exactly which trade-off is unacceptable."
+        }
+      ]
+    }
+  },
+  "Child_Default_diagnostic_only": {
+    "10-story": {
+      "profile_id": "Child_Default",
+      "building": "10-story",
+      "published_evacuation_time_s": 1022.0,
+      "n_scenarios": 4,
+      "grid": [
+        45.0,
+        90.0,
+        120.0
+      ],
+      "run_status": "COMPLETED",
+      "best_session_id": "502b9f2e-3844-47ce-8cf2-91136ee6359c",
+      "best_median_delay": 45.0,
+      "best_score": 2095.5525429541467,
+      "best_evacuation_time": 3117.5525429541467,
+      "best_overprediction_ratio": 3.050442801324997,
+      "per_value_results": [
+        {
+          "median_delay": 45.0,
+          "session_status": "COMPLETED",
+          "candidate_mean_evacuation_time": 3117.5525429541467,
+          "baseline_mean_evacuation_time": 3117.5525429541467,
+          "candidate_ci": {
+            "mean": 3117.5525429541467,
+            "lower": 3045.2261067685413,
+            "upper": 3189.878979139752,
+            "confidence": 0.95,
+            "n": 4
+          },
+          "p_value_vs_production_default": NaN,
+          "cohens_d_vs_production_default": 0.0,
+          "score_distance_from_published": 2095.5525429541467,
+          "overprediction_ratio": 3.050442801324997,
+          "recommendation": "INCONCLUSIVE",
+          "recommendation_summary": "INCONCLUSIVE: no metric showed a statistically significant difference at alpha=0.05 across 4 paired scenarios. Either the sample size is too small to detect a real effect, or this candidate genuinely makes no measurable difference to SynEvac's own simulated outcomes."
+        },
+        {
+          "median_delay": 90.0,
+          "session_status": "COMPLETED",
+          "candidate_mean_evacuation_time": 3117.5525429541467,
+          "baseline_mean_evacuation_time": 3117.5525429541467,
+          "candidate_ci": {
+            "mean": 3117.5525429541467,
+            "lower": 3045.2261067685413,
+            "upper": 3189.878979139752,
+            "confidence": 0.95,
+            "n": 4
+          },
+          "p_value_vs_production_default": NaN,
+          "cohens_d_vs_production_default": 0.0,
+          "score_distance_from_published": 2095.5525429541467,
+          "overprediction_ratio": 3.050442801324997,
+          "recommendation": "INCONCLUSIVE",
+          "recommendation_summary": "INCONCLUSIVE: no metric showed a statistically significant difference at alpha=0.05 across 4 paired scenarios. Either the sample size is too small to detect a real effect, or this candidate genuinely makes no measurable difference to SynEvac's own simulated outcomes."
+        },
+        {
+          "median_delay": 120.0,
+          "session_status": "COMPLETED",
+          "candidate_mean_evacuation_time": 3117.5525429541467,
+          "baseline_mean_evacuation_time": 3117.5525429541467,
+          "candidate_ci": {
+            "mean": 3117.5525429541467,
+            "lower": 3045.2261067685413,
+            "upper": 3189.878979139752,
+            "confidence": 0.95,
+            "n": 4
+          },
+          "p_value_vs_production_default": NaN,
+          "cohens_d_vs_production_default": 0.0,
+          "score_distance_from_published": 2095.5525429541467,
+          "overprediction_ratio": 3.050442801324997,
+          "recommendation": "INCONCLUSIVE",
+          "recommendation_summary": "INCONCLUSIVE: no metric showed a statistically significant difference at alpha=0.05 across 4 paired scenarios. Either the sample size is too small to detect a real effect, or this candidate genuinely makes no measurable difference to SynEvac's own simulated outcomes."
+        }
+      ]
+    }
+  }
+}

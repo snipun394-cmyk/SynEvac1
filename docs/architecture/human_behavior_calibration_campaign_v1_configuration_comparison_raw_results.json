@@ -1,0 +1,174 @@
+{
+  "10-story": {
+    "building": "10-story",
+    "published_evacuation_time_s": 1022.0,
+    "n_scenarios": 8,
+    "best_median_delay_used": 15.0,
+    "configurations": {
+      "1_baseline": {
+        "mean_evacuation_time": 3122.9504396227603,
+        "overprediction_ratio": 3.0557245006093545
+      },
+      "2_walking_speed_only": {
+        "mean_evacuation_time": 2344.1858646033397,
+        "overprediction_ratio": 2.2937239379680427,
+        "vs_baseline_p_value": 3.6508848816909174e-11,
+        "vs_baseline_cohens_d": -23.91087434593016,
+        "vs_baseline_recommendation": "ADOPT"
+      },
+      "3_walking_speed_plus_pre_movement_delay": {
+        "mean_evacuation_time": 2340.014726878158,
+        "overprediction_ratio": 2.28964258990035,
+        "vs_baseline_p_value": 4.736635829044751e-11,
+        "vs_baseline_cohens_d": -24.20181805926026,
+        "vs_baseline_recommendation": "ADOPT"
+      }
+    },
+    "incremental_pre_movement_delay_effect": {
+      "description": "configuration 2 (walking-speed-only) vs configuration 3 (walking-speed + pre-movement delay)",
+      "walking_only_mean": 2344.1858646033397,
+      "combined_mean": 2340.014726878158,
+      "mean_difference": 4.1711377251816275,
+      "p_value": 0.0002737619609046442,
+      "cohens_d": -0.1505353393344641,
+      "n_pairs": 6
+    },
+    "gap_closure": {
+      "description": "fraction of the baseline-to-published gap closed by each configuration",
+      "baseline_gap_s": 2100.9504396227603,
+      "walking_only_gap_s": 1322.1858646033397,
+      "combined_gap_s": 1318.014726878158,
+      "walking_only_gap_closure_fraction": 0.37067251103707755,
+      "combined_gap_closure_fraction": 0.37265786854314553
+    }
+  },
+  "18-story": {
+    "building": "18-story",
+    "published_evacuation_time_s": 1192.0,
+    "n_scenarios": 8,
+    "best_median_delay_used": 15.0,
+    "configurations": {
+      "1_baseline": {
+        "mean_evacuation_time": 19599.274513705477,
+        "overprediction_ratio": 16.442344390692515
+      },
+      "2_walking_speed_only": {
+        "mean_evacuation_time": 14701.2397976318,
+        "overprediction_ratio": 12.333254863785069,
+        "vs_baseline_p_value": 4.330557365418978e-13,
+        "vs_baseline_cohens_d": -12.945315551138352,
+        "vs_baseline_recommendation": "ADOPT"
+      },
+      "3_walking_speed_plus_pre_movement_delay": {
+        "mean_evacuation_time": 14697.518932579349,
+        "overprediction_ratio": 12.330133332700797,
+        "vs_baseline_p_value": 4.3133484965734817e-13,
+        "vs_baseline_cohens_d": -12.955418155451955,
+        "vs_baseline_recommendation": "ADOPT"
+      }
+    },
+    "incremental_pre_movement_delay_effect": {
+      "description": "configuration 2 (walking-speed-only) vs configuration 3 (walking-speed + pre-movement delay)",
+      "walking_only_mean": 14701.2397976318,
+      "combined_mean": 14697.518932579349,
+      "mean_difference": 3.7208650524507902,
+      "p_value": 4.868226125807992e-05,
+      "cohens_d": -0.011589989694803612,
+      "n_pairs": 8
+    },
+    "gap_closure": {
+      "description": "fraction of the baseline-to-published gap closed by each configuration",
+      "baseline_gap_s": 18407.274513705477,
+      "walking_only_gap_s": 13509.2397976318,
+      "combined_gap_s": 13505.518932579349,
+      "walking_only_gap_closure_fraction": 0.2660923382452277,
+      "combined_gap_closure_fraction": 0.2662944792547335
+    }
+  },
+  "24-story": {
+    "building": "24-story",
+    "published_evacuation_time_s": 1090.0,
+    "n_scenarios": 8,
+    "best_median_delay_used": 15.0,
+    "configurations": {
+      "1_baseline": {
+        "mean_evacuation_time": 10275.622898985077,
+        "overprediction_ratio": 9.427176971545942
+      },
+      "2_walking_speed_only": {
+        "mean_evacuation_time": 7710.339631303721,
+        "overprediction_ratio": 7.073706083764882,
+        "vs_baseline_p_value": 4.0136655103928233e-13,
+        "vs_baseline_cohens_d": -13.161628092715993,
+        "vs_baseline_recommendation": "ADOPT"
+      },
+      "3_walking_speed_plus_pre_movement_delay": {
+        "mean_evacuation_time": 7703.779471847221,
+        "overprediction_ratio": 7.067687588850662,
+        "vs_baseline_p_value": 3.7867926456352496e-13,
+        "vs_baseline_cohens_d": -13.187264078934458,
+        "vs_baseline_recommendation": "ADOPT"
+      }
+    },
+    "incremental_pre_movement_delay_effect": {
+      "description": "configuration 2 (walking-speed-only) vs configuration 3 (walking-speed + pre-movement delay)",
+      "walking_only_mean": 7710.339631303721,
+      "combined_mean": 7703.779471847221,
+      "mean_difference": 6.560159456499832,
+      "p_value": 7.614447731135107e-05,
+      "cohens_d": -0.0396706206034584,
+      "n_pairs": 8
+    },
+    "gap_closure": {
+      "description": "fraction of the baseline-to-published gap closed by each configuration",
+      "baseline_gap_s": 9185.622898985077,
+      "walking_only_gap_s": 6620.339631303721,
+      "combined_gap_s": 6613.779471847221,
+      "walking_only_gap_closure_fraction": 0.27927156338682213,
+      "combined_gap_closure_fraction": 0.2799857402617758
+    }
+  },
+  "31-story": {
+    "building": "31-story",
+    "published_evacuation_time_s": 1002.0,
+    "n_scenarios": 8,
+    "best_median_delay_used": 15.0,
+    "configurations": {
+      "1_baseline": {
+        "mean_evacuation_time": 11898.670442099028,
+        "overprediction_ratio": 11.874920600897234
+      },
+      "2_walking_speed_only": {
+        "mean_evacuation_time": 8926.509048520487,
+        "overprediction_ratio": 8.908691665190107,
+        "vs_baseline_p_value": 1.0881557498370238e-14,
+        "vs_baseline_cohens_d": -22.042628688444672,
+        "vs_baseline_recommendation": "ADOPT"
+      },
+      "3_walking_speed_plus_pre_movement_delay": {
+        "mean_evacuation_time": 8921.390813966944,
+        "overprediction_ratio": 8.903583646673596,
+        "vs_baseline_p_value": 9.690145199428118e-15,
+        "vs_baseline_cohens_d": -22.041256593429384,
+        "vs_baseline_recommendation": "ADOPT"
+      }
+    },
+    "incremental_pre_movement_delay_effect": {
+      "description": "configuration 2 (walking-speed-only) vs configuration 3 (walking-speed + pre-movement delay)",
+      "walking_only_mean": 8926.509048520487,
+      "combined_mean": 8921.390813966944,
+      "mean_difference": 5.118234553544426,
+      "p_value": 9.407606077961318e-07,
+      "cohens_d": -0.04467397370437993,
+      "n_pairs": 8
+    },
+    "gap_closure": {
+      "description": "fraction of the baseline-to-published gap closed by each configuration",
+      "baseline_gap_s": 10896.670442099028,
+      "walking_only_gap_s": 7924.509048520487,
+      "combined_gap_s": 7919.390813966944,
+      "walking_only_gap_closure_fraction": 0.27275867517252483,
+      "combined_gap_closure_fraction": 0.27322838145397466
+    }
+  }
+}
