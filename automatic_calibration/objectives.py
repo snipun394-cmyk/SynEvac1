@@ -86,7 +86,21 @@ class PublishedValueObjective(CalibrationObjective):
         if session.result is None:
             return None
 
+        # Direct Behavioral Calibration (TN1675) milestone -- falls back
+        # to additional_comparisons (calibration_benchmark.optional_metrics.
+        # AdditionalMetric results, e.g. a local/behavioral speed metric
+        # no built-in METRIC_FIELDS entry represents) whenever
+        # result_metric_name isn't one of the five built-in metrics.
+        # comparisons is still checked FIRST and exclusively whenever it
+        # already has the name, so every existing built-in-metric
+        # objective (e.g. "evacuation_time") resolves exactly as before --
+        # this only ever adds a second place to look, never changes which
+        # comparison is found for a name that already existed in
+        # `comparisons`.
         comparison = session.result.comparisons.get(self.result_metric_name)
+
+        if comparison is None:
+            comparison = session.result.additional_comparisons.get(self.result_metric_name)
 
         if comparison is None or comparison.candidate_mean is None:
             return None
