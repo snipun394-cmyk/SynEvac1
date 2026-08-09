@@ -324,6 +324,7 @@ def _register_one(behavior_layer, context, occupant, template, extra_traits):
     profile = BehaviorProfile(
         occupant_id=occupant.occupant_id,
         walking_speed=template.walking_speed,
+        stair_speed=template.stair_speed,
         familiarity=dict(template.familiarity),
         compliance_level=template.compliance_level,
         role=template.role,

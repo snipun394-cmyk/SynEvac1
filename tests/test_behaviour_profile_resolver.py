@@ -172,6 +172,16 @@ class DefaultRegistryContentsTests(unittest.TestCase):
         self.assertEqual(DEFAULT_PROFILE_REGISTRY["Staff_Default"].role, Role.LEADER)
         self.assertEqual(DEFAULT_PROFILE_REGISTRY["FireWarden_Default"].role, Role.LEADER)
 
+    def test_stair_speed_defaults_to_none_for_every_shipped_profile(self):
+
+        # Edge-Type-Specific Movement Speed (Experimental Branch V1) --
+        # the feature must be disabled by default: no shipped profile
+        # may set stair_speed, so every occupant keeps falling back to
+        # walking_speed on Stair edges exactly as before this field
+        # existed.
+        for profile_id, template in DEFAULT_PROFILE_REGISTRY.items():
+            self.assertIsNone(template.stair_speed, msg=f"{profile_id} must default stair_speed to None")
+
 
 class BehaviorProfileTemplateTests(unittest.TestCase):
 
@@ -205,6 +215,19 @@ class BehaviorProfileTemplateTests(unittest.TestCase):
 
         with self.assertRaises(FrozenInstanceError):
             template.walking_speed = 5.0
+
+    def test_stair_speed_defaults_to_none(self):
+
+        template = BehaviorProfileTemplate()
+
+        self.assertIsNone(template.stair_speed)
+
+    def test_stair_speed_can_be_set_independently_of_walking_speed(self):
+
+        template = BehaviorProfileTemplate(walking_speed=1.2, stair_speed=0.55)
+
+        self.assertEqual(template.walking_speed, 1.2)
+        self.assertEqual(template.stair_speed, 0.55)
 
 
 class OccupantRegistrationTests(unittest.TestCase):

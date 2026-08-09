@@ -96,6 +96,16 @@ class BehaviorDecision:
     route_unavailable: bool = False
 
     walking_speed: Optional[float] = None
+
+    # Edge-Type-Specific Movement Speed (Experimental Branch V1) --
+    # mirrors BehaviorProfile.stair_speed; carried straight through
+    # from profile.stair_speed by whichever registration path built
+    # this decision (behavior/orchestrator.py, behaviour_profile_
+    # resolver/dynamic_registrar.py), never derived here. None (the
+    # default) means Simulation falls back to walking_speed for every
+    # edge, including Stair -- today's exact, unchanged behavior.
+    stair_speed: Optional[float] = None
+
     depart_time: Optional[float] = None
 
     metadata: Mapping[str, Any] = field(default_factory=dict)

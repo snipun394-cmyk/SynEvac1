@@ -167,6 +167,63 @@ class WalkingSpeedCandidate(ParameterCandidate):
 # =====================================================
 
 
+def _registry_with_stair_speed(profile_id: str, stair_speed: float) -> Dict[str, Any]:
+
+    # Edge-Type-Specific Movement Speed (Experimental Branch V1) --
+    # identical mechanism to _registry_with_walking_speed() above
+    # (dataclasses.replace() on a one-level-deep copy of
+    # DEFAULT_PROFILE_REGISTRY), replacing only BehaviorProfileTemplate.
+    # stair_speed. Never mutates DEFAULT_PROFILE_REGISTRY or any other
+    # profile's own walking_speed.
+
+    if profile_id not in DEFAULT_PROFILE_REGISTRY:
+
+        raise KeyError(
+            f"{profile_id!r} is not a profile in DEFAULT_PROFILE_REGISTRY -- "
+            f"choose one of {sorted(DEFAULT_PROFILE_REGISTRY)}.",
+        )
+
+    registry = dict(DEFAULT_PROFILE_REGISTRY)
+    registry[profile_id] = replace(registry[profile_id], stair_speed=stair_speed)
+
+    return registry
+
+
+class StairSpeedCandidate(ParameterCandidate):
+
+    # Edge-Type-Specific Movement Speed (Experimental Branch V1) --
+    # same design pattern as WalkingSpeedCandidate directly above,
+    # applied to the new stair_speed field instead. candidate_registry()
+    # sets ONLY stair_speed on profile_id's template; walking_speed on
+    # that same template (and every other profile's stair_speed/
+    # walking_speed) is left exactly as DEFAULT_PROFILE_REGISTRY already
+    # has it.
+
+    def __init__(self, profile_id: str, candidate_speed: float, dataset_source: str, rationale: str):
+
+        self.profile_id = profile_id
+
+        super().__init__(
+            name=f"{profile_id}.stair_speed",
+            subsystem="Walking Model",
+            calibration_tier="Tier 2",
+            dataset_source=dataset_source,
+            current_value=DEFAULT_PROFILE_REGISTRY[profile_id].stair_speed,
+            candidate_value=candidate_speed,
+            unit="m/s",
+            rationale=rationale,
+        )
+
+    def baseline_registry(self):
+        return DEFAULT_PROFILE_REGISTRY
+
+    def candidate_registry(self):
+        return _registry_with_stair_speed(self.profile_id, self.candidate_value)
+
+
+# =====================================================
+
+
 class PreMovementDelayCandidate(ParameterCandidate):
 
     def __init__(

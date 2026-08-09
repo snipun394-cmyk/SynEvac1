@@ -20,6 +20,7 @@ from calibration_benchmark.candidates import (
     HerdingFollowProbabilityCandidate,
     PreMovementDelayCandidate,
     StairCounterflowPenaltyCandidate,
+    StairSpeedCandidate,
     WalkingSpeedCandidate,
 )
 
@@ -61,6 +62,59 @@ class WalkingSpeedCandidateTests(unittest.TestCase):
 
         with self.assertRaises(KeyError):
             WalkingSpeedCandidate("Not_A_Real_Profile", 1.0, "source", "rationale")
+
+
+class StairSpeedCandidateTests(unittest.TestCase):
+
+    # Edge-Type-Specific Movement Speed (Experimental Branch V1) --
+    # mirrors WalkingSpeedCandidateTests exactly, plus an explicit
+    # isolation check (walking_speed on the same profile is untouched).
+
+    def test_baseline_registry_is_the_untouched_production_default(self):
+
+        candidate = StairSpeedCandidate("Adult_Default", 0.55, "source", "rationale")
+
+        self.assertIs(candidate.baseline_registry(), DEFAULT_PROFILE_REGISTRY)
+
+    def test_candidate_registry_overrides_only_the_named_profiles_stair_speed(self):
+
+        candidate = StairSpeedCandidate("Adult_Default", 0.55, "source", "rationale")
+        registry = candidate.candidate_registry()
+
+        self.assertEqual(registry["Adult_Default"].stair_speed, 0.55)
+
+        for profile_id, template in DEFAULT_PROFILE_REGISTRY.items():
+            if profile_id != "Adult_Default":
+                self.assertEqual(registry[profile_id], template)
+
+    def test_walking_speed_on_the_same_profile_is_unchanged(self):
+
+        candidate = StairSpeedCandidate("Adult_Default", 0.55, "source", "rationale")
+        registry = candidate.candidate_registry()
+
+        self.assertEqual(
+            registry["Adult_Default"].walking_speed,
+            DEFAULT_PROFILE_REGISTRY["Adult_Default"].walking_speed,
+        )
+
+    def test_original_registry_is_never_mutated(self):
+
+        original_stair_speed = DEFAULT_PROFILE_REGISTRY["Adult_Default"].stair_speed
+
+        StairSpeedCandidate("Adult_Default", 0.55, "source", "rationale").candidate_registry()
+
+        self.assertEqual(DEFAULT_PROFILE_REGISTRY["Adult_Default"].stair_speed, original_stair_speed)
+
+    def test_current_value_is_read_from_the_real_registry(self):
+
+        candidate = StairSpeedCandidate("Adult_Default", 0.55, "source", "rationale")
+
+        self.assertEqual(candidate.current_value, DEFAULT_PROFILE_REGISTRY["Adult_Default"].stair_speed)
+
+    def test_unknown_profile_id_raises(self):
+
+        with self.assertRaises(KeyError):
+            StairSpeedCandidate("Not_A_Real_Profile", 0.55, "source", "rationale")
 
 
 class PreMovementDelayCandidateTests(unittest.TestCase):

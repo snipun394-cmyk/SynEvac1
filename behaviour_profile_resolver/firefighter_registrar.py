@@ -89,6 +89,7 @@ def register_firefighters(
         profile = BehaviorProfile(
             occupant_id=firefighter.firefighter_id,
             walking_speed=template.walking_speed,
+            stair_speed=template.stair_speed,
             familiarity=dict(template.familiarity),
             compliance_level=template.compliance_level,
             role=template.role,

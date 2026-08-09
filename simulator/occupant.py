@@ -35,5 +35,12 @@ class Occupant:
     route: Optional[Route]
     depart_time: float
 
+    # Edge-Type-Specific Movement Speed (Experimental Branch V1) --
+    # mirrors BehaviorDecision.stair_speed; None (the default, and the
+    # only value any existing registration path produces) means Stair
+    # traversal uses walking_speed exactly as before -- see
+    # MultiAgentSimulation._admit_onto_edge() in simulator/coordinator.py.
+    stair_speed: Optional[float] = None
+
     current_edge_index: int = 0
     state: OccupantState = OccupantState.PENDING

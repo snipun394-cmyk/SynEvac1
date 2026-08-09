@@ -111,6 +111,11 @@ class HumanBehaviorLayer:
                 goal_id=route_choice.goal_id,
                 route=route_choice.route,
                 walking_speed=effective_speed,
+                # Edge-Type-Specific Movement Speed (Experimental Branch
+                # V1) -- carried straight through from profile.stair_speed,
+                # no multiplier applied, same "None stays None" contract
+                # as dynamic_registrar's identical site.
+                stair_speed=profile.stair_speed,
                 depart_time=base_depart_time + delay,
                 metadata=intent.metadata,
                 route_unavailable=(route_choice.goal_id is None and route_choice.route is None),

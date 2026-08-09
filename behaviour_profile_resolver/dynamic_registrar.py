@@ -237,6 +237,7 @@ def register_population_dynamic(
         profile = BehaviorProfile(
             occupant_id=firefighter.firefighter_id,
             walking_speed=template.walking_speed,
+            stair_speed=template.stair_speed,
             familiarity=dict(template.familiarity),
             compliance_level=template.compliance_level,
             role=template.role,
@@ -335,6 +336,7 @@ def _register_one_dynamic(
     profile = BehaviorProfile(
         occupant_id=occupant.occupant_id,
         walking_speed=template.walking_speed,
+        stair_speed=template.stair_speed,
         familiarity=dict(template.familiarity),
         compliance_level=template.compliance_level,
         role=template.role,
@@ -419,6 +421,12 @@ def _register_with_hazard(
             goal_id=route_choice.goal_id,
             route=route_choice.route,
             walking_speed=effective_speed,
+            # Edge-Type-Specific Movement Speed (Experimental Branch V1)
+            # -- carried straight through from profile.stair_speed, no
+            # multiplier applied (effective_walking_speed_multiplier is
+            # documented as a walking_speed-only adjustment; stair_speed
+            # has no equivalent trait yet). None stays None.
+            stair_speed=profile.stair_speed,
             depart_time=base_depart_time + delay,
             metadata=intent.metadata,
             route_unavailable=(route_choice.goal_id is None and route_choice.route is None),

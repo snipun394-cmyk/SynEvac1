@@ -24,6 +24,13 @@ class BehaviorProfile:
 
     walking_speed: Optional[float] = None
 
+    # Edge-Type-Specific Movement Speed (Experimental Branch V1) --
+    # mirrors BehaviorProfileTemplate.stair_speed (behaviour_profile_
+    # resolver/template.py); None means no stair-specific speed is
+    # configured for this occupant, the only value any existing
+    # registration path produces today.
+    stair_speed: Optional[float] = None
+
     # node_id -> familiarity score (0 = unknown). Keyed by Node.id,
     # never by an engineering object -- a profile never needs to
     # touch Zone/Door/Exit directly.

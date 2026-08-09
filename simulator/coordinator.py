@@ -226,6 +226,7 @@ class MultiAgentSimulation:
         occupant_id=None,
         depart_time=0.0,
         route=None,
+        stair_speed=None,
     ):
 
         occupant_id = occupant_id or f"occupant-{len(self._occupants) + 1}"
@@ -259,6 +260,7 @@ class MultiAgentSimulation:
 
         return self._register(
             occupant_id, planned_route, reached_goal, walking_speed, depart_time,
+            stair_speed=stair_speed,
         )
 
     # =====================================================
@@ -294,6 +296,7 @@ class MultiAgentSimulation:
                 depart_time=(
                     decision.depart_time if decision.depart_time is not None else 0.0
                 ),
+                stair_speed=decision.stair_speed,
             )
 
         if decision.goal_id is None and decision.route is None:
@@ -308,11 +311,12 @@ class MultiAgentSimulation:
                 decision.depart_time if decision.depart_time is not None else 0.0
             ),
             route=decision.route,
+            stair_speed=decision.stair_speed,
         )
 
     # =====================================================
 
-    def _register(self, occupant_id, route, reached_goal, walking_speed, depart_time):
+    def _register(self, occupant_id, route, reached_goal, walking_speed, depart_time, stair_speed=None):
 
         self._begin_registration(occupant_id)
 
@@ -321,6 +325,7 @@ class MultiAgentSimulation:
             walking_speed=walking_speed,
             route=route,
             depart_time=depart_time,
+            stair_speed=stair_speed,
         )
         self._occupants[occupant_id] = occupant
 
@@ -882,7 +887,23 @@ class MultiAgentSimulation:
         speed_factor = self.congestion_model.speed_factor(
             edge, other_occupants, capacity, opposing_occupants=opposing_occupants,
         )
-        effective_speed = occupant.walking_speed * speed_factor
+
+        # Edge-Type-Specific Movement Speed (Experimental Branch V1) --
+        # the one seam identified by the preceding investigation. Base
+        # speed is occupant.stair_speed ONLY when this is a Stair edge
+        # AND the occupant was explicitly configured with one; Door and
+        # Exit edges, and any occupant with stair_speed unset (every
+        # occupant in every existing registry/candidate today), take
+        # exactly the pre-existing walking_speed path. The congestion
+        # multiplier itself is untouched -- still applied identically to
+        # whichever base speed is selected, so no double-counting and no
+        # change to StairAwareCongestionModel/FlowRegionCongestionModel.
+        if edge.edge_type == Edge.STAIR and occupant.stair_speed is not None:
+            base_speed = occupant.stair_speed
+        else:
+            base_speed = occupant.walking_speed
+
+        effective_speed = base_speed * speed_factor
 
         # Stair Simulation Reliability & Multi-Floor Reachability Audit
         # milestone, Phase 17 -- `edge.walking_distance or 0.0` silently

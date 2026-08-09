@@ -30,6 +30,20 @@ class BehaviorProfileTemplate:
     # every follower in every group").
 
     walking_speed: Optional[float] = None
+
+    # Edge-Type-Specific Movement Speed (Experimental Branch V1) --
+    # None (the default, and the only value any shipped profile in
+    # registry.py sets) means "no stair-specific speed configured";
+    # Stair-edge traversal then falls back to walking_speed exactly as
+    # it always has (see simulator/coordinator.py's
+    # _admit_onto_edge()). Never applied to Door/Exit edges. Opt-in
+    # only via an explicit override registry (e.g.
+    # calibration_benchmark.candidates.StairSpeedCandidate) --
+    # DEFAULT_PROFILE_REGISTRY itself is not touched by this field's
+    # introduction, so SynEvac Baseline V1 (docs/architecture/
+    # synevac_baseline_v1.md) is unaffected.
+    stair_speed: Optional[float] = None
+
     compliance_level: float = 1.0
     role: Role = Role.INDEPENDENT
 
