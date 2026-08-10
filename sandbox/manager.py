@@ -17,6 +17,65 @@ from sandbox.occupant import (
 )
 
 
+def _lerp(start, end, t):
+
+    return start + (end - start) * t
+
+
+def _position_via_point(current_position, via_position, next_position, t):
+
+    # Occupant Movement Path Fix -- interpolates through an edge's own
+    # physical connection point (a Door/Exit's .center) instead of
+    # directly between the two Zone centers it connects. Mirrors the
+    # same two-segment distance split navigation/graph_builder.py's own
+    # _door_walking_distance()/_exit_walking_distance() already use to
+    # compute the edge's own walking_distance/duration -- this only
+    # makes the VISUAL position consistent with a calculation the
+    # duration math already performs, never introducing new geometry or
+    # changing any timing. Independently restated here (not imported
+    # from simulation_recording.occupant_position) -- this module
+    # deliberately never imports simulation_recording, the same
+    # decoupling that module's own docstring already documents in the
+    # other direction.
+    #
+    # via_position is None for any edge with no resolvable Door/Exit
+    # center (a Stair -- though the caller already routes stairs through
+    # their own separate, unmodified branch before ever reaching here --
+    # or a missing/invalid edge.reference) -- falls back to the direct
+    # current->next lerp, byte-identical to this function's own
+    # pre-fix behavior.
+
+    if via_position is None:
+        return (
+            _lerp(current_position[0], next_position[0], t),
+            _lerp(current_position[1], next_position[1], t),
+        )
+
+    leg1 = math.dist(current_position, via_position)
+    leg2 = math.dist(via_position, next_position)
+    total = leg1 + leg2
+
+    if total <= 0:
+        # current == via == next (a degenerate, zero-length edge) --
+        # every candidate point coincides, nothing to divide.
+        return via_position
+
+    split = leg1 / total
+
+    if split > 0 and t < split:
+        leg_t = t / split
+        return (
+            _lerp(current_position[0], via_position[0], leg_t),
+            _lerp(current_position[1], via_position[1], leg_t),
+        )
+
+    leg_t = (t - split) / (1.0 - split) if split < 1.0 else 1.0
+    return (
+        _lerp(via_position[0], next_position[0], leg_t),
+        _lerp(via_position[1], next_position[1], leg_t),
+    )
+
+
 class SandboxManager:
 
     # The Manual Simulation Sandbox's whole runtime state -- owns the
@@ -513,11 +572,9 @@ class SandboxManager:
                 if current_position is not None and next_position is not None:
 
                     t = occupant.edge_progress
+                    via_position = getattr(edge.reference, "center", None)
 
-                    occupant.position = (
-                        current_position[0] + (next_position[0] - current_position[0]) * t,
-                        current_position[1] + (next_position[1] - current_position[1]) * t,
-                    )
+                    occupant.position = _position_via_point(current_position, via_position, next_position, t)
 
                     return
 

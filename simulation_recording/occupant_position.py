@@ -1,3 +1,5 @@
+import math
+
 from dataclasses import dataclass
 from typing import Dict, Optional, Tuple
 
@@ -128,6 +130,17 @@ class BuildingPositionIndex:
 
         return None, None
 
+    # =====================================================
+
+    def edge_position(self, edge_id: str) -> Optional[Tuple[float, float]]:
+
+        # The Door/Exit's own physical center -- already populated in
+        # __init__ from every Door's/Exit's own .center. Returns None
+        # for any other edge id (a Stair, or an id this Building has no
+        # Door/Exit for) -- never fabricated.
+
+        return self._edge_positions.get(edge_id)
+
 
 # =====================================================
 
@@ -135,6 +148,47 @@ class BuildingPositionIndex:
 def _lerp(start, end, t):
 
     return start + (end - start) * t
+
+
+def _position_via_point(from_position, via_position, to_position, t):
+
+    # Occupant Movement Path Fix -- interpolates through an edge's own
+    # physical connection point (a Door/Exit's .center) instead of
+    # directly between the two zone centroids it connects. Mirrors the
+    # SAME two-segment distance split navigation/graph_builder.py's own
+    # _door_walking_distance()/_exit_walking_distance() already use to
+    # compute the edge's walking_distance/duration -- this only makes
+    # the VISUAL position consistent with a calculation the duration
+    # math already performs, never introducing new geometry or changing
+    # any timing.
+    #
+    # via_position is None for every edge that isn't a Door/Exit (e.g.
+    # BuildingPositionIndex.edge_position() returns None for a Stair
+    # hop, though the caller already routes stairs through their own
+    # separate, unmodified branch before ever reaching here) -- falls
+    # back to the original direct from->to lerp, byte-identical to
+    # this function's own pre-fix behavior.
+
+    if via_position is None:
+        return _lerp(from_position[0], to_position[0], t), _lerp(from_position[1], to_position[1], t)
+
+    leg1 = math.dist(from_position, via_position)
+    leg2 = math.dist(via_position, to_position)
+    total = leg1 + leg2
+
+    if total <= 0:
+        # from == via == to (a degenerate, zero-length hop) -- every
+        # candidate point coincides, so there is nothing to divide.
+        return via_position
+
+    split = leg1 / total
+
+    if split > 0 and t < split:
+        leg_t = t / split
+        return _lerp(from_position[0], via_position[0], leg_t), _lerp(from_position[1], via_position[1], leg_t)
+
+    leg_t = (t - split) / (1.0 - split) if split < 1.0 else 1.0
+    return _lerp(via_position[0], to_position[0], leg_t), _lerp(via_position[1], to_position[1], leg_t)
 
 
 def _at_node_position(record, node_id, position_index, state) -> OccupantPosition:
@@ -270,10 +324,13 @@ def _position_within_hop(record, hop, time, position_index) -> OccupantPosition:
 
     t = (time - hop.start_time) / duration if duration > 0 else 1.0
 
+    via_position = position_index.edge_position(hop.edge_id)
+    x, y = _position_via_point(from_position, via_position, to_position, t)
+
     return OccupantPosition(
         occupant_id=record.occupant_id,
-        x=_lerp(from_position[0], to_position[0], t),
-        y=_lerp(from_position[1], to_position[1], t),
+        x=x,
+        y=y,
         floor_id=from_floor_id,
         zone_id=hop.from_node_id if position_index.is_zone(hop.from_node_id) else None,
         current_stair_id=None,

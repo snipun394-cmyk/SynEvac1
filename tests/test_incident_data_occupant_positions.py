@@ -106,8 +106,12 @@ class IncidentDataOccupantPositionsTests(unittest.TestCase):
 
         position = frame.occupant_positions["occ-1"]
 
+        # Occupant Movement Path Fix -- interpolation now goes through
+        # door-1's own center (4.5, 2.0) instead of a direct zone-a ->
+        # zone-b line; zone-a/zone-b centers are equidistant from the
+        # door, so t=0.5 lands exactly on the door's own point.
         self.assertAlmostEqual(position.x, 4.5)
-        self.assertAlmostEqual(position.y, 2.5)
+        self.assertAlmostEqual(position.y, 2.0)
         self.assertEqual(position.state, "TRAVERSING")
 
     # =====================================================

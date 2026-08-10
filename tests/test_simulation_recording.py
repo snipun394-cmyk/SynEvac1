@@ -243,9 +243,14 @@ class InterpolateOccupantPositionTests(unittest.TestCase):
 
         position = interpolate_occupant_position(self.record, "zone-a", 8.0, self.index)
 
-        # zone-a center (2, 2.5) -> zone-b center (7, 2.5), t = 0.5.
+        # Occupant Movement Path Fix -- interpolation now goes through
+        # door-1's own center (4.5, 2.0), not a direct zone-a-center ->
+        # zone-b-center line. zone-a center (2, 2.5) and zone-b center
+        # (7, 2.5) are each exactly as far from the door center (dist
+        # sqrt(6.5) either way), so t=0.5 (time-wise) lands EXACTLY on
+        # the door's own point -- (4.5, 2.0), not the old (4.5, 2.5).
         self.assertAlmostEqual(position.x, 4.5)
-        self.assertAlmostEqual(position.y, 2.5)
+        self.assertAlmostEqual(position.y, 2.0)
         self.assertEqual(position.state, "TRAVERSING")
         self.assertAlmostEqual(position.speed, 0.5)
 
