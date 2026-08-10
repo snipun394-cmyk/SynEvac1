@@ -4,6 +4,8 @@ from collections import Counter
 
 from behavior.route_choice import RouteChoice, RouteChoiceStrategy, ShortestRouteChoiceStrategy
 
+from behavior_library import kinateder_warren_2021_herding_evidence
+
 
 class FamiliarityBasedRouteChoiceStrategy(RouteChoiceStrategy):
 
@@ -130,6 +132,96 @@ class StaticHerdingRouteChoiceStrategy(RouteChoiceStrategy):
                 return RouteChoice(goal_id=candidate.goal.id, route=candidate)
 
         return self.fallback.choose(context)
+
+
+class EmpiricalProportionHerdingRouteChoiceStrategy(RouteChoiceStrategy):
+
+    # Empirically Parameterized Proportion-Conditioned Herding --
+    # Kinateder & Warren (2021), see behavior_library.
+    # kinateder_warren_2021_herding_evidence's own module docstring for
+    # the full citation and the published coefficients this class
+    # consumes. StaticHerdingRouteChoiceStrategy (above) is completely
+    # untouched by this class -- it is reused, unmodified, as the
+    # actual roll-and-route-selection mechanism (see choose() below),
+    # never duplicated.
+    #
+    # SEMANTIC LIMITATION, disclosed here rather than hidden: this
+    # class's own "observed crowd proportion"/"observed crowd size"
+    # (derived from context.decisions_so_far, exactly like
+    # StaticHerdingRouteChoiceStrategy's own exit_edge_counts) are a
+    # STRUCTURAL/FUNCTIONAL analogue of Kinateder & Warren's own
+    # simultaneously-visible virtual crowd, not a perceptual
+    # equivalent -- decisions_so_far has no spatial/visibility gating
+    # and grows with registration order, not with what an occupant
+    # could actually see at their own moment of choice. This
+    # implementation is therefore EMPIRICALLY PARAMETERIZED, not
+    # PERCEPTUALLY VALIDATED -- see the accompanying architecture
+    # document for the full disclosure.
+    #
+    # `legacy_follow_probability` is the fallback used whenever the
+    # observed (crowd_size, majority_proportion) pair falls outside
+    # the evidence's own supported domain (see kinateder_warren_2021_
+    # herding_evidence.follow_probability_for()'s own docstring for the
+    # exact policy) -- in that case this class behaves EXACTLY like a
+    # plain StaticHerdingRouteChoiceStrategy(follow_probability=
+    # legacy_follow_probability, ...) would, since that is literally
+    # what it delegates to.
+
+    def __init__(self, legacy_follow_probability=1.0, max_alternatives=5, rng=None, fallback=None):
+
+        self.legacy_follow_probability = legacy_follow_probability
+        self.max_alternatives = max_alternatives
+        self.rng = rng or random.Random()
+        self.fallback = fallback or ShortestRouteChoiceStrategy()
+
+    # =====================================================
+
+    def choose(self, context) -> RouteChoice:
+
+        # Steps 1-4: identical construction to StaticHerdingRouteChoice
+        # Strategy's own exit_edge_counts (necessarily recomputed here,
+        # not shared -- this class needs the raw counts to derive
+        # crowd_size/majority_proportion BEFORE it can even decide
+        # which follow_probability to hand the delegate below; this is
+        # the one, cheap, pure-computation duplication accepted by the
+        # approved design -- the actual roll-and-route-selection logic,
+        # the much larger and more consequential method body, is never
+        # duplicated).
+        exit_edge_counts = Counter(
+            decision.route.edges[-1].id
+            for decision in context.decisions_so_far.values()
+            if decision.route is not None and decision.route.edges
+        )
+
+        if not exit_edge_counts:
+            return self.fallback.choose(context)
+
+        total_observed_decisions = sum(exit_edge_counts.values())
+        majority_count = exit_edge_counts.most_common(1)[0][1]
+        majority_proportion = majority_count / total_observed_decisions
+
+        # Step 5-6: empirical domain check + fixed-effects probability,
+        # or None (out of domain) -> legacy constant fallback.
+        follow_probability = kinateder_warren_2021_herding_evidence.follow_probability_for(
+            crowd_size=total_observed_decisions, majority_proportion=majority_proportion,
+        )
+
+        if follow_probability is None:
+            follow_probability = self.legacy_follow_probability
+
+        # Steps 7-9: exactly one Bernoulli decision, majority-exit
+        # selection, and fallback -- all owned, unmodified, by
+        # StaticHerdingRouteChoiceStrategy itself. No new randomness,
+        # no new route-selection logic, no congestion/hazard/distance/
+        # familiarity weighting is introduced anywhere in this class.
+        delegate = StaticHerdingRouteChoiceStrategy(
+            follow_probability=follow_probability,
+            max_alternatives=self.max_alternatives,
+            rng=self.rng,
+            fallback=self.fallback,
+        )
+
+        return delegate.choose(context)
 
 
 class FollowLeaderRouteChoiceStrategy(RouteChoiceStrategy):
