@@ -10,8 +10,10 @@ from models.zone import Zone
 from navigation.edge import Edge
 from navigation.flow_region import FlowRegion, FlowRegionMember
 from navigation.graph_builder import NavigationGraphGenerator
+from navigation.node import Node
 
 from pathfinding.engine import PathfindingEngine
+from pathfinding.route import Route
 
 from simulator.coordinator import MultiAgentSimulation
 from simulator.discharge import DefaultDischargeModel, DischargeModel
@@ -304,6 +306,95 @@ class DischargeGatingTests(unittest.TestCase):
         sim.run()
 
         self.assertEqual(sim._pending_retry, set())
+
+
+class DischargeRetrySchedulingFloatingPointRobustnessTests(unittest.TestCase):
+
+    # Discharge Retry Scheduling -- Root-Cause Investigation milestone.
+    # Every DischargeGatingTests fixture above uses rate=0.5 (min gap =
+    # 2.0s, admission times 0.0/2.0/4.0/...) -- exactly-representable
+    # binary floating-point values whose repeated addition never rounds,
+    # so none of them ever exercised the actual bug: _can_admit()'s
+    # discharge branch reconstructed the elapsed interval via subtraction
+    # (`time - last_time`), while _maybe_schedule_retry() computed the
+    # scheduled retry time via addition (`last_time + headway`) -- IEEE-
+    # 754 does not guarantee `(a + b) - a == b`, so with a genuinely
+    # irrational-in-binary rate (DefaultDischargeModel's own literature
+    # constant, 1.316 persons/(s*m)) the reconstructed elapsed time could
+    # round to ~1 ULP below the required headway at the exact instant a
+    # scheduled retry fired, causing _can_admit() to reject an admission
+    # that should have succeeded -- and _maybe_schedule_retry()'s own
+    # (deliberate, correct) `retry_time > time` anti-self-rescheduling
+    # guard then suppressed any further retry, permanently stranding
+    # every occupant still queued behind it. Reproduced deterministically
+    # via non-invasive external instrumentation (no source read/write)
+    # at width=2.0m/length=0.5m/capacity=3, and confirmed to fail on the
+    # pre-fix implementation, before the fix in _can_admit() (comparing
+    # `time >= last_time + headway` instead of `time - last_time >=
+    # headway`, reusing the exact same addition expression the scheduler
+    # already uses) was applied.
+
+    def test_every_occupant_eventually_admitted_with_default_discharge_model(self):
+
+        edge = Edge(
+            id="short-narrow", edge_type=Edge.DOOR, from_node="start", to_node="outside",
+            walking_distance=0.5, reference=SimpleNamespace(width=2.0),
+        )
+        route = Route(
+            nodes=[
+                Node(id="start", name="start", floor_id="F1", node_type=Node.ZONE, reference=None),
+                Node(id="outside", name="outside", floor_id="F1", node_type=Node.OUTSIDE, reference=None),
+            ],
+            edges=[edge], total_cost=0.5, total_distance=0.5,
+        )
+
+        engine = SimpleNamespace(graph=None)
+        sim = MultiAgentSimulation(engine, discharge_model=DefaultDischargeModel())
+
+        for i in range(10):
+            sim.add_occupant(start_id="start", route=route, occupant_id=f"occ-{i}",
+                              walking_speed=1.4, depart_time=0.0)
+
+        result = sim.run()
+
+        for i in range(10):
+            self.assertIsNotNone(
+                result.occupants[f"occ-{i}"].arrival_time,
+                msg=f"occ-{i} never arrived -- discharge retry chain stalled (floating-point boundary regression)",
+            )
+
+    def test_admission_gaps_never_fall_below_the_discharge_headway(self):
+
+        edge = Edge(
+            id="short-narrow-2", edge_type=Edge.DOOR, from_node="start", to_node="outside",
+            walking_distance=0.5, reference=SimpleNamespace(width=2.0),
+        )
+        route = Route(
+            nodes=[
+                Node(id="start", name="start", floor_id="F1", node_type=Node.ZONE, reference=None),
+                Node(id="outside", name="outside", floor_id="F1", node_type=Node.OUTSIDE, reference=None),
+            ],
+            edges=[edge], total_cost=0.5, total_distance=0.5,
+        )
+
+        engine = SimpleNamespace(graph=None)
+        discharge_model = DefaultDischargeModel()
+        sim = MultiAgentSimulation(engine, discharge_model=discharge_model)
+
+        for i in range(10):
+            sim.add_occupant(start_id="start", route=route, occupant_id=f"occ-{i}",
+                              walking_speed=1.4, depart_time=0.0)
+
+        result = sim.run()
+
+        headway = 1.0 / discharge_model.discharge_rate(edge)
+        start_times = sorted(result.occupants[f"occ-{i}"].steps[0].start_time for i in range(10))
+        gaps = [start_times[i + 1] - start_times[i] for i in range(len(start_times) - 1)]
+
+        for gap in gaps:
+            # A numerical safeguard, not a physical relaxation: 1e-9 is
+            # ~7 orders of magnitude smaller than this headway (~0.41s).
+            self.assertGreaterEqual(gap, headway - 1e-9)
 
 
 class NarrowStorageStillBindsWithDischargeModelTests(unittest.TestCase):
