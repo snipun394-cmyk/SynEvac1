@@ -171,16 +171,31 @@ def _assistance_traits_by_occupant_id(occupants):
 
 def _occupant_group_traits_by_id(group_assignments):
 
-    # Occupant Attributes Phase 3 -- Social Groups. Only followers get
-    # an entry -- a group's own leader follows no one, the same
-    # "absence means not part of this" rule the assistance system's own
-    # traits_by_id already uses.
+    # Occupant Attributes Phase 3 -- Social Groups. Every grouped
+    # occupant gets a "group_id" entry, leader included -- Group
+    # Collective Response Delay milestone: previously only followers
+    # got any trait here ("a group's own leader follows no one" was
+    # true, but conflated "follows no one" with "is not part of a
+    # group at all", leaving SocialGroupAwarePreMovementDelayStrategy
+    # with no way to tell a group's own leader/first-mover apart from
+    # a genuinely solo occupant -- see that class's own updated
+    # docstring). "social_leader_occupant_id" -- the field that
+    # actually drives FollowLeaderRouteChoiceStrategy/
+    # FollowLeaderPreMovementDelayStrategy's follow_gap mechanism --
+    # is still populated for followers only, exactly as before; a
+    # leader still follows no one and follow_gap semantics are
+    # completely unchanged.
 
     traits_by_id = {}
 
     for occupant_id, assignment in group_assignments.items():
 
         if assignment.is_leader:
+
+            traits_by_id[occupant_id] = {
+                "group_id": assignment.group_id,
+                "group_type": assignment.group_type,
+            }
             continue
 
         traits_by_id[occupant_id] = {
@@ -193,6 +208,21 @@ def _occupant_group_traits_by_id(group_assignments):
 
 
 # =====================================================
+
+# Group Collective Response Delay milestone -- Bode, Holl, Mehner &
+# Seyfried (2015), PLOS ONE, DOI 10.1371/journal.pone.0121227: group
+# membership itself (not just follower-waits-for-leader coordination,
+# already modeled by follow_gap) produces an additional response
+# delay, measurable even for a group's own first mover. The 0.67s
+# group-minus-individual delta that study measured came from a small
+# lab room, seconds-scale context -- NOT validated as a universal,
+# building-scale absolute constant (see this milestone's own chat
+# report). Defaults to 0.0 -- the mechanism is opt-in and, at this
+# value, SocialGroupAwarePreMovementDelayStrategy's new branch is
+# mathematically a no-op (base_delay + 0.0 == base_delay), so every
+# existing scenario's simulated behavior is unchanged unless this is
+# explicitly raised.
+_GROUP_RESPONSE_DELAY_S = 0.0
 
 _HELPING_LIKELIHOOD_THRESHOLD = 0.6
 
@@ -360,6 +390,7 @@ def _register_one(behavior_layer, context, occupant, template, extra_traits):
                     fallback=template.pre_movement_strategy,
                 ),
             ),
+            group_response_delay=_GROUP_RESPONSE_DELAY_S,
         )
 
     # AssistanceAware{Decision,RouteChoice}Strategy wrap the template's

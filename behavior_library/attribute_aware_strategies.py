@@ -81,11 +81,31 @@ class SocialGroupAwarePreMovementDelayStrategy(PreMovementDelayStrategy):
     # a social-group follower waits for their group leader to depart
     # before starting to move, the same "group observably moves
     # together" mechanic FollowLeaderPreMovementDelayStrategy already
-    # provides for assistance pairs, reused unmodified here.
+    # provides for assistance pairs, reused unmodified here (this
+    # follower branch is completely untouched by the addition below --
+    # follow_gap's own semantics and call site are unchanged).
+    #
+    # Group Collective Response Delay milestone -- Bode, Holl, Mehner &
+    # Seyfried (2015), PLOS ONE, DOI 10.1371/journal.pone.0121227:
+    # group membership itself produces an additional response delay,
+    # present even for the group's own first mover -- a genuinely
+    # separate phenomenon from follow_gap (which only ever modeled
+    # followers waiting on an otherwise-unaffected leader). group_
+    # response_delay (default 0.0, a documented literature-reference
+    # value, never silently enabled -- see behaviour_profile_resolver/
+    # registrar.py's own _GROUP_RESPONSE_DELAY_S) is added to the
+    # LEADER'S OWN fallback delay -- the one and only insertion point
+    # needed: a follower's own final delay is already, and remains,
+    # entirely defined relative to the leader's own (now possibly
+    # group-delayed) resolved depart_time via the untouched follow_leader
+    # branch below, so the group effect propagates to every follower
+    # automatically, exactly once, with no separate follower-side term
+    # and no risk of double-counting it per group member.
 
-    def __init__(self, fallback=None, follow_gap=0.0):
+    def __init__(self, fallback=None, follow_gap=0.0, group_response_delay=0.0):
 
         self.fallback = fallback or NoPreMovementDelay()
+        self.group_response_delay = group_response_delay
         self._follow_leader = FollowLeaderPreMovementDelayStrategy(
             follow_gap=follow_gap, fallback=self.fallback,
         )
@@ -96,12 +116,25 @@ class SocialGroupAwarePreMovementDelayStrategy(PreMovementDelayStrategy):
 
         social_leader_id = context.profile.traits.get("social_leader_occupant_id")
 
-        if social_leader_id is None:
-            return self.fallback.delay(context)
+        if social_leader_id is not None:
 
-        context.profile.traits.setdefault("leader_occupant_id", social_leader_id)
+            # Follower path -- byte-for-byte unchanged from before this
+            # milestone.
+            context.profile.traits.setdefault("leader_occupant_id", social_leader_id)
 
-        return self._follow_leader.delay(context)
+            return self._follow_leader.delay(context)
+
+        base_delay = self.fallback.delay(context)
+
+        if context.profile.traits.get("group_id") is not None:
+
+            # Group leader / first mover -- the one new branch. Solo
+            # occupants (no "group_id" trait at all, exactly as today)
+            # fall through to the plain `return base_delay` below,
+            # completely unaffected.
+            return base_delay + self.group_response_delay
+
+        return base_delay
 
 
 # =====================================================
