@@ -1,0 +1,499 @@
+SCENARIO CAMPAIGN FEASIBILITY -- PHASE 2A IMPLEMENTATION REPORT
+Exact Candidate Validity Probability Analysis
+=====================================================
+Status: IMPLEMENTED (Phase 2A only). Monte Carlo fallback, campaign-
+level yield formulas, and UI/UX changes are explicitly NOT implemented
+in this task, per instruction. Nothing was committed.
+
+Both prerequisite reports were read in full before any code was
+written:
+  1. docs/architecture/scenario_campaign_feasibility_phase2_investigation.txt
+  2. docs/architecture/scenario_campaign_acceptance_and_uniqueness_investigation.txt
+
+
+1. FILES CHANGED
+=====================================================
+
+New files:
+  campaign_feasibility/exact_validity.py
+      CandidateValidityResult (the Phase 2A result model) and
+      compute_exact_candidate_validity() (the entry point), plus their
+      internal helpers.
+  tests/test_campaign_feasibility_exact_validity.py
+      18 new tests -- see Section 10.
+
+Modified files:
+  campaign_feasibility/__init__.py
+      Exports `compute_exact_candidate_validity`,
+      `CandidateValidityResult`, and `DEFAULT_MAX_ENUMERATED_STATES`
+      alongside Phase 1's existing exports. No existing export was
+      removed or changed.
+
+Files explicitly NOT touched (verified, not merely assumed):
+  scenario_generator/ -- `git diff --stat -- scenario_generator/`
+  returns empty. The Generator was not made reachability-aware; this
+  module contains zero references to `scenario_generator` anywhere in
+  its own code (grep-verified, only appears in comments explaining
+  what is NOT imported).
+  scenario_validator/ -- unchanged by this task (its one existing diff,
+  the Phase 1 `bfs_reachable()` extraction, predates this task and was
+  not touched again). Zero imports of `scenario_validator` anywhere in
+  the new module.
+  campaign_feasibility/analysis.py and campaign_feasibility/model.py --
+  Phase 1's own files, completely untouched; only two of their PUBLIC
+  functions (`_resolve_fire_eligible_zones`,
+  `_resolve_fire_sampling_population`) are imported and reused, not
+  modified, not duplicated.
+  designer/campaign/* -- not touched; no UI/preflight wiring was added
+  in this phase, per explicit instruction.
+
+
+2. EXACT ARCHITECTURE IMPLEMENTED
+=====================================================
+
+`compute_exact_candidate_validity(building, definition,
+max_states=DEFAULT_MAX_ENUMERATED_STATES) -> CandidateValidityResult`
+is a new, standalone, read-only entry point in the `campaign_feasibility`
+package -- deliberately NOT wired into `analyze_campaign_feasibility()`,
+`CampaignWorker`, or the UI (all three are explicitly out of scope for
+this phase). It builds the NavigationGraph exactly once
+(`NavigationGraphGenerator().build(building)`, the same unmodified
+class Phase 1 already uses) and produces ONE joint result for the
+whole candidate -- not a per-zone list -- because candidate validity is
+a property of the whole Scenario, not of any one zone in isolation
+(the central "joint evaluation" requirement, Section 5).
+
+The result model, `CandidateValidityResult`, is a NEW, separate
+dataclass from Phase 1's `ZoneFeasibilityResult` (inspected first, per
+instruction, before deciding this) -- Phase 1's type answers a
+per-zone reachability-BOUND question and carries an ERROR/WARNING/OK
+severity; Phase 2A's answers a whole-candidate PROBABILITY question and
+carries no severity field of its own at all, exactly matching the
+prior investigation's own recommendation ("preserve the existing
+severity mechanism rather than inventing a new tier" -- satisfied here
+by not touching severity at all, since wiring this result into the
+existing preflight severity policy is explicitly deferred).
+
+
+3. SAMPLING DIMENSIONS INCLUDED
+=====================================================
+
+Fire origin, door state, exit state, stair state -- the exact scope
+the task specified, re-verified against the current code before
+implementing (not assumed from the investigation reports alone):
+  - `scenario_generator/generator.py::_generate_fire()`'s own
+    eligibility/preference resolution -- reused via
+    `campaign_feasibility.analysis._resolve_fire_eligible_zones()` /
+    `_resolve_fire_sampling_population()` (imported directly, not
+    re-derived a third time).
+  - `_generate_door_states()`/`_generate_exit_states()`/
+    `_generate_stair_states()`'s own per-object distribution lookup
+    and Building-default fallback -- re-implemented in this module
+    (not imported) because Phase 2A needs the EXACT per-object
+    traversable PROBABILITY, not the coarser optimistic/pessimistic
+    BOUND pair Phase 1's own `_bound_maps()` returns. The underlying
+    traversable-name-sets (`{"OPEN", "CLOSED"}` for doors, `True` for
+    exits, `"AVAILABLE"` for stairs) and Building-default fallback
+    logic (`door.locked`, `exit.is_blocked`, stairs always AVAILABLE)
+    are kept byte-identical to `analysis.py`'s own constants/logic to
+    avoid semantic drift between the two -- disclosed explicitly in
+    the module's own docstring, not silently duplicated.
+  - Occupancy: included ONLY for zones whose occupancy is GUARANTEED
+    (every possible sampled count rounds to >=1, using the same
+    rounding rule `_generate_occupant_placements()` uses,
+    `max(0, int(round(raw_count)))`) -- see Section 9 for the full
+    occupancy-scope decision.
+  - `min_open_exits`: added as a genuinely new dimension this phase
+    closes -- see Section 6.
+
+
+4. HOW PROBABILITIES ARE DERIVED FROM REAL GENERATOR SEMANTICS
+=====================================================
+
+Every per-object probability is computed directly from the
+Definition's own `Distribution` object, using the SAME interpretation
+`scenario_generator/sampling.py::sample()` uses (re-read fresh this
+task, not assumed from the prior investigations' own summary):
+  - `FixedValue`: probability 1.0 for its pinned value, 0.0 for every
+    other outcome -- matches `sample()`'s own `return distribution.value`
+    unconditionally.
+  - `WeightedOptions`: `traversable_weight / total_weight`, using the
+    Definition's OWN declared weights, never assumed uniform -- matches
+    `sample()`'s own `rng.choices(options, weights=weights, k=1)`
+    exactly (a weighted categorical draw).
+  - `UniformRange` (or any other, unsupported kind): returns `None`
+    ("cannot derive an exact probability"), never fabricates a 0.5 or
+    any other guess. This case is disclosed as a warning and the
+    object is excluded from enumeration, treated optimistically for
+    pruning purposes only (Section 9's same "never silently assume
+    resolved randomness away" discipline).
+
+Every object's raw, possibly-3-or-more-valued distribution is COLLAPSED
+to exactly two outcomes (traversable / not) before enumeration --
+justified because neither `navigation_validation.py`'s own reachability
+checks nor the `min_open_exits` checks ever distinguish OPEN from
+CLOSED for a Door, or AVAILABLE from any other non-blocking Stair state
+-- only the binary traversable/not-traversable outcome is ever
+observable downstream. This is what keeps the enumerated state space
+2^k (k = uncertain relevant object count), not (up to) 3^k, without
+losing any information the real Validator itself would ever act on.
+
+Independence: fire-zone choice and every door/exit/stair object's own
+state are drawn from separately-seeded `random.Random` streams
+(category_rng, re-confirmed in the Phase 2 investigation via SHA256
+derivation) or from sequential draws within one such stream (also
+independent in the standard-PRNG sense) -- the SAME independence proof
+the Phase 2 investigation already established and this implementation
+reuses, not re-derives. Joint combination probability is therefore the
+PRODUCT of each object's own independent probability, exactly as
+implemented (`combo_probability *= p if is_traversable else (1.0 - p)`).
+
+
+5. HOW JOINT REACHABILITY IS EVALUATED
+=====================================================
+
+For every enumerated (fire-branch, engineering-state-combination)
+pair, ONE traversability predicate is built from the FULL combination
+(every degenerate object at its guaranteed value, every uncertain
+object at this specific combination's assigned value), and ONE
+`bfs_reachable()` call determines whether EVERY guaranteed-occupied
+zone is simultaneously reachable -- never zone-by-zone, never
+multiplied. This was verified directly, not merely asserted: a test
+(`JointEvaluationTests::test_shared_bottleneck_door_is_evaluated_jointly_not_multiplied`)
+constructs two occupied zones (A, B) whose ONLY routes to the exit
+share a single uncertain door -- a naive per-zone calculation would
+compute P(A ok) x P(B ok) = 0.5 x 0.5 = 0.25; this implementation
+correctly computes 0.5 (both zones' fate is the SAME single random
+draw, perfectly correlated, not independent) -- confirmed exactly by
+the test, which explicitly asserts the WRONG (0.25) answer is NOT
+produced.
+
+
+6. HOW min_open_exits WAS HANDLED
+=====================================================
+
+Confirmed before implementing, by re-reading both validator modules
+fresh this task (not assumed from the prior investigation report):
+  1. Is it genuinely a validation rule? YES, in TWO places:
+     `scenario_validator/engineering_validation.py`'s own
+     `MIN_OPEN_EXITS_UNSATISFIED` (STRUCTURAL, unconditional --
+     `open_exit_count < engineering.min_open_exits`) and
+     `scenario_validator/navigation_validation.py`'s own check (4),
+     `INSUFFICIENT_REACHABLE_EGRESS` (NAVIGATION, reachability-aware --
+     counts only OPEN exits that are actually reachable from an
+     occupied zone).
+  2. Can legitimate Definitions violate it? YES -- both checks are
+     driven directly by `exit_state_distribution`, an ordinary,
+     user-authored Definition field; a Definition with
+     `min_open_exits=2` and only one exit guaranteed open is a
+     perfectly legitimate, realistic authoring pattern.
+  3. Did Phase 1 completely ignore it? YES, confirmed by grep --
+     `campaign_feasibility/analysis.py` contains zero references to
+     `min_open_exits` anywhere.
+
+Fix implemented in Phase 2A's own exact calculation (per the task's own
+scoping -- "fix the analysis architecture so Phase 2A exact validity
+calculation correctly includes it," not a retroactive rewrite of Phase
+1's own bound-based ERROR/WARNING classification, which was left
+completely untouched):
+  - The NAVIGATION-based check (reachable open exits >= min_open_exits)
+    is applied per combination via `_reachable_open_exit_count()`, a
+    direct, line-for-line mirror of `navigation_validation.py`'s own
+    check (4) algorithm (same `include_exits=False`-equivalent "indoor"
+    predicate, same per-exit BFS-from-its-own-zone pattern, same
+    intersection-with-occupied-zones test) -- reusing `bfs_reachable()`,
+    never a re-derived algorithm.
+  - A mathematical simplification, proven rather than assumed, avoids
+    needing to separately enumerate the STRUCTURAL check at all
+    whenever guaranteed-occupied zones exist: since "reachable AND
+    open" is always a SUBSET of "open" for any exit, `reachable_open_
+    exit_count <= open_exit_count` is a tautology -- so satisfying the
+    NAVIGATION check's threshold automatically satisfies the STRUCTURAL
+    one too. Phase 2A therefore checks ONLY the (strictly stronger,
+    when zones exist) NAVIGATION-based rule in that case.
+  - Confirmed by re-reading `navigation_validation.py`'s own
+    `validate_navigation()`: it has an early `if not occupied_zone_ids:
+    return report` -- meaning when there is NO guaranteed-occupied zone
+    at all, NAVIGATION contributes nothing, and the STRUCTURAL check
+    becomes the ONLY min_open_exits-relevant rule still active. Phase
+    2A's `_compute_structural_only()` branch handles exactly this case,
+    enumerating only the uncertain EXIT objects (doors/stairs are
+    irrelevant when no one needs to reach anywhere) and applying the
+    plain unconditional count rule.
+  - Both are tested directly: `MinOpenExitsTests::test_min_open_exits_
+    changes_exact_validity_probability` (min_open_exits=1 vs. 2 on the
+    same two-independent-exit fixture, both figures verified against
+    hand-derived probabilities) and `test_min_open_exits_structural_
+    check_applies_even_with_zero_occupants` (zero occupants, confirms
+    the structural-only path still correctly reflects exit-state risk).
+
+
+7. HOW LETHAL FIRE-ORIGIN PRUNING WORKS
+=====================================================
+
+For each fire-eligible zone F in the sampling population, the SAME
+optimistic-bound cut-vertex test Phase 1 already proved correct
+(exclude F, check whether every guaranteed-occupied zone besides F
+itself still reaches Outside under the best-case door/exit/stair
+states) classifies F as LETHAL or SAFE. LETHAL zones' ENTIRE
+probability weight is added directly to `p_invalid` with ZERO
+engineering-state enumeration performed for that branch at all --
+satisfying the task's explicit "skipping evaluation does not mean
+skipping probability accounting" requirement: the mass is still
+correctly represented as invalid probability, just without wastefully
+re-enumerating a branch that is already provably always-invalid
+regardless of door/exit/stair states.
+
+If EVERY fire-eligible zone turns out LETHAL, the whole function
+short-circuits to `p_valid=0.0, p_invalid=1.0` with a single state
+considered -- matching Phase 1's own existing 100%-lethal ERROR
+finding exactly, without needing any enumeration at all.
+
+Verified by two dedicated tests: `LethalPruningTests::test_lethal_
+fire_origin_pruning_is_mathematically_correct` (mixed SAFE/LETHAL fire
+zones, with an ADDITIONAL uncertain door present, confirms the LETHAL
+branches' pruning does not corrupt the SAFE branch's own correct
+probability) and `test_pruning_avoids_enumerating_the_lethal_branch`
+(confirms `total_states_considered` reflects ONLY the SAFE branch's own
+enumeration -- 8 states for 3 independently-uncertain doors in the one
+SAFE branch -- not 8 x 5 fire zones, proving the LETHAL branches were
+genuinely never enumerated, not merely discarded after the fact).
+
+A weaker, but exactly sound, SEPARATE prune is also applied to which
+door/exit/stair objects are even considered "relevant" at all:
+`_topologically_relevant_edge_ids()` excludes any edge that is not even
+in the same connected component as a guaranteed-occupied zone (a
+necessary condition for relevance, computed via one `bfs_reachable()`
+call with an always-True predicate) -- provably sound regardless of how
+the real traversability distributions resolve, since an edge outside
+the relevant component can never lie on any path to Outside under any
+state. This is deliberately a WEAKER, cheaper prune than a tight
+minimal-cut relevant-edge-set (disclosed explicitly in the module's own
+comments and confirmed by a test whose fixture includes objects on the
+SAME connected component but not strictly on the analyzed zone's own
+shortest path -- they are correctly included in the enumeration, not
+excluded, and the resulting probability is still exactly correct).
+
+
+8. STATE-SPACE LIMIT BEHAVIOR
+=====================================================
+
+`DEFAULT_MAX_ENUMERATED_STATES = 4096` -- a named, documented, caller-
+overridable module constant (`max_states` is a keyword parameter on
+`compute_exact_candidate_validity()`), not inlined at any call site.
+
+Justification: the enumerated space is `(number of SAFE fire branches,
+or 1) x 2^(number of relevant, genuinely uncertain door/exit/stair
+objects)`. Each individual combination costs a small, bounded number of
+`bfs_reachable()` calls (2-3 for the reachability checks, plus one per
+open exit for the `min_open_exits` egress check) over a graph Phase 1
+already builds once per campaign and already walks routinely for its
+own fire cut-vertex classification. 4096 total combinations keeps
+worst-case exact-enumeration work in the same low-thousands-of-BFS-
+calls order of magnitude Phase 1's own existing analysis already
+performs for buildings with many fire-eligible zones (confirmed
+empirically in this thread's own prior work: a 299-zone reproduction
+building's fire-eligibility analysis alone already performs a
+comparable number of BFS calls without issue). 4096 corresponds to 12
+independently-uncertain relevant objects analyzed exactly per branch --
+judged, not merely guessed, to be comfortably beyond what a normally-
+authored Building/Definition's SHARED relevant subgraph would contain
+(every reproduction and fixture built across this entire investigation
+thread has needed 0-3 genuinely uncertain relevant objects per branch).
+
+Behavior when exceeded: `state_space_too_large=True`, `exact=False`,
+`exact_for_analyzed_dimensions=False`, `p_valid=None`,
+`p_invalid=None`, `total_states_considered=0` -- computed BEFORE any
+enumeration is attempted (`total_states > max_states` is checked prior
+to the `product()` loop, never after starting it, so an oversized
+request never runs, matching the task's explicit "do not freeze or
+explode computationally"). When lethal fire zones were also pruned
+first, the returned warning discloses this explicitly (e.g. "... (N
+fire-eligible zone(s) already proven LETHAL and excluded from this
+count.)") so a reader understands the reported "too large" figure
+already reflects that pruning, not a naive unpruned total.
+
+Verified by `StateSpaceLimitTests::test_oversized_enumeration_is_
+declined_not_executed` (forces `max_states=0`, confirms the function
+returns immediately with the documented "too large" shape rather than
+attempting any enumeration) and `test_default_limit_is_a_named_
+documented_constant`.
+
+
+9. OCCUPANCY SCOPE -- WHAT REMAINS EXPLICITLY OUT OF SCOPE
+=====================================================
+
+Per the task's own instruction, the FULL occupancy-uncertainty
+calculation (Phase 2 investigation's own Section 4.2 item 4/Section
+1.6 finding) was deliberately NOT implemented in this phase. Instead:
+  - A zone is included in the exact, analyzed occupied-zone set
+    (`analyzed_zone_ids`) ONLY when its occupancy is GUARANTEED --
+    every possible value its distribution could ever produce rounds to
+    >=1 (`_is_guaranteed_occupied()`), using the identical rounding
+    rule the real Generator uses.
+  - A zone that COULD be occupied but is not GUARANTEED to be
+    (`_can_ever_be_occupied()` true, `_is_guaranteed_occupied()` false
+    -- e.g. a `UniformRange(0, 3)` occupancy distribution) is placed in
+    `unresolved_occupancy_zone_ids` and EXCLUDED from the analyzed set
+    -- never silently treated as either "always occupied" (which would
+    overstate risk) or "never occupied" (which would understate it).
+  - Whenever `unresolved_occupancy_zone_ids` is non-empty,
+    `exact=False` is set (this result is NOT exact across every
+    dimension that could matter) while `exact_for_analyzed_dimensions`
+    remains `True` whenever the fire/engineering-state/min_open_exits
+    calculation for the zones that WERE analyzed completed exactly --
+    using the precise terminology the task itself suggested
+    (`exact_for_analyzed_dimensions`), chosen because it reads
+    unambiguously next to Phase 1's own `ZoneFeasibilityResult` field
+    names (`optimistic_reachable`, `pessimistic_reachable`) without
+    introducing a differently-shaped naming convention.
+  - Verified by `ProbabilityInvariantTests::test_uncertain_occupancy_
+    is_disclosed_not_silently_treated_as_deterministic`.
+
+Also explicitly out of scope for this phase, per instruction:
+  - The Monte Carlo/estimation fallback (Phase 2 investigation's
+    Option C) -- when `state_space_too_large=True`, this phase returns
+    an honest "not completed" result, never an estimate.
+  - Campaign-level yield formulas (P(slot succeeds), P(campaign
+    produces zero accepted scenarios), expected accepted count) --
+    `compute_exact_candidate_validity()` returns only the single-
+    candidate `p_valid`/`p_invalid` figures; nothing in this phase
+    reads `CampaignConfig.max_attempts`/`count` at all.
+  - Any UI/preflight wiring -- `CandidateValidityResult` is not
+    consumed anywhere in `designer/campaign/` yet.
+  - The five non-navigation, near-never-triggerable validator
+    categories the Phase 2 investigation catalogued (STRUCTURAL
+    PINNED_STATE_MISMATCH, GEOMETRY, most of OCCUPANCY/FIRE, EVENTS,
+    DATASET) -- Phase 2A's `p_valid` is exact for the NAVIGATION +
+    min_open_exits dimension specifically, matching the Phase 2
+    investigation's own recommended scoping and its own justification
+    for why that scoping is defensible (every other category was
+    verified, in that investigation, to be either structurally
+    impossible to violate under legitimate sampling, or a narrow,
+    separately-flaggable edge case).
+
+
+10. TEST CASES ADDED
+=====================================================
+
+tests/test_campaign_feasibility_exact_validity.py -- 18 tests, all
+passing:
+  DeterministicCaseTests (2): fully deterministic valid (p_valid=1.0);
+    fully deterministic invalid (p_valid=0.0).
+  ProbabilisticDoorTests (2): a single WeightedOptions door matches its
+    exact analytical probability; a three-way WeightedOptions door
+    (OPEN/CLOSED/LOCKED) correctly collapses to the COMBINED
+    OPEN+CLOSED weight, not OPEN alone.
+  FireOriginProbabilityTests (2): a weighted `ignition_zone_preference`
+    with mixed safe/lethal origins; a uniform (unconstrained) fire
+    distribution with mixed safe/lethal origins, matching a fully
+    hand-derived probability (0.4, cross-checked step by step in this
+    report's own review process).
+  JointEvaluationTests (1): the shared-bottleneck-door counterexample
+    (Section 5) -- the single most important correctness test in this
+    suite, explicitly asserting the WRONG, naively-multiplied answer
+    is NOT produced.
+  CombinedEngineeringStateTests (2): door + exit interaction (product
+    of two independent exact probabilities); door + stair interaction
+    (a genuine two-floor Staircase fixture, confirming stairs are
+    handled, not merely doors/exits).
+  MinOpenExitsTests (2): min_open_exits=1 vs. 2 changes the exact
+    probability on the same underlying exit-state distribution
+    (0.91 vs. 0.49, both hand-derived and matched exactly); the
+    STRUCTURAL-only check applies correctly even with zero occupants.
+  LethalPruningTests (2): pruning does not corrupt the SAFE branch's
+    own correct probability; pruning demonstrably avoids enumerating
+    the LETHAL branch at all (state count reflects only the SAFE
+    branch).
+  StateSpaceLimitTests (2): an oversized enumeration is declined, not
+    executed; the limit is a named, positive, documented constant.
+  ProbabilityInvariantTests (2): p_valid + p_invalid == 1.0 (within
+    floating-point tolerance) on a non-trivial mixed case;
+    valid_states + invalid_states == total_states_considered; uncertain
+    occupancy is disclosed, not silently resolved either way.
+  Phase1RegressionTests (1): `campaign_feasibility.
+    analyze_campaign_feasibility()` (Phase 1's own public entry point)
+    still produces its existing, unchanged ERROR classification on a
+    known fixture, imported and called directly from within this new
+    test file to prove Phase 1's own behavior is unaffected by this
+    module's mere existence.
+
+Every numeric assertion in this suite is checked against an
+independently, manually hand-derived expected value (documented inline
+in each test's own comments) -- not merely "whatever the code
+produces," so a regression in the underlying math would be caught, not
+just a regression in output stability.
+
+
+11. FULL TEST-SUITE RESULT
+=====================================================
+
+Focused suite: 18/18 passed (tests/test_campaign_feasibility_exact_
+validity.py, run standalone first).
+
+Combined regression run (every file touched or reasoned about by this
+phase, plus the full Phase 1 + scenario engine + navigation-package
+suites already used as this thread's own standing regression set):
+  tests/test_campaign_feasibility_exact_validity.py (18)
+  tests/test_campaign_feasibility.py (21)
+  tests/test_campaign_studio.py
+  tests/test_campaign_diagnostics.py
+  tests/test_scenario_validator.py (67)
+  tests/test_scenario_generator.py
+  tests/test_scenario_pipeline.py
+  tests/test_scenario_definition.py
+  tests/test_builder_navigation_preview.py
+  tests/test_engineering_navigation_graph.py
+  tests/test_navigation_graph.py
+  tests/test_obstacle_navigation_integration.py
+  Result: 461 passed, 0 failed (443 pre-existing + 18 new).
+
+Process note, disclosed for transparency: mid-task, this environment's
+`python`/`pytest` PATH resolution was found to have drifted to an
+unrelated project's virtual environment (a different, concurrent
+background session's own venv activation, external to this task) --
+detected immediately when `PyQt6` failed to import, diagnosed by
+checking `which python`, and worked around by invoking the correct
+interpreter (`/c/Python314/python`) explicitly for the remainder of
+this task's test runs. Not a code defect; noted here only so the
+461-passed figure's provenance is fully transparent.
+
+
+12. ASSUMPTIONS AND UNRESOLVED ISSUES
+=====================================================
+
+- The topological-connectivity edge prune (Section 7) is deliberately
+  weaker than a tight minimal-cut relevant-edge-set -- it can include
+  objects that are, in fact, irrelevant to a SPECIFIC fire branch's own
+  reachability question (though never incorrectly EXCLUDE a relevant
+  one). This does not affect correctness (verified by test) but does
+  mean the reported `total_states_considered` is sometimes larger than
+  the theoretical minimum a tighter (and more complex) prune could
+  achieve. Left as a known, disclosed, future tightening opportunity,
+  not attempted in this phase given the task's own "smallest clean
+  architecture necessary" instruction.
+- The SAFE-fire-branch enumeration currently re-runs its own
+  reachability BFS calls once per (fire zone, combination) pair rather
+  than sharing work across fire zones that happen to induce identical
+  outcomes (the Phase 2 investigation's own Section 4.4 "collapse by
+  distinct relevant-edge-set" optimization) -- not implemented in this
+  phase, since every reproduction and fixture this thread has
+  constructed keeps the SAFE-branch count small enough that this
+  optimization was not needed to stay well under the state-space
+  limit. Flagged as a possible future efficiency improvement if a real
+  Definition is found needing it.
+- `_p_traversable_from_distribution()` returns `None` for a
+  UniformRange or unrecognized Distribution kind on a door/exit/stair
+  field -- an unusual, off-label authoring pattern the Phase 2
+  investigation already noted is not used in practice for these
+  fields. This phase disclosed it via a warning and excludes such
+  objects from the exact enumeration (treated as always-traversable
+  for pruning/lethal-classification purposes only) rather than
+  fabricating a probability -- consistent with this phase's own "never
+  silently guess" discipline, but means a Definition that DID use this
+  pattern would get a `warnings`-flagged, not a hard-failed, result.
+- Firefighters are not analyzed by this phase at all (their placement
+  does not affect NAVIGATION validity -- confirmed by
+  `_occupied_zone_ids()` reading only `candidate.occupants`, never
+  `candidate.firefighters`, matching the prior investigation's own
+  finding) -- deliberately out of scope, not an oversight.

@@ -124,6 +124,16 @@ class RootCauseReproductionTests(unittest.TestCase):
         # ignition zone sits between an occupied zone and the Exit.
         # This is the Validator working correctly, not a bug -- see
         # the accompanying root-cause report.
+        #
+        # Scenario Campaign Feasibility Preflight Phase 1 -- this exact
+        # fixture (zone-1, the zone farthest from the Exit) is the
+        # canonical reproduction of the failure class Phase 1 exists to
+        # catch: every OTHER zone in this chain sits on zone-1's only
+        # path out, so zone-1's entire fire-eligible set is LETHAL
+        # (P=1.0) and the campaign is now blocked at pre-flight,
+        # BEFORE any of the 30 requested scenario slots ever attempt
+        # generation -- not merely "rejections happen," but "wasted
+        # attempts no longer happen at all" for this exact case.
         building = make_chain_building(zone_count=5)
         definition = make_every_zone_occupied_definition(building)
 
@@ -138,13 +148,17 @@ class RootCauseReproductionTests(unittest.TestCase):
                 )
             )
 
+            preflights = []
+            worker.preflight_completed.connect(preflights.append)
+
             summary = worker.execute()
 
-            # Not asserting a specific ratio (depends on exactly which
-            # zone gets sampled as ignition each attempt) -- asserting
-            # only that rejections happen and are attributed correctly,
-            # which is what this whole feature exists to make visible.
-            self.assertGreater(summary.rejected, 0)
+            self.assertTrue(preflights[0].has_errors)
+            self.assertTrue(preflights[0].feasibility_issues)
+            self.assertEqual(summary.accepted, 0)
+            self.assertEqual(summary.rejected, 0)
+            self.assertIn("proven infeasible", summary.rejection_explanation)
+            self.assertIn("zone-1", summary.rejection_explanation)
 
     def test_longer_chain_makes_navigation_the_dominant_rejection_reason(self):
 
@@ -478,6 +492,20 @@ class PerCandidateCaptureTests(unittest.TestCase):
         # occupied, its only path out is blocked. Constraining ignition
         # to zone-1 specifically makes this deterministic, every
         # attempt.
+        #
+        # Scenario Campaign Feasibility Preflight Phase 1 -- door-1 is
+        # pinned LOCKED (FixedValue, no sampling uncertainty at all),
+        # so zone-1 is unreachable even under the OPTIMISTIC bound --
+        # this is now caught at pre-flight (Case 1:
+        # ZONE_UNREACHABLE_OPTIMISTIC), before any of the 3 requested
+        # scenario slots ever attempts generation, rather than after
+        # 3 wasted per-candidate rejections. The scenario_validator-
+        # level NAVIGATION rejection this test originally exercised is
+        # still covered directly by tests/test_scenario_validator.py
+        # and by RootCauseReproductionTests.
+        # test_longer_chain_makes_navigation_the_dominant_rejection_reason
+        # above (which calls generate_scenario()/validate() directly,
+        # bypassing CampaignWorker's pre-flight entirely).
         definition = ScenarioDefinition(
             fire=FireDefinition(
                 growth_parameter_distribution=FixedValue(200.0),
@@ -503,12 +531,18 @@ class PerCandidateCaptureTests(unittest.TestCase):
                 )
             )
 
+            preflights = []
+            worker.preflight_completed.connect(preflights.append)
+
             summary = worker.execute()
 
+            self.assertTrue(preflights[0].has_errors)
+            self.assertTrue(preflights[0].feasibility_issues)
             self.assertEqual(summary.accepted, 0)
-            self.assertEqual(summary.rejected, 3)
+            self.assertEqual(summary.rejected, 0)
             self.assertIsNotNone(summary.rejection_explanation)
-            self.assertIn("NAVIGATION", summary.rejection_explanation)
+            self.assertIn("ZONE_UNREACHABLE_OPTIMISTIC", summary.rejection_explanation)
+            self.assertIn("proven infeasible", summary.rejection_explanation)
 
 
 # =====================================================

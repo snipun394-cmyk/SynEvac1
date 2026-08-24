@@ -1,0 +1,621 @@
+SCENARIO CAMPAIGN FEASIBILITY -- PHASE 2C: MONTE CARLO FALLBACK FOR
+CANDIDATE VALIDITY AND CAMPAIGN YIELD
+=====================================================
+Status: IMPLEMENTED. UI wiring is explicitly NOT implemented in this
+task, per instruction. Nothing was committed.
+
+All five prerequisite reports were re-read in full before any code was
+written:
+  1. docs/architecture/scenario_campaign_feasibility_phase2_investigation.txt
+  2. docs/architecture/scenario_campaign_feasibility_phase2a_implementation_report.txt
+  3. docs/architecture/scenario_campaign_feasibility_phase2b_implementation_report.txt
+  4. docs/architecture/scenario_campaign_feasibility_min_open_exits_occupancy_implementation_report.txt
+  5. docs/architecture/scenario_campaign_yield_analysis_implementation_report.txt
+
+
+1. CANDIDATE-GENERATION SEAM USED
+=====================================================
+
+[FACT] `scenario_generator.generate_scenario(request: GenerationRequest)
+-> Scenario` (`scenario_generator/generator.py`) is a pure, deterministic
+function of `(definition, building, seed, attempt_index)` -- its own
+docstring: "always returns a candidate Scenario... whether that
+candidate is acceptable is entirely the Scenario Validator's concern."
+It performs NO accept/reject branching, NO retry loop, NO duplicate-
+hash bookkeeping, and NO filesystem I/O (re-verified this task:
+`metadata_builder.py`'s own content hashing is in-memory `json.dumps`,
+never a file write). This IS the "one freshly generated candidate
+before acceptance/rejection" primitive the task asked for, already
+built and already the SAME primitive `scenario_pipeline.run_pipeline()`
+itself is built from (`scenario_pipeline/pipeline.py:64-76`:
+`generate_scenario(request)` then `validate(...)`) -- Phase 2C reuses
+the FIRST of those two calls directly, and a NAVIGATION-scoped variant
+of the second (Section 1 continued, below).
+
+[FACT] `scenario_validator.navigation_validation.validate_navigation(
+candidate, definition, building) -> ScenarioValidationReport` is
+called DIRECTLY -- NOT the full six-category `scenario_validator.
+validate()` -- because Phase 2A/2B's own exact analysis is explicitly
+scoped to NAVIGATION-category validity only (re-confirmed against
+those reports' own Section 1/2: "P(candidate valid)" throughout this
+entire thread means P(passes NAVIGATION), never full six-category
+acceptance). Calling the full `validate()` would (a) measure a
+DIFFERENT quantity than the one this fallback is a fallback FOR, and
+(b) require an `accepted_hashes` argument for its own DATASET/
+duplicate-content check -- a campaign-run-history-dependent concept
+with no meaning for "one freshly generated candidate in isolation"
+(the task's own explicit scope, "do not sample already accepted
+scenarios... do not let retry logic distort the sample distribution").
+`validate_navigation()` has zero notion of `accepted_hashes`, zero
+retry state, and touches nothing outside its own three arguments.
+
+Neither function was imported into `exact_validity.py` (which keeps
+its own, deliberate "never import Generator/Validator, only mirror
+their logic" discipline, unchanged) -- both are imported into a NEW
+module, `campaign_feasibility/monte_carlo.py`, whose entire purpose is
+the opposite of `exact_validity.py`'s: estimate by ACTUALLY SAMPLING
+the real path, specifically so this is never a second, independently-
+authored approximation of Generator/Validator semantics. Importing a
+package's PUBLIC functions to call them is not the same thing as
+MODIFYING that package -- Section 16 confirms neither was edited.
+
+
+2. RNG AND INDEPENDENCE REASONING
+=====================================================
+
+[FACT, re-traced fresh this task] Every category's RNG stream
+(`scenario_generator/seed_manager.py::category_rng()`) is a fresh,
+LOCAL `random.Random` instance seeded via `derive_seed(attempt_seed,
+"category", category_key)` (SHA256-derived) -- `generate_scenario()`
+NEVER touches the global `random` module's state anywhere in its own
+call chain (grep-confirmed: only `random.Random(...)` instantiation,
+never bare `random.<function>()`). This means Phase 2C satisfies "do
+not interfere with global RNG state" for free, simply by reusing this
+seam rather than reimplementing sampling.
+
+`attempt_seed = derive_attempt_seed(request.seed, request.attempt_index)`
+is itself SHA256-derived from `(request.seed, request.attempt_index)`
+-- INDEX-KEYED, never stream-position-keyed (re-confirmed, unchanged
+from every prior report in this thread's own independence proof).
+Phase 2C's own sampling loop reuses EXACTLY this mechanism: a single,
+analysis-private `base_seed` (Section 9) stays fixed for the whole
+analysis, and each of the `n` independent samples uses `attempt_index =
+sample_index` (0, 1, 2, ...) -- the IDENTICAL pattern `scenario_
+pipeline.run_pipeline()`'s own retry loop already uses for "retry N+1
+never reuses retry N's random draws" (`pipeline.py:64-69`). This is not
+a new independence argument invented for this phase -- it is the SAME
+one this whole thread has already relied on, applied to a fresh, never-
+before-used seed namespace (Section 9).
+
+`accepted_hashes` (the ONE piece of real campaign-run state that could
+break i.i.d.-ness, per the Phase 2 yield-analysis report's own finding)
+is never constructed, never threaded through, and never referenced
+anywhere in `monte_carlo.py` -- confirmed by grep. Each sample is
+therefore genuinely independent of every other sample, satisfying "do
+not let retry logic distort the sample distribution" and "do not
+accidentally introduce correlated samples" directly, by construction,
+not by a separate correctness argument bolted on afterward.
+
+
+3. MONTE CARLO SAMPLING ARCHITECTURE
+=====================================================
+
+`campaign_feasibility/monte_carlo.py`, new module:
+
+  `MonteCarloConfig` (frozen dataclass): `seed`, `minimum_samples`,
+  `maximum_samples`, `target_interval_half_width`, `confidence_level`
+  -- validated in `__post_init__()` via direct `ValueError`s, matching
+  this repository's own established convention for plain call-
+  parameter objects (`scenario_pipeline.run_pipeline()`'s own
+  `if max_attempts < 1: raise ValueError(...)`), not the report-based
+  `scenario_definition.validation` convention (reserved for user-
+  authored Definition CONTENT, which a config object is not).
+
+  `MonteCarloCandidateValidityResult` (frozen dataclass): exposes, at
+  minimum, every field the task required --
+  `estimated_p_valid`/`confidence_lower`/`confidence_upper`/
+  `confidence_level`/`samples_run`/`valid_samples`/`invalid_samples` --
+  plus `precision_target_met`, `target_interval_half_width`,
+  `minimum_samples`, `maximum_samples`, `seed`, and `warnings`. Never
+  reuses `CandidateValidityResult.exact`'s field NAME for a different
+  meaning -- this type has no `exact` field at all, so a caller can
+  never duck-type an estimate as exact by accident.
+
+  `estimate_candidate_validity_monte_carlo(building, definition,
+  config)`: the sampling loop (Section 9). For each `sample_index` in
+  `range(config.maximum_samples)`: build a `GenerationRequest` (fixed
+  analysis `base_seed`, `attempt_index=sample_index`), call
+  `generate_scenario()`, call `validate_navigation()`, count. Once
+  `samples_run >= config.minimum_samples`, compute the Wilson interval
+  (Section 4) after EVERY additional sample and stop the instant its
+  half-width meets `target_interval_half_width` (Section 5). The
+  Wilson interval is recomputed once more, unconditionally, after the
+  loop ends (whichever way it ended) -- a cheap, O(1) operation that
+  removes any reliance on the loop's own internal break-time state,
+  simplifying correctness reasoning over trying to reuse a
+  possibly-stale value from inside the loop.
+
+  `CandidateValidityAnalysis` (frozen dataclass): the orchestrated
+  "exact, falling back to Monte Carlo only when tractability requires
+  it" wrapper -- `exact_result` (always present) and `monte_carlo_
+  result` (present iff the fallback triggered), plus `used_monte_
+  carlo`/`p_valid`/`exact` convenience properties that never collapse
+  the two into one ambiguous shape.
+
+  `compute_candidate_validity(building, definition, max_states,
+  monte_carlo_config)`: calls `compute_exact_candidate_validity()`
+  first, ALWAYS; falls back to Monte Carlo if and only if `exact_
+  result.state_space_too_large` is True (Section 6).
+
+
+4. WILSON INTERVAL FORMULA AND CONFIDENCE-LEVEL HANDLING
+=====================================================
+
+Standard closed form (Wilson, 1927), implemented in `_wilson_interval(
+k, n, confidence_level)`:
+    p_hat = k / n
+    z     = two-sided standard normal quantile for `confidence_level`
+    denom = 1 + z^2/n
+    center     = (p_hat + z^2/(2n)) / denom
+    half_width = (z/denom) * sqrt(p_hat(1-p_hat)/n + z^2/(4n^2))
+    [lower, upper] = [center - half_width, center + half_width],
+    each clamped to [0, 1].
+Chosen over a normal/Wald approximation interval specifically because
+it stays well-behaved (non-degenerate) at k=0 and k=n -- re-derived and
+hand-verified (`WilsonIntervalKnownCasesTests`), not merely assumed
+correct from a citation: at k=0, `center == half_width` exactly (both
+equal `z^2/(2(n+z^2))`), so `lower = 0.0` exactly while `upper =
+z^2/(n+z^2) > 0` -- a genuinely non-degenerate interval, unlike a Wald
+interval's `[0, 0]` at k=0. The k=n case is the exact mirror.
+
+`z` is obtained via `scipy.stats.norm.ppf((1 + confidence_level) / 2)`.
+`scipy` is already a repository dependency (`requirements.txt`;
+`validation_framework/statistics.py` and `research_framework/
+statistics.py` already import `scipy.stats` the same way) -- reused
+rather than hand-rolling an inverse-error-function routine, and this is
+what makes `confidence_level` genuinely CONFIGURABLE (any value in
+(0,1), not a hardcoded 90/95/99 lookup table).
+
+Hand-verified reference values (`WilsonIntervalKnownCasesTests`, cross-
+checked against the standard closed form independently, not merely
+"whatever the code produces"): `n=10, k=0, 95%` -> `[0.0, 0.2775327998...]`;
+`n=10, k=10, 95%` -> `[0.7224672001..., 1.0]`; `n=20, k=10, 95%` ->
+`[0.2992980081..., 0.7007019918...]` (a well-known textbook Wilson
+score example). A fourth test confirms interval width strictly widens
+as confidence level increases (90% < 95% < 99%), a basic sanity
+property independent of the exact formula.
+
+
+5. ADAPTIVE STOPPING BEHAVIOR
+=====================================================
+
+Exactly the task's own conceptual outline, implemented literally:
+  1. Sample until `samples_run >= config.minimum_samples`.
+  2. From that point on, after EVERY additional sample, compute the
+     Wilson interval and its half-width `(upper - lower) / 2`.
+  3. If `half_width <= config.target_interval_half_width`: stop,
+     `precision_target_met = True`.
+  4. Otherwise continue sampling.
+  5. Stop unconditionally at `config.maximum_samples` (the `for
+     sample_index in range(config.maximum_samples)` loop's own natural
+     bound) -- `precision_target_met` stays `False` in that case.
+Never silently presents both outcomes as equivalent: `precision_
+target_met` is a required, explicitly-named boolean field on `MonteCarlo
+CandidateValidityResult`, and whenever it is `False`, an explicit
+warning naming `maximum_samples` is appended (`estimate_candidate_
+validity_monte_carlo()`'s own final warnings block).
+
+Verified directly: `EarlyPrecisionStopTests` (an always-valid fixture
+with a generous `target_interval_half_width=0.05` and a large `max_
+attempts` budget reaches its target and stops well before `maximum_
+samples`, `precision_target_met=True`); `MaximumSampleStopTests` (an
+essentially unreachable `target_interval_half_width=0.0001` within a
+tiny `maximum_samples=25` budget reaches exactly 25 samples,
+`precision_target_met=False`, and the specific "maximum_samples"
+warning text is present).
+
+
+6. STATE-SPACE FALLBACK ROUTING
+=====================================================
+
+`compute_candidate_validity()` (Section 3) gates Monte Carlo STRICTLY
+on `exact_result.state_space_too_large` -- the ONE flag `compute_
+exact_candidate_validity()` sets specifically for "the engineering-
+state enumeration exceeded `DEFAULT_MAX_ENUMERATED_STATES` (or Phase
+2B.1's own separate `MAX_EXIT_COVERAGE_STATES` bound)," never for any
+other reason. This automatically, correctly EXCLUDES:
+  - Deterministic zero-feasibility already proven by Phase 1/2A (e.g.
+    a guaranteed-occupied zone unreachable under even the most
+    favorable states, or every fire-eligible zone LETHAL) -- these
+    return `exact=True, p_valid=0.0, state_space_too_large=False`, so
+    Monte Carlo is never triggered for them (`FallbackRoutingTests::
+    test_small_configuration_does_not_invoke_monte_carlo` re-confirms
+    the ADJACENT, more common "exact analysis simply succeeded" case
+    directly).
+  - Any other kind of `exact=False` result that is NOT a tractability
+    problem (e.g. a genuinely unresolvable, degenerate WeightedOptions
+    occupancy distribution, `unresolved_occupancy_zone_ids`) -- sampling
+    via the real Generator would hit the exact same "`sample()` itself
+    would be in undefined territory" problem `_p_zero_occupancy()`'s
+    own docstring already discloses, so Monte Carlo would not actually
+    help there either; correctly out of scope for this specific
+    fallback, per the task's own "only where exact analysis is
+    unavailable due to TRACTABILITY" instruction.
+Verified directly: `FallbackRoutingTests::test_oversized_state_space_
+uses_monte_carlo` constructs a 14-independent-uncertain-door chain
+(`2^14 = 16384 > DEFAULT_MAX_ENUMERATED_STATES = 4096`), confirms
+`compute_exact_candidate_validity()` itself reports `state_space_too_
+large=True`, then confirms `compute_candidate_validity()` routes to
+Monte Carlo (`used_monte_carlo=True`, a non-`None` `monte_carlo_result`,
+`exact=False`).
+
+A user wanting an approximate analysis regardless of tractability can
+always call `estimate_candidate_validity_monte_carlo()` directly -- a
+public function, not gated behind the orchestration wrapper at all --
+satisfying the task's own "unless the architecture explicitly supports
+a user-requested approximate analysis mode" allowance without adding a
+separate `force_monte_carlo` flag to `compute_candidate_validity()`
+(judged unnecessary complexity: the capability already exists as a
+plain function call). `CandidateValidityCorrectnessTests` and
+`CampaignYieldIntervalPropagationTests` both exercise exactly this
+direct-call path.
+
+
+7. EXACT VS ESTIMATED SEMANTICS
+=====================================================
+
+Preserved through the ENTIRE pipeline, never collapsed:
+  - `CandidateValidityResult.exact` (Layer 1, exact) is untouched --
+    same field, same meaning, as every prior phase.
+  - `MonteCarloCandidateValidityResult` has NO `exact` field at all --
+    an estimate can never be mistaken for an exact result by reading
+    the wrong boolean, because there is no boolean with that name on
+    this type.
+  - `CandidateValidityAnalysis.exact` is `True` if and only if `monte_
+    carlo_result is None` AND `exact_result.exact` -- an estimate,
+    however tight its interval, NEVER makes this `True`.
+  - `CampaignYieldResult` (Layer 2, extended this phase) gained
+    `candidate_validity_source: str` (`"exact"` or `"monte_carlo"`)
+    and `monte_carlo_source: Optional[MonteCarloCandidateValidityResult]`
+    -- when Layer 2 is driven by an estimate, `exact` is unconditionally
+    `False` (re-confirmed by `CampaignYieldIntervalPropagationTests::
+    test_result_is_never_labeled_exact`, which checks this against a
+    Monte Carlo result whose OWN `precision_target_met=True` -- a tight,
+    high-confidence estimate is still never presented as exact), and
+    `monte_carlo_source` carries the FULL originating estimate (sample
+    count, CI, confidence level, precision-target status) so a caller
+    never has to re-derive "how estimated is this" from scratch.
+  - A campaign-yield warning explicitly says "ESTIMATE... not an exact
+    probability" whenever `candidate_validity_source == "monte_carlo"`,
+    satisfying the task's own "do not hide Monte Carlo uncertainty"
+    requirement directly in the result's own `warnings` field, not only
+    in numeric fields a caller might skip past.
+
+
+8. CAMPAIGN-YIELD INTERVAL PROPAGATION
+=====================================================
+
+`analyze_campaign_yield()` (`campaign_feasibility/yield_analysis.py`)
+now accepts a bare `CandidateValidityResult`, a bare `MonteCarloCandidate
+ValidityResult`, OR a `CandidateValidityAnalysis` (unwrapped to
+whichever of the first two it actually carries) -- ADDITIVE, not a
+breaking signature change: every existing caller passing a bare
+`CandidateValidityResult` sees byte-identical behavior (re-confirmed:
+all 18 pre-existing yield-analysis tests pass completely unmodified).
+
+The point-estimate arithmetic (`p_slot_success`/`expected_attempts_
+per_slot`/`expected_accepted`/`p_complete_success`/`p_underproduction`)
+was extracted, UNCHANGED in formula, into one shared helper
+(`_compute_yield_point(p, count, max_attempts)`) so the exact path
+(called once, at `p_hat`) and the Monte Carlo path (called three times
+-- at `estimated_p_valid`, `confidence_lower`, `confidence_upper`)
+never duplicate this arithmetic (the task's own "avoid redundant
+metrics" principle, extended to the FORMULA level, not only the named-
+result level).
+
+Monotonicity proofs (each independently re-derived this task, not
+assumed from the task's own wording alone):
+  - `s(p) = 1 - (1-p)^A`: `ds/dp = A(1-p)^{A-1} >= 0` for `p in [0,1]`,
+    `A >= 1` -- monotonic non-decreasing. `p_slot_success_lower =
+    s(confidence_lower)`, `p_slot_success_upper = s(confidence_upper)`.
+  - `E(p) = N * s(p)`: a positive scalar multiple of a monotonic non-
+    decreasing function is itself monotonic non-decreasing.
+    `expected_accepted_lower/upper` follow the SAME (lower->lower,
+    upper->upper) pairing.
+  - `C(p) = s(p)^N`: `s(p) in [0,1]` and `x -> x^N` is monotonic non-
+    decreasing on `[0,1]` for `N >= 0` -- the COMPOSITION of two
+    monotonic non-decreasing functions is monotonic non-decreasing.
+    `p_complete_success_lower/upper` follow the SAME pairing.
+  - `p_underproduction(p) = 1 - C(p)`: monotonic non-INCREASING in p
+    (the complement of a non-decreasing function) -- its bounds are
+    the OTHER two points' values with lower/upper SWAPPED:
+    `p_underproduction_lower = (point computed at confidence_upper).
+    p_underproduction`, `p_underproduction_upper = (point computed at
+    confidence_lower).p_underproduction`. Singled out for its own
+    dedicated test (`test_underproduction_bounds_are_correctly_
+    swapped`) specifically because this is the one place a copy-paste
+    of the other three metrics' own pairing pattern would silently
+    produce an INVERTED (wrong) interval.
+  - BONUS, beyond the three explicitly required metrics:
+    `P(accepted >= target)` for ANY fixed `target` is also monotonic
+    non-decreasing in `p_slot_success` (a standard stochastic-dominance
+    fact about `Binomial(n, s)` as a function of `s` -- a pathwise
+    coupling argument: raising the per-trial success probability can
+    only convert MORE trials from failure to success, never the
+    reverse, so the resulting count random variable is stochastically
+    non-decreasing in `s`), hence in `p` transitively -- exposed as
+    `CampaignYieldResult.p_accepted_at_least_interval(target)`.
+  - EXPLICITLY NOT propagated: `p_accepted_equals(k)` (the exact-k pmf).
+    `d/dp [Binomial pmf at k] = C(n,k) p^{k-1}(1-p)^{n-k-1}[k - np]`,
+    zero at `p = k/n`, positive below it, negative above it -- UNIMODAL,
+    not monotonic, so a naive `[pmf(L), pmf(U)]` interval would be
+    WRONG whenever `k/n` falls strictly inside `[L, U]` (the interior
+    value would exceed both endpoints). Per the task's own explicit
+    "clearly omit interval bounds" allowance for exactly this situation,
+    `p_accepted_equals()` continues to return a single point value with
+    no propagated interval, for both the exact and the Monte Carlo
+    paths -- no attempt was made to derive the more complex piecewise
+    (interior-maximum-aware) bound this would require, since it goes
+    beyond what this task's own required outputs (items 9/10/11) ask
+    for.
+
+Interval fields are populated ONLY when `slots_independent` is True
+(the SAME duplicate-rejection-negligibility check the Phase 2 yield-
+analysis report already established, unaffected by whether `p` came
+from exact or Monte Carlo analysis) -- when duplicate rejection risk is
+present, propagating an interval through a model whose OWN point
+estimate is already disclosed as unreliable would compound two
+different kinds of error into one number; bounds are omitted entirely
+in that case (`test_bounds_omitted_when_duplicate_rejection_risk_
+present`), while the point estimates themselves are still populated
+(unchanged from the existing Phase-2-yield behavior).
+
+All three required propagations, plus the underproduction/bonus ones,
+are verified against hand-derived values computed independently (not
+merely re-run through the same code): for a fixture with `confidence_
+lower=0.6, estimated_p_valid=0.7, confidence_upper=0.8, count=5,
+max_attempts=3`: `s(0.6)=0.936, s(0.7)=0.973, s(0.8)=0.992`;
+`E(0.6)=4.68, E(0.7)=4.865, E(0.8)=4.96`; `C(0.6)=0.71842137...,
+C(0.7)=0.87209581..., C(0.8)=0.96063490...` -- every one of these nine
+numbers matches the implementation's own output to 6+ decimal places
+(`CampaignYieldIntervalPropagationTests`).
+
+
+9. REPRODUCIBILITY BEHAVIOR
+=====================================================
+
+`MonteCarloConfig.seed` is this analysis's own PRIVATE reproducibility
+key -- `base_seed = derive_seed(config.seed, "campaign_feasibility_
+monte_carlo_candidate_validity")` derives a fixed "scenario seed"
+analogue using the SAME `derive_seed()` primitive every real campaign
+seed derivation already uses, but with a label
+("campaign_feasibility_monte_carlo_candidate_validity") NO real
+campaign scenario/attempt seed derivation ever passes -- guaranteeing
+this can never collide with, or be mistaken for, a real generated
+scenario's own seed provenance, and never touches `derive_scenario_
+seed()` (the real master-seed-to-scenario-seed function) at all.
+
+Reproducibility is a direct, provable CONSEQUENCE of the whole call
+chain being pure: `MonteCarloConfig` -> `base_seed` (pure function of
+`config.seed`) -> for each `sample_index`, `GenerationRequest(seed=
+base_seed, attempt_index=sample_index)` -> `generate_scenario()`/
+`derive_attempt_seed()` (both pure) -> `validate_navigation()` (pure,
+read-only). Nothing in this chain reads wall-clock time, process id,
+or any other non-deterministic source. Verified directly:
+`ReproducibilityTests::test_identical_seed_produces_identical_result`
+asserts FULL dataclass equality (`first == second`) between two
+independent calls with an identical `(building, definition, config)`
+triple; `test_different_seed_produces_a_different_sample_sequence`
+confirms `seed=42` and `seed=43` (same everything else) produce
+different `(samples_run, valid_samples)` pairs -- not hardcoded/forced
+to differ, a genuine consequence of SHA256-derived seeds almost never
+colliding.
+
+`definition_id` (a `GenerationRequest` required field) is a fixed
+placeholder string (`"campaign-feasibility-monte-carlo-analysis"`) --
+re-confirmed this task that `definition_id` never feeds into any RNG
+seed derivation anywhere in `scenario_generator/` (only `request.seed`/
+`request.attempt_index` do, via `derive_attempt_seed()`); it is purely
+informational metadata on the returned `Scenario`, which this module
+never reads.
+
+
+10. LIMITATIONS
+=====================================================
+
+- Scoped to NAVIGATION-category validity ONLY, matching Phase 2A/2B's
+  own scope exactly (Section 1) -- not the full six-category Scenario
+  Validator acceptance. Disclosed explicitly in `MonteCarloCandidate
+  ValidityResult.warnings` on every result.
+- Each sample calls `validate_navigation()`, which rebuilds its own
+  `NavigationGraph` internally EVERY call (`navigation_validation.py`'s
+  own, unmodified implementation) -- a disclosed, minor, semantics-
+  preserving inefficiency accepted deliberately rather than touching
+  `scenario_validator/` to add a pre-built-graph parameter, which the
+  task's own "do not place Monte Carlo logic inside... Scenario
+  Validator" and "do not change Scenario Validator semantics"
+  constraints rule out. For the sample counts this phase's own tests
+  exercise (tens to low thousands), this remains fast in practice
+  (~1000 samples in well under half a second, measured this task).
+- `p_accepted_equals(k)` (the exact-count pmf) is never given a
+  propagated interval (Section 8) -- a deliberate, disclosed omission
+  (not an oversight), because it is not monotonic in `p`.
+- No duplicate-aware (small-K, Markov-chain/coupon-collector) exact
+  correction was implemented for the campaign-yield side -- unchanged
+  scope from the Phase 2 yield-analysis report, which already
+  established this is deliberately out of scope absent a specific
+  future need.
+- `compute_candidate_validity()`'s fallback gate is a single boolean
+  (`state_space_too_large`) -- a genuinely unresolvable, degenerate
+  occupancy distribution (`unresolved_occupancy_zone_ids` non-empty,
+  `exact=False` but `state_space_too_large=False`) does NOT trigger
+  Monte Carlo, by design (Section 6) -- `p_valid` may still be `None`
+  or only partially resolved in that case, and Monte Carlo would not
+  meaningfully help (Section 6's own reasoning).
+
+
+11. TESTS AND EXPECTED VALUES
+=====================================================
+
+New file: tests/test_campaign_feasibility_monte_carlo.py -- 24 tests,
+all passing:
+
+  WilsonIntervalKnownCasesTests (4): `n=10,k=0` -> `[0.0, 0.27753...]`;
+    `n=10,k=10` -> `[0.72247..., 1.0]`; `n=20,k=10` -> `[0.29930...,
+    0.70070...]` (all hand-derived/independently-verified reference
+    values, checked to 9 decimal places, not merely `lower<=upper`);
+    interval width strictly increases with confidence level (90% <
+    95% < 99%).
+  DeterministicValidConfigurationTests (1): always-OPEN door ->
+    `valid_samples == samples_run`, `estimated_p_valid=1.0`, a
+    NON-degenerate interval (`confidence_lower < 1.0`).
+  DeterministicInvalidConfigurationTests (1): always-LOCKED door ->
+    `valid_samples=0`, `estimated_p_valid=0.0`, a NON-degenerate
+    interval (`confidence_upper > 0.0`).
+  ReproducibilityTests (2): identical `(building, definition, config)`
+    -> full dataclass equality across two independent calls; a
+    different `seed` -> a different `(samples_run, valid_samples)` pair.
+  EarlyPrecisionStopTests (1): a generous target on an easy fixture
+    stops strictly before `maximum_samples`, `precision_target_met=True`.
+  MaximumSampleStopTests (1): an unreachable target within a tiny
+    `maximum_samples` budget stops at exactly `maximum_samples`,
+    `precision_target_met=False`, with the specific warning present.
+  InvalidConfigurationTests (4): `minimum_samples<=0`,
+    `maximum_samples<minimum_samples`, `confidence_level` at/outside
+    `(0,1)` (0.0, 1.0, 1.5, -0.1), `target_interval_half_width<=0` (0.0,
+    -0.01) -- all raise `ValueError`.
+  FallbackRoutingTests (2): a 14-independent-uncertain-door chain
+    (`2^14=16384 > DEFAULT_MAX_ENUMERATED_STATES=4096`) forces `state_
+    space_too_large=True` and confirms `compute_candidate_validity()`
+    routes to Monte Carlo; a small, tractable fixture confirms it does
+    NOT (`used_monte_carlo=False`, exact `p_valid=0.6`).
+  CandidateValidityCorrectnessTests (1): a `WeightedOptions({"OPEN":
+    0.7,...})` door fixture with an analytically-known exact `p=0.7`;
+    a fixed seed (`42`)/config Monte Carlo run's `[confidence_lower,
+    confidence_upper]` is confirmed to contain `0.7`, and `estimated_
+    p_valid` is within `0.05` of it -- deterministic (same seed always
+    produces the same result on this codebase), never flaky.
+  CampaignYieldIntervalPropagationTests (6): the three required
+    propagations (slot success, expected accepted, complete campaign
+    success) each hand-derived to 6+ decimal places against a fixed
+    `[0.6, 0.7, 0.8]` triple; a DEDICATED test for the underproduction
+    bounds' swapped pairing; a test confirming an MC-derived yield
+    result is NEVER labeled `exact=True` even when its own `precision_
+    target_met=True`; a test confirming bounds are omitted (not merely
+    wrong) when duplicate-rejection risk is present.
+  AcceptedAtLeastIntervalTests (1): the bonus `p_accepted_at_least_
+    interval()` method brackets the point-estimate value correctly.
+
+Every existing test in tests/test_campaign_feasibility_yield_analysis.py
+(18), tests/test_campaign_feasibility_min_open_exits_occupancy.py (13),
+tests/test_campaign_feasibility_occupancy_uncertainty.py (15), and
+tests/test_campaign_feasibility_exact_validity.py (18) passes UNCHANGED,
+byte-for-byte, with zero modification -- confirming Phase 2C is purely
+additive.
+
+
+12. REGRESSION RESULTS
+=====================================================
+
+Focused suite (new): 24/24 passed
+(tests/test_campaign_feasibility_monte_carlo.py, run standalone first).
+
+Combined regression run (this thread's own standing regression set,
+plus the new file):
+  tests/test_campaign_feasibility_monte_carlo.py (24, new)
+  tests/test_campaign_feasibility_yield_analysis.py (18)
+  tests/test_campaign_feasibility_min_open_exits_occupancy.py (13)
+  tests/test_campaign_feasibility_occupancy_uncertainty.py (15)
+  tests/test_campaign_feasibility_exact_validity.py (18)
+  tests/test_campaign_feasibility.py (21)
+  tests/test_campaign_studio.py
+  tests/test_campaign_diagnostics.py
+  tests/test_scenario_validator.py (67)
+  tests/test_scenario_generator.py
+  tests/test_scenario_pipeline.py
+  tests/test_scenario_definition.py
+  tests/test_builder_navigation_preview.py
+  tests/test_engineering_navigation_graph.py
+  tests/test_navigation_graph.py
+  tests/test_obstacle_navigation_integration.py
+  Result: 531 passed, 0 failed (507 pre-existing + 24 new). No
+  existing assertion was modified, weakened, or removed.
+
+A bare, no-path-filter `pytest -q` from the repo root was NOT
+re-attempted -- unchanged from the prior report's own finding
+(`status_test.py`, a stray PyQt6 GUI script unrelated to this thread's
+own work, crashes pytest's own collection via its default `*_test.py`
+discovery pattern before any test runs). The 531-passed combined run
+above is this thread's own standing regression-set methodology,
+unchanged since Phase 1.
+
+Process note, carried over unchanged from every prior report in this
+thread: `/c/Python314/python -m pytest ...` was used explicitly for
+every run in this report.
+
+
+13. FILES CHANGED
+=====================================================
+
+New:
+  campaign_feasibility/monte_carlo.py -- `MonteCarloConfig`,
+    `MonteCarloCandidateValidityResult`, `CandidateValidityAnalysis`,
+    `estimate_candidate_validity_monte_carlo()`, `compute_candidate_
+    validity()`, plus `_wilson_interval()` (Section 4).
+  tests/test_campaign_feasibility_monte_carlo.py -- 24 new tests
+    (Section 11).
+  docs/architecture/scenario_campaign_feasibility_phase2c_monte_carlo_
+    implementation_report.txt -- this report.
+
+Modified:
+  campaign_feasibility/yield_analysis.py -- `analyze_campaign_yield()`
+    now accepts `CandidateValidityResult` (unchanged behavior),
+    `MonteCarloCandidateValidityResult`, or `CandidateValidityAnalysis`
+    (new); the shared point-estimate arithmetic was extracted into
+    `_compute_yield_point()` (Section 8, no formula changes, only
+    relocated); `CampaignYieldResult` gained `candidate_validity_
+    source`, `monte_carlo_source`, and eight new `Optional[float]`
+    interval-bound fields (all default to `None`, so every existing
+    construction site and every existing test remains valid unchanged)
+    plus one new method, `p_accepted_at_least_interval()`.
+  campaign_feasibility/__init__.py -- exports `MonteCarloConfig`,
+    `MonteCarloCandidateValidityResult`, `CandidateValidityAnalysis`,
+    `estimate_candidate_validity_monte_carlo`, `compute_candidate_
+    validity` alongside every existing export (none removed or renamed).
+
+Not touched: `campaign_feasibility/exact_validity.py`,
+`campaign_feasibility/analysis.py`, `campaign_feasibility/model.py`,
+`scenario_generator/`, `scenario_validator/`, `scenario_definition/`,
+`designer/campaign/*` (no UI wiring, per instruction).
+
+
+14. CONFIRMATION -- SCENARIO GENERATOR AND SCENARIO VALIDATOR
+SEMANTICS NOT MODIFIED
+=====================================================
+
+[FACT] `git status --porcelain -- scenario_generator/` returns empty --
+zero changes.
+[FACT] `git status --porcelain -- scenario_validator/` shows exactly
+the SAME single pre-existing modification
+(`scenario_validator/navigation_validation.py`) already disclosed and
+confirmed pre-dating this entire thread's own work in every prior
+implementation report -- unchanged again this task.
+[FACT] `campaign_feasibility/monte_carlo.py` DOES import
+`scenario_generator` (`GenerationRequest`, `derive_seed`,
+`generate_scenario`) and `scenario_validator` (`validate_navigation`)
+-- a DELIBERATE, disclosed departure from `exact_validity.py`'s own
+"never import, only mirror" discipline (Section 1's own explanation of
+why), and the ONLY way to honestly sample the real distribution rather
+than re-approximate it. Grep-confirmed: every call into either package
+is a call to an EXISTING, UNMODIFIED public function
+(`generate_scenario()`, `validate_navigation()`, `derive_seed()`) --
+zero lines were added, removed, or changed inside `scenario_generator/`
+or `scenario_validator/` themselves.
+[FACT] This module never constructs, threads, or mutates
+`accepted_hashes`, never touches the global `random` module's state,
+and never performs filesystem I/O -- confirmed by direct inspection
+(Sections 1-2) and by this task's own grep pass over the new file.
+[FACT] `designer/campaign/` was not modified -- neither `compute_
+candidate_validity()` nor `estimate_candidate_validity_monte_carlo()`
+is wired into `CampaignWorker`, `CampaignConfig`, or any UI path,
+unchanged from every prior phase's own explicit UI-wiring deferral.

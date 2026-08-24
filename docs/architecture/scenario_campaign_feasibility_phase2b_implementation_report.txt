@@ -1,0 +1,489 @@
+SCENARIO CAMPAIGN FEASIBILITY -- PHASE 2B IMPLEMENTATION REPORT
+Occupancy Uncertainty in Candidate Validity Analysis
+=====================================================
+Status: IMPLEMENTED (Phase 2B only). Monte Carlo fallback (Phase 2C),
+campaign-level yield formulas, and UI/UX changes are explicitly NOT
+implemented in this task, per instruction. Nothing was committed.
+
+Both prerequisite reports were read in full before any code was
+written:
+  1. docs/architecture/scenario_campaign_feasibility_phase2_investigation.txt
+  2. docs/architecture/scenario_campaign_feasibility_phase2a_implementation_report.txt
+
+
+1. ACTUAL OCCUPANT SAMPLING ARCHITECTURE DISCOVERED
+=====================================================
+
+Traced fresh from the current code this task (not assumed from prior
+reports' summaries):
+
+[FACT] scenario_generator/generator.py::_generate_occupant_placements()
+iterates `sorted(definition.occupant.occupancy_distribution.items())`
+and, PER ZONE KEY, sequentially:
+  1. `raw_count = sample(distribution, occupant_rng)` -- one draw from
+     the zone's own declared Distribution, using the SAME
+     `occupant_rng` stream across every zone key in this one attempt
+     (a single `category_rng(attempt_seed, "occupant")` call per
+     attempt, re-confirmed unchanged).
+  2. `count = max(0, int(round(raw_count)))` -- the exact rounding
+     rule Phase 2B's `_p_zero_occupancy()` mirrors precisely.
+  3. For `index in range(count)`: `x = occupant_rng.uniform(zone.x,
+     zone.x + zone.width)`, `y = occupant_rng.uniform(zone.y,
+     zone.y + zone.height)` -- CONTINUOUS position, drawn
+     unconditionally, with NO Distribution-based control anywhere in
+     the schema (re-confirmed: `scenario_definition.occupant_
+     definition.OccupantDefinition` has no position-related field at
+     all).
+
+[FACT] No global total-population budget exists anywhere in this
+function or elsewhere in `generator.py` -- each zone key's own count is
+sampled entirely independently from its own distribution; there is no
+"sample a total, then distribute" step. Case D ("global total occupancy
+constraints") from the task's own list is CONFIRMED ABSENT from the
+current Generator.
+
+[FACT] Zone occupancy counts ARE independent between zones, in exactly
+the same sense already established and relied upon throughout this
+thread for door/exit/stair objects sharing one category stream:
+different zone keys' `sample()` calls are SEQUENTIAL draws from the
+SAME seeded `occupant_rng` (not separately-seeded streams, so not
+independent in the strongest cryptographic-hash sense), but each call
+consumes a bounded, non-overlapping, non-rejection-based amount of
+randomness -- independent in the standard-PRNG sense every other
+probability calculation in this codebase already depends on.
+
+[FACT, re-verified directly this task] `Zone.contains(x, y)` (models/
+zone.py) checks `self.x <= x <= self.x+width and self.y <= y <=
+self.y+height` -- an EXACT match to the bounds
+`occupant_rng.uniform(zone.x, zone.x+zone.width)` can ever produce.
+`scenario_validator.occupant_validation.py`'s own `OCCUPANT_OUTSIDE_
+ZONE` (GEOMETRY) check can therefore never fail under legitimate
+sampling -- confirmed by direct comparison of the two formulas, not
+merely re-cited from the Phase 2 investigation's own prior finding.
+
+[FACT] `scenario_validator.navigation_validation.py::_occupied_zone_
+ids(candidate)` reads ONLY `occupant.zone_id` -- `occupant.position` is
+never read anywhere in the navigation-relevant validation path.
+Combined with the GEOMETRY finding above, this confirms: for candidate
+VALIDITY purposes, an occupant's continuous position is provably
+irrelevant -- only WHICH ZONE (and whether that zone has >=1 occupant
+at all) ever matters. This module therefore never enumerates,
+discretizes, or approximates continuous positions anywhere -- there is
+no position-related code in `exact_validity.py` at all.
+
+
+2. WHICH OCCUPANCY RANDOMNESS AFFECTS VALIDATION
+=====================================================
+
+[FACT] Exactly one occupancy fact affects NAVIGATION validity: whether
+a given zone ends up with >=1 occupant this attempt (a Bernoulli-like
+reduction of the zone's own count distribution). Occupant COUNT beyond
+"zero vs. at least one," occupant IDENTITY, occupant ORDER, and
+occupant POSITION are all provably irrelevant (Section 1).
+
+[FACT, re-confirmed, matching the Phase 2 investigation's own finding]
+`OCCUPANT_COUNT_OUT_OF_SUPPORT` (OCCUPANCY category) and
+`BEHAVIOUR_PROFILE_...` checks are UNRELATED to navigation and remain
+out of this phase's scope, exactly as Phase 2A already disclosed for
+the other five non-navigation validator categories.
+
+
+3. THE MATHEMATICAL MODEL IMPLEMENTED
+=====================================================
+
+For one fixed engineering-state combination (a specific fire zone plus
+a specific resolved door/exit/stair state vector -- exactly what Phase
+2A already enumerates), let every zone with a stated occupancy
+distribution be classified SAFE or UNSAFE using the SAME two checks
+`navigation_validation.py` itself applies (re-derived, not
+re-implemented differently):
+  - UNSAFE if the zone is not reachable from Outside under this
+    combination with NO exclusion (check 1, NO_EVACUATION_ROUTE), OR
+  - UNSAFE if the zone (other than the fire zone itself) is not
+    reachable with the fire zone excluded (check 2,
+    FIRE_ORIGIN_BLOCKS_EVACUATION).
+  - Otherwise SAFE.
+
+[PROVEN, not assumed] A candidate is NAVIGATION-valid under this
+combination if and only if every UNSAFE zone receives exactly zero
+occupants -- a SAFE zone's occupancy, whatever it is, never causes a
+rejection. Since zone occupancy counts are independent (Section 1),
+this event's probability is the PRODUCT of each UNSAFE zone's own exact
+P(zero) -- call this `p_U`. No Cartesian product over occupant-count
+VECTORS is ever needed; this is a closed-form product over a SET
+membership test, computed once per engineering-state combination.
+
+[PROVEN] Accounting additionally for `min_open_exits` (kept UNCHANGED
+from Phase 2A, per the task's own explicit instruction -- Section 6),
+which is only NAVIGATION-active when at least one occupant is present
+anywhere (`validate_navigation()`'s own early return): let `p_R` be the
+product of P(zero) over the SAFE zones (i.e. the probability that
+NO ONE shows up anywhere, `p_U x p_R`, since U and R partition every
+occupancy-relevant zone). The exact per-combination formula, derived
+in full (not guessed) and implemented verbatim:
+
+    if egress_ok:
+        P(valid | combination) = p_U
+    else:
+        P(valid | combination) = p_U * p_R * (1 if structural_ok else 0)
+
+where `egress_ok` and `structural_ok` are the SAME two facts Phase 2A
+already computes for `min_open_exits` (Section 6). This reduces to
+Phase 2A's own old binary (0 or 1) behavior exactly whenever every
+analyzed zone is guaranteed-occupied (a guaranteed zone's P(zero) is
+always 0.0, forcing `p_U` to 0 the instant any guaranteed zone is
+UNSAFE) -- Phase 2B is a strict mathematical generalization of Phase
+2A, not a replacement, confirmed by the full, unmodified Phase 2A test
+suite passing unchanged against the new code (Section 12).
+
+
+4. HOW CONDITIONAL OCCUPANCY PROBABILITY IS COMBINED WITH
+ENGINEERING-STATE PROBABILITY
+=====================================================
+
+For each enumerated (fire-branch, engineering-state-combination) pair
+(the SAME enumeration loop Phase 2A already runs, extended in place,
+never duplicated):
+  `weight = combo_probability * branch_weight` (Phase 2A's own,
+  unchanged engineering-state probability)
+  `valid_weight += weight * combo_occupancy_factor`
+  `invalid_weight += weight * (1.0 - combo_occupancy_factor)`
+
+This is exactly the decomposition the task itself proposed
+(`Σ P(engineering state) × P(valid occupancy | engineering state)`),
+now VERIFIED (not merely assumed) safe to apply, because: (a) fire/
+door/exit/stair sampling and occupant-count sampling draw from
+disjoint category RNG streams (`"fire"`, `"door"`, `"exit"`, `"stair"`
+vs. `"occupant"` -- proven independent in the Phase 2 investigation's
+own Section 1.3, re-confirmed unchanged this task), and (b) the
+per-combination occupancy factor derived in Section 3 is itself an
+exact, closed-form conditional probability given that fixed engineering
+state -- so the sum-of-products IS the correct total probability, not
+an approximation.
+
+A single engineering-state combination's contribution to `p_valid` can
+now be genuinely FRACTIONAL (between 0 and 1) whenever occupancy
+uncertainty is present -- `CandidateValidityResult.valid_states`/
+`invalid_states` only count combinations whose occupancy factor is
+(within floating-point tolerance) exactly 1.0 or exactly 0.0; a
+fractional combination is counted in `total_states_considered` but in
+NEITHER bucket. This is documented explicitly in the result model's
+own updated docstring, so `valid_states + invalid_states <=
+total_states_considered` (equality exactly when no analyzed zone has
+genuine occupancy uncertainty).
+
+
+5. PROVEN INDEPENDENCE ASSUMPTIONS
+=====================================================
+
+- Occupant counts across DIFFERENT zones: independent (Section 1,
+  sequential-draw-from-one-stream argument, the same tier of
+  independence this whole thread has consistently relied on for door/
+  exit/stair objects within one category).
+- Occupant-count sampling vs. fire/door/exit/stair sampling: independent
+  (disjoint category RNG streams, the strongest, cryptographic-hash-
+  derived tier of independence, re-confirmed unchanged from the Phase 2
+  investigation).
+- Occupant position vs. anything relevant to validity: IRRELEVANT
+  (Section 1) -- not an independence claim at all, a relevance claim,
+  proven directly by comparing `Zone.contains()`'s formula to the
+  Generator's own sampling bounds and by confirming `_occupied_zone_
+  ids()` never reads `position`.
+
+
+6. DEPENDENCIES DISCOVERED
+=====================================================
+
+- `min_open_exits`'s NAVIGATION-based (egress-reachable) check depends
+  on WHICH SPECIFIC zones end up occupied, not merely "is anyone
+  present" -- a genuine, real complication this task investigated in
+  full before deciding how to handle it. The task's own explicit
+  instruction ("Keep the Phase 2A handling intact... without changing
+  it") was followed literally: `egress_ok` is computed exactly as
+  Phase 2A already computes it (using `guaranteed_zones` only, the
+  deterministically-always-occupied zones). This is EXACT whenever no
+  uncertain-occupancy zone lies in the SAFE set (the common case, and
+  every test case constructed for this phase) -- when an uncertain
+  zone IS in the SAFE set and `min_open_exits > 0`, its own possible
+  presence could in principle contribute additional reachable egress
+  capacity beyond what `guaranteed_zones` alone provides; this specific
+  refinement was deliberately NOT modeled in Phase 2B (an honest,
+  disclosed simplification, not a silent gap -- see Section 8), exactly
+  matching the task's own instruction to leave `min_open_exits`
+  unchanged rather than extending it.
+- The STRUCTURAL (unconditional) vs. NAVIGATION (occupancy-gated)
+  min_open_exits split, and the proof that the NAVIGATION check always
+  subsumes the STRUCTURAL one whenever occupants exist -- carried over
+  unchanged from Phase 2A (Section 6 there), still correctly applied
+  here since it does not depend on occupancy uncertainty at all, only
+  on whether ANY occupant is present, which Phase 2B's own `p_U`/`p_R`
+  split already accounts for via the `egress_ok`/`structural_ok`
+  branching (Section 3).
+
+
+7. HOW CONTINUOUS POSITIONS WERE HANDLED
+=====================================================
+
+Not handled at all, by design and by proof -- Section 1 shows position
+can never affect validity (GEOMETRY's own check cannot fail under
+legitimate sampling, and NAVIGATION never reads position at all). No
+enumeration, discretization, or approximation of position exists
+anywhere in `exact_validity.py`; the module contains no reference to
+occupant position whatsoever (grep-verified this task).
+
+
+8. OCCUPANCY SIMPLIFICATIONS, AND PROOF THEY PRESERVE VALIDATOR
+SEMANTICS
+=====================================================
+
+1. Collapsing "does the zone get >=1 occupant" instead of enumerating
+   the full count distribution: PROVEN in Section 3 -- validity depends
+   only on the zero-vs-nonzero event, so the full count distribution
+   carries no additional information relevant to validity. This is not
+   an approximation; the exact P(zero) IS the exact information needed.
+2. Computing P(zero) analytically for FixedValue, WeightedOptions, and
+   (new in this phase) both discrete and continuous UniformRange --
+   PROVEN exact for each case in `_p_zero_occupancy()`'s own inline
+   derivation (a closed-form weight-sum or interval-length-ratio
+   calculation, never a sampled estimate). Continuous UniformRange's
+   P(zero) is computed as the exact length of the sub-interval below
+   the rounding boundary (0.5) divided by the total interval length --
+   an exact calculation for a continuous uniform distribution, not an
+   approximation, because a UNIFORM continuous distribution's
+   probability over any sub-interval is exactly proportional to that
+   sub-interval's length by definition.
+3. Keeping `min_open_exits`'s egress check scoped to `guaranteed_zones`
+   only, unchanged from Phase 2A: NOT claimed to be exact in every
+   case -- disclosed honestly in Section 6 as a deliberate, task-
+   instructed simplification with a known (narrow) blind spot, not
+   silently assumed correct.
+4. Fire-origin LETHAL/SAFE pruning kept scoped to `guaranteed_zones`
+   only: PROVEN still sound as a PRUNING criterion (not a probability
+   claim) -- if a fire zone disconnects a guaranteed zone, the WHOLE
+   branch is invalid regardless of what happens to any uncertain zone,
+   since the guaranteed zone's own occupants (who are certainly
+   present) cannot escape either way. Uncertain zones' fate under that
+   SAME fire zone is irrelevant once the branch is already known fully
+   invalid via the guaranteed zone alone.
+
+
+9. STATE-SPACE PROTECTION
+=====================================================
+
+[PROVEN, and directly tested] Occupancy uncertainty introduces NO
+additional combinatorial dimension at all -- `DEFAULT_MAX_ENUMERATED_
+STATES` and the enumeration loop are UNCHANGED in shape from Phase 2A;
+only the PER-COMBINATION occupancy factor (a closed-form product,
+Section 3) was added. `total_states_considered` therefore depends only
+on (number of SAFE fire branches) x 2^(number of relevant, uncertain
+door/exit/stair objects) -- exactly as before, with zero contribution
+from however many uncertain-occupancy zones exist.
+
+Verified directly by `OccupancyStateSpaceProtectionTests::test_many_
+independent_uncertain_occupancy_zones_do_not_explode_state_count`: 20
+independent, uncertain-occupancy, unreachable zones (which, if
+occupancy were naively enumerated as a Cartesian product, would be
+2^20 = 1,048,576 combinations) -- `total_states_considered` is exactly
+1, and `p_valid` matches the hand-derived closed-form product
+(0.5^20) exactly.
+
+
+10. EXACTNESS-STATUS BEHAVIOR
+=====================================================
+
+`exact` is `True` iff `unresolved_occupancy_zone_ids` is empty AND the
+engineering-state enumeration completed (not skipped for size) -- the
+SAME field, SAME meaning Phase 2A established, now genuinely achieved
+far more often: FixedValue, WeightedOptions, discrete UniformRange, and
+continuous UniformRange occupancy distributions are ALL now resolvable
+exactly (Section 8, item 2) -- the ONLY remaining "unresolved" case is
+a genuinely degenerate/malformed distribution (e.g. a WeightedOptions
+whose weights sum to <=0, which `sample()` itself would treat as
+undefined territory).
+
+`exact_for_analyzed_dimensions` retains its Phase 2A meaning unchanged:
+`True` whenever the ANALYZED zones/dimensions were computed exactly,
+regardless of any excluded, unresolved zone.
+
+Both directions verified by dedicated tests: `ExactnessStatusTests::
+test_fully_exact_when_all_relevant_uncertainty_is_covered` (a mixed
+door + occupancy WeightedOptions case, confirms `exact=True`) and
+`test_genuinely_unresolvable_occupancy_distribution_is_not_mislabeled_
+exact` (a degenerate zero-weight-sum WeightedOptions, confirms
+`exact=False` and the zone appears in `unresolved_occupancy_zone_ids`
+with an explanatory warning). Also `Deterministic
+CaseTests`/`test_discrete_uniform_range_occupancy_is_now_resolved_
+exactly_by_phase_2b` (in the Phase 2A test file, updated -- Section 12)
+directly demonstrates the Phase 2A -> Phase 2B exactness improvement
+for the SAME fixture that used to be disclosed as unresolved.
+
+
+11. UNSUPPORTED CASES INTENTIONALLY LEFT FOR PHASE 2C
+=====================================================
+
+- The engineering-state enumeration itself exceeding
+  `DEFAULT_MAX_ENUMERATED_STATES` -- unchanged from Phase 2A; occupancy
+  uncertainty never contributes to this limit (Section 9), so this
+  remains exactly the same, already-disclosed "too large" path.
+- A genuinely unresolvable occupancy distribution (degenerate
+  WeightedOptions or any future/unrecognized Distribution kind) --
+  disclosed via `unresolved_occupancy_zone_ids`, never approximated,
+  ready for a future Monte Carlo fallback to consume without needing
+  any interface change.
+- The `min_open_exits` / uncertain-SAFE-zone interaction disclosed in
+  Section 6 -- a genuine, narrow remaining gap, deliberately not
+  modeled per the task's own explicit instruction to leave `min_open_
+  exits` handling unchanged; a natural candidate for a FUTURE,
+  separately-scoped refinement, not Phase 2C's Monte Carlo fallback
+  specifically (it is a modeling gap, not a tractability one).
+- The five non-navigation validator categories (STRUCTURAL PINNED_
+  STATE_MISMATCH, GEOMETRY, most of OCCUPANCY/FIRE, EVENTS, DATASET) --
+  unchanged from Phase 2A's own disclosed scoping, still out of scope.
+
+
+12. TESTS ADDED AND THEIR HAND-DERIVED EXPECTED VALUES
+=====================================================
+
+New file: tests/test_campaign_feasibility_occupancy_uncertainty.py --
+15 tests, all passing:
+  DeterministicOccupancyTests (2): guaranteed-occupied reachable zone
+    -> P=1.0; guaranteed-occupied unreachable zone -> P=0.0.
+  ProbabilisticOccupancyIncludingZeroTests (3): WeightedOptions
+    {0:0.3, 2:0.7} on an unreachable zone -> P(valid)=0.3 exactly;
+    discrete UniformRange(0,3) -> P(zero)=1/4=0.25 exactly (hand-
+    derived: uniform over {0,1,2,3}); continuous UniformRange(0.0,2.0)
+    -> P(zero)=0.5/2.0=0.25 exactly (hand-derived interval-length
+    ratio).
+  MixedReachabilityTests (1): a guaranteed-occupied, always-reachable
+    zone (zone-3) alongside an unreachable, uncertain-occupancy zone
+    (zone-1, P(0)=0.4) -- confirms P(valid)=0.4 exactly, i.e. the
+    reachable zone's own guaranteed occupancy contributes NO
+    reduction at all.
+  IndependentZonesTests (1): two independent unreachable zones,
+    P(zero)=0.2 and 0.5 respectively -- confirms P(valid)=0.2*0.5=0.1
+    exactly, the product of independent factors.
+  EngineeringStateOccupancyInteractionTests (1): a door WeightedOptions
+    {OPEN:0.7,LOCKED:0.3} interacting with zone occupancy
+    {0:0.4,1:0.6} -- hand-derived P(valid) = 0.7*1 + 0.3*0.4 = 0.82
+    exactly (open branch: always valid regardless of occupancy; locked
+    branch: valid only if zone empty).
+  SharedInfrastructureRegressionTests (1): Phase 2A's own shared-
+    bottleneck-door counterexample, re-verified unaffected by Phase 2B
+    (still exactly 0.5, still NOT the wrong 0.25).
+  ZeroOccupantsGloballyTests (2): an empty occupancy_distribution
+    ignores NAVIGATION entirely (a locked door becomes irrelevant);
+    the STRUCTURAL min_open_exits check still applies correctly with
+    zero occupants (P=0.6, matching the exit's own WeightedOptions).
+  ExactnessStatusTests (2): a fully-resolvable mixed case is marked
+    `exact=True`; a genuinely-degenerate WeightedOptions is correctly
+    marked `exact=False` and disclosed via `unresolved_occupancy_
+    zone_ids` and a warning.
+  OccupancyStateSpaceProtectionTests (1): 20 independent uncertain-
+    occupancy zones -> `total_states_considered` stays 1 (not 2^20),
+    P(valid)=0.5^20 exactly (Section 9).
+  Phase2ARegressionCrossCheckTests (1): a direct re-check of a Phase
+    2A fixture inside the new test file, in addition to running the
+    full Phase 2A suite separately.
+
+Modified: tests/test_campaign_feasibility_exact_validity.py -- ONE
+existing test updated (`test_uncertain_occupancy_is_disclosed_not_
+silently_treated_as_deterministic`, renamed `test_discrete_uniform_
+range_occupancy_is_now_resolved_exactly_by_phase_2b`): this test
+previously asserted a `UniformRange(0,3,discrete=True)` occupancy
+distribution was UNRESOLVED (Phase 2A's own, now-superseded
+limitation) -- Phase 2B genuinely closes this gap (Section 8), so the
+test was updated to assert the NEW, correct, IMPROVED behavior
+(`exact=True`, `p_valid=1.0` since this fixture's zone is reachable) --
+not weakened to "accommodate incorrect implementation behavior," but
+corrected to stop asserting a limitation that no longer exists. Every
+other assertion in that test file, and every other test in it, is
+UNCHANGED and passes unmodified.
+
+
+13. FULL REGRESSION RESULT
+=====================================================
+
+Focused suite (new): 15/15 passed (tests/test_campaign_feasibility_
+occupancy_uncertainty.py, run standalone first).
+
+Combined regression run (every file touched or reasoned about by this
+phase, plus this thread's own full standing Phase 1/2A + scenario
+engine + navigation-package regression set):
+  tests/test_campaign_feasibility_occupancy_uncertainty.py (15, new)
+  tests/test_campaign_feasibility_exact_validity.py (18, one updated
+    per Section 12, rest unchanged)
+  tests/test_campaign_feasibility.py (21)
+  tests/test_campaign_studio.py
+  tests/test_campaign_diagnostics.py
+  tests/test_scenario_validator.py (67)
+  tests/test_scenario_generator.py
+  tests/test_scenario_pipeline.py
+  tests/test_scenario_definition.py
+  tests/test_builder_navigation_preview.py
+  tests/test_engineering_navigation_graph.py
+  tests/test_navigation_graph.py
+  tests/test_obstacle_navigation_integration.py
+  Result: 476 passed, 0 failed (461 pre-existing + 15 new).
+
+Process note carried over from Phase 2A, still applicable: this
+environment's `python`/`pytest` PATH occasionally resolves to an
+unrelated, concurrent session's virtual environment (external to this
+task); every test run in this report was executed via the explicit,
+correct interpreter (`/c/Python314/python -m pytest ...`) to avoid this.
+
+
+14. FILES CHANGED
+=====================================================
+
+Modified:
+  campaign_feasibility/exact_validity.py -- extended in place (Section
+    3-10): new `_p_zero_occupancy()`/`_occupancy_probabilities()`
+    helpers; `_compute_with_guaranteed_occupancy()` renamed to
+    `_compute_with_occupancy()` and its per-combination loop extended
+    with the SAFE/UNSAFE zone classification and closed-form occupancy
+    factor (Section 3-4); `_compute_structural_only()` and every other
+    Phase 2A function/constant/docstring is otherwise unchanged in
+    behavior (only parameter names/comments updated where the
+    "guaranteed-only" framing needed to become "occupancy-aware"
+    framing). No second, parallel engine was created -- this is the
+    SAME module, SAME entry point (`compute_exact_candidate_
+    validity()`), SAME `CandidateValidityResult` type (with its
+    existing fields' meanings extended, not replaced, and two doc
+    comments updated to reflect the broader coverage).
+  tests/test_campaign_feasibility_exact_validity.py -- one test
+    updated (Section 12).
+
+New:
+  tests/test_campaign_feasibility_occupancy_uncertainty.py -- 15 new
+    tests (Section 12).
+
+Not touched: `campaign_feasibility/analysis.py`, `campaign_feasibility/
+model.py`, `campaign_feasibility/__init__.py` (its exports were already
+correct from Phase 2A -- no new public name was added by Phase 2B, the
+existing `compute_exact_candidate_validity`/`CandidateValidityResult`/
+`DEFAULT_MAX_ENUMERATED_STATES` exports already cover everything Phase
+2B extends).
+
+
+15. CONFIRMATION -- GENERATOR AND VALIDATOR SEMANTICS NOT MODIFIED
+=====================================================
+
+[FACT] `git diff --stat -- scenario_generator/ scenario_validator/`
+returns empty for both -- neither package has any diff from this task.
+[FACT] `campaign_feasibility/exact_validity.py` contains zero imports
+of `scenario_generator` or `scenario_validator` anywhere (grep-
+verified this task, matching Phase 2A's own already-established
+discipline) -- both are referenced only in comments explaining what
+this module MIRRORS (never imports) from them.
+[FACT] No campaign execution behavior was touched -- `designer/
+campaign/` was not modified; `compute_exact_candidate_validity()` is
+still not wired into `CampaignWorker`, `analyze_campaign_feasibility()`,
+or any UI path (unchanged from Phase 2A, since UI/campaign-integration
+wiring remains explicitly out of scope through Phase 2B as well).
+[FACT] No Scenario Definition semantics were altered -- every
+Distribution kind's own sampling behavior (`FixedValue`,
+`UniformRange`, `WeightedOptions`) is read, never redefined; this
+module contains zero calls to `sample()` or any RNG-consuming function
+anywhere (grep-verified this task) -- it computes probabilities
+ANALYTICALLY from the Definition's own declared distributions, it never
+samples from them.

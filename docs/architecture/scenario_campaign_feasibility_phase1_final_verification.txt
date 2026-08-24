@@ -1,0 +1,364 @@
+SCENARIO CAMPAIGN FEASIBILITY PREFLIGHT -- PHASE 1 FINAL VERIFICATION
+=====================================================
+Status: VERIFICATION ONLY. No production code was modified. No defect
+was found, so nothing was changed. Nothing was committed.
+
+Method: docs/architecture/scenario_campaign_feasibility_preflight_
+phase1_implementation_report.txt was read in full first. Every claim
+below was then independently re-derived from the current code and a
+fresh test run, not merely re-quoted from that report.
+
+Evidence-labeling: [FACT] = directly verified this task (grep, diff, a
+fresh test run, or an ad hoc reproduction script executed this task).
+[REPORT] = matches what the implementation report already claimed,
+re-confirmed rather than assumed.
+
+
+1. EXACT FILE LIST
+=====================================================
+
+[FACT] `git status --porcelain`, filtered to Phase-1-relevant paths:
+
+  M designer/campaign/campaign_window.py
+  M designer/campaign/campaign_worker.py
+  M designer/campaign/diagnostics.py
+  M scenario_validator/navigation_validation.py
+  M tests/test_campaign_diagnostics.py
+  ?? campaign_feasibility/
+  ?? navigation/reachability.py
+  ?? tests/test_campaign_feasibility.py
+
+Production code modified:
+  - designer/campaign/campaign_window.py
+  - designer/campaign/campaign_worker.py
+  - designer/campaign/diagnostics.py
+  - scenario_validator/navigation_validation.py
+
+Production code created:
+  - navigation/reachability.py
+  - campaign_feasibility/__init__.py
+  - campaign_feasibility/model.py
+  - campaign_feasibility/analysis.py
+
+Tests modified:
+  - tests/test_campaign_diagnostics.py
+
+Tests created:
+  - tests/test_campaign_feasibility.py
+
+Documentation created (by the prior two tasks in this thread, present
+in git status as untracked but NOT part of Phase 1's own diff -- listed
+here only because git status shows them alongside Phase 1's own files
+and a reader comparing status output should not mistake them for
+Phase-1 output):
+  - docs/architecture/scenario_campaign_feasibility_preflight_investigation.txt
+  - docs/architecture/scenario_campaign_feasibility_preflight_phase1_implementation_report.txt
+
+Also present in git status, confirmed pre-existing and unrelated to
+Phase 1 (not created or touched by this thread at all):
+  - tracking/diagnostics.py (untracked, pre-existing; unrelated
+    package, never imported by anything in campaign_feasibility/ or
+    designer/campaign/, confirmed by grep in Section 3).
+
+[FACT] This exactly matches the implementation report's own Section 2/
+10 file list -- no discrepancy found.
+
+
+2. THE TWO CHANGED PRE-EXISTING TESTS
+=====================================================
+
+[FACT] `git diff -- tests/test_campaign_diagnostics.py` inspected directly.
+
+2.1 RootCauseReproductionTests::test_chain_topology_with_every_zone_occupied_produces_navigation_rejections
+-----------------------------------------------------
+File: tests/test_campaign_diagnostics.py
+
+Behavioral assumption that changed: the test previously assumed the
+5-zone chain / every-zone-occupied / unconstrained-fire fixture would
+run generation and produce SOME rejected candidates
+(`self.assertGreater(summary.rejected, 0)`), with the fixture's own
+comment noting it deliberately did not assert a specific ratio "since
+it depends on exactly which zone gets sampled as ignition each
+attempt."
+
+Why the old expectation is no longer correct: with Phase 1 in place,
+zone-1 (the zone farthest from the Exit in this chain) is provably
+optimistic_reachable=True but has its ENTIRE fire-eligible zone set
+classified LETHAL (every other zone in the chain sits on its only path
+out), giving lethal_fire_probability=1.0 -- a Case 2 blocking ERROR.
+The campaign is now stopped at pre-flight, before the per-scenario loop
+ever runs, so `summary.rejected` is 0, not "some positive number
+depending on the sampled ignition zone" -- there is no longer any
+per-attempt sampling to depend on.
+
+New assertions (strictly more, not fewer):
+  self.assertTrue(preflights[0].has_errors)
+  self.assertTrue(preflights[0].feasibility_issues)
+  self.assertEqual(summary.accepted, 0)
+  self.assertEqual(summary.rejected, 0)
+  self.assertIn("proven infeasible", summary.rejection_explanation)
+  self.assertIn("zone-1", summary.rejection_explanation)
+
+Confirmed not weakened in any other way: the OLD single assertion
+(`rejected > 0`) checked only that SOME rejection happened, with no
+attribution to WHICH zone or WHY. The NEW six assertions check the
+blocking preflight fired, that it specifically carries a FEASIBILITY
+issue, that both accepted and rejected are exactly 0 (a stronger, more
+specific claim than "rejected > 0"), and that the explanation text
+names both the infeasibility proof and the specific zone (zone-1) --
+strictly more specific and strictly more verified than before. Nothing
+that the old test verified is left unverified by the new one; the
+old claim ("this fixture produces rejections, attributed to the right
+category") is a strict subset of what the new test now checks (this
+fixture is now caught even earlier, and the new test proves exactly
+that, by name).
+
+2.2 PerCandidateCaptureTests::test_rejection_explanation_populated_when_every_scenario_is_rejected
+-----------------------------------------------------
+File: tests/test_campaign_diagnostics.py
+
+Behavioral assumption that changed: the test previously assumed a
+2-zone chain with door-1 permanently LOCKED (FixedValue, zero sampling
+uncertainty) and fire constrained to zone-1 would run 3 full generation
+attempts, each individually rejected at the scenario_validator level,
+producing `summary.rejected == 3` and a NAVIGATION-categorized
+explanation (`self.assertIn("NAVIGATION", ...)`).
+
+Why the old expectation is no longer correct: door-1 being pinned
+LOCKED with NO distribution uncertainty at all means zone-1 is
+unreachable even under the OPTIMISTIC bound -- a Case 1
+(ZONE_UNREACHABLE_OPTIMISTIC) blocking ERROR, detected before the first
+generation attempt. `summary.rejected` is now 0 (nothing was ever
+attempted, so nothing could be rejected at the per-candidate level),
+not 3, and the explanation now carries the FEASIBILITY-specific code
+ZONE_UNREACHABLE_OPTIMISTIC rather than the per-candidate NAVIGATION
+category, because no per-candidate validation ever ran.
+
+New assertions:
+  self.assertTrue(preflights[0].has_errors)
+  self.assertTrue(preflights[0].feasibility_issues)
+  self.assertEqual(summary.accepted, 0)
+  self.assertEqual(summary.rejected, 0)                    [was: == 3]
+  self.assertIsNotNone(summary.rejection_explanation)
+  self.assertIn("ZONE_UNREACHABLE_OPTIMISTIC", ...)         [replaces "NAVIGATION"]
+  self.assertIn("proven infeasible", ...)
+
+Confirmed not weakened in any other way: the ONE assertion that changed
+value (`rejected 3 -> 0`) and the ONE assertion whose substring changed
+(`"NAVIGATION" -> "ZONE_UNREACHABLE_OPTIMISTIC"`) both changed because
+the thing they were checking (a per-candidate NAVIGATION rejection)
+genuinely no longer happens for this fixture -- not because the
+assertion was inconvenient, but because Phase 1 legitimately moved the
+detection point earlier, past where that per-candidate event could ever
+occur. Two NEW assertions were added (preflight has_errors,
+feasibility_issues non-empty) that did not exist before -- strictly
+more coverage, not less. The underlying scenario_validator-level
+NAVIGATION rejection behavior this test used to exercise indirectly
+(via a wasted CampaignWorker attempt) remains independently,
+unchanged-ly covered by tests/test_scenario_validator.py directly, and
+by RootCauseReproductionTests::test_longer_chain_makes_navigation_the_dominant_rejection_reason
+(same file), which calls generate_scenario()/validate() directly and
+was NOT touched by this diff -- confirmed by `git diff` showing no
+change in that test's own body.
+
+[FACT] Both updates verified this task by re-reading the diff directly
+(Section 2 above), independent of the implementation report's own
+Section 9 description of them -- the two match.
+
+
+3. INVARIANTS -- DIRECT VERIFICATION
+=====================================================
+
+3.1 scenario_generator/generator.py contains no reachability or
+campaign_feasibility dependency
+-----------------------------------------------------
+[FACT] `grep -n "^import\|^from" scenario_generator/generator.py`:
+imports are exactly `scenario`, `behaviour_profile_resolver.category`,
+and its own sibling modules (`scenario_generator.metadata_builder`,
+`.request`, `.sampling`, `.seed_manager`) -- no `navigation`, no
+`campaign_feasibility`.
+[FACT] `grep -rn "navigation\|campaign_feasibility\|bfs_reachable"
+scenario_generator/` returns zero matches (exit code 1) across the
+WHOLE package, not just generator.py.
+[FACT] `git diff --stat -- scenario_generator/` returns empty -- the
+package has zero diff versus the committed baseline.
+Verdict: CONFIRMED, directly, three independent ways.
+
+3.2 Scenario generation is never started when preflight returns a
+blocking zero-feasibility result
+-----------------------------------------------------
+[FACT] Re-ran the existing monkeypatch test
+(CampaignIntegrationTests::test_zero_feasibility_configuration_never_calls_generate_scenario,
+Case 1/ZONE_UNREACHABLE_OPTIMISTIC) -- passes.
+[FACT] Additionally, this task independently constructed and ran a
+fresh Case 2 (FIRE_ORIGIN_GUARANTEED_LETHAL) reproduction NOT already
+in the test suite: a 3-zone building where zone-1's only route passes
+through zone-2, with fire constrained to `{"zone-2"}`. Wrapped
+designer.campaign.campaign_worker.generate_scenario in a call-counting
+shim and ran CampaignWorker.execute() end-to-end. Result:
+  has_errors = True
+  feasibility_issues codes = ['FIRE_ORIGIN_GUARANTEED_LETHAL']
+  generate_scenario call count = 0
+  summary.accepted = 0, summary.rejected = 0
+Verdict: CONFIRMED for BOTH blocking sub-cases (Case 1 and Case 2), not
+just the one already covered by the existing test suite.
+
+3.3 A partially infeasible configuration still proceeds to generation
+with a warning
+-----------------------------------------------------
+[FACT] This task independently constructed and ran a fresh Case 3
+(WARNING) reproduction, not present in the test suite as a
+CampaignWorker-level end-to-end check: a 2-zone building, door-1 given
+WeightedOptions({"OPEN": 0.9, "LOCKED": 0.1}) (optimistic_reachable=
+True, pessimistic_reachable=False), fire constrained to the occupied
+zone itself (isolating the engineering-state dimension). Wrapped
+generate_scenario in the same call-counting shim and ran a 5-scenario
+campaign end-to-end. Result:
+  has_errors = False
+  feasibility_warnings = (one PARTIAL_FEASIBILITY row, naming zone-1)
+  generate_scenario call count = 5
+  summary.accepted = 5, summary.rejected = 0
+This is decisive: generation was not merely "not blocked" in principle
+-- it was observed to actually run, 5 times, to completion, with a
+WARNING simultaneously present in the preflight result.
+[FACT] Additionally confirmed structurally: `grep -n "has_errors\|
+feasibility_warnings" designer/campaign/campaign_worker.py
+designer/campaign/diagnostics.py` shows `feasibility_warnings` is never
+referenced by `has_errors` or by the `if preflight.has_errors:` blocking
+branch anywhere in campaign_worker.py -- it is read only for display
+(campaign_window.py's show_preflight()). A WARNING cannot structurally
+block a campaign, by construction, independent of any specific fixture.
+Verdict: CONFIRMED, both structurally and empirically.
+
+3.4 Existing FIRE_ORIGIN_BLOCKS_EVACUATION validation behavior was not
+weakened or bypassed
+-----------------------------------------------------
+[FACT] `git diff -- scenario_validator/navigation_validation.py`
+inspected in full. The entire FIRE_ORIGIN_BLOCKS_EVACUATION block
+(the `if candidate.fire is not None and candidate.fire.ignition_zone_id:`
+check, its excluded_node_ids={ignition_zone_id} exclusion, its
+`occupied_zone_ids - {ignition_zone_id}` scoping, its error code, and
+its message string) is present in the diff with ZERO lines changed
+except the bare rename of the function it calls
+(`_bfs_reachable(...)` -> `bfs_reachable(...)`, same arguments, same
+order). No condition, no exclusion set, no severity, and no message
+text changed.
+[FACT] tests/test_scenario_validator.py (which directly exercises
+FIRE_ORIGIN_BLOCKS_EVACUATION, among the other two NAVIGATION checks)
+re-run fresh this task: 67/67 passed, unchanged from before Phase 1.
+Verdict: CONFIRMED -- not weakened, not bypassed, not altered in any
+observable way.
+
+3.5 bfs_reachable() extraction did not change validator behavior
+-----------------------------------------------------
+[FACT] Beyond re-running tests/test_scenario_validator.py (67/67
+passed, matching 3.4 above), this task performed a direct, mechanical
+comparison: extracted the OLD private `_bfs_reachable()` function body
+(from the pre-Phase-1 committed version of navigation_validation.py,
+via `git show HEAD:...`) and the NEW public `bfs_reachable()` function
+body (navigation/reachability.py), stripped comments and blank lines
+from both, renamed `_bfs_reachable` -> `bfs_reachable` in the old copy
+for a fair comparison, and diffed the two resulting code-only bodies.
+Result: 16 code lines on each side, IDENTICAL, zero differences.
+Verdict: CONFIRMED at the strongest level available short of a
+bytecode diff -- the algorithm's executable statements are line-for-
+line identical between the pre- and post-extraction versions.
+
+
+4. TESTS RUN THIS TASK (fresh, not reused from the implementation
+report's own numbers)
+=====================================================
+
+[FACT] Focused suite:
+  tests/test_campaign_feasibility.py -- 21/21 passed (verbose run,
+  every individual test name confirmed passing).
+
+[FACT] Relevant regression suite (all files touched or reasoned about
+by Phase 1, run together in one invocation):
+  tests/test_campaign_feasibility.py
+  tests/test_campaign_studio.py
+  tests/test_campaign_diagnostics.py
+  tests/test_scenario_validator.py
+  tests/test_scenario_generator.py
+  tests/test_scenario_pipeline.py
+  tests/test_scenario_definition.py
+  tests/test_builder_navigation_preview.py
+  tests/test_engineering_navigation_graph.py
+  tests/test_navigation_graph.py
+  tests/test_obstacle_navigation_integration.py
+  Result: 443 passed, 0 failed.
+
+This matches the implementation report's own claimed totals (21 + 351 +
+92 = 443) exactly, now independently re-confirmed by a fresh run in
+this verification task rather than taken on the report's word.
+
+[FACT] Two additional, previously-unwritten ad hoc reproductions were
+run this task specifically to close gaps the existing test suite did
+not directly cover at the CampaignWorker/end-to-end level: the Case 2
+(100%-lethal-fire) generate_scenario-call-count check (Section 3.2) and
+the Case 3 (WARNING/partial-feasibility) generate-scenario-call-count
+check (Section 3.3). Both are reproducible, self-contained scripts
+using only the same fixtures/patterns already present in
+tests/test_campaign_feasibility.py; neither was added as a permanent
+test file, since the task instructed not to modify code without
+finding a defect, and no defect was found that would justify adding
+new permanent coverage.
+
+
+5. GIT DIFF -- NO UNRELATED CHANGES MIXED IN
+=====================================================
+
+[FACT] Every one of the five modified files' full diffs was read in
+this task (not just diffstat):
+  - designer/campaign/diagnostics.py: two new fields + one property
+    update + comments. No other line changed.
+  - designer/campaign/campaign_window.py: show_preflight() only. No
+    other method touched.
+  - designer/campaign/campaign_worker.py: one new import, one new
+    docstring paragraph, _run_preflight_checks() extended, one new
+    small helper (_feasibility_error_code), _preflight_explanation()
+    extended. execute(), _generate_accepted_scenario(),
+    _generate_with_diagnostics(), _simulate(),
+    _export_scenario_artifacts(), _ensure_building_project_saved(),
+    and _build_progress() are all absent from the diff -- untouched.
+  - scenario_validator/navigation_validation.py: exactly the
+    bfs_reachable extraction (Section 3.5) -- no other change.
+  - tests/test_campaign_diagnostics.py: exactly the two tests
+    described in Section 2 -- no other test in that file appears in
+    the diff.
+[FACT] `campaign_feasibility/` and `navigation/reachability.py` and
+`tests/test_campaign_feasibility.py` are wholly new files (git status
+`??`), so by definition contain no "unrelated" pre-existing content to
+mix with.
+[FACT] The two untracked documentation files and `tracking/diagnostics.py`
+present in git status (Section 1) are pre-existing/from other tasks in
+this thread, confirmed to have no relationship to Phase 1's own code
+diff, and were correctly excluded from "files modified/created by
+Phase 1" in Section 1's own answer.
+Verdict: CONFIRMED -- no unrelated change is mixed into Phase 1's diff.
+
+
+6. OUTCOME
+=====================================================
+No defect was found in any of the invariants checked. No code was
+modified. No test was modified. This report is the only file created
+by this task.
+
+
+GIT STATUS COMPARISON AGAINST BASELINE
+=====================================================
+Baseline (recorded at the start of this task, primary checkout,
+`git status --porcelain`): 243 lines, identical to the primary
+checkout's state at the end of the Phase 1 implementation task.
+
+This task added exactly one new file to the primary checkout:
+  docs/architecture/scenario_campaign_feasibility_phase1_final_verification.txt
+  (this report; untracked, newly created).
+
+No file that was part of the recorded baseline was modified by this
+task -- no production code, no test file, no Scenario Definition, no
+Building file.
+
+CONFIRMATION: No code changes were made, because no defect was found.
+Only this one new verification report was created. Nothing was
+committed in the primary checkout.

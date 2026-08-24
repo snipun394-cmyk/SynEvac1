@@ -1,0 +1,777 @@
+SCENARIO CAMPAIGN FEASIBILITY PREFLIGHT -- ARCHITECTURE INVESTIGATION
+=====================================================
+Status: INVESTIGATION AND DESIGN ONLY. No production code, tests,
+Scenario Definitions, Building files, or validation rules were
+modified by this task. No commit was made in the primary checkout.
+
+This follows directly from docs/architecture/
+scenario_campaign_zero_generation_investigation.txt (the prior root-
+cause investigation, which found: candidate generation, occupant
+placement, fire placement, and asset-state randomization are
+independent by design, and reachability is checked only after the
+fact, by validation). This task designs -- but does not implement -- a
+narrowly scoped feasibility preflight that could have caught that
+failure before wasting 100 generation attempts.
+
+Evidence-labeling discipline, carried over unchanged:
+  [FACT]       directly verified by reading the cited code.
+  [INFERENCE]  a conclusion drawn by combining two or more [FACT]s.
+  [DESIGN]     a proposed design element -- not implemented, not a
+               decision, offered for evaluation.
+
+Baseline: `git status --porcelain` recorded at the start of this task
+(233 lines) matches the primary checkout's state at the end of the
+prior (zero-generation) investigation task exactly.
+
+
+SECTION 0 -- SCOPE OF THIS INVESTIGATION
+=====================================================
+
+This is architecture and design work, not implementation. Every
+"[DESIGN]"-labeled item below is a proposal for later evaluation. Per
+explicit instruction, this investigation does not touch
+scenario_generator (keeps it connectivity-blind), does not weaken or
+bypass scenario_validator's existing rules, does not move reachability
+logic into the Generator, and does not redesign the Scenario Engine.
+Every design element below is additive: a new, separate analysis layer
+that reuses existing public building blocks (NavigationGraphGenerator,
+the BFS-with-exclusion pattern already in navigation_validation.py, the
+Distribution/sample() primitives already in scenario_generator) without
+modifying any of them.
+
+
+SECTION 1 -- VERIFIED FACTS FROM THE CURRENT CODE
+=====================================================
+
+1.1 Campaign configuration and inputs (re-confirmed, unchanged since
+the prior investigation)
+-----------------------------------------------------
+[FACT] CampaignController.build_config() (designer/campaign/
+campaign_controller.py:57-108) assembles a CampaignConfig from: the
+currently-open Designer Building (`self.get_building()`), a live,
+in-memory ScenarioDefinition built by CampaignWindow.
+build_scenario_definition() (designer/campaign/campaign_window.py:706),
+plus count/master_seed/max_attempts/output_directory/diagnostics_mode.
+Nothing here builds a NavigationGraph or performs any feasibility
+check; build_config() is pure assembly.
+
+1.2 Scenario Definition's allowed distributions/options
+-----------------------------------------------------
+[FACT] scenario_definition/distributions.py defines exactly three
+sampleable kinds: FixedValue (one pinned value), UniformRange
+(continuous or discrete range, used for counts and growth parameters,
+never for door/exit/stair state -- confirmed by grep: only
+occupancy_distribution, behaviour_profile_distribution, and growth/
+event-time fields use UniformRange in any test fixture), and
+WeightedOptions (a dict of value -> relative weight, the kind used for
+door_state_distribution/exit_state_distribution/stair_state_
+distribution -- e.g. `WeightedOptions({"OPEN": 0.7, "CLOSED": 0.2,
+"LOCKED": 0.1})`, per distributions.py:96-106's own worked example).
+[FACT] Distribution objects are pure data -- they carry no sample()
+method themselves (distributions.py:8-16, 141-145's own docstrings:
+"this module never imports random"). The one and only place that
+interprets a Distribution against an rng is scenario_generator/
+sampling.py::sample()/sample_uniform_choice() (sampling.py:21-71).
+[INFERENCE] Because WeightedOptions.weights is a plain, finite mapping
+of already-primitive values to non-negative floats, the EXACT marginal
+probability of any single outcome for one object (e.g. "this Door
+resolves LOCKED") is directly computable from the Definition alone,
+with no sampling needed: `weight / sum(weights.values())`. This is the
+foundation of Section 3's structural analysis.
+
+1.3 Scenario Generator sampling (re-confirmed from the prior
+investigation, extended)
+-----------------------------------------------------
+[FACT] Every engineering category (door/exit/stair/obstacle/camera/
+detector) is sampled independently, per-object, from its own category
+RNG stream (scenario_generator/generator.py:522-597,
+_generate_category_states()/`_generate_exit_states()`): each object's
+state distribution is looked up individually in
+definition.engineering.*_state_distribution (keyed by object id), and
+if absent, falls back to a Building-authored default (door.locked/
+door.normally_open, exit.is_blocked, stairs always AVAILABLE in V1).
+[FACT] No coupling exists between objects, and none between categories
+(fire/occupants/door/exit/stair are drawn from independent category_rng
+streams, seed_manager.py:35-54, category_rng(attempt_seed,
+category_key) -- confirmed "two calls with different category_key
+values ... are independent of each other regardless of ... order").
+[INFERENCE] This independence is exactly what makes exact, analytic
+probability computation possible for the engineering-state dimension
+(Section 3.3): the joint probability of any SPECIFIC combination of
+object states is simply the product of each object's own independent
+marginal probability -- no hidden correlation to model.
+
+1.4 Navigation graph construction
+-----------------------------------------------------
+[FACT] NavigationGraphGenerator.build() (navigation/graph_builder.py:
+39-87) builds, per Building, exactly once: one OUTSIDE node
+(Node.OUTSIDE_NODE_ID), one ZONE node per Zone, Door edges (Zone<->Zone
+or Zone<->AssemblyPoint), Exit edges (Zone->Outside), Stair edges
+(Zone<->Zone across two floors) -- every edge derived only from
+explicit ids already authored on the Door/Exit/Staircase object, never
+inferred from geometry.
+[FACT] Every edge is treated as bidirectional by every consumer that
+walks the graph (navigation_validation.py:139-140's own comment).
+[FACT] Edge.traversable (navigation/edge.py:111-131) is a property
+that reads the Building's own LIVE, currently-authored Door/Exit state
+(door.active/door.locked, exit.is_blocked) -- NOT a candidate
+Scenario's sampled state. navigation_validation.py's own module
+docstring (lines 16-27) explains exactly why it deliberately does NOT
+reuse this property: doing so would require mutating the Building to
+reflect one candidate's sampled state, which would violate the
+Validator's own "never modifies anything" invariant. Instead,
+navigation_validation.py builds its OWN traversability predicate
+(_make_traversable_predicate(), lines 55-74) from the candidate's
+resolved states, reusing only the state-independent parts of Navigation's
+public API: NavigationGraph.find_node()/find_neighbors(),
+Node.OUTSIDE_NODE_ID, Edge.edge_type.
+[INFERENCE] This exact same pattern -- build the graph once via
+NavigationGraphGenerator (unchanged), then supply an EXTERNALLY-derived
+traversability predicate rather than mutating the Building or reusing
+Edge.traversable -- is precisely the seam a feasibility preflight
+should also use, so it can evaluate hypothetical/distribution-derived
+states without touching the Building, exactly matching an existing,
+already-proven pattern rather than inventing a new one.
+
+1.5 Navigation validation -- the exact NO_EVACUATION_ROUTE /
+FIRE_ORIGIN_BLOCKS_EVACUATION / INSUFFICIENT_REACHABLE_EGRESS logic
+(re-confirmed from the prior investigation)
+-----------------------------------------------------
+[FACT] scenario_validator/navigation_validation.py::validate_navigation()
+(lines 119-224) performs three checks against one fully-sampled
+candidate, using one traversable-edge predicate built from that
+candidate's own door/exit/stair states:
+  (1) NO_EVACUATION_ROUTE: every occupied zone (candidate.occupants'
+      zone_ids) must be in the BFS-reachable set from Outside.
+  (2) FIRE_ORIGIN_BLOCKS_EVACUATION: the same BFS, re-run with the
+      candidate's fire.ignition_zone_id excluded as a node -- every
+      occupied zone OTHER than the ignition zone must still reach
+      Outside.
+  (3) INSUFFICIENT_REACHABLE_EGRESS: counts how many distinct OPEN
+      exits are each individually reachable from at least one occupied
+      zone, rejecting if fewer than definition.engineering.
+      min_open_exits qualify.
+[FACT] `_bfs_reachable(graph, start_ids, is_traversable,
+excluded_node_ids=frozenset())` (lines 77-111) is a small, general,
+reusable BFS that already accepts an injectable traversability
+predicate and an injectable excluded-node set -- it has no dependency
+on Scenario/candidate types beyond what its caller passes in.
+[INFERENCE] This function is the single most reusable piece of
+existing infrastructure for a feasibility preflight: it already does
+exactly "BFS from Outside under an arbitrary traversability rule,
+optionally excluding one node" -- the identical primitive needed for
+every structural check proposed in Section 3, with zero modification.
+
+1.6 Door/exit/stair state handling and fire-origin effects on
+reachability (synthesis of 1.2-1.5)
+-----------------------------------------------------
+[FACT] DoorState.is_traversable (scenario/engineering_state.py,
+referenced by navigation_validation.py:34-39) treats OPEN and CLOSED
+(unlocked) as traversable, LOCKED as not. StairAvailability
+(scenario_definition/engineering_constraints.py:39-42) has exactly two
+members, AVAILABLE/CLOSED -- confirmed no LOCKED state exists for
+stairs. Exit state is a plain bool (is_open).
+[FACT] Fire's ignition zone eligibility (scenario_generator/
+generator.py:163-219, scenario_definition/fire_definition.py:33-58) is
+governed by `allowed_ignition_zone_ids` (empty = every zone on the
+Building is eligible, generator.py:168-174), minus
+`forbidden_ignition_zone_ids`, intersected with
+`allowed_ignition_floor_ids` if stated, optionally weighted by
+`ignition_zone_preference`. This "eligible set" is fully computable
+from the Definition and Building alone, with no sampling -- it is
+exactly the same computation scenario_definition/validation.py's
+existing `_check_allowed_floor_has_a_reachable_zone` (misleadingly
+named, per the prior investigation's Part 5) already partially performs,
+just without ever combining it with the navigation graph.
+
+1.7 Pre-flight validation's current capability (re-confirmed)
+-----------------------------------------------------
+[FACT] scenario_definition.validation.validate_definition() (scenario_
+definition/validation.py:117-131) never constructs a NavigationGraph,
+never reads occupant.occupancy_distribution in combination with fire
+eligibility, and its two Building-dependent checks
+(_check_min_open_exits_feasible, _check_allowed_floor_has_a_reachable_
+zone) are, respectively, an optimistic COUNT (not connectivity) check
+and a pure allow/forbid SET-membership check (not a graph reachability
+check, despite its name). This is unchanged since the prior
+investigation and re-verified by re-reading the same file this task.
+
+
+SECTION 2 -- IS THE PRIOR RECOMMENDATION (a one-time default-state
+reachability check) SUFFICIENT?
+=====================================================
+
+The prior investigation's Part 9 recommendation was: build a graph
+once, exclude every zone that COULD be the fire's ignition zone, and
+check whether each occupied zone still reaches Outside using the
+BUILDING's own authored door/exit/stair DEFAULTS.
+
+[INFERENCE] This is NECESSARY but NOT SUFFICIENT, and the task is
+correct to ask this be re-evaluated. Concretely:
+
+  - It correctly catches the exact failure mode observed in the prior
+    investigation (a fire-eligible zone set broad enough to overlap an
+    occupied zone's only route, under the Building's own default door/
+    exit/stair configuration).
+  - It does NOT catch a distinct, equally real failure mode: a
+    Scenario Definition whose door_state_distribution/exit_state_
+    distribution/stair_state_distribution can independently sample a
+    combination of CLOSED/LOCKED states that disconnects an occupied
+    zone from Outside, even when the fire never touches a cut-vertex
+    zone at all, and even when the Building's own DEFAULT states would
+    have been perfectly fine. Since [FACT, Section 1.3] every
+    engineering object's state is sampled independently per-attempt,
+    from a distribution that CAN differ from the Building's authored
+    default (that is the entire purpose of door_state_distribution/
+    exit_state_distribution existing as Definition fields), a
+    default-states-only check provides no information about this
+    dimension at all.
+  - It also does not distinguish "zero feasible combinations" from
+    "feasible but very low probability" (Part D of the task) -- a
+    single default-state check is inherently a binary pass/fail, with
+    no notion of risk magnitude.
+
+[INFERENCE] The smallest STRONGER alternative that closes this gap
+without abandoning the "narrow, additive, non-Cartesian" constraint is
+to treat the default-state check as ONE (the cheapest, always-run)
+special case of a more general per-occupied-zone reachability
+BRACKETING computed from the Definition's own distributions (best-case
+bound and worst-case bound, Section 3.2), extended with a targeted,
+bounded analysis of the "uncertain middle" the two bounds leave open
+(Section 3.3/3.4). This is the design proposed below; it does not
+discard the prior recommendation, it subsumes it as the first, cheapest
+step of a strictly more complete analysis.
+
+
+SECTION 3 -- PROPOSED DESIGN
+=====================================================
+
+3.1 Overall shape
+-----------------------------------------------------
+[DESIGN] A new, additive analysis, conceptually a "Campaign Feasibility
+Preflight," that:
+  - Runs once per campaign, before the per-scenario generation loop
+    (the same point in CampaignWorker.execute() where the existing
+    pre-flight checks already run, campaign_worker.py:237-253) --
+    logically a THIRD pre-flight check, alongside Building validation
+    and Definition validation, not a replacement for either.
+  - Takes exactly the same inputs CampaignController.build_config()
+    already assembles (Building, ScenarioDefinition, and now also
+    max_attempts/count, needed for Part D.3's risk framing) -- no new
+    inputs, no new persistence dependency (Part F is explicitly a
+    separate, non-required concern, Section 6).
+  - Builds the NavigationGraph exactly once via the unmodified
+    NavigationGraphGenerator (reused, not duplicated).
+  - Produces a NEW result type (Section 5 explains why this should not
+    be forced into DiagnosticsCollector's existing shape), classifying
+    each occupied zone (and the campaign as a whole) into one of the
+    outcome classes defined in Section 4/Part D.
+  - Never touches scenario_generator or scenario_validator's own code.
+    It is read-only over Building/Definition, exactly like
+    scenario_definition.validation.validate_definition() already is.
+
+3.2 Structural bracketing -- optimistic and pessimistic graphs
+(provably correct, no enumeration)
+-----------------------------------------------------
+[DESIGN] For each engineering object (door/exit/stair) with a stated
+distribution, compute two derived traversability predicates using only
+the Distribution's own value set (Section 1.2's exact-marginal
+insight), no sampling:
+  - OPTIMISTIC: an object is traversable if its distribution assigns
+    ANY positive probability to a traversable state (e.g. a door whose
+    WeightedOptions has weight > 0 on "OPEN" or "CLOSED" is optimistically
+    traversable, even if it also has weight on "LOCKED"). An object
+    with no stated distribution falls back to the Building's own
+    default state (matching scenario_generator's own fallback rule,
+    generator.py:540-559,562-579).
+  - PESSIMISTIC: an object is traversable only if its distribution
+    assigns ZERO probability to every non-traversable state (i.e. it
+    is GUARANTEED traversable regardless of which value gets sampled --
+    a FixedValue(OPEN) or a WeightedOptions with no LOCKED/CLOSED
+    weight at all). Anything with genuine sampling risk is treated as
+    NOT traversable under this bound.
+[DESIGN] Using `_bfs_reachable()` (reused verbatim, Section 1.5) run
+twice per occupied zone -- once under each predicate, both excluding
+the fire's full eligible ignition-zone set as a first pass and
+including it as a second pass (four BFS calls total per occupied zone,
+each O(graph size), not per-candidate, not exponential):
+  - If a zone is UNREACHABLE even under the OPTIMISTIC predicate (best
+    possible door/exit/stair states, fire zone excluded): [FACT-
+    provable] NO combination of sampled states can ever make this zone
+    evacuable. This is a hard, provable ZERO-feasible-space finding,
+    entirely independent of fire and independent of how many attempts
+    a campaign runs.
+  - If a zone IS reachable even under the PESSIMISTIC predicate (worst
+    possible door/exit/stair states, fire zone excluded): [FACT-
+    provable] this zone is ALWAYS evacuable regardless of door/exit/
+    stair sampling. No further analysis is needed for this zone's
+    engineering-state dimension.
+  - If a zone is reachable optimistically but not pessimistically: its
+    fate depends on WHICH specific combination of "uncertain" objects
+    gets sampled -- this is the "middle" case that Section 3.3/3.4
+    analyzes further, and the only case where enumeration or sampling
+    is potentially needed at all.
+
+3.3 Fire-origin structural analysis (cut-vertex test, reused BFS
+pattern, exact -- no enumeration)
+-----------------------------------------------------
+[DESIGN] For each occupied zone Z and each zone F in the fire's
+eligible ignition-zone set (Section 1.6, already exactly computable
+from the Definition), reuse `_bfs_reachable()` with
+`excluded_node_ids={F}` under the OPTIMISTIC predicate (best-case door/
+exit/stair states) to classify F, for this Z, as:
+  - LETHAL: excluding F disconnects Z from Outside even in the best
+    case -- if fire ignites at F, Z can never evacuate, regardless of
+    which door/exit/stair states get sampled.
+  - SAFE: Z still reaches Outside with F excluded (optimistically) --
+    fire at F alone can never structurally block Z (though a bad
+    door/exit/stair draw still might, independently -- see 3.2/3.4).
+[INFERENCE] This is exactly a cut-vertex (articulation point) test,
+restricted to the small, already-bounded set of fire-eligible zones
+(typically far smaller than the Building's total zone count) rather
+than the whole graph -- an O(|eligible zones|) sequence of BFS calls,
+each reusing the identical, already-tested primitive
+navigation_validation.py itself uses for its own FIRE_ORIGIN_BLOCKS_
+EVACUATION check (Section 1.5), just run ahead of candidate
+construction, against the eligible SET rather than one sampled zone.
+[DESIGN] Once every eligible zone is classified LETHAL/SAFE for a
+given occupied zone Z, the EXACT probability that a randomly-sampled
+fire ignition zone is lethal for Z is computable analytically, with no
+Monte Carlo needed: sum the sampling weight (from
+ignition_zone_preference if stated, otherwise the uniform-over-
+`eligible` default per generator.py:184-193) assigned to the LETHAL
+subset, divided by the total weight of the eligible set. If the LETHAL
+subset's weight is the ENTIRE eligible set's weight, this is a
+provable, certain, 100%-probability failure for Z from the fire
+dimension alone -- exactly the pattern that produced the prior
+investigation's observed 100/100 rejection rate.
+
+3.4 The "uncertain middle": engineering-state combinations that need
+more than bracketing (structural partitioning + bounded enumeration or
+seeded sampling)
+-----------------------------------------------------
+[DESIGN] For a zone that is optimistically-reachable but
+pessimistically-unreachable (Section 3.2's middle case), the task
+explicitly warns against a blind Cartesian product over the whole
+Building. The following structural reduction avoids that:
+  1. PRUNE to the "relevant edge set": using the OPTIMISTIC graph
+     (Section 3.2), compute the set of edges that lie on ANY path
+     between the occupied zone and Outside (a second, cheap BFS/graph
+     traversal, still reusing NavigationGraph's own find_neighbors()).
+     Any door/exit/stair NOT in this set is irrelevant to this zone's
+     reachability question and is excluded from all further analysis
+     for this zone -- this is the key structural insight that keeps
+     the search space small even in a large Building: reachability
+     for one zone only ever depends on the LOCAL subgraph between it
+     and Outside, never on the Building's total engineering-object
+     count.
+  2. Within the relevant edge set, further prune to only the objects
+     whose distribution is genuinely "uncertain" (Section 3.2 already
+     resolved the guaranteed-open and guaranteed-closed objects; only
+     the ones with real sampling risk remain).
+  3. If the remaining "uncertain, relevant" object count is small
+     enough for exact enumeration (a threshold to be chosen during
+     implementation, not decided here -- but note each object's state
+     space is small and fixed: at most 3 values for a door, 2 for an
+     exit, 2 for a stair, so the combination count grows as a small
+     constant to the power of the RELEVANT count, not the Building's
+     total object count): enumerate every combination of just those
+     objects' possible states, weight each combination by the EXACT
+     joint probability (the product of each object's independent
+     marginal probability, per Section 1.3's independence finding),
+     run one BFS per combination (reusing `_bfs_reachable()` again),
+     and sum the probability mass of combinations under which the zone
+     is unreachable. This yields an EXACT infeasibility probability
+     for this zone's engineering-state dimension, not an estimate.
+  4. If the relevant/uncertain object count is too large for exact
+     enumeration (a genuinely large, densely-uncertain local subgraph
+     -- expected to be rare in practice, since most authored buildings
+     have far fewer "genuinely uncertain" objects than total objects),
+     fall back to REPRODUCIBLE sampling: draw a bounded number of
+     trials directly from the SAME sample()/WeightedOptions primitives
+     scenario_generator already uses (Section 1.2-1.3), seeded from a
+     dedicated, deterministic seed derived the same way scenario_
+     generator's own seed hierarchy is derived (seed_manager.py's
+     derive_seed() pattern, Section 1.3) so the preflight's own
+     estimate is itself exactly reproducible run-to-run -- satisfying
+     the task's "sampled deterministically where exhaustive analysis is
+     impractical" instruction. Each trial only samples the RELEVANT
+     objects (never the whole Scenario -- no occupants, firefighters,
+     cameras, detectors, or events are constructed) and runs one BFS,
+     making each trial orders of magnitude cheaper than a real
+     generate_scenario()+validate() attempt (Part A's own "narrowest"
+     requirement).
+[INFERENCE] In most realistically-authored buildings, the "relevant
+edge set" for any one occupied zone is expected to be small (a
+corridor, a handful of doors, one or two exits) -- meaning EXACT
+enumeration (step 3) should be achievable in the common case, with
+Monte Carlo (step 4) reserved as a fallback for unusually
+richly-interconnected local topologies, not the default path. This
+directly answers Part C: the analysis is structural (bracketing +
+cut-vertex classification) FIRST, partitioned into a small relevant
+state space SECOND, and only falls back to reproducible sampling
+THIRD, when exact analysis is genuinely impractical -- never a blind
+whole-Building Cartesian product.
+
+3.5 Combining the fire dimension and the engineering-state dimension
+-----------------------------------------------------
+[DESIGN] Since fire-zone sampling (one categorical draw) and
+engineering-object-state sampling (independent per-object draws,
+Section 1.3) are themselves architecturally independent of each other
+(different category_rng streams, Section 1.3), the two analyses
+(3.3 and 3.4) compose multiplicatively for the "uncertain, uncertain"
+overlap case: a candidate is infeasible for zone Z if EITHER the fire
+lands on a LETHAL zone (3.3) OR the sampled engineering states
+disconnect Z even with a SAFE fire zone (3.4) OR both. The exact
+"both" boundary (whether a SAFE fire zone's exclusion changes which
+engineering-state combinations are relevant) is a real second-order
+refinement; a [DESIGN, scoped down for Section 6] minimal
+implementation can conservatively treat these as independent events
+(P(infeasible) approx 1 - (1 - P_fire_lethal) * (1 - P_engineering_
+disconnects)) without being wrong in the direction that matters (it
+never UNDERESTIMATES risk, since the true joint failure probability is
+at least as large when the two failure modes can co-occur through
+overlapping cut structure) -- a precise treatment would re-run 3.4's
+BFS calls once per SAFE fire-zone exclusion rather than once against
+the full eligible-set exclusion, which is a straightforward but
+more expensive extension left for implementation-time scoping, not
+decided here.
+
+
+SECTION 4 -- INFEASIBILITY CLASSES THE PREFLIGHT CAN ACTUALLY PROVE,
+vs CASES WHERE ONLY PROBABILISTIC RISK ESTIMATION IS POSSIBLE
+=====================================================
+
+PROVABLE (deterministic, no sampling, no false negatives possible):
+-----------------------------------------------------
+- P1: An occupied zone is unreachable even under the OPTIMISTIC
+  engineering-state bound, fire excluded entirely (Section 3.2) --
+  zero feasible space for this zone, full stop, regardless of fire or
+  attempts.
+- P2: An occupied zone's ENTIRE fire-eligible zone set is classified
+  LETHAL (Section 3.3) -- zero feasible space for this zone from the
+  fire dimension, regardless of engineering-state sampling (assuming
+  P1 does not already apply).
+- P3: An occupied zone is reachable under the PESSIMISTIC bound with
+  every eligible fire zone excluded -- provably ALWAYS feasible, zero
+  risk, from either dimension, no further checking needed for this
+  zone.
+- P4: Within the exact-enumeration regime (Section 3.4 step 3), the
+  precise infeasibility probability for the engineering-state
+  dimension is exactly computable, not estimated -- including the
+  degenerate case where it evaluates to exactly 0% or exactly 100%.
+
+PROBABILISTIC ONLY (estimate, not proof, once the relevant/uncertain
+object count exceeds the exact-enumeration threshold):
+-----------------------------------------------------
+- R1: Section 3.4 step 4's Monte Carlo estimate of engineering-state
+  infeasibility probability, for a zone whose relevant/uncertain
+  object count is too large to enumerate exactly -- an estimate with
+  sampling error, not a proof, though reproducible run-to-run via a
+  fixed seed.
+- R2: The combined fire-and-engineering joint probability (Section
+  3.5) when treated via the conservative independence approximation
+  rather than the more precise (and more expensive) per-fire-zone
+  re-analysis -- a bound/approximation, not an exact figure.
+- R3: The EXPECTED CAMPAIGN-LEVEL rejection rate for a given `count`/
+  `max_attempts` configuration (Part D.3) is inherently a probabilistic
+  projection built from the above (e.g., P(a given scenario slot
+  exhausts all `max_attempts` retries) = P(infeasible)^max_attempts,
+  assuming attempt-independence, which Section 1.3/1.5's own evidence
+  supports) -- useful for risk communication, never a certainty.
+
+
+SECTION 5 -- IS DiagnosticsCollector SUFFICIENT FOR THIS WORK?
+=====================================================
+
+[FACT, re-confirmed by re-reading designer/campaign/diagnostics.py this
+task] DiagnosticsCollector aggregates PER-CANDIDATE validation reports,
+grouped by (issue.category, issue.code) only -- it has no concept of
+"before any candidate was generated," no concept of a Definition-level
+structural/probabilistic property, and (per the prior investigation's
+own finding) collapses distinct zone/fire-zone pairs sharing one code
+into a single displayed message.
+
+[INFERENCE] DiagnosticsCollector is NOT a dependency for the
+feasibility preflight designed above, and does not need to change for
+this design to work: the preflight operates entirely BEFORE any
+candidate exists, directly over the Building/Definition/NavigationGraph
+(Section 3) -- it has nothing to do with per-candidate report
+aggregation, and consuming or extending DiagnosticsCollector's shape
+would not help it (the granularity problem DiagnosticsCollector has is
+about POST-HOC diagnosis of already-rejected candidates, a different
+problem from PRE-HOC feasibility analysis).
+
+[DESIGN] The feasibility preflight should define its OWN result type
+(distinct from ValidationRow/DiagnosticsSummary), because its natural
+shape is fundamentally different: per-occupied-zone classification
+(P1-P4/R1-R3 from Section 4), not per-(category,code) counts. Forcing
+it into DiagnosticsCollector's shape would lose exactly the
+information (which zone, which fire-zone subset, exact vs estimated,
+provable vs probabilistic) that makes this analysis useful, repeating
+the same granularity loss the prior investigation already found in
+DiagnosticsCollector.
+
+[FACT/INFERENCE, answering the task's explicit "is DiagnosticsCollector
+sufficient" question directly] No -- but not because it is broken for
+its OWN purpose (per-candidate rejection aggregation, at which it is
+adequate); rather, it is architecturally the wrong tool for a
+different, earlier-stage question, and the feasibility preflight needs
+its own, richer, zone/fire-zone-keyed diagnostic shape regardless of
+whether DiagnosticsCollector is ever improved. This investigation does
+not change DiagnosticsCollector, per the task's own instruction, and
+notes (as the prior investigation already did) that DiagnosticsCollector's
+(category, code)-only granularity remains a separate, valid, but
+orthogonal improvement opportunity for POST-HOC diagnosis of campaigns
+that proceed despite a Section 4 WARNING (Part D.2/D.3) and still
+produce some rejections.
+
+
+SECTION 6 -- PART F: THE PERSISTENCE PROBLEM (FOLLOW-UP, NOT REQUIRED
+FOR THE PREFLIGHT ITSELF)
+=====================================================
+
+[FACT, re-confirmed] The feasibility preflight designed in Section 3
+operates on the SAME in-memory Building/ScenarioDefinition
+CampaignController.build_config() already assembles, at campaign start
+-- before any persistence concern arises, and before any candidate
+(accepted or rejected) exists. It has no dependency on anything being
+written to disk, so Part F is correctly out of scope for the preflight
+itself, exactly as the task anticipated.
+
+[DESIGN, follow-up only] The smallest artifact that would make a fully
+FAILED campaign reproducible after the fact (a distinct, separate
+concern from feasibility) would be: write, ONCE, at campaign START
+(not gated on any scenario being accepted, unlike today's
+_ensure_building_project_saved(), campaign_worker.py:689-707, which
+only fires after the first acceptance) --
+  (a) the Building, via the same Serializer/Project path already used
+      (no new serialization logic needed), and
+  (b) the ScenarioDefinition's own `to_dict()` (already exists --
+      CampaignController.derive_definition_id() already calls it,
+      campaign_controller.py:24), and
+  (c) the plain scalar config (master_seed, count, max_attempts) --
+      already all plain fields on CampaignConfig, needing only to be
+      written to one small manifest file (e.g. JSON).
+Given (a)-(c), and the fully deterministic seed hierarchy already
+proven in Section 1.3 (derive_scenario_seed/derive_attempt_seed are
+pure functions of (master_seed, index)/(scenario_seed, attempt_index)),
+ANY campaign -- including a 100%-rejected one -- becomes exactly
+reproducible after the fact: replaying generate_scenario()+validate()
+for every (index, attempt_index) pair reconstructs the identical
+sequence of candidates and identical validation reports the original
+run saw, without needing to have captured them at the time. This is
+presented purely as a documented follow-up option, per the task's
+explicit instruction to keep it separate unless required -- it is not
+required here, and is not designed further in this investigation.
+
+
+SECTION 7 -- ANSWERS TO THE TASK'S LETTERED QUESTIONS
+=====================================================
+
+A. Narrowest possible preflight
+-----------------------------------------------------
+The narrowest version that still catches the systemic failure actually
+observed is Section 3.2 alone (optimistic/pessimistic bracketing per
+occupied zone, fire-eligible-set excluded) plus Section 3.3 (fire
+cut-vertex classification) -- both are O(small) BFS calls reusing
+`_bfs_reachable()` verbatim, require no enumeration, no sampling, and
+no new infrastructure beyond NavigationGraphGenerator (already reused)
+and the Definition's own already-computable fire-eligible-set logic
+(already duplicated once, in scenario_definition/validation.py's own
+misleadingly-named function). This alone would have caught the exact
+failure the prior investigation traced (P2: the occupied zone's entire
+fire-eligible set classified LETHAL). Section 3.4 (the uncertain-middle
+enumeration/sampling) is a strictly larger, second increment needed
+only to also catch pure engineering-state-driven infeasibility
+(Section 2's gap in the prior recommendation) -- narrower in scope but
+provably incomplete on its own, per Section 2.
+
+B. Can a feasibility analysis identify each requested class?
+-----------------------------------------------------
+- Fundamentally unreachable occupied zones: YES, exactly, via Section
+  3.2's optimistic bound (P1) -- provable, not estimated.
+- Fire-origin/occupied-zone combinations that can never evacuate: YES,
+  exactly, via Section 3.3's cut-vertex classification (P2) -- provable
+  per (zone, fire-zone) pair, and the aggregate probability across the
+  eligible set is exactly computable from the Definition's own
+  sampling weights.
+- Door/exit/stair combinations that disconnect routes: YES for the
+  bracketed extremes (P1/P3, provable) and YES for the middle case
+  either exactly (P4, when the relevant/uncertain object count is
+  small enough to enumerate) or as a reproducible estimate (R1,
+  otherwise) -- Section 3.4.
+- Whether the campaign has zero feasible space vs merely high rejection
+  probability: YES, this is exactly what Section 4's P1/P2 (zero,
+  provable) vs R1/R2/R3 (probabilistic risk) distinction is built to
+  answer, and Section 8/Part D below prescribes different UI/campaign
+  behavior for each.
+
+C. Representing randomness (structural analysis vs blind enumeration)
+-----------------------------------------------------
+Answered fully in Section 3.4: structural bracketing first (no
+enumeration), partition to the relevant local subgraph second (shrinks
+the space from "whole Building" to "this zone's actual paths"), exact
+enumeration over just the relevant+uncertain objects when that space is
+small, and reproducible/seeded sampling (using the SAME distribution
+primitives the Generator itself uses) only as a bounded fallback when
+exact enumeration is genuinely impractical -- never a blind
+whole-Building Cartesian product.
+
+D. What should happen in each case
+-----------------------------------------------------
+  1. Zero feasible combinations exist (P1 and/or P2, for any occupied
+     zone) -- [DESIGN] treat as a hard, blocking pre-flight ERROR,
+     exactly like the existing PreflightResult.has_errors path
+     (campaign_worker.py:242-253) already does for Building/Definition
+     structural errors: stop before any generation attempt, with a
+     specific, actionable message naming the zone and the exact
+     structural reason (unlike the existing dominant-failure text,
+     which per the prior investigation's Part 4/10 finding cannot
+     reliably attribute a specific zone pair). This does not weaken or
+     bypass scenario_validator -- it is a strictly earlier, independent
+     detection of the same underlying impossibility scenario_validator
+     would eventually have reported anyway, via a different (already-
+     existing) UI path (Part 5's pre-flight-ERROR pattern), not a
+     modification to any validation rule.
+  2. Only some combinations are infeasible (a proper, non-empty,
+     non-total subset -- R1/R2 with a probability strictly between 0
+     and something clearly non-trivial but not near-certain) --
+     [DESIGN] a non-blocking WARNING, surfaced in the same panel
+     alongside the existing pre-flight results, since the feasible
+     region is provably non-empty and the existing retry/max_attempts
+     mechanism (unmodified) can and reasonably should be allowed to
+     find an accepted candidate on its own.
+  3. Feasible combinations exist but the expected rejection rate is
+     extremely high (R3: P(a slot exhausts max_attempts) is large even
+     though P(infeasible) < 100%) -- [DESIGN] also a WARNING, but one
+     that surfaces the QUANTITATIVE risk framed in terms the user can
+     act on directly: the estimated per-attempt rejection probability
+     and the derived "at your current max_attempts=N, ~X% of scenario
+     slots are expected to exhaust every retry" figure -- giving a
+     concrete, decision-useful number (raise max_attempts? narrow the
+     Definition?) rather than either silently proceeding or wrongly
+     hard-blocking a campaign that IS capable of succeeding.
+
+E. Is DiagnosticsCollector sufficient?
+-----------------------------------------------------
+Answered fully in Section 5: not a blocker/dependency for building the
+feasibility preflight (which is architecturally independent and
+pre-candidate), but not the right shape to reuse or extend for this
+work either -- the preflight needs its own, zone/fire-zone-keyed result
+type. DiagnosticsCollector itself is not modified by this investigation.
+
+F. The persistence problem
+-----------------------------------------------------
+Answered fully in Section 6: not required for the feasibility preflight
+itself (which needs only in-memory Building/Definition, already
+available at the point it would run); the smallest reproducibility
+artifact is documented as a separate, optional follow-up (Building.syn
++ Definition.to_dict() + scalar config, written once at campaign START
+rather than gated on first acceptance).
+
+
+SECTION 8 -- RECOMMENDED MINIMAL IMPLEMENTATION SCOPE
+=====================================================
+
+[DESIGN, recommendation only, not implemented]
+Phase 1 (narrowest, directly answers Part A): implement Section 3.2
+(optimistic/pessimistic bracketing) + Section 3.3 (fire cut-vertex
+classification) only, as a new, small, read-only module reusing
+NavigationGraphGenerator and `_bfs_reachable()` verbatim (via a shared
+import, not a copy -- both are already public). Wire it into
+CampaignWorker.execute() as a third pre-flight step, alongside (not
+inside) the existing Building/Definition pre-flight checks, producing
+its own result type (Section 5) with the ERROR/WARNING split from
+Section 8/Part D.1-2 for cases P1/P2 (provable zero-feasibility) and
+P3 (provable safety, informational only, likely not surfaced as a
+warning). This phase alone would have caught the exact prior-
+investigation failure and requires no enumeration or sampling
+infrastructure at all.
+
+Phase 2 (closes Section 2's identified gap): add Section 3.4 (the
+uncertain-middle exact-enumeration-with-reproducible-sampling-fallback)
+and Section 3.5's combined-risk estimate, enabling the R1/R2/R3
+probabilistic WARNING cases from Part D.2-3. This is a strictly
+separable increment -- Phase 1 remains correct and useful without it,
+Phase 2 only adds coverage for the specific failure mode (engineering-
+state-driven infeasibility with a safe fire origin) that a default-
+state-only or fire-only check cannot see (Section 2).
+
+Neither phase touches scenario_generator, scenario_validator's
+validation rules, or DiagnosticsCollector. Both are additive, reusing
+already-public, already-tested infrastructure (NavigationGraphGenerator,
+`_bfs_reachable()`, sample()/WeightedOptions, seed_manager's derivation
+pattern) rather than duplicating it.
+
+This investigation does not recommend implementing either phase in
+this task, per explicit instruction.
+
+
+EXPLICIT NON-GOALS OF THIS INVESTIGATION
+=====================================================
+- No code was implemented for either Phase 1 or Phase 2.
+- scenario_generator was not modified and this design does not make it
+  connectivity-aware -- the feasibility preflight is a separate,
+  additive layer, never merged into candidate construction.
+- scenario_validator's existing validation rules (NO_EVACUATION_ROUTE,
+  FIRE_ORIGIN_BLOCKS_EVACUATION, INSUFFICIENT_REACHABLE_EGRESS) were
+  not weakened, bypassed, or changed in any way; the preflight design
+  detects the SAME underlying impossibility earlier, via an independent
+  code path, never by altering what the Validator itself accepts.
+  reachability logic was not moved into the Generator.
+- DiagnosticsCollector was not modified.
+- The Scenario Engine was not redesigned -- every design element is
+  additive and reuses existing public building blocks unchanged.
+- No exact enumeration-vs-Monte-Carlo threshold was chosen -- Section
+  3.4 identifies the tradeoff and the criteria that should govern it,
+  but the specific cutoff is left for implementation-time scoping.
+- No UI mockup or exact wiring point beyond "a third pre-flight step
+  in CampaignWorker.execute()" was designed in detail -- Section 8's
+  recommendation names the integration point, not the full UI text/
+  layout.
+- The Part F persistence artifact was documented but not designed in
+  full detail or implemented, per the task's explicit instruction to
+  keep it a separate, optional follow-up.
+
+
+ASSUMPTIONS THAT COULD NOT BE FULLY VERIFIED
+=====================================================
+- The claim that most realistically-authored buildings will keep the
+  "relevant, uncertain" object count small enough for exact enumeration
+  (Section 3.4's inference) is a reasonable expectation grounded in the
+  Building/Edge model's own structure (reachability depends only on the
+  local subgraph between a zone and Outside), but was not tested
+  against any real, large Building in this repository, since (per the
+  prior investigation) the Building that produced the original failure
+  is not available anywhere in the repository to test against.
+- Section 3.5's conservative independence approximation for combining
+  fire-dimension and engineering-state-dimension risk is presented as
+  directionally safe (never underestimating risk) but its precise
+  numerical tightness relative to the more expensive per-fire-zone
+  re-analysis was not empirically measured, since no implementation
+  exists yet to measure it against.
+
+
+GIT STATUS COMPARISON AGAINST BASELINE
+=====================================================
+Baseline (recorded at the start of this task, primary checkout,
+`git status --porcelain`): 233 lines, identical to the primary
+checkout's state at the end of the prior (zero-generation) investigation
+task -- the same pre-existing canonical-AI-state-work and ML/RL/
+zero-generation-investigation file set.
+
+This task added exactly one new file to the primary checkout:
+  docs/architecture/scenario_campaign_feasibility_preflight_investigation.txt
+  (this report; untracked, newly created).
+
+No file that was part of the recorded baseline was modified by this
+task. No Scenario Definition, no Building file, no test file, no
+validation rule, and no production code file was altered.
+
+CONFIRMATION: No production code changed as a result of this task. No
+validation rule was weakened, bypassed, or changed. scenario_generator
+was not made connectivity-aware. Reachability logic was not moved into
+the Generator. DiagnosticsCollector was not modified. Only this one new
+investigation report was created. Nothing was committed in the primary
+checkout.

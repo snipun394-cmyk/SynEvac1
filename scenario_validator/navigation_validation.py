@@ -1,6 +1,7 @@
 from navigation.edge import Edge
 from navigation.graph_builder import NavigationGraphGenerator
 from navigation.node import Node
+from navigation.reachability import bfs_reachable
 
 from scenario import StairAvailability
 
@@ -29,6 +30,15 @@ from scenario_validator.report import ScenarioValidationReport
 # The Generator must never perform these checks (§4.2/§4.13, unchanged)
 # -- this module is the only place in the whole Scenario Engine that
 # ever asks "does this state actually enable evacuation."
+#
+# Scenario Campaign Feasibility Preflight Phase 1 -- the BFS itself
+# (previously a private `_bfs_reachable()` defined in this file) moved,
+# unchanged, to navigation.reachability.bfs_reachable() so
+# campaign_feasibility/ (a new, separate, pre-generation analysis layer)
+# can reuse the identical algorithm instead of a second, independently
+# written one. This module now imports it rather than defining its own
+# copy; nothing about this module's own checks, order, or semantics
+# changed.
 
 
 def _door_traversable_map(candidate):
@@ -74,43 +84,6 @@ def _make_traversable_predicate(candidate, include_exits=True):
     return is_traversable
 
 
-def _bfs_reachable(graph, start_ids, is_traversable, excluded_node_ids=frozenset()):
-
-    # Same reachable-set BFS shape navigation.graph.NavigationGraph.
-    # _validate_zone_connectivity already uses internally, parameterized
-    # by an injected traversability predicate and an optional excluded-
-    # node set (mirroring PathfindingEngine._search's own
-    # excluded_node_ids parameter) instead of the fixed edge.traversable
-    # this Validator cannot reuse as-is (see module docstring).
-
-    reachable = set()
-    frontier = [node_id for node_id in start_ids if node_id not in excluded_node_ids]
-
-    while frontier:
-
-        current = frontier.pop()
-
-        if current in reachable or current in excluded_node_ids:
-            continue
-
-        reachable.add(current)
-
-        current_node = graph.find_node(current)
-
-        if current_node is None:
-            continue
-
-        for neighbor_node, edge in graph.find_neighbors(current_node):
-
-            if neighbor_node.id in excluded_node_ids or neighbor_node.id in reachable:
-                continue
-
-            if is_traversable(edge):
-                frontier.append(neighbor_node.id)
-
-    return reachable
-
-
 def _occupied_zone_ids(candidate):
 
     return {occupant.zone_id for occupant in candidate.occupants if occupant.zone_id}
@@ -138,7 +111,7 @@ def validate_navigation(candidate, definition, building) -> ScenarioValidationRe
     # under the candidate's traversable edges is exactly "can reach an
     # open Exit," and restricting the *zones checked* to occupied ones
     # is what scopes it away from unoccupied, disconnected regions.
-    reachable_from_outside = _bfs_reachable(graph, [Node.OUTSIDE_NODE_ID], is_traversable)
+    reachable_from_outside = bfs_reachable(graph, [Node.OUTSIDE_NODE_ID], is_traversable)
 
     for zone_id in sorted(occupied_zone_ids):
 
@@ -162,7 +135,7 @@ def validate_navigation(candidate, definition, building) -> ScenarioValidationRe
 
         ignition_zone_id = candidate.fire.ignition_zone_id
 
-        reachable_excluding_fire = _bfs_reachable(
+        reachable_excluding_fire = bfs_reachable(
             graph, [Node.OUTSIDE_NODE_ID], is_traversable,
             excluded_node_ids={ignition_zone_id},
         )
@@ -205,7 +178,7 @@ def validate_navigation(candidate, definition, building) -> ScenarioValidationRe
 
         exit_zone_id = exit_edge.from_node
 
-        reachable_from_exit = _bfs_reachable(graph, [exit_zone_id], indoor_traversable)
+        reachable_from_exit = bfs_reachable(graph, [exit_zone_id], indoor_traversable)
 
         if reachable_from_exit & occupied_zone_ids:
             reachable_zone_count += 1

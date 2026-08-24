@@ -1,0 +1,549 @@
+SCENARIO CAMPAIGN FEASIBILITY -- CAMPAIGN-LEVEL YIELD ANALYSIS
+(Phase 2 Campaign-Level Yield Analysis / this thread's own "Layer 2")
+=====================================================
+Status: IMPLEMENTED. Monte Carlo, UI wiring, and a full duplicate-
+aware (Markov-chain/coupon-collector) correction are explicitly NOT
+implemented in this task, per instruction. Nothing was committed.
+
+All four prerequisite reports were re-read in full before any code was
+written:
+  1. docs/architecture/scenario_campaign_feasibility_phase2_investigation.txt
+  2. docs/architecture/scenario_campaign_feasibility_phase2a_implementation_report.txt
+  3. docs/architecture/scenario_campaign_feasibility_phase2b_implementation_report.txt
+  4. docs/architecture/scenario_campaign_feasibility_min_open_exits_occupancy_implementation_report.txt
+A fifth, previously-existing report this task also depends on heavily
+(cited throughout, re-read in full):
+  docs/architecture/scenario_campaign_acceptance_and_uniqueness_investigation.txt
+
+
+1. ACTUAL CAMPAIGN/RETRY SEMANTICS DISCOVERED (re-traced fresh this
+task against the real code, not assumed)
+=====================================================
+
+[FACT] One "requested scenario slot" = one iteration of
+`for index in range(config.count):` in `CampaignWorker.execute()`
+(`designer/campaign/campaign_worker.py:291`). Each slot calls
+`_generate_accepted_scenario()` once, which (in the default
+`diagnostics_mode=True` path) runs `_generate_with_diagnostics()`
+(`campaign_worker.py:501`); the non-diagnostics path calls
+`run_pipeline()` directly, which has the identical attempt structure
+(`scenario_pipeline/pipeline.py:64`).
+
+[FACT] `CampaignConfig.max_attempts: int = DEFAULT_MAX_ATTEMPTS`
+(`campaign_worker.py:149`), `DEFAULT_MAX_ATTEMPTS = 10`
+(`scenario_pipeline/pipeline.py:34`). The attempt loop is
+`for attempt_index in range(config.max_attempts):`
+(`campaign_worker.py:513` / `pipeline.py:64`).
+
+[FACT] Retries happen whenever `report.accepted` is False -- a single
+boolean covering every validator category (`scenario_validator/
+report.py:56-59`, `not any(issue.severity == ERROR ...)`), run in
+fixed order by `validate()` (`scenario_validator/validator.py:36-71`).
+Duplicate-content rejection is one check inside `validate_dataset()`
+(`scenario_validator/dataset_validation.py:128-137`), NOT a separate
+mechanism -- it sets the exact same `report.accepted = False` outcome
+as any other rejection, and is folded into the SAME retry-consuming
+attempt loop: `if report.accepted: return candidate`
+(`campaign_worker.py:532-533` / `pipeline.py:81`) does not distinguish
+WHY a report failed. A DUPLICATE rejection consumes an attempt exactly
+like a validity failure -- it does not retry "for free."
+
+[FACT] When a slot exhausts all `max_attempts`, `_generate_with_
+diagnostics()` returns `None` (`campaign_worker.py:535`) / `run_
+pipeline()` returns `PipelineResult(accepted=False, scenario=None,
+failure_reason="MAX_ATTEMPTS_EXCEEDED")` (`pipeline.py:112-115`). In
+`execute()`, `scenario is None` increments `rejected_count`
+(`campaign_worker.py:336`) -- the campaign records the slot as failed
+and CONTINUES to the next slot; it does not abort.
+
+[FACT] The `for index in range(config.count):` loop only breaks on
+`self._cancel_requested` (`campaign_worker.py:295-296`), checked at
+the top of each slot. A failed slot falls into the `else:` branch
+(lines 334-337) and the loop proceeds to `index+1` normally -- there is
+no cross-slot retry pooling (a slot that fails all `max_attempts`
+simply ends; the NEXT slot gets its own fresh `max_attempts` budget).
+
+[FACT] Per-slot seed: `scenario_seed = derive_scenario_seed(config.
+master_seed, index)` (`campaign_worker.py:298`) =
+`derive_seed(master_seed, "scenario", index)`, a SHA256-derived,
+index-keyed hash (`scenario_generator/seed_manager.py:74-81`).
+Per-attempt seed: `derive_attempt_seed(scenario_seed, attempt_index)`
+(`seed_manager.py:84-93`, called from `scenario_generator/generator.py:48`).
+Every `(index, attempt_index)` pair therefore produces a
+statistically-independent seed stream -- re-confirmed this task,
+unchanged from the Phase 2 investigation's own proof (§1.3 there).
+This is what makes `P(candidate valid)` the SAME fixed probability `p`
+on every attempt of every slot -- PROVIDED the acceptance decision
+itself does not depend on prior campaign state, which is exactly what
+duplicate-content rejection can violate (Section 9 below).
+
+[FACT] `CampaignConfig.count` = number of SLOTS to attempt, not the
+number of accepted scenarios desired (`campaign_worker.py:145,291`) --
+a failed slot still counts as one of `count` slots processed, but not
+toward the accepted count.
+
+[FACT] Early-stop conditions: cancellation (`self._cancel_requested`,
+checked between slots only, `campaign_worker.py:212-219,295-296`);
+pause (`self._pause_event.wait()`, between slots, line 293); a
+preflight abort before ANY slot runs at all if `config.diagnostics_mode`
+and `preflight.has_errors` (`campaign_worker.py:255-271`). No global
+cross-slot attempt budget or timeout exists.
+
+[FACT] `CampaignSummary` (`designer/campaign/campaign_summary.py`) is
+what `execute()` returns -- `total_requested`, `total_generated`,
+`accepted`, `rejected`, timing/output fields. This task's own
+`CampaignYieldResult` (Section 5 below) is a PREDICTIVE, pre-generation
+analogue of this same shape (`requested_count` <-> `total_requested`,
+`expected_accepted` <-> an expectation over `accepted`), never
+imported from or wired into `designer/campaign/` (out of scope, per
+instruction).
+
+
+2. MATHEMATICAL ASSUMPTIONS AND PROOFS
+=====================================================
+
+[PROVEN, Section 1] Within one slot, the `max_attempts` attempts are
+i.i.d. Bernoulli(p) trials: each attempt's seed is independently
+derived (SHA256, index-keyed), and NOTHING about the sampling
+distributions themselves changes between attempts (the Definition is
+immutable, `accepted_hashes` only grows on a SUCCESSFUL slot, never
+mid-slot on a failed attempt) -- so every attempt within one slot sees
+the exact same `P(candidate valid AND not a duplicate)`. This holds
+UNCONDITIONALLY of the duplicate-rejection question, because
+`accepted_hashes` is fixed for the ENTIRE duration of one slot's own
+attempt loop (it can only grow between slots, when a slot succeeds).
+
+[PROVEN, re-confirmed this task, matching the acceptance/uniqueness
+investigation's own Part 5/9] Across DIFFERENT slots, attempts are
+i.i.d. Bernoulli(p) trials, WITH THE SAME `p` every slot, if and only
+if `accepted_hashes` never causes a rejection that would not otherwise
+have occurred -- i.e. iff duplicate-content rejection is negligible.
+When it is negligible, `p` (a property of the Definition+Building
+alone, Layer 1) is the correct, campaign-run-history-independent
+success probability for every attempt of every slot, and the whole
+campaign IS `count` i.i.d. Bernoulli(`p_slot_success`) trials ->
+`accepted ~ Binomial(count, p_slot_success)` exactly. When it is NOT
+negligible, `p` is still each ATTEMPT's own true validity probability,
+but the slot-level SUCCESS probability effectively decreases slot to
+slot as previously-accepted content values get exhausted (the
+acceptance/uniqueness investigation's own "budget-limited weighted
+coupon collection" framing, Part 3/9) -- slots are then NEITHER
+independent NOR identically distributed, and `Binomial` would be
+actively wrong, not merely approximate, in the worst configurations
+(Part 9, Case 2: "at least count-K slots are GUARANTEED to fail").
+
+
+3. FORMULA: CANDIDATE-TO-SLOT SUCCESS PROBABILITY
+=====================================================
+
+Confirmed against Section 1's own real retry loop: a slot succeeds iff
+AT LEAST ONE of up to `max_attempts` i.i.d. Bernoulli(p) attempts
+succeeds (the loop returns on the FIRST success, `campaign_worker.py:
+532-533`) --
+    P(slot success) = 1 - (1 - p)^max_attempts
+    P(slot failure) = (1 - p)^max_attempts
+-- exactly the geometric-trial model the task's own wording expected,
+now VERIFIED (not merely assumed) against the real attempt loop's
+"first success wins, budget exhausts otherwise" shape. Implemented
+directly with Python's `**` operator (already the correct, efficient,
+numerically well-conditioned exponentiation-by-squaring primitive for
+a value in `[0,1)` raised to an integer/float power -- no further
+stabilization needed for THIS particular expression, unlike the
+Binomial coefficient case, Section 12).
+
+
+4. FORMULA: EXPECTED ATTEMPTS PER SLOT
+=====================================================
+
+For a truncated geometric process (stop at first success, or after `A`
+attempts, whichever first), let `T` = attempts actually made. `T >= k`
+(for `1 <= k <= A`) iff the first `k-1` attempts all failed, so
+`P(T >= k) = (1-p)^{k-1}`. By the standard "expectation via tail sum"
+identity:
+    E[T] = sum_{k=1}^{A} P(T >= k) = sum_{j=0}^{A-1} (1-p)^j
+         = (1 - (1-p)^A) / p          (p > 0)
+         = A                          (p == 0, every attempt is always
+                                        consumed since success never
+                                        happens early -- handled as an
+                                        explicit special case purely to
+                                        avoid 0/0, matching the same
+                                        limiting value L'Hopital's rule
+                                        gives)
+This is NOT `1/p` (the UNBOUNDED-geometric expectation the task's own
+wording explicitly warned against) -- verified by hand for `p=0.5,
+A=3`: formula gives `(1 - 0.125)/0.5 = 1.75`; direct enumeration gives
+`1*0.5 + 2*0.25 + 3*0.25 = 1.75` (T=1 w.p. 0.5; T=2 w.p. 0.25; T=3
+w.p. 0.25, the 0.25 mass at T=3 covering BOTH "3rd attempt succeeds"
+and "3rd attempt fails," since either way exactly 3 attempts were
+made) -- confirmed identical, `HandDerivedRetryTests`.
+
+
+5. CAMPAIGN-LEVEL EXPECTED YIELD
+=====================================================
+
+`E[accepted] = count * p_slot_success` -- the standard linearity-of-
+expectation result for a sum of `count` Bernoulli(`p_slot_success`)
+indicators, valid REGARDLESS of whether the indicators are independent
+(linearity of expectation never requires independence) -- so this
+formula is exact whenever `p_slot_success` itself is the correct,
+constant per-slot probability, i.e. exactly the `slots_independent`
+condition from Section 2 (when it does not hold, `p_slot_success` is
+merely the FIRST slot's true success probability, and the TRUE
+per-slot probability decreases thereafter, making this an
+overestimate -- disclosed via `exact=False`/`duplicate_rejection_risk`,
+never silently presented as exact).
+
+
+6. COMPLETE CAMPAIGN SUCCESS PROBABILITY
+=====================================================
+
+Defined, per the task's own example and matching this Definition's own
+`total_generated`-vs-`total_requested` shape (Section 1), as "every one
+of the `count` requested slots produces an accepted scenario" ->
+`P(all succeed) = p_slot_success^count` for i.i.d. slots -- implemented
+as `p_accepted_equals(count)` internally (Section 12), NOT as a
+separately hand-written `p_slot_success ** count` expression, so there
+is exactly ONE code path computing this quantity (avoiding the task's
+own "do not create redundant metrics with different names for the same
+quantity" pitfall). Hand-verified: `count=2, p_slot_success=0.75` ->
+`0.75^2 = 0.5625`, `MultipleSlotsTests`.
+
+
+7. YIELD DISTRIBUTION
+=====================================================
+
+[PROVEN, Section 2] `accepted ~ Binomial(count, p_slot_success)` holds
+EXACTLY if and only if `slots_independent` is True (duplicate rejection
+negligible) -- implemented, not merely asserted: `CampaignYieldResult.
+p_accepted_equals(k)` / `.p_accepted_at_least(target)` /
+`.p_accepted_at_most(target)` compute the exact Binomial pmf/survival
+function via `_binomial_pmf()`/`_binomial_survival()` (Section 12),
+NEVER via `2^count` enumeration of individual slot outcome combinations
+(verified directly, `LargeCampaignSizeTests`, `count=200_000` completes
+in well under a second). When `slots_independent` is False, these SAME
+methods still return a value (the task's own explicitly-sanctioned
+"return a warning or reduced exactness" outcome, Section 10) rather
+than `None` -- the underlying Binomial machinery is not literally
+correct in that regime, but withholding a number entirely was judged
+LESS useful than a disclosed, honestly-labeled approximation (the
+acceptance/uniqueness investigation's own "excellent approximation"
+framing for the common, continuous-entropy-present case, and a clearly
+disclosed possible overstatement for the rarer, fully-degenerate case)
+-- `exact=False` and `duplicate_rejection_risk=True` are ALWAYS set
+together in that case, and a `warnings` entry explicitly names
+"duplicate," so a caller can never mistake the number for a proven
+exact figure.
+
+
+8. UNDERPRODUCTION CALCULATIONS
+=====================================================
+
+`p_underproduction = P(accepted < count)`. Since `accepted` can never
+exceed `count` (there are only `count` slots), `P(accepted < count) =
+1 - P(accepted == count) = 1 - p_complete_success` -- computed directly
+from `p_complete_success` (Section 6), never re-derived independently
+(the same "single source of truth" discipline as Section 6). Verified,
+`count=3, p_slot_success=0.5`: `1 - 0.5^3 = 0.875`. The general partial
+target `P(accepted >= target)` (`p_accepted_at_least()`) is verified
+against a hand-enumerated case (`count=3, s=0.5, target=2`:
+`P(2)+P(3) = 3*0.25*0.5 + 0.125 = 0.375+0.125 = 0.5`) and cross-checked
+for internal consistency against `p_complete_success`/`p_underproduction`
+at the boundary targets (`UnderproductionTests`).
+
+
+9. INDEPENDENCE JUSTIFICATION
+=====================================================
+
+Fully covered by Sections 1-2 above: per-attempt independence is
+PROVEN unconditionally (SHA256 index-keyed seed derivation, re-verified
+against the live code this task); per-slot IDENTICAL-DISTRIBUTION is
+PROVEN conditional on duplicate rejection being negligible, and this
+condition is itself checked STRUCTURALLY (never assumed) via
+`_duplicate_rejection_is_negligible()` before any Binomial-shaped
+number is presented as exact.
+
+
+10. DUPLICATE-REJECTION TREATMENT
+=====================================================
+
+The SMALLEST correct treatment, per the task's own explicit menu of
+acceptable outcomes ("Normal case" vs. "Degenerate case: return a
+warning or reduced exactness"), was chosen over building the acceptance/
+uniqueness investigation's own separately-described (and NOT required
+by this task) small-K Markov-chain/coupon-collector exact correction:
+
+`_duplicate_rejection_is_negligible(definition)`
+(`campaign_feasibility/yield_analysis.py`) mirrors, exactly, the FOUR
+conditions the acceptance/uniqueness investigation's own Part 4 proved
+jointly necessary for duplicate-collision risk to be non-negligible --
+returns True (negligible, the normal case) the instant ANY ONE of them
+is violated:
+  1. Any zone's `occupancy_distribution` can ever round to >= 1
+     occupant (reuses `campaign_feasibility.analysis._can_be_occupied()`
+     verbatim -- the SAME rounding-rule check Phase 1 already
+     established and tests, never re-derived a second time).
+  2. `firefighter.entry_zone_ids` is non-empty AND `firefighter.
+     team_count_distribution` can ever round to >= 1 (same reused
+     `_can_be_occupied()` helper, applied to the firefighter count
+     distribution -- an intentional, disclosed reuse across two
+     conceptually different populations that happen to share the
+     identical rounding semantics).
+  3. `fire.growth_parameter_distribution` is a continuous UniformRange
+     (`discrete=False`, the default).
+  4. Any `event_templates[i].time` is a continuous UniformRange.
+This is a CHEAP, purely structural read of the Definition -- no
+Building, no NavigationGraph, no enumeration of any kind (matching the
+investigation's own Part 5 "Layer 3 requires NO enumeration at all in
+the common regime" finding) -- confirmed by `DuplicateDegenerateCaseTests`
+running in milliseconds even though it constructs four separate
+Definitions.
+
+When the structural check finds the Definition IS in the degenerate
+regime, `CampaignYieldResult` sets `slots_independent=False`,
+`duplicate_rejection_risk=True`, `exact=False`, and appends an explicit
+warning naming "duplicate" -- satisfying the task's own "do not
+silently ignore a case that invalidates the mathematics" requirement --
+while still populating every numeric field (Section 7's own reasoning
+for why withholding was judged less useful than disclosure).
+
+No duplicate-STATE engine (accepted_hashes simulation, Markov-chain
+recursion over which subset of `V` has been collected, or any other
+campaign-history-dependent machinery) was built -- exactly matching
+the task's own explicit "do not build an unnecessarily complicated
+duplicate-state engine unless the actual campaign architecture
+requires it" instruction, and the acceptance/uniqueness investigation's
+own recommendation not to implement the full sequential correction
+"unless K is small enough that it is cheap AND actually needed."
+
+
+11. EXACTNESS SEMANTICS
+=====================================================
+
+`CampaignYieldResult` distinguishes three states, using the SAME
+`exact`/informational-field naming pattern `CandidateValidityResult`
+already established (never a differently-shaped or renamed concept):
+
+  Fully exact (`exact=True`): `candidate_validity_exact=True` (Layer 1
+    was itself exact) AND `slots_independent=True` (duplicate rejection
+    structurally negligible) -- every source of randomness this
+    result's own numbers could depend on was included.
+
+  Candidate probability exact but campaign yield not fully exact
+    (`exact=False`, `candidate_validity_exact=True`,
+    `duplicate_rejection_risk=True`): Layer 1's `p_valid` was exact,
+    but this Definition's own duplicate-rejection risk is not modeled
+    -- `DuplicateDegenerateCaseTests`.
+
+  Exact analysis unavailable (`exact=False`, `p_candidate_valid=None`,
+    every numeric field `None`): Layer 1 itself could not produce an
+    exact probability (`state_space_too_large`, or no Building) --
+    `CandidateExactnessUnavailableTests`. A distinct, intermediate
+    fourth state also exists and is tested
+    (`test_analyzed_but_not_fully_exact_candidate_propagates`): Layer 1
+    DID produce a usable `p_valid` (so numbers ARE computed) but its
+    own `exact` flag was already False (e.g. an unresolved occupancy
+    distribution) -- `candidate_validity_exact=False` propagates
+    directly into this result's own `exact=False`, without inventing a
+    fifth field or a different naming scheme.
+
+`exact` is never `True` merely because `p_candidate_valid` was exact --
+re-confirmed directly by `DuplicateDegenerateCaseTests::test_fully_
+degenerate_definition_is_flagged_not_exact`, which constructs an EXACT
+candidate-validity result (`candidate_validity_exact=True`) alongside a
+degenerate Definition and asserts `exact=False` regardless.
+
+
+12. NUMERICAL-STABILITY STRATEGY
+=====================================================
+
+`p_slot_success`/`p_slot_failure`/`expected_attempts_per_slot`: plain
+`(1.0 - p) ** max_attempts`, Python's built-in float `**` (fast
+exponentiation by squaring under the hood, well-conditioned for any
+base in `[0,1)` and any non-negative integer/float exponent -- the
+result is always itself a valid probability-scale value, so no
+overflow risk exists here at all; underflow toward `0.0` for extreme
+`(1-p, A)` combinations is the CORRECT limiting behavior, not an
+error). Verified at `p=1e-6, max_attempts=2_000_000` (matches the
+well-known `1 - e^-2` limit to 3 decimal places) and at
+`p = 1 - 1e-15, max_attempts=1000` (stays in `[0,1]`),
+`LargeRetryCountStabilityTests`.
+
+`p_accepted_equals`/`p_accepted_at_least`/`p_accepted_at_most`
+(`_binomial_pmf()`/`_binomial_survival()`): computed in LOG SPACE via
+`math.lgamma` -- `log_pmf = lgamma(n+1) - lgamma(k+1) - lgamma(n-k+1) +
+k*log(s) + (n-k)*log(1-s)`, exponentiated ONLY at the very end (and
+short-circuited to `0.0` when `log_pmf < -700`, safely below float64's
+underflow threshold). This specifically avoids the task's own named
+"factorial overflow" failure mode: `math.comb(n, k)` (an exact Python
+bigint) can have far more digits than a float64 can represent for
+large `n` with `k` near `n/2` (e.g. `math.comb(100_000, 50_000)` has
+~30,100 digits) -- multiplying that bigint directly into a float would
+raise `OverflowError` on the int-to-float conversion long before the
+TRUE probability becomes small enough to need representing as `~0`.
+Log-space evaluation never forms that intermediate value at all.
+`_binomial_survival()` sums whichever of the two complementary tails
+(`k=target..n` or `k=0..target-1`) is SHORTER via `_binomial_pmf()` --
+cost `O(min(target, n-target+1))` point evaluations, each `O(1)`, never
+`O(2^n)` and never a full-range PMF array materialized for its own
+sake. Verified at `count=200_000, target=60_000` (well under a second,
+`LargeCampaignSizeTests`) and via the exact `Binomial(2, 0.75)`
+distribution summing to `1.0`, `MultipleSlotsTests`. Every returned
+probability is clamped to `[0.0, 1.0]` at the point of computation
+(`max(0.0, min(1.0, ...))`), covering the tiny floating-point drift the
+task's own tolerance allowance anticipates.
+
+
+13. TESTS AND HAND-DERIVED EXPECTED RESULTS
+=====================================================
+
+New file: tests/test_campaign_feasibility_yield_analysis.py -- 18
+tests, all passing:
+
+  CandidateAlwaysValidTests (1): p=1 -> slot_success=1, slot_failure=0,
+    expected_attempts=1, p_complete_success=1, expected_accepted=N,
+    p_underproduction=0.
+  CandidateNeverValidTests (1): p=0 -> slot_success=0, slot_failure=1,
+    expected_accepted=0, p_complete_success=0, p_underproduction=1.
+  SingleAttemptTests (1): max_attempts=1 -> p_slot_success == p=0.37
+    exactly.
+  HandDerivedRetryTests (2): p=0.5, max_attempts=3 -> slot_success=
+    0.875 (hand-derived `1-0.125`), expected_attempts=1.75 (hand-
+    enumerated over T=1/2/3); a separate sweep confirms `p_slot_success
+    + p_slot_failure == 1.0` across 7 different `p` values.
+  MultipleSlotsTests (2): N=2, s=0.75 -> P(all succeed)=0.5625; the
+    FULL 3-point distribution (P(0)=0.0625, P(1)=0.375, P(2)=0.5625)
+    matches hand derivation and sums to 1.0 exactly.
+  ExpectedAcceptedTests (1): N=10, s=0.6 -> E[accepted]=6.0 exactly.
+  UnderproductionTests (1): N=3, s=0.5 -> P(accepted<3)=0.875 (hand-
+    derived `1-0.125`); P(accepted>=2)=0.5 (hand-enumerated P(2)+P(3));
+    boundary-consistency checks against `p_complete_success`/
+    `p_underproduction`.
+  LargeRetryCountStabilityTests (2): `p=1e-6, max_attempts=2_000_000`
+    stays bounded and matches the `1-e^-2` limit; `p=1-1e-15,
+    max_attempts=1000` stays bounded.
+  LargeCampaignSizeTests (1): `count=200_000`, a near-median target
+    query completes in well under a second and stays bounded --
+    demonstrating no `2^N` enumeration.
+  CandidateExactnessUnavailableTests (2): `p_valid=None` (state-space
+    too large) -> every numeric field `None`, `exact=False`, warning
+    names "candidate validity"; a separate case with `p_valid`
+    available but Layer 1's own `exact=False` -> numbers ARE computed,
+    but `exact` still propagates to `False`.
+  DuplicateDegenerateCaseTests (3): a fully degenerate Definition (zero
+    occupants/firefighters, `FixedValue` fire growth, no event
+    templates) -> `slots_independent=False`, `duplicate_rejection_
+    risk=True`, `exact=False` (even with an exact candidate result),
+    warning names "duplicate", numbers still populated; each of the
+    four conditions individually breaking the degeneracy (occupants
+    present / firefighters deployable / continuous fire growth /
+    continuous event time) independently restores full exactness;
+    `WeightedOptions`-based occupancy/firefighter counts are recognized
+    the same way `FixedValue` is (reusing `_can_be_occupied()`, not a
+    separate check).
+  ImportShapeRegressionTests (1): the package's public export surface
+    is extended, not replaced.
+
+Every numeric assertion is checked against an independently,
+hand-derived expected value documented inline in the test's own
+comments.
+
+
+14. REGRESSION RESULTS
+=====================================================
+
+Focused suite (new): 18/18 passed
+(tests/test_campaign_feasibility_yield_analysis.py, run standalone
+first).
+
+Combined regression run (this thread's own standing regression set,
+plus the new file):
+  tests/test_campaign_feasibility_yield_analysis.py (18, new)
+  tests/test_campaign_feasibility_min_open_exits_occupancy.py (13)
+  tests/test_campaign_feasibility_occupancy_uncertainty.py (15)
+  tests/test_campaign_feasibility_exact_validity.py (18)
+  tests/test_campaign_feasibility.py (21)
+  tests/test_campaign_studio.py
+  tests/test_campaign_diagnostics.py
+  tests/test_scenario_validator.py (67)
+  tests/test_scenario_generator.py
+  tests/test_scenario_pipeline.py
+  tests/test_scenario_definition.py
+  tests/test_builder_navigation_preview.py
+  tests/test_engineering_navigation_graph.py
+  tests/test_navigation_graph.py
+  tests/test_obstacle_navigation_integration.py
+  Result: 507 passed, 0 failed (489 pre-existing + 18 new). No
+  existing assertion was modified, weakened, or removed.
+
+A bare, no-path-filter `pytest -q` from the repo root was NOT
+re-attempted this task -- the prior report (Section 10 there) already
+documented that it cannot complete in this repository at all
+(`status_test.py`, a stray PyQt6 GUI script unrelated to this task,
+crashes pytest's own collection via its default `*_test.py` discovery
+pattern). The 507-passed combined run above is this thread's own
+standing regression-set methodology, unchanged.
+
+Process note, carried over unchanged from every prior report in this
+thread: `/c/Python314/python -m pytest ...` was used explicitly for
+every run in this report, to avoid this environment's occasional
+PATH drift to an unrelated concurrent session's virtual environment.
+
+
+15. FILES CHANGED
+=====================================================
+
+New:
+  campaign_feasibility/yield_analysis.py -- `CampaignYieldResult`
+    (the Layer 2 result model) and `analyze_campaign_yield()` (the
+    entry point), plus `_duplicate_rejection_is_negligible()`/
+    `_is_continuous()` (Section 10) and `_binomial_pmf()`/
+    `_binomial_survival()` (Section 12).
+  tests/test_campaign_feasibility_yield_analysis.py -- 18 new tests
+    (Section 13).
+  docs/architecture/scenario_campaign_yield_analysis_implementation_
+    report.txt -- this report.
+
+Modified:
+  campaign_feasibility/__init__.py -- exports `analyze_campaign_yield`
+    and `CampaignYieldResult` alongside every existing export (none
+    removed or renamed).
+
+Not touched: `campaign_feasibility/exact_validity.py`,
+`campaign_feasibility/analysis.py` (only its existing, already-private
+`_can_be_occupied()` function is imported and reused, never modified
+or duplicated), `campaign_feasibility/model.py`, `scenario_generator/`,
+`scenario_validator/`, `scenario_definition/`, `designer/campaign/*`
+(no UI wiring, per instruction).
+
+
+16. CONFIRMATION -- SCENARIO GENERATOR AND SCENARIO VALIDATOR
+SEMANTICS NOT MODIFIED
+=====================================================
+
+[FACT] `git status --porcelain -- scenario_generator/` returns empty --
+zero changes.
+[FACT] `git status --porcelain -- scenario_validator/` shows exactly
+the SAME single pre-existing modification
+(`scenario_validator/navigation_validation.py`) already disclosed and
+confirmed pre-dating this entire thread's own work in the prior
+implementation report -- unchanged again this task; this task's own
+research phase only ever used the read-only `Explore` agent and direct
+`Read` calls against `designer/campaign/campaign_worker.py`,
+`scenario_pipeline/*.py`, `scenario_validator/*.py`, and
+`scenario_generator/seed_manager.py`/`generator.py` to re-trace the
+real retry semantics (Section 1) -- none of them were opened with
+`Edit` or `Write` at any point.
+[FACT] `campaign_feasibility/yield_analysis.py` contains zero imports
+of `scenario_generator`, `scenario_validator`, `scenario_pipeline`, or
+`designer` anywhere (grep-verified this task) -- all four are
+referenced only in comments explaining what this module's own
+formulas MIRROR from the real campaign loop, never imported.
+[FACT] This module never samples, never consumes RNG, and never
+constructs a `Building`/`NavigationGraph` -- every number it produces
+is computed analytically from `CandidateValidityResult.p_valid`
+(already analytical, Layer 1) and from the Definition's own declared
+distributions (a structural presence/absence read, Section 10).
+[FACT] `designer/campaign/` was not modified -- `analyze_campaign_
+yield()` is not wired into `CampaignWorker`, `CampaignConfig`, or any
+UI path, unchanged from every prior phase's own explicit UI-wiring
+deferral.

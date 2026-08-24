@@ -42,6 +42,8 @@ from serialization.serializer import Serializer
 
 from designer.validation import validate_building_authoring
 
+from campaign_feasibility import analyze_campaign_feasibility
+
 from designer.campaign.campaign_summary import CampaignSummary
 from designer.campaign.diagnostics import (
     DiagnosticsCollector,
@@ -114,6 +116,22 @@ from designer.campaign.progress_model import ProgressModel
 # CampaignConfig.building is the same object for every scenario in one
 # campaign, needed only so command_center.incident_data.load_incident()
 # has a Building to load back for Command Center playback.
+#
+# Scenario Campaign Feasibility Preflight Phase 1 (docs/architecture/
+# scenario_campaign_feasibility_preflight_phase1_implementation_report.txt)
+# -- _run_preflight_checks() gains a THIRD check, alongside (never
+# instead of) Building/Definition validation: campaign_feasibility.
+# analyze_campaign_feasibility(), a read-only analysis over the exact
+# same in-memory Building/ScenarioDefinition already assembled here.
+# It is gated behind the SAME `config.diagnostics_mode` flag the
+# existing Building/Definition pre-flight already is (§ existing
+# `if config.diagnostics_mode:` block below) -- a deliberate scoping
+# choice, not an oversight: extending that gate's own meaning (e.g.
+# making pre-flight unconditional) would be an unrelated behavior
+# change to diagnostics_mode's semantics, outside this phase's scope.
+# Nothing in scenario_generator or scenario_validator changed; this is
+# purely a new PreflightResult field plus one new call, in the same
+# place the existing pre-flight already runs.
 
 
 @dataclass
@@ -358,13 +376,16 @@ class CampaignWorker(QThread):
     # check MainWindow's own "Validate Project" action already runs) and
     # ScenarioDefinition.validate(building=...) (scenario_definition's
     # own frozen self-validation entry point). Neither is reimplemented
-    # here.
+    # here. Scenario Campaign Feasibility Preflight Phase 1 adds a THIRD,
+    # equally read-only check -- see this module's own docstring.
     # =====================================================
 
     def _run_preflight_checks(self, config: CampaignConfig) -> PreflightResult:
 
         building_report = validate_building_authoring(config.building)
         definition_report = config.definition.validate(building=config.building)
+
+        feasibility_report = analyze_campaign_feasibility(config.building, config.definition)
 
         return PreflightResult(
             building_issues=tuple(
@@ -375,7 +396,38 @@ class CampaignWorker(QThread):
                 ValidationRow(source="DEFINITION", code=issue.code, message=issue.message)
                 for issue in definition_report.errors
             ),
+            feasibility_issues=tuple(
+                ValidationRow(
+                    source="FEASIBILITY",
+                    code=self._feasibility_error_code(result),
+                    message=result.explanation,
+                )
+                for result in feasibility_report.error_results
+            ),
+            feasibility_warnings=tuple(
+                ValidationRow(
+                    source="FEASIBILITY", code="PARTIAL_FEASIBILITY", message=result.explanation,
+                )
+                for result in feasibility_report.warning_results
+            ),
         )
+
+    # =====================================================
+
+    def _feasibility_error_code(self, result) -> str:
+
+        # Part H -- distinguishes the two blocking cases the
+        # investigation named separately (Case 1: unreachable even
+        # optimistically; Case 2: the fire-origin distribution
+        # guarantees a lethal draw) without adding a fourth field to
+        # ZoneFeasibilityResult -- both are already fully determined by
+        # its existing optimistic_reachable/lethal_fire_probability
+        # fields.
+
+        if not result.optimistic_reachable:
+            return "ZONE_UNREACHABLE_OPTIMISTIC"
+
+        return "FIRE_ORIGIN_GUARANTEED_LETHAL"
 
     # =====================================================
 
@@ -401,9 +453,31 @@ class CampaignWorker(QThread):
                 )
             )
 
-        return (
-            "Campaign stopped before generating any scenarios. " + " ".join(parts)
-        )
+        if preflight.feasibility_issues:
+
+            parts.append(
+                f"The configured scenario space was proven infeasible "
+                f"({len(preflight.feasibility_issues)} issue(s)): " + "; ".join(
+                    f"[{row.code}] {row.message}" for row in preflight.feasibility_issues
+                )
+            )
+
+        intro = "Campaign stopped before generating any scenarios."
+
+        if preflight.feasibility_issues:
+
+            # Part I -- when a feasibility finding is (at least part of)
+            # why the campaign was stopped, say so in exactly these
+            # terms, so this never reads like an unexplained "0
+            # accepted" after wasted random attempts the way the
+            # original reported campaign did.
+            intro += (
+                " Generation did not fail after random attempts. The campaign "
+                "was stopped before generation because the configured scenario "
+                "space was proven infeasible."
+            )
+
+        return intro + " " + " ".join(parts)
 
     # =====================================================
     # Scenario generation -- Requirement 1/2. In Diagnostics Mode, every

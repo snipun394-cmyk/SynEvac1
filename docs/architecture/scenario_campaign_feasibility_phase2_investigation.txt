@@ -1,0 +1,969 @@
+SCENARIO CAMPAIGN FEASIBILITY -- PHASE 2 INVESTIGATION
+Quantifying campaign feasibility and generation risk
+=====================================================
+Status: INVESTIGATION ONLY. No production code, tests, Scenario
+Definitions, or Building files were modified by this task. No
+commit was made in the primary checkout.
+
+Evidence-labeling discipline, carried over unchanged from every prior
+report in this thread:
+  [FACT]       directly verified by reading the cited code, or by
+               running a throwaway (never saved) reproduction script.
+  [INFERENCE]  a conclusion drawn from combining [FACT]s.
+  [DESIGN]     a proposed design element for Phase 2 -- not decided,
+               not implemented, offered for evaluation.
+
+This report supersedes the interrupted Phase 2 investigation begun
+earlier in this thread (which only completed two preliminary checks
+before being paused) and answers the fuller, more rigorous specification
+given in this task.
+
+
+EXECUTIVE CONCLUSION
+=====================================================
+
+**Can we calculate campaign feasibility probabilities exactly? YES,
+conditionally -- and the conditions are precise, provable, and usually
+met in practice, but not universally.**
+
+[FACT/INFERENCE] The real Scenario Generator samples four independent
+"dimensions" from four cryptographically-independent RNG streams (fire,
+occupant, door, exit -- plus stair, a fifth, sharing the same
+independence property): which zones end up occupied, where the fire
+ignites, and every door/exit/stair's resolved state. Because these
+streams are seeded independently (Section 2), and because retries
+within one campaign slot are provably fresh, memoryless draws (Section
+6), the probability that one generated candidate passes NAVIGATION
+validation can be computed EXACTLY whenever the "uncertain" (non-
+degenerate) part of this joint state space is small enough to enumerate
+-- which, in every real Definition inspected this session (Campaign
+Studio's own default, and both reproductions from the prior runtime-
+contradiction investigation), it was. When it is not small enough, an
+exact figure is not obtainable in general (the underlying reachability-
+under-random-edge-failure problem is a network-reliability computation,
+provably #P-hard in the fully general case -- Section 5), and Phase 2
+must fall back to a reproducible, honestly-labeled estimate, never a
+number presented as exact.
+
+The one genuinely hard limit: EXACT computation is a function of how
+many *individually uncertain* engineering objects lie on the *shared*
+relevant subgraph between the occupied zones and Outside, not of the
+Building's total size. This is provably small for realistic buildings
+(reachability only depends on local topology) but is not bounded in
+principle by anything in the schema, so Phase 2 needs both an exact
+path and a disclosed-uncertainty fallback path -- never only one.
+
+A second, equally important finding this investigation surfaced and
+the interrupted draft had not yet reached: **"P(valid candidate)" is
+not purely a navigation quantity.** A candidate must pass ALL SIX
+validator categories (STRUCTURAL, GEOMETRY, OCCUPANCY, FIRE,
+NAVIGATION, EVENTS, DATASET -- validator.py's own fixed list) to be
+accepted. Five of those six categories were verified this task to be,
+by construction, either (a) impossible for the current Generator to
+violate under legitimate sampling, or (b) governed by a narrow,
+separately-identifiable edge case unrelated to reachability (Section
+2/Part 4). Phase 2, as scoped by this whole thread, computes
+P(passes NAVIGATION | the candidate's fire/occupant/engineering-state
+draw) -- not the full six-category acceptance probability -- and this
+report states exactly why that scoping is defensible, not just
+convenient.
+
+
+PART 1 -- ACTUAL SAMPLING ARCHITECTURE (traced, not assumed)
+=====================================================
+
+1.1 Where every relevant distribution lives
+-----------------------------------------------------
+[FACT] scenario_definition/distributions.py defines exactly three
+sampleable kinds -- FixedValue, UniformRange, WeightedOptions -- as
+pure data (no `sample()` method anywhere in that package; confirmed by
+the module's own docstring, "this module never imports random").
+[FACT] The Definition fields relevant to navigation:
+  - definition.occupant.occupancy_distribution: Dict[zone_id, Distribution]
+    (scenario_definition/occupant_definition.py)
+  - definition.fire.allowed_ignition_zone_ids / forbidden_ignition_zone_ids
+    / allowed_ignition_floor_ids (plain FrozenSet[str], not
+    Distribution-typed) / ignition_zone_preference: Optional[Distribution]
+    (scenario_definition/fire_definition.py)
+  - definition.engineering.door_state_distribution /
+    exit_state_distribution / stair_state_distribution:
+    Dict[object_id, Distribution] (scenario_definition/
+    engineering_constraints.py)
+
+1.2 How sampling actually happens
+-----------------------------------------------------
+[FACT] scenario_generator/sampling.py::sample(distribution, rng) is the
+ONLY place any Distribution is turned into a concrete value:
+  - FixedValue -> returns `.value` verbatim. Zero randomness consumed.
+  - UniformRange -> `rng.randint(low, high)` if discrete, else
+    `rng.uniform(low, high)`.
+  - WeightedOptions -> `rng.choices(list(weights.keys()),
+    weights=list(weights.values()), k=1)[0]` -- Python's own weighted
+    categorical sampler, drawing exactly according to the declared
+    weights (NOT assumed uniform anywhere in this codebase's own
+    sampling code).
+[FACT] scenario_generator/sampling.py::sample_uniform_choice(allowed, rng)
+is used only when a field is a bare allow-list with no paired
+preference Distribution (fire's own eligible-zone default) --
+`rng.choice(sorted(allowed))`, i.e. exactly uniform over that set, by
+explicit, documented policy (§4.7).
+
+1.3 How the RNG streams are derived, and whether draws are independent
+-----------------------------------------------------
+[FACT] scenario_generator/seed_manager.py's derivation chain:
+  `derive_seed(*parts) = int.from_bytes(sha256("|".join(str(p) for p in
+  parts).encode()).digest()[:8], "big")`
+  `derive_scenario_seed(master_seed, index) = derive_seed(master_seed,
+  "scenario", index)`
+  `derive_attempt_seed(scenario_seed, attempt_index) = derive_seed(
+  scenario_seed, "attempt", attempt_index)`
+  `category_rng(attempt_seed, category_key) = random.Random(derive_seed(
+  attempt_seed, "category", category_key))`
+[FACT] `generate_scenario()` (scenario_generator/generator.py:50-59)
+calls `category_rng(attempt_seed, key)` once per category ("fire",
+"occupant", "behaviour_profile", "door", "exit", "stair", "obstacle",
+"camera", "detector", "event", "assistance", "firefighter") --
+CATEGORY_KEYS' own docstring states the guarantee explicitly: "two
+calls with different category_key values ... are independent of each
+other regardless of ... order."
+
+[INFERENCE, precise, not hand-waved] Independence holds at TWO
+different, and importantly DIFFERENT-STRENGTH, levels:
+  (a) ACROSS categories (fire vs. occupant vs. door vs. exit vs.
+      stair): each gets its OWN, separately-seeded `random.Random`
+      instance, derived via SHA256 from a distinct category_key string.
+      This is independence in the strong, cryptographic-hash sense --
+      not a convention, a proof: two different SHA256 inputs producing
+      correlated 64-bit outputs would be a SHA256 collision-adjacent
+      property, which does not hold for a well-formed hash function.
+  (b) WITHIN one category, across multiple objects (e.g. door-1 and
+      door-2 both draw from the SAME `door_rng` instance, sequentially,
+      in `sorted(building_objects.keys())` order --
+      generator.py::_generate_category_states(), line ~522-537):
+      these are sequential draws from ONE seeded Mersenne-Twister
+      stream, not separately-seeded streams. This is "independent" only
+      in the weaker, standard-PRNG sense (a good PRNG's sequential
+      outputs are statistically indistinguishable from independent
+      draws for any non-adversarial purpose, which probability-of-
+      acceptance modeling is) -- not the same cryptographic guarantee
+      as (a). This distinction is real and is stated precisely here
+      because the task explicitly asked not to assume independence: (a)
+      is provably independent; (b) is independent under the standard,
+      universally-relied-upon assumption that Mersenne Twister behaves
+      as a good PRNG, which every other probabilistic system in this
+      codebase (and essentially all Monte Carlo software) already
+      depends on implicitly.
+[FACT] ACROSS attempts (retries) and ACROSS scenario slots: each gets a
+freshly, independently SHA256-derived seed (`derive_attempt_seed`/
+`derive_scenario_seed`) -- proven independent in the strong sense of
+1.3(a), with ONE disclosed exception (Section 6.4: the DATASET-category
+duplicate-hash check, a real but usually negligible cross-slot
+coupling).
+
+1.4 Door / exit / stair sampling -- exact code path
+-----------------------------------------------------
+[FACT] `_generate_door_states()`/`_generate_exit_states()`/
+`_generate_stair_states()` (generator.py) each call
+`_generate_category_states(building_objects, distribution_map, rng,
+enum_cls, default_for, make_state)` (Door/Stair) or a near-identical
+inline loop (Exit), which, PER OBJECT, in sorted-id order:
+  - looks up `distribution_map.get(object_id)`;
+  - if present, `sample(distribution, rng)`, then wraps via
+    `enum_cls[value]` (Door/Stair) or `bool(value)` (Exit);
+  - if absent, falls back to the Building's own authored default
+    (`door.locked`/`door.normally_open`, `exit.is_blocked`, Stair
+    always AVAILABLE in V1 -- no Building-level blocking flag exists
+    for stairs).
+[FACT] Stairs ARE fully exposed in Campaign Studio's own UI
+(`designer/campaign/campaign_window.py`'s `STAIR_STATE_NAMES =
+tuple(member.name for member in StairAvailability)`, wired into an
+`EngineeringCategoryEditor("Stairs", STAIR_STATE_NAMES)` -- confirmed
+by grep this task, re-verifying what the interrupted draft had already
+found), so stair-driven infeasibility is a real, user-reachable case,
+not a theoretical one.
+
+1.5 Fire origin sampling -- exact code path
+-----------------------------------------------------
+[FACT] `_generate_fire()` (generator.py:163-219), re-confirmed:
+eligible = (allowed_ignition_zone_ids or every zone) minus
+forbidden_ignition_zone_ids, intersected with allowed_ignition_floor_ids
+if stated. If `ignition_zone_preference` is stated,
+`sample(preference, fire_rng)` draws DIRECTLY from the preference's own
+keys/weights -- NOT intersected with `eligible` (the module's own
+comment: "§13's open question ... this module trusts the preference
+distribution as authored"). Otherwise, `sample_uniform_choice(eligible,
+fire_rng)` -- exactly uniform over the eligible set.
+
+1.6 Occupant placement -- exact code path, and a genuinely new finding
+-----------------------------------------------------
+[FACT] `_generate_occupant_placements()` (generator.py:229-272)
+iterates `sorted(definition.occupant.occupancy_distribution.items())`
+and, PER ZONE KEY, draws `raw_count = sample(distribution,
+occupant_rng)`, then `count = max(0, int(round(raw_count)))`, then
+places exactly `count` occupants (at random positions within that
+zone's rectangle) with deterministic ids `f"occ-{zone_id}-{index}"`.
+[FACT] `validate_navigation()`'s own `_occupied_zone_ids(candidate)`
+reads `{occupant.zone_id for occupant in candidate.occupants if
+occupant.zone_id}` -- a SET. Confirmed, re-derived from the code, not
+assumed: navigation validity depends ONLY on WHICH zones have >=1
+occupant, never on the occupant COUNT or exact position within a zone.
+
+[FACT, the new finding the interrupted draft flagged but had not yet
+fully worked through] Because `occupancy_distribution` can be a
+UniformRange or WeightedOptions (not only FixedValue), THE SET OF
+OCCUPIED ZONES ITSELF IS A RANDOM VARIABLE, per attempt -- not a fixed
+set. Phase 1's `_can_be_occupied()` deliberately treats a zone as
+"potentially occupied" if it CAN EVER receive >=1 occupant (a
+worst-case existence test, safe for Phase 1's proof-only scope: an
+unoccupied zone imposes no navigation constraint at all, so ignoring
+this randomness can only make Phase 1's proofs MORE conservative, never
+wrong). For Phase 2's PROBABILITY goal this matters directly: if a
+zone's occupancy distribution can yield 0, the correct exact
+calculation must weight by P(that zone is actually occupied THIS
+attempt), not assume it always is -- ignoring this would systematically
+OVERESTIMATE risk (by penalizing attempts where the "dangerous" zone
+happens to be empty and therefore imposes no constraint at all).
+[FACT] `random.choices()`/`.uniform()`/`.randint()` (the three
+primitives `sample()` calls) each consume a fixed, well-defined amount
+of the underlying stream per call, with no rejection/retry loop inside
+`sample()` itself -- confirmed by reading sampling.py in full again
+this task -- so per-zone occupancy draws are independent in exactly the
+same (b)-tier sense as per-object door/exit/stair draws within one
+category (sequential draws from one seeded stream).
+
+1.7 Campaign retry / acceptance logic
+-----------------------------------------------------
+[FACT] scenario_pipeline/pipeline.py::run_pipeline() and
+designer/campaign/campaign_worker.py::_generate_with_diagnostics()
+(the diagnostics-mode mirror CampaignWorker actually uses) both:
+  for attempt_index in range(max_attempts):
+      candidate = generate_scenario(GenerationRequest(..., attempt_index))
+      report = validate(candidate, definition, building, accepted_hashes=...)
+      if report.accepted: return candidate
+  return None
+[FACT] `DEFAULT_MAX_ATTEMPTS = 10` (scenario_pipeline/pipeline.py:34),
+overridable via `CampaignConfig.max_attempts`, itself exposed as a
+user-editable Campaign Studio field.
+[FACT] The outer per-scenario-slot loop (`CampaignWorker.execute()`,
+`for index in range(config.count)`) derives a fresh
+`scenario_seed = derive_scenario_seed(config.master_seed, index)` per
+slot -- independent in the 1.3(a) sense.
+
+
+PART 2 -- WHAT MAKES A CANDIDATE ACTUALLY GET REJECTED (all six
+categories, verified by reading every validator module fresh this
+task)
+=====================================================
+
+[FACT] `scenario_validator/validator.py::validate()` runs, in fixed
+order, after a building-existence precondition: validate_occupants,
+validate_fire, validate_engineering, validate_navigation, validate_events,
+validate_dataset. A candidate is `accepted` iff `not any(issue.severity
+== ERROR for issue in report.issues)` across ALL of them (report.py's
+own `accepted` property) -- not navigation alone.
+
+Every module was read in full this task (not merely summarized from
+memory) specifically to answer "which random variables can actually
+cause a rejection, for real, given how the Generator samples":
+
+| Category | Real, sampling-driven rejection risk? | Evidence |
+|---|---|---|
+| STRUCTURAL (building_validation + engineering's PINNED_STATE_MISMATCH/MIN_OPEN_EXITS_UNSATISFIED) | PINNED_STATE_MISMATCH: NO -- a FixedValue always resolves to exactly its own pinned value by construction (`sample(FixedValue(v)) == v`, no branch can diverge); this check can structurally never fire under legitimate sampling. MIN_OPEN_EXITS_UNSATISFIED: YES, but it is a DETERMINISTIC function of the SAME exit-state draw the navigation-relevant enumeration already needs to model -- not a new random variable, an additional pass/fail RULE to apply to the same enumerated states. | engineering_validation.py, re-read in full this task |
+| GEOMETRY (occupant position inside zone) | NO -- the Generator's own `_generate_occupant_placements()` samples `x`/`y` via `occupant_rng.uniform(zone.x, zone.x+zone.width)` etc., i.e. always inside the same zone's own rectangle by construction. | occupant_validation.py, generator.py cross-checked |
+| OCCUPANCY (count support / behaviour-profile support, proportion-skew) | Almost never, with ONE real, narrow, provable exception: a continuous (`discrete=False`) UniformRange whose rounded integer count can fall outside `[low, high]` near a narrow, non-integer-aligned window (e.g. low=1.6, high=1.9: any sampled value rounds to 2, which is > high). A genuine, code-provable edge case, not the dominant real-world driver, but real. Proportion-skew is WARNING-only (never blocks acceptance). | occupant_validation.py |
+| FIRE (allowed/forbidden zone, allowed floor, allowed profile, growth-parameter support) | Almost never, with ONE real, non-obvious exception directly relevant to Phase 1/2's own fire-probability model: `ignition_zone_preference`, when stated, is sampled WITHOUT intersecting `eligible` (Section 1.5) -- so if a Definition's preference names a zone outside `allowed_ignition_zone_ids`/inside `forbidden_ignition_zone_ids`, the Generator CAN legitimately sample a zone that `validate_fire()` then rejects outright (FIRE category, `IGNITION_ZONE_NOT_ALLOWED`/`FORBIDDEN`) -- a candidate that is invalid for reasons having nothing to do with reachability, and whose probability mass must be excluded from Phase 2's SAFE/LETHAL navigation buckets, not folded into either. | fire_validation.py, generator.py's own eligibility-vs-preference gap |
+| NAVIGATION | YES -- this is the dimension both Phase 1 and this Phase 2 investigation exist for. | navigation_validation.py |
+| EVENTS | Only relevant when `definition.event_templates` is non-empty (default: empty tuple, unused in every reproduction and default Campaign Studio flow this thread has exercised) -- a real but narrow, unrelated-to-navigation source of rejection risk (e.g. two independently-sampled templates whose `occurs` both resolve True at the identical `time`). | event_validation.py |
+| DATASET (metadata completeness, serialization round-trip, DUPLICATE-content-hash) | Metadata/round-trip: effectively never fails under legitimate sampling (the Generator always populates required metadata; round-trip failures would be a serialization bug, not a sampling outcome). DUPLICATE: a REAL, provable, usually-small cross-SLOT coupling -- see Section 6.4. | dataset_validation.py |
+
+[INFERENCE] Direct, evidence-based answer to the task's Part 1
+sub-question ("does fire origin alone explain the 99.667% case, or can
+door/exit/stair distributions independently create similarly severe
+cases?"): FIRE ORIGIN ALONE fully explained the reproduced case (that
+reproduction used only `normally_open=True` doors with NO stated
+distribution at all -- `pessimistic_reachable=True`, confirmed in the
+prior runtime-contradiction investigation's own numbers). But this task
+additionally constructed and ran a PURELY door-driven case this task
+(no fire risk at all -- fire constrained to the occupant's own zone) --
+`WeightedOptions({"OPEN": 0.01, "LOCKED": 0.99})` on the one connecting
+door -- and confirmed Phase 1 currently reports only a generic WARNING
+with `lethal_fire_probability=None` (zero fire-eligible members besides
+self) and NO quantified number at all for the engineering-state risk,
+even though the true single-attempt acceptance probability there is
+also ~1% (i.e. exactly as severe as the fire case, entirely
+unquantified today). CONFIRMED: door/exit/stair distributions can
+independently create equally severe "uncertain middle" cases, and
+Phase 1 currently gives the user literally nothing quantitative for
+this dimension -- this is precisely the gap Phase 2 exists to close,
+demonstrated directly, not assumed.
+
+
+PART 3 -- THE PROBABILITY MODEL
+=====================================================
+
+Notation: let Z = the (possibly random) set of occupied zones for one
+attempt; F = the sampled ignition zone; D/E/T = the door/exit/stair
+state VECTORS for one attempt (every object's resolved state). Let
+`NavOK(Z, F, D, E, T)` = 1 if, under navigation_validation.py's own
+three checks (NO_EVACUATION_ROUTE, FIRE_ORIGIN_BLOCKS_EVACUATION,
+INSUFFICIENT_REACHABLE_EGRESS -- re-applying the EXACT same rules, not
+a re-derivation) every zone in Z reaches Outside, the fire-exclusion
+check passes, and `open_exit_count >= min_open_exits`; else 0.
+
+A. Single-attempt validity probability (the navigation-scoped figure
+this whole Phase 2 effort is about):
+  P(valid | navigation) = sum over (Z, F, D, E, T), weighted by
+  P(Z) x P(F) x P(D) x P(E) x P(T) [independent across these five
+  factors, per Section 1.3's proof], of NavOK(Z,F,D,E,T).
+  [DESIGN] Multiplied by the (near-1, narrow-edge-case) probability the
+  candidate also survives the five non-navigation categories (Section
+  2) -- Phase 2's recommended scope (Section "Recommended Phase 2
+  Design" below) is to compute the navigation-only figure exactly and
+  to separately, cheaply flag the two known non-navigation edge cases
+  (OCCUPANCY's narrow rounding case, FIRE's preference-outside-eligible
+  case) as their own diagnostic notes rather than folding them into one
+  conflated number -- this preserves exactness for the part that is
+  actually the campaign's dominant risk (confirmed in every
+  reproduction this thread has run) without silently pretending to
+  model DATASET-duplicate or EVENTS risk, which are legitimately
+  outside navigation's scope entirely.
+
+B. Probability one scenario slot exhausts max_attempts without success:
+  [FACT, proven in Section 6] retries within one slot are i.i.d. draws
+  (fresh, independently-derived attempt_seed each time; `validate()` is
+  documented and re-confirmed stateless). Let p = P(valid | navigation)
+  from (A).
+    P(slot exhausts) = (1 - p) ^ max_attempts
+    P(slot eventually succeeds) = 1 - (1 - p) ^ max_attempts
+
+C. Probability the entire campaign produces zero accepted scenarios:
+  [FACT, proven in Section 6] scenario slots are i.i.d. in the STRONG
+  (1.3(a)) sense EXCEPT for the DATASET-duplicate coupling (Section
+  6.4), which this report shows is negligible whenever p is small (the
+  dominant, risk-relevant regime) and only a real practical concern
+  when p is already close to 1 (the low-risk regime, where "zero
+  accepted scenarios" is not the concern anyway). Under this
+  well-justified near-independence:
+    P(campaign produces 0 accepted) = ((1-p)^max_attempts) ^ count
+      = (1-p) ^ (max_attempts x count)
+  This is EXACTLY the formula the prior runtime-contradiction
+  investigation used ad hoc; this report gives it a proven derivation
+  rather than an assumed one.
+
+D. Expected number of accepted scenario slots:
+  [FACT] Each slot succeeds independently (same justification as C)
+  with probability q = 1 - (1-p)^max_attempts.
+    E[accepted slots] = count x q = count x (1 - (1-p)^max_attempts)
+  (Binomial(count, q) in the same near-independent sense as C; the
+  DATASET-duplicate coupling technically makes later slots' true q
+  slightly LOWER than earlier slots' in a heavily-constrained Definition
+  -- disclosed, not modeled exactly, in Section 6.4/Section 7.)
+
+Verification against the reproduced 99.667% case, using the REAL
+numbers from the prior investigation (not re-derived, re-used exactly):
+  p_navigation ~= 1 - 0.99667 = 0.00333 (this reproduction's fire
+    dimension was the sole risk source, pessimistic_reachable=True, so
+    p ~= 1 - lethal_fire_probability exactly)
+  max_attempts = 10, count = 10
+  P(campaign produces 0 accepted) = (1 - p)^(10*10) = (0.99667)^100
+    = 0.7161 (71.6%) -- MATCHES the prior investigation's own
+    independently-run empirical figure (0.7161324618479233) to 4
+    decimal places, because it is the same formula, now derived rather
+    than assumed.
+
+
+PART 4 -- EXACT ENUMERATION: FEASIBLE, AND UNDER WHAT CONDITIONS
+=====================================================
+
+4.1 Is the state space finite?
+[FACT] Yes, always, for the fire/door/exit/stair dimensions: every
+Distribution kind that can legally appear for these fields
+(FixedValue, WeightedOptions -- UniformRange is never used for these in
+practice, Section 1.1/Section 5 of the Phase 1 investigation, confirmed
+unchanged this task) has a FINITE support (one value, or a small
+enumerable set of enum-name/bool keys). Occupancy counts CAN be
+continuous (UniformRange with discrete=False) -- but only the resulting
+"is this zone occupied" EVENT matters for navigation (Section 1.6), a
+Bernoulli-like reduction of a possibly-continuous variable down to a
+two-outcome one, which IS finite.
+
+4.2 How the enumeration should be scoped (pruning), reusing Phase 1's
+already-proven technique
+-----------------------------------------------------
+[DESIGN] Exactly as the prior feasibility-preflight design investigation
+proposed, re-verified as still correct against the current code:
+  1. Build the NavigationGraph ONCE (`NavigationGraphGenerator().build(
+     building)` -- unmodified, reused verbatim, per Part A's own
+     instruction).
+  2. Compute the OPTIMISTIC reachable-set once (already exists in
+     campaign_feasibility/analysis.py, Phase 1) to find the set of
+     edges that lie on ANY path between ANY occupied zone and Outside
+     -- everything else is provably irrelevant to whether any occupied
+     zone reaches Outside, and can be dropped from the enumeration
+     entirely (a fresh BFS/graph-traversal over the already-built
+     graph, no rebuild).
+  3. Within that relevant set, drop every object whose bound is already
+     degenerate (guaranteed-open/guaranteed-closed, per Phase 1's own
+     optimistic==pessimistic test) -- only genuinely UNCERTAIN objects
+     remain.
+  4. [NEW in this investigation, not present in the prior design doc]
+     also identify the "uncertain" occupancy zones (Section 1.6) within
+     this same relevant set -- zones whose occupancy distribution's
+     support includes 0 AND whose "occupied" status could change
+     whether ANY relevant edge matters at all (a zone that is never
+     occupied contributes no navigation constraint).
+
+4.3 State-space growth
+-----------------------------------------------------
+[FACT/INFERENCE] Growth is `(constant branching per object) ^ (count of
+relevant, uncertain objects)` -- doors/stairs have <=3 possible states,
+exits/occupancy-events have 2. This is NOT a function of Building size;
+it is a function of how many objects sit on the SHARED relevant
+subgraph among ALL occupied zones and are genuinely uncertain. In every
+reproduction this thread has constructed (including a 300-zone
+building), the relevant/uncertain set for a single corridor topology
+was tiny (0-2 objects, since most doors were `normally_open=True` with
+no distribution at all, i.e. degenerate, not uncertain) -- the
+combinatorial blow-up risk is real only for buildings with MANY
+genuinely uncertain doors/stairs on ONE shared bottleneck path
+simultaneously, a structurally narrow (if not impossible) authoring
+pattern.
+
+4.4 The fire dimension's interaction with enumeration -- a genuine
+tractability risk this investigation newly identifies
+-----------------------------------------------------
+[INFERENCE, new finding beyond the prior design doc] A fully joint
+(fire-zone x engineering-state) exact probability would naively require
+running the engineering-state enumeration ONCE PER ELIGIBLE FIRE ZONE
+(re-excluding a different node each time) -- for the 299-eligible-zone
+reproduction, that is 299 separate enumerations, a real, avoidable cost
+if done naively.
+[DESIGN] The correct optimization, justified directly by the cut-vertex
+structure Phase 1 already computes: for any fire zone F already
+classified LETHAL (Phase 1's existing exact computation, unchanged),
+the engineering-state dimension is MOOT -- the occupied zone is already
+cut off from Outside regardless of door/exit/stair states, so no
+per-object enumeration is needed for that F at all. The engineering-
+state enumeration only needs to be run once PER DISTINCT relevant-edge-
+set induced by a SAFE fire zone's exclusion -- in the common case (a
+single, simple topology) this collapses to ONE enumeration (or a
+handful, if different SAFE fire zones happen to prune the relevant set
+differently), not one per eligible zone. This directly resolves the
+tractability risk the task asked this investigation to take seriously,
+using only structure Phase 1 already computes -- no new reachability
+model.
+
+4.5 Applying real state semantics to each enumerated combination
+-----------------------------------------------------
+[DESIGN] For each enumerated (Z, D, E, T) combination (F handled per
+4.4's collapse), apply, IN THIS ORDER, the exact same rules
+navigation_validation.py itself applies (reusing `bfs_reachable()`
+verbatim, per the non-negotiable constraint):
+  1. `NO_EVACUATION_ROUTE`-equivalent: every zone in Z reachable from
+     Outside under (D,E,T).
+  2. `FIRE_ORIGIN_BLOCKS_EVACUATION`-equivalent: already resolved by
+     4.4's collapse for LETHAL F; for a SAFE F, re-run the SAME BFS
+     with F excluded (identical `excluded_node_ids` semantics, Phase
+     1's own proven-identical pattern, Section "Semantic mismatch
+     check" of the runtime-contradiction report).
+  3. `INSUFFICIENT_REACHABLE_EGRESS`-equivalent: count distinct open
+     exits reachable from an occupied zone, compare against
+     `definition.engineering.min_open_exits` -- a check Phase 1 does
+     NOT currently model at all (confirmed: campaign_feasibility/
+     analysis.py never reads `min_open_exits`) and Phase 2 MUST add,
+     since it is a real, deterministic function of the exact same (D,E)
+     draw already being enumerated -- not a new random variable, a
+     missing rule application. This is a concrete, disclosed Phase 1
+     gap this investigation found while re-reading engineering_
+     validation.py, not previously documented.
+  4. Weight the combination by P(Z) x P(D) x P(E) x P(T) (independent
+     factors, Section 1.3/1.6) and sum the weight of every combination
+     where all three checks pass.
+
+
+PART 5 -- ALTERNATIVE APPROACHES, COMPARED
+=====================================================
+
+Option A -- Exact state enumeration (Section 4): the PRIMARY
+recommended path whenever the relevant/uncertain state space (Section
+4.2-4.4) is below a justified threshold. Produces a number that is
+provably exact, not an estimate -- no confidence interval needed,
+because it IS the answer, given the current Definition's declared
+distributions.
+
+Option B -- Analytical graph-reliability calculation without
+enumeration: [INFERENCE] investigated and NOT recommended as the
+primary method. Computing exact "probability a random subgraph
+connects A to B" in general (each edge independently present/absent
+with its own probability) is the classical s-t (or multi-terminal)
+NETWORK RELIABILITY problem, which is #P-hard in general graphs (a
+well-established result in the graph-theory/reliability literature,
+not specific to this codebase) -- there is no known closed-form
+shortcut for arbitrary topologies. It IS tractable in the SPECIAL
+CASES enumeration already exploits cheaply (series/parallel structure,
+single cut-vertices -- exactly what Phase 1's cut-vertex classification
+already computes exactly, for free, without needing reliability theory
+at all). [DESIGN] Recommendation: do NOT build a general reliability-
+polynomial solver -- it would be new, complex, hard-to-verify machinery
+solving a harder version of the problem than Option A already solves
+exactly for the cases that matter, and the task's own instruction is
+explicit ("do not invent a graph reliability algorithm unless the
+existing architecture makes it realistic to integrate safely" -- it
+does not; nothing in navigation/ or campaign_feasibility/ has this
+today, and building it would be a second, independent reachability
+model, exactly what the non-negotiable constraints forbid).
+
+Option C -- Monte Carlo / reproducible sampling estimation, as the
+FALLBACK when Option A's state space is too large:
+  [FACT] No existing Monte-Carlo or confidence-interval utility exists
+  anywhere in this repository (checked: scenario_pipeline/statistics.py
+  aggregates POST-HOC attempt counts, not a probability-estimation
+  utility; predictive_dataset/'s "campaigns" are an unrelated ML
+  dataset-generation concept). There is nothing to reuse for the
+  ESTIMATION math itself -- a standard, textbook Wilson-score (or
+  normal-approximation) binomial confidence interval is the correct,
+  justified choice here, not an invented algorithm, precisely because
+  no in-repo convention exists to defer to.
+  [DESIGN] What SHOULD be reused, per the task's explicit instruction
+  ("investigate whether there is already an appropriate sampling
+  utility or seed derivation mechanism"): `scenario_generator.sampling.
+  sample()`/`sample_uniform_choice()` (the EXACT primitives the real
+  Generator uses, imported directly -- guaranteeing the estimate's
+  sampling distribution is byte-identical to the real Generator's, not
+  a re-implementation) and `scenario_generator.seed_manager.
+  derive_seed()`'s own pattern (a NEW, distinctly-namespaced derivation,
+  e.g. `derive_seed(definition_content_hash, "phase2_montecarlo",
+  trial_index)`, so an estimate is exactly reproducible run-to-run and
+  never collides with, or consumes from, any real campaign's RNG
+  stream -- satisfying "must not interfere with the RNG used for actual
+  generation").
+  [DESIGN] Each trial samples ONLY the relevant/uncertain objects
+  identified by Section 4.2 (never a full Scenario -- no occupants
+  beyond the relevant zones, no firefighters, cameras, detectors,
+  events) and runs one `bfs_reachable()` check -- orders of magnitude
+  cheaper than a real `generate_scenario()`+`validate()` attempt, and
+  explicitly NOT a re-implementation of the Generator (it samples
+  Distribution objects with the Generator's own function, but assembles
+  no Scenario object and calls no validator) -- so it cannot drift out
+  of sync with real Generator semantics as long as `sample()` itself is
+  unchanged, and it never touches `scenario_generator.generator`.
+  [DESIGN] Sample-size guidance: for a Wilson-score interval at a fixed
+  confidence level (e.g. 95%), the number of trials needed to
+  distinguish "high risk" from "low risk" at the precision a campaign
+  decision needs (roughly a few percentage points near the
+  decision-relevant threshold) is in the low thousands at most --
+  cheap, given each trial is a handful of BFS calls, not a full
+  scenario simulation. The exact count is an implementation-time
+  tuning knob, not decided here.
+  [DESIGN] Uncertainty MUST be represented explicitly and differently
+  from an exact result -- e.g. "estimated P(valid) = 0.4% +/- 0.3%
+  (95% CI, N=5000 trials)" rendered with a visually/textually distinct
+  label from an EXACT figure, never presented as if it were the same
+  kind of number. This directly answers the task's "avoid pretending
+  that an estimate is exact" instruction.
+
+Hybrid (recommended): Option A first, always; Option C only for the
+(expected to be rare, per Section 4.3) cases where the relevant/
+uncertain state space exceeds the tractability threshold. Both paths
+share the SAME pruning step (Section 4.2) and the SAME per-combination
+rule application (Section 4.5) -- the only difference is exhaustive
+enumeration vs. reproducible random sampling over that same, already-
+reduced space.
+
+
+PART 6 -- RETRY SEMANTICS (verified precisely, per the task's explicit
+"do not assume independence" instruction)
+=====================================================
+
+[FACT, re-confirmed by re-reading, not by recalling from memory] Every
+retry is a COMPLETELY fresh Scenario: `generate_scenario()` builds
+metadata, occupants, firefighters, fire, door/exit/stair/obstacle/
+camera/detector states, and events from scratch, every single call --
+there is no partial reuse of a prior attempt's sampled values anywhere
+in `generate_scenario()`'s own body (re-read in full this task,
+confirmed unchanged from Phase 1's own citations).
+[FACT] ALL distributions are re-sampled every attempt -- nothing is
+"fixed for a slot." The only thing that stays fixed across a slot's
+retries is `scenario_seed` (derived once per slot index); each retry's
+`attempt_seed = derive_attempt_seed(scenario_seed, attempt_index)` is
+freshly, independently derived (SHA256) from that PLUS the attempt
+index -- proven independent in the 1.3(a) sense, not merely assumed.
+[FACT] A failed candidate has ZERO influence on the next attempt:
+`validate()` (scenario_validator/validator.py) is a pure function of
+its four parameters, and `_generate_with_diagnostics()`'s own loop
+discards a rejected candidate outright (never mutated, never fed back)
+-- re-confirmed this task by re-reading both functions fresh.
+[FACT] RNG state is NOT shared across attempts (each attempt derives
+its own fresh `attempt_seed`, and every `category_rng()` call within
+that attempt builds a brand-new `random.Random` instance from a fresh
+SHA256 derivation) -- there is no global/module-level RNG anywhere in
+scenario_generator (confirmed by grep: no `random.seed(`/module-level
+`random.Random(` calls exist in scenario_generator/).
+
+6.4 The one real cross-slot coupling: DATASET-category duplicate
+detection (a genuinely new finding this investigation surfaced)
+-----------------------------------------------------
+[FACT] `scenario_validator/dataset_validation.py::validate_dataset()`
+rejects a candidate (DATASET/DUPLICATE) if its full-content SHA256 hash
+(every sampled field except metadata) matches an already-ACCEPTED
+hash, threaded through as `accepted_hashes` -- which, per
+`CampaignWorker.execute()`'s own loop, GROWS across slots within one
+campaign run (`accepted_hashes.add(compute_candidate_content_hash(
+scenario))` after every acceptance).
+[INFERENCE] This means scenario slots are NOT perfectly independent in
+the strictest sense: a later slot's true acceptance probability is
+technically conditioned on which exact candidates earlier slots already
+accepted. [INFERENCE, quantified] The practical impact is provably
+negligible in exactly the regime Phase 2 cares about (p small, i.e. the
+"uncertain middle"/high-risk cases): the CONTENT space (every sampled
+field, not just navigation-relevant ones -- occupant positions,
+firefighter placement, event timings, growth parameters, etc.) is
+continuous/high-cardinality in almost every realistic Definition, so
+even among the RARE accepted candidates, exact content collisions are
+vanishingly unlikely UNLESS the Definition is so heavily FixedValue-
+constrained that its entire content space is already small -- and a
+Definition that constrained would ALSO make Option A's exact
+enumeration cheap and exact for the SAME reason (few degrees of
+freedom). [DESIGN] Recommendation: disclose this coupling explicitly in
+Phase 2's own output (a one-line caveat: "assumes scenario slots are
+independent; duplicate-content rejection is a small, undisclosed-
+magnitude source of additional risk in heavily-constrained
+Definitions") rather than modeling it exactly -- modeling it exactly
+would require tracking the full joint content-hash distribution across
+slots, a materially harder problem than the reachability question this
+Phase 2 investigation is actually about, for a coupling this task's own
+evidence shows is negligible in the risk-relevant regime.
+
+
+PART 7 -- SCOPE DISCIPLINE (verified against the non-negotiable
+constraints, one by one)
+=====================================================
+
+- Does NOT modify scenario_generator/generator.py: [DESIGN] confirmed
+  by design -- every recommendation above either reuses
+  `scenario_generator.sampling`/`seed_manager`'s existing PUBLIC
+  functions by import, or reads `scenario_definition`'s Distribution
+  objects directly; nothing proposes editing generator.py's own body.
+- Does NOT weaken scenario validation: [DESIGN] confirmed -- Phase 2
+  proposes reading navigation_validation.py's rules (reusing
+  `bfs_reachable()` verbatim) to PREDICT what the real validator would
+  do on average, never changing what the real validator itself accepts.
+- Does NOT alter Scenario Definition distributions: [DESIGN] confirmed
+  -- every proposed function takes `building`/`definition` as read-only
+  inputs, mirroring Phase 1's own `analyze_campaign_feasibility()`
+  signature exactly.
+- Does NOT silently resample or bias candidates: [DESIGN] confirmed --
+  the Option C fallback samples ONLY for its own internal probability
+  ESTIMATE (using a distinctly-namespaced seed, Section 5), never
+  produces or influences an actual campaign candidate.
+- Does NOT create a second simulator: [DESIGN] confirmed -- no
+  simulation logic (movement, timing, decision-making) is proposed
+  anywhere in this design; only Distribution sampling (already-existing
+  primitives) and graph BFS (already-existing primitive) are reused.
+- Does NOT change existing accepted/rejected semantics: [DESIGN]
+  confirmed -- `validate()`'s own logic is never touched; Phase 2 is
+  read-only prediction, not a new acceptance rule.
+- Does NOT interfere with Phase 1's existing proven-infeasibility
+  checks: [DESIGN] confirmed -- Phase 2 is proposed as an ADDITIVE
+  extension of `campaign_feasibility/`, called AFTER Phase 1's existing
+  ERROR-producing checks (Section 4.4's "LETHAL fire zones are moot for
+  enumeration" finding literally reuses Phase 1's own
+  `lethal_fire_zone_ids` output directly, not a re-derivation) --
+  Phase 1's own blocking behavior for the 0%-feasible cases is
+  completely unchanged.
+
+
+RECOMMENDED PHASE 2 DESIGN (architecture, not implementation)
+=====================================================
+
+[DESIGN] Package/module boundaries: extend `campaign_feasibility/`
+(the existing Phase 1 package), not a new top-level package -- Phase 2
+is more analysis over the SAME inputs (Building, ScenarioDefinition),
+producing a RICHER result attached to the SAME per-zone result type.
+Proposed new files (not created this task):
+  - `campaign_feasibility/enumeration.py` -- Section 4's pruning +
+    exact-enumeration engine (Option A).
+  - `campaign_feasibility/estimation.py` -- Section 5's Option C
+    fallback (reproducible sampling + Wilson-interval reporting), only
+    ever invoked when `enumeration.py` reports its own state space
+    exceeds the tractability threshold.
+  - `campaign_feasibility/campaign_risk.py` -- Section 3's campaign-
+    level formulas (B/C/D), taking a per-zone P(valid|navigation)
+    figure plus `count`/`max_attempts` from `CampaignConfig` and
+    returning the campaign-level metrics.
+  - `campaign_feasibility/model.py` (existing file, extended, not
+    replaced) -- new fields on `ZoneFeasibilityResult` (or a new,
+    explicitly Phase-2-labeled sibling type) to carry: `exact` (bool --
+    was this an exact enumeration or an estimate), `p_valid_navigation`
+    (float or None), `confidence_interval` (Optional[Tuple[float,
+    float]], Option C only), `dominant_uncertain_variables` (which
+    doors/exits/stairs/fire zones drove the number, for the UI's
+    "dominant source" requirement).
+
+[DESIGN] Inputs/outputs: `analyze_campaign_feasibility(building,
+definition, max_attempts=None, count=None)` -- Phase 1's existing
+signature, EXTENDED with the two campaign-config parameters Section 3's
+formulas need (optional, defaulting to None -- when absent, Phase 2's
+campaign-level metrics are simply not computed, preserving Phase 1's
+existing callers/tests unchanged). Returns the existing
+`CampaignFeasibilityReport`, extended with the new per-zone fields
+above plus new campaign-level properties
+(`p_campaign_zero_accepted`, `expected_accepted_count`) computed only
+when `max_attempts`/`count` were supplied.
+
+[DESIGN] Interaction with Phase 1: Phase 2 runs strictly AFTER Phase
+1's existing ERROR/WARNING classification for a zone; a zone Phase 1
+already proved ERROR (Case 1 or Case 2) is NOT re-analyzed by Phase 2
+at all (there is nothing more useful to compute -- it is already
+proven infeasible). Phase 2 only computes its richer, quantified figure
+for zones Phase 1 currently leaves as WARNING or OK, upgrading a bare
+"WARNING" into a WARNING carrying an actual number.
+
+[DESIGN] How real Generator/Validator semantics are preserved: every
+enumerated/sampled combination is checked using `navigation.
+reachability.bfs_reachable()` (the SAME function, extracted once
+already in Phase 1) plus, newly, the `min_open_exits` count rule
+(Section 4.5, an addition, not a modification, to what Phase 1 already
+checks) -- never a re-derived predicate.
+
+[DESIGN] Exact vs. estimated representation: NEVER the same field/type.
+Proposed: `p_valid_navigation` is always reported alongside an `exact:
+bool` flag; the UI (and any downstream consumer) is REQUIRED to render
+these differently (e.g. "P(valid) = 0.33%" vs. "P(valid) ~ 0.3%-0.5%
+(estimated, 95% CI)") -- enforced by giving them genuinely different
+fields/types in the result model, not just a formatting convention that
+could be silently dropped.
+
+[DESIGN] Preflight severity policy (Part 6 of the task, using the
+EXISTING ERROR/WARNING/OK three-level mechanism Phase 1 already built --
+no new mechanism invented):
+  A. Proven zero feasibility (Phase 1, unchanged) -> ERROR / block.
+  B. Extremely low feasibility (Phase 2's new quantified figure implies
+     a high P(campaign produces 0 accepted) -- e.g. above some
+     threshold such as 50%, a genuinely open product decision this
+     report does NOT settle unilaterally) -> [DESIGN, RECOMMENDED] a
+     distinctly-labeled STRONG WARNING within the EXISTING
+     `feasibility_warnings` mechanism (not a new severity level, not a
+     new blocking ERROR -- Phase 1 correctly does not have PROOF here,
+     and manufacturing a false ERROR would be exactly the kind of
+     validation-overreach this whole thread has repeatedly rejected).
+     Concretely: reuse the SAME `ZoneFeasibilityStatus.WARNING`, but
+     have the UI (Part 7/UI section below) render high-P(campaign-
+     fails) warnings with visibly stronger styling/wording than a
+     merely-moderate one, using the ALREADY-COMPUTED number to decide
+     styling, not a new status enum. An explicit user-acknowledgement
+     gate (a confirmation dialog before Start) is a plausible stronger
+     option worth the user's own product decision, but is NOT
+     recommended as this report's own default, since it would be new
+     UI/interaction machinery beyond "extend the existing preflight
+     mechanism" -- flagged as an option, not decided here.
+  C. Moderate feasibility, meaningful rejection risk -> WARNING with
+     the quantitative explanation Section 3's formulas already produce
+     (P(valid), expected accepted count, P(campaign produces 0
+     accepted)) -- exactly the existing `feasibility_warnings` field,
+     with a richer message string.
+  D. High feasibility -> [DESIGN] no change from Phase 1's existing OK
+     behavior; Phase 2's number could optionally be surfaced as a
+     quiet, non-alarming confirmation ("P(valid) = 98.7%, expected
+     9.9/10 scenarios") but this is cosmetic, not load-bearing.
+
+[DESIGN] UI/reporting changes: extend `CampaignWindow.show_preflight()`
+(the SAME method Phase 1 already extended) to render, for each WARNING
+row that now carries Phase 2 data: the estimated/exact P(valid
+candidate), the expected accepted-scenario count, P(campaign produces
+zero accepted scenarios), and which specific zone/fire-zone-set/door-
+id(s) dominate the risk (`dominant_uncertain_variables`) -- all BEFORE
+the user clicks Start, directly answering the task's own framing
+("determine before generation whether this campaign has a realistic
+chance"). No new panel, no new signal -- the existing
+`preflight_completed` signal and label already carry this.
+
+
+EDGE CASES AND FAILURE MODES
+=====================================================
+
+- 0%/100% probabilities: 100%-infeasible is Phase 1's own existing,
+  unchanged ERROR path (not re-touched by Phase 2). A computed
+  P(valid)=0% WITHOUT Phase 1 already proving it (e.g. discovered only
+  through Phase 2's own enumeration, not through Phase 1's cut-vertex/
+  optimistic-bound checks) is possible in principle if Phase 2's
+  enumeration finds literally zero passing combinations among the
+  uncertain set while Phase 1's coarser bounds hadn't proven it --
+  [DESIGN] recommend PROMOTING this to the SAME ERROR/blocking path
+  Phase 1 already uses (Phase 2 enumeration finding zero valid
+  combinations IS itself a proof, exhaustive by construction, not an
+  estimate) -- this is a natural, disclosed strengthening of Phase 1's
+  own coverage, not a new mechanism.
+- Multiple exits / multiple stairs: already naturally handled by
+  Section 4.5's `min_open_exits`-aware rule and by the graph itself
+  (Stair edges connect two floors, already part of the same
+  `bfs_reachable()` traversal Phase 1 already uses) -- no special-
+  casing needed.
+- Disconnected floors: [FACT] `NavigationGraph.validate()` already has
+  its own "disconnected floor" structural check (navigation/graph.py,
+  unrelated to Phase 1/2) -- a disconnected floor simply produces zero
+  reachable zones on it, which Phase 2's enumeration handles identically
+  to Phase 1's existing optimistic-bound check (a zone on a disconnected
+  floor is unreachable under EVERY bound, an existing Phase 1 ERROR
+  case, not a new Phase 2 concern).
+- Multiple fire origins: not a concept the schema supports (`fire:
+  Optional[ScenarioFire]`, singular, confirmed by re-reading scenario/
+  fire.py's shape via generator.py's own construction) -- out of scope,
+  correctly, since it does not exist in the current system.
+- Occupant distributions across several zones: Section 4.2 item 4 and
+  Section 1.6 directly address this -- the newly-identified "uncertain
+  occupancy" dimension, folded into the same enumeration/estimation
+  framework, not a separate mechanism.
+- Doors/exits/stairs with probabilistic states: the PRIMARY case this
+  whole Phase 2 investigation is about (Section 4).
+- Combinations of several risky components simultaneously (e.g. a
+  risky door AND a risky fire zone AND uncertain occupancy at once):
+  handled correctly ONLY by joint enumeration/sampling over the shared
+  relevant space (Section "Decomposition," below) -- explicitly NOT by
+  naively multiplying separately-computed per-dimension probabilities
+  together when they interact through shared graph structure (see next
+  section).
+- Extremely low valid probabilities (e.g. 0.00333, the reproduced
+  case): handled correctly by both Option A (exact, when tractable --
+  and in every reproduction this thread has built, it was) and Option
+  C (estimation, disclosed as such) -- no numerical-stability concern
+  for probabilities this size using ordinary floating point.
+- Very large state spaces: Section 4.3/4.4's pruning + collapse keeps
+  the REALISTIC case small; Section 5's Option C is the honest fallback
+  for the residual, expected-rare case where it is not.
+- Deterministic distributions (all FixedValue): [FACT] the CHEAPEST
+  possible case for exact enumeration -- zero uncertain objects, the
+  enumeration is a single combination, P(valid) is either exactly 0 or
+  exactly 1. Phase 1 already effectively handles this today (optimistic
+  == pessimistic == the one deterministic outcome).
+  Also directly relevant here: this is exactly the regime where
+  Section 6.4's DATASET-duplicate coupling becomes NON-negligible (a
+  fully-deterministic Definition can only ever produce ONE distinct
+  content hash across all attempts) -- [DESIGN] worth a specific,
+  disclosed note in Phase 2's output when P(valid)=1 exactly AND the
+  Definition is fully deterministic: every accepted slot after the
+  first would, in fact, be REJECTED as a DUPLICATE, not accepted again
+  -- a real, provable, currently entirely undocumented interaction
+  between full determinism and the campaign's own duplicate-prevention
+  rule, surfaced by this investigation, not previously known anywhere
+  in this thread's own prior reports.
+- Seeded vs. unseeded generation: [FACT] there is no "unseeded" path
+  anywhere in `scenario_generator` -- `master_seed` is a required
+  `CampaignConfig` field with no default, and every derivation is a
+  pure function of it; Phase 2's Option C fallback must use its OWN,
+  separately-namespaced seed derivation (Section 5) specifically so it
+  never depends on, or interferes with, `config.master_seed` at all.
+
+
+DECOMPOSITION -- WHAT THE REAL CODE ACTUALLY ALLOWS (Part 5 of the
+task, answered directly, with a correction to a plausible-sounding but
+wrong shortcut)
+=====================================================
+
+[FACT/INFERENCE] The four/five DIMENSIONS (occupancy-event-set, fire
+zone, door vector, exit vector, stair vector) ARE provably decomposable
+from each other -- proven independent RNG streams (Section 1.3(a)).
+
+[INFERENCE, the correction] WITHIN the navigation check itself, given
+one sampled (D, E, T) and one sampled F, the events "zone A reaches
+Outside" and "zone B reaches Outside" (for two different occupied
+zones A, B) are GENERALLY CORRELATED, not independent -- they can share
+edges (e.g. a shared corridor whose door being locked disconnects BOTH
+zones at once, or a fire zone that is a cut-vertex for both). The task
+explicitly floated "calculate reachability probability for each
+potential occupant zone [separately], then combine according to the
+actual occupant placement rules" as a possibility to investigate, NOT
+assume -- and the investigation's answer is: this naive per-zone
+decomposition is MATHEMATICALLY WRONG in general, because it would
+compute P(A reaches) x P(B reaches) when the TRUE quantity needed is
+P(A reaches AND B reaches), which is NOT their product whenever A and B
+share any part of the relevant graph structure (the common, realistic
+case). [DESIGN] The CORRECT decomposition, and the one Section 4
+already proposes: enumerate/sample over the UNION of all occupied
+zones' relevant edges TOGETHER, and check "ALL zones in Z reach
+Outside" as ONE joint condition per combination -- exactly what
+`bfs_reachable()` already computes when scoped correctly (a single BFS
+whose reachable-set membership is checked against every zone in Z at
+once), never zone-by-zone. This is stated explicitly because it is the
+one place a superficially reasonable simplification would have silently
+produced a WRONG number.
+
+[DESIGN] The "first sample the building/hazard accessibility state,
+then determine which zones can reach an exit, then calculate the
+probability that all sampled occupants land in reachable zones" framing
+the task also floats IS the correct shape, once corrected for the
+joint-not-per-zone reachability point above, and once the occupancy
+SET itself is also treated as sampled (Section 1.6) rather than fixed
+-- this is exactly Section 4's design (enumerate/sample (F,D,E,T)
+jointly, THEN for a GIVEN occupancy-event realization Z, check the
+joint condition, THEN sum/average over both).
+
+
+PROPOSED NEXT STEPS (only after the full investigation above; not
+implemented; ordering, not commitment)
+=====================================================
+
+[DESIGN] Phase 2A -- exact enumeration only (Section 4), covering fire
++ door/exit/stair, WITHOUT yet touching occupancy-set uncertainty
+(Section 1.6) or the `min_open_exits` addition (Section 4.5 item 3) --
+narrowest possible slice that already closes the specific gap this
+whole investigation started from (a purely-door/exit/stair-driven or
+fire-driven "uncertain middle" case getting a real number instead of a
+bare WARNING). Includes Section 3's campaign-level formulas (B/C/D),
+verified against the reproduced 99.667% case's real numbers as an
+acceptance test.
+
+[DESIGN] Phase 2B -- add the `min_open_exits` rule to the enumeration
+(Section 4.5 item 3, a disclosed Phase 1 gap this task found), and add
+occupancy-set uncertainty (Section 1.6) to both the pruning and the
+enumeration/estimation math.
+
+[DESIGN] Phase 2C -- the Option C (Monte Carlo/estimation) fallback
+path, only built once Phase 2A/2B's exact path is proven correct and
+its own tractability threshold is empirically calibrated against real
+Definitions (not guessed in advance).
+
+[DESIGN] Phase 2D (optional, product decision, not architecture) -- the
+UI severity/acknowledgement questions in the "Preflight severity
+policy" section above (Case B's exact threshold and whether an
+acknowledgement gate is wanted) -- explicitly flagged as needing the
+user's own decision, not resolved by this investigation.
+
+This report does not implement any of the above.
+
+
+GIT STATUS COMPARISON AGAINST BASELINE
+=====================================================
+Baseline (recorded at the start of this task, primary checkout,
+`git status --porcelain`): 249 lines. This includes this thread's own
+prior, already-disclosed additions (through the project summary written
+immediately before this task) PLUS three files unrelated to this
+thread (`benchmark_results/`, `scripts/multi_stream_benchmark.py`,
+`scripts/resolution_quality_comparison.py`) that appeared between the
+prior task's baseline (245 lines) and this task's baseline -- confirmed
+by diffing the two recorded baselines directly. These three files are
+from a DIFFERENT, concurrent background session touching this same
+primary checkout (their names match the "multi-camera-streaming"
+theme seen among this repository's own worktrees, an unrelated,
+already-existing background thread of work) -- not created, touched,
+or attributable to this task or this thread's own Scenario Campaign
+work, and are called out explicitly here so they are not mistaken for
+this task's output.
+
+This task added exactly one new file to the primary checkout:
+  docs/architecture/scenario_campaign_feasibility_phase2_investigation.txt
+  (this report; untracked, newly created).
+
+All reproduction/verification checks performed during this
+investigation (the door-driven-risk confirmation) were run as inline,
+throwaway Python invocations and were never saved as files anywhere in
+the repository.
+
+No file that was part of the recorded baseline was modified by this
+task -- no production code, no test file, no Scenario Definition, no
+Building file.
+
+CONFIRMATION: No implementation files were changed. No code was
+written. No validation rule, threshold, or Scenario Definition
+semantics were altered. Only this one new investigation report was
+created. Nothing was committed in the primary checkout.

@@ -953,14 +953,28 @@ class CampaignWindow(QWidget):
 
         # Requirements 5/6 -- the Building/Definition pre-flight
         # verdict, shown as soon as it's available (before, or instead
-        # of, any generation attempt).
+        # of, any generation attempt). Scenario Campaign Feasibility
+        # Preflight Phase 1 -- feasibility_issues join the same FAILED
+        # listing as a third source (Part H, Cases 1/2); feasibility_
+        # warnings (Part H, Case 3) are shown whenever present, whether
+        # or not the campaign is actually blocked, since they are
+        # non-blocking by design and the campaign proceeds either way.
 
         if not preflight.has_errors:
 
-            self.preflight_issues_label.setText(
+            lines = [
                 "Pre-flight checks passed -- Building and Scenario Definition "
                 "are both structurally valid."
-            )
+            ]
+
+            if preflight.feasibility_warnings:
+
+                lines.append("Feasibility warnings (campaign will proceed):")
+
+                for row in preflight.feasibility_warnings:
+                    lines.append(f"  [FEASIBILITY/{row.code}] {row.message}")
+
+            self.preflight_issues_label.setText("\n".join(lines))
             return
 
         lines = ["Pre-flight checks FAILED:"]
@@ -970,6 +984,28 @@ class CampaignWindow(QWidget):
 
         for row in preflight.definition_issues:
             lines.append(f"  [DEFINITION/{row.code}] {row.message}")
+
+        for row in preflight.feasibility_issues:
+            lines.append(f"  [FEASIBILITY/{row.code}] {row.message}")
+
+        if preflight.feasibility_issues:
+
+            # Part I -- explicit, so a blocked-by-feasibility campaign
+            # never reads like an unexplained "0 accepted" after wasted
+            # random attempts the way the originally reported campaign
+            # did.
+            lines.append(
+                "Generation did not fail after random attempts -- the "
+                "campaign was stopped before generation because the "
+                "configured scenario space was proven infeasible."
+            )
+
+        if preflight.feasibility_warnings:
+
+            lines.append("Additional feasibility warnings:")
+
+            for row in preflight.feasibility_warnings:
+                lines.append(f"  [FEASIBILITY/{row.code}] {row.message}")
 
         self.preflight_issues_label.setText("\n".join(lines))
 

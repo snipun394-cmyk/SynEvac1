@@ -14,17 +14,28 @@ from typing import Mapping, Optional, Tuple
 # This module performs no validation of its own -- it only records and
 # aggregates reports every one of those three, already-frozen
 # validators already produces.
+#
+# Scenario Campaign Feasibility Preflight Phase 1 -- PreflightResult
+# gains two more fields (feasibility_issues/feasibility_warnings),
+# carrying the SAME ValidationRow shape as building_issues/
+# definition_issues so CampaignWindow's existing preflight rendering
+# needs no new display type. The feasibility preflight's own richer
+# result (campaign_feasibility.CampaignFeasibilityReport) is
+# deliberately NOT reused here -- ValidationRow is only ever a
+# flattened, display-ready projection of it, built by CampaignWorker
+# (see campaign_worker.py's own _run_preflight_checks()). This module
+# itself gains no dependency on campaign_feasibility.
 
 
 @dataclass(frozen=True)
 class ValidationRow:
 
-    # `source` is "BUILDING"/"DEFINITION" for a pre-flight issue, or a
-    # scenario_validator.issue.FailureCategory value ("NAVIGATION",
-    # "FIRE", ...) for a per-candidate one -- one field doing the job
-    # of what would otherwise be two differently-typed issue classes,
-    # since a display row never needs to distinguish "which validator"
-    # beyond "what category of problem is this."
+    # `source` is "BUILDING"/"DEFINITION"/"FEASIBILITY" for a pre-flight
+    # issue, or a scenario_validator.issue.FailureCategory value
+    # ("NAVIGATION", "FIRE", ...) for a per-candidate one -- one field
+    # doing the job of what would otherwise be four differently-typed
+    # issue classes, since a display row never needs to distinguish
+    # "which validator" beyond "what category of problem is this."
 
     source: str
     code: str
@@ -38,12 +49,25 @@ class PreflightResult:
     building_issues: Tuple[ValidationRow, ...] = ()
     definition_issues: Tuple[ValidationRow, ...] = ()
 
+    # Scenario Campaign Feasibility Preflight Phase 1 -- blocking
+    # (ERROR-severity) and non-blocking (WARNING-severity) feasibility
+    # findings, kept as two separate tuples (rather than one tuple plus
+    # a severity field) to match building_issues/definition_issues'
+    # own "has_errors only ever looks at the blocking tuple" shape
+    # exactly, with no new branching needed in has_errors below.
+    feasibility_issues: Tuple[ValidationRow, ...] = ()
+    feasibility_warnings: Tuple[ValidationRow, ...] = ()
+
     # =====================================================
 
     @property
     def has_errors(self) -> bool:
 
-        return bool(self.building_issues) or bool(self.definition_issues)
+        return (
+            bool(self.building_issues)
+            or bool(self.definition_issues)
+            or bool(self.feasibility_issues)
+        )
 
 
 @dataclass(frozen=True)

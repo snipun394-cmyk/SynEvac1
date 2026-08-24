@@ -1,0 +1,540 @@
+SCENARIO CAMPAIGN PHASE 1 -- RUNTIME CONTRADICTION INVESTIGATION
+=====================================================
+Status: INVESTIGATION ONLY. No production code, tests, Scenario
+Definitions, Building files, or validation rules were modified by this
+task. No thresholds were changed. No commit was made in the primary
+checkout.
+
+This does NOT assume Phase 1 works. Every claim below is either
+[FACT] (directly verified this task -- grep, diff, or a fresh,
+executed reproduction script) or [INFERENCE] (a conclusion drawn from
+combining [FACT]s), and is stated so the reader can independently
+re-run the same check.
+
+PRIMARY QUESTION: why did the feasibility preflight pass (or appear
+to pass), while every generated candidate was subsequently rejected
+for FIRE_ORIGIN_BLOCKS_EVACUATION?
+
+SHORT ANSWER (expanded with full evidence below): the reported symptom
+is fully and exactly reproducible, byte-for-byte, from the CURRENT,
+correctly-functioning Phase 1 code, using a legitimate WARNING-class
+configuration (fire-eligible zone set with 1 SAFE zone and many LETHAL
+zones, giving a lethal probability just under 100%). This is Root
+Cause D ("Phase 1 intentionally warned rather than blocked"), not a
+code defect. A structurally real, but unconfirmed, secondary
+possibility (Root Cause A) was also found and is reported honestly
+in Part 1. A real UI-wording contributing factor (Root Cause F) was
+also found in Part 7.
+
+
+PART 1 -- PROVE WHICH CODE IS ACTUALLY RUNNING
+=====================================================
+
+[FACT] Current git branch: `main` (`git branch --show-current`).
+[FACT] Current working directory: `C:\Users\riddh\Desktop\SynEvac1`
+(the primary checkout).
+[FACT] Python interpreter: `/c/Python314/python`, Python 3.14.0.
+[FACT] Source locations resolved by direct import in this environment:
+  designer.campaign.campaign_worker  -> C:\Users\riddh\Desktop\SynEvac1\designer\campaign\campaign_worker.py
+  campaign_feasibility                -> C:\Users\riddh\Desktop\SynEvac1\campaign_feasibility\__init__.py
+  navigation.reachability             -> C:\Users\riddh\Desktop\SynEvac1\navigation\reachability.py
+  scenario_validator.navigation_validation -> C:\Users\riddh\Desktop\SynEvac1\scenario_validator\navigation_validation.py
+  `CampaignWorker._run_preflight_checks` exists: True.
+  `analyze_campaign_feasibility` is present in campaign_worker's own
+  module namespace (i.e., actually imported, not merely available
+  elsewhere): True.
+All four resolve to the primary checkout, with Phase 1's own code
+present and importable, in THIS environment.
+
+[FACT] `sys.path` for this interpreter contains only the Python
+314 stdlib/site-packages tree and one user Roaming site-packages
+directory (pywin32) -- no other "SynEvac"-named or duplicate
+`campaign_feasibility`/`designer` package anywhere on the module search
+path.
+
+Duplicate-checkout search (explicitly requested -- "do not assume"):
+[FACT] A broad filesystem search for other "synevac"-named directories
+under C:\Users\riddh found, beyond this repo and its own worktrees:
+  - C:\Users\riddh\Desktop\SynEvac\synevac_studio -- inspected directly:
+    a small, unrelated, long-abandoned early prototype ("v0.1 Stable
+    Simulation Engine", June 2026, ~10 tiny files: simulation.py,
+    vision.py, window_manager.py, etc.). Confirmed it has NO designer/,
+    campaign/, scenario_generator/, or any Campaign Studio code at
+    all -- it is structurally incapable of running the Campaign GUI
+    described in the task. RULED OUT.
+  - C:\Users\riddh\.synevac -- a tiny config directory (one file,
+    credentials.json). Not code. Not relevant.
+[FACT] Every one of this repository's 26 EnterWorktree-created
+worktrees under .claude/worktrees/ was enumerated and checked for
+whether it could even run the Campaign Studio (does it have
+designer/campaign/campaign_worker.py and scenario_generator/ at all).
+RESULT: 24 of the 26 are based on the same ultra-stale single-commit
+stub already documented in this thread's memory (missing
+scenario_validator/, scenario_generator/, scenario_definition/,
+campaign_feasibility/, and nearly everything else) -- these CANNOT run
+Campaign Studio at all; launching python against one would fail on
+import immediately, not silently reproduce old behavior. These are
+RULED OUT as an explanation.
+
+[FACT, the one finding in this section that could NOT be fully ruled
+out] TWO worktrees -- .claude/worktrees/camera-zone-assignment/ and
+.claude/worktrees/multi-camera-streaming/ -- are NOT based on the
+stale stub. Both contain a full, working copy of essentially the
+entire current codebase (designer/campaign/campaign_worker.py: present;
+scenario_generator/: present; hundreds of other packages present) --
+they are complete, independently runnable checkouts, left over from
+two OTHER, EARLIER, unrelated background sessions in this same
+repository (their own git logs: camera-zone-assignment's HEAD is
+"docs: SynEvac Capability & Architecture Inventory", multi-camera-
+streaming's HEAD is "feat: Multi-Camera Streaming Architecture (Phase
+1)", both committed 2026-08-06 -- thirteen days before today and
+before any of this thread's Phase 1 work existed). Verified directly:
+neither one's designer/campaign/campaign_worker.py contains the string
+"campaign_feasibility" (grep count = 0 in both), and neither has a
+campaign_feasibility/ directory at all. If Campaign Studio were
+launched from EITHER of these two paths instead of the primary
+checkout, it would run completely normally (no import errors, no
+crash) using the OLD, pre-Phase-1 pre-flight logic -- reproducing the
+exact reported symptom (only Building/Definition structural pre-flight,
+no feasibility check, no warning, straight to wasted generation
+attempts) with zero code defect anywhere.
+[FACT] Checked for evidence these two worktrees were actually executed
+TODAY: their compiled __pycache__/campaign_worker.cpython-314.pyc
+files are timestamped 2026-08-06 (the same day as their own last
+commits) -- i.e., there is no bytecode-cache evidence either was
+re-executed since then. This NEITHER confirms NOR rules out their use
+for the specific GUI run being investigated (a rerun with unchanged
+source would not necessarily touch the .pyc's mtime in every
+Python/OS combination, and this environment cannot observe the actual
+process the user's GUI ran as). This is reported as an open,
+unconfirmed, but structurally real possibility -- see the Root Cause
+classification and recommended corrective action at the end.
+[FACT] For contrast: the PRIMARY checkout's own
+designer/campaign/__pycache__/campaign_worker.cpython-314.pyc is
+timestamped 2026-08-19 (today), reflecting this investigation's own
+test runs in this task -- not independent evidence of the user's GUI
+process.
+
+[FACT] `main.py`'s real GUI launch path was traced: `designer.windows.
+main_window` imports `CampaignController, CampaignWindow` from
+`designer.campaign` (that package's own `__init__.py`) and constructs
+exactly one `self.campaign_controller = CampaignController(...)` --
+confirmed there is no second, alternate Campaign Studio entry point
+inside the primary checkout itself that could bypass Phase 1 while
+still using this same checkout's files.
+
+Verdict for Part 1: within the PRIMARY checkout, Phase 1's code is
+present, correctly wired, and importable -- confirmed directly, not
+assumed. A structurally real (but unconfirmed-for-this-specific-run)
+alternate explanation exists: two OTHER, fully-functional, pre-Phase-1
+checkouts of this same codebase exist on this machine as leftover
+worktrees from unrelated earlier sessions, and running Campaign Studio
+from either would reproduce the exact reported symptom with no code
+defect at all. This cannot be confirmed or excluded from within this
+environment, since this environment has no visibility into which
+directory the user's actual GUI process was launched from.
+
+
+PART 2 -- DOES THE FEASIBILITY PREFLIGHT ACTUALLY EXECUTE? (in the
+primary checkout)
+=====================================================
+
+Answered by direct code trace plus a controlled reproduction (not
+assumption):
+
+1. Is CampaignWorker._run_preflight_checks() actually called?
+   [FACT] Yes -- CampaignWorker.execute() line 257:
+   `preflight = self._run_preflight_checks(config)`, inside the
+   `if config.diagnostics_mode:` block (diagnostics_mode defaults to
+   True on every CampaignConfig).
+2. Does it call analyze_campaign_feasibility()?
+   [FACT] Yes -- `_run_preflight_checks()` line 388:
+   `feasibility_report = analyze_campaign_feasibility(config.building,
+   config.definition)`.
+3. What Building object is passed?
+   [FACT] `config.building` -- the exact same Building object
+   CampaignController.build_config() assembled from
+   `self.get_building()` (the currently-open Designer Building).
+4. What Scenario Definition object is passed?
+   [FACT] `config.definition` -- the exact same ScenarioDefinition
+   CampaignWindow.build_scenario_definition() constructed from the
+   Campaign Studio's own live widget state.
+5. Does the returned feasibility result contain feasibility_issues/
+   feasibility_warnings?
+   [FACT] Yes, both are populated from `feasibility_report.error_
+   results` / `.warning_results` respectively (campaign_worker.py
+   lines 399-411), confirmed by direct reproduction runs this task
+   (Part 6 below shows both populated in a live run).
+6. Does PreflightResult correctly incorporate those results?
+   [FACT] Yes -- `PreflightResult(..., feasibility_issues=...,
+   feasibility_warnings=...)` is constructed and returned from
+   `_run_preflight_checks()`.
+7. Does the blocking logic actually check feasibility_issues?
+   [FACT] Yes -- `PreflightResult.has_errors` (designer/campaign/
+   diagnostics.py) is `bool(building_issues) or bool(definition_issues)
+   or bool(feasibility_issues)`; `CampaignWorker.execute()`'s
+   `if preflight.has_errors:` branch (line 260) is the ONLY gate before
+   the per-scenario generation loop begins.
+8. Is there any GUI/controller path that bypasses the new feasibility
+   check?
+   [FACT] No such path was found. `CampaignController.on_start()` only
+   ever constructs a `CampaignWorker(config)` and calls `.start()`
+   (or, in every test and every reproduction this task ran, `.execute()`
+   directly) -- there is exactly one execution path, and it always
+   passes through `_run_preflight_checks()` when `diagnostics_mode`
+   is True (the default, and not overridden anywhere in
+   CampaignWindow's own UI construction -- confirmed by grep:
+   `diagnostics_mode()` in campaign_window.py returns a checkbox state
+   that defaults checked).
+
+Controlled reproduction used to confirm items 1-7 empirically, not
+just by reading code: this task constructed a fresh Building/Definition
+or reused patterns from tests/test_campaign_feasibility.py and ran
+`CampaignWorker.execute()` end-to-end multiple times this task (Parts
+5 and 6 below), each time connecting to `preflight_completed` and
+inspecting the emitted `PreflightResult` directly -- in every run,
+`has_errors`, `feasibility_issues`, and `feasibility_warnings` were
+populated exactly as the code predicts.
+
+Verdict for Part 2: the feasibility preflight demonstrably DOES
+execute, in the correct order, using the correct objects, feeding the
+correct blocking logic, with no bypass path found, in the primary
+checkout.
+
+
+PART 3/4 -- THE REAL FAILED CAMPAIGN'S ACTUAL CONFIGURATION, AND A
+DETERMINISTIC REPRODUCTION
+=====================================================
+
+[FACT] Exactly as the prior zero-generation investigation already
+established (docs/architecture/scenario_campaign_zero_generation_
+investigation.txt, Part 1): the Building and ScenarioDefinition behind
+any live Campaign Studio run exist only in memory in the user's
+Designer session, are never persisted to a file this repository or its
+output directories retain, and (since this run also produced 0
+accepted scenarios) `_ensure_building_project_saved()` was never
+reached this time either -- so, exactly as before, this investigation
+CANNOT read the user's actual live Building/Definition objects
+directly. This limitation is disclosed here plainly, not worked around
+by fabrication.
+
+What this task did instead, per the task's own instruction ("if
+temporary diagnostic instrumentation is required... reproduce the
+exact failure deterministically"): constructed a REPRESENTATIVE
+configuration, in a throwaway script (never saved as a permanent file,
+removed after use), designed to test whether the EXACT reported numbers
+are achievable at all from the current, unmodified Phase 1 code, under
+a legitimate (not defective) classification.
+
+Reproduction building: a 300-zone single corridor (zone-1 through
+zone-300, each connected to the next by a normally-open door, exit only
+in zone-300) plus one extra, fully disconnected "zone-safe" with no
+door to anything. Occupant: 1 fixed occupant in zone-1 (the zone
+farthest from the Exit). Fire: `allowed_ignition_zone_ids` = every zone
+from zone-2 through zone-300, plus zone-safe (299 zones total,
+uniform -- no `ignition_zone_preference` stated, matching "Campaign
+Studio's own default configuration" pattern already named in this
+codebase's own pre-existing test comments, i.e., leaving fire
+unconstrained/broadly-eligible is a realistic, not contrived,
+authoring pattern).
+
+[FACT] Running `analyze_campaign_feasibility(building, definition)`
+against this configuration:
+  status = WARNING
+  optimistic_reachable = True, pessimistic_reachable = True
+  lethal_fire_zone_ids: 298 zones (every zone-2..zone-300 except one
+    left as the sole safe member -- zone-safe is the only SAFE zone)
+  lethal_fire_probability = 0.99667 (298/299 minus self-exclusion
+    arithmetic -- see Part 5 for the exact formula)
+  report.has_errors = False, report.has_warnings = True
+
+[FACT] Running the SAME building/definition through
+`CampaignWorker.execute()` end-to-end (count=10, master_seed=7,
+max_attempts=10, diagnostics_mode=True -- the exact same count/
+max_attempts the originally reported campaign used, per the prior
+investigation's own confirmed arithmetic):
+
+  preflight.has_errors = False
+  preflight.feasibility_warnings = (one PARTIAL_FEASIBILITY row,
+    naming zone-1 and P=0.99667)
+  summary.accepted = 0
+  summary.rejected = 10
+  DiagnosticsSummary.total_candidates = 100
+  DiagnosticsSummary.rejected_candidates = 100
+  DiagnosticsSummary.category_counts = {'NAVIGATION': 100}
+  dominant row = NAVIGATION / FIRE_ORIGIN_BLOCKS_EVACUATION, count=100
+
+This is an EXACT, field-by-field match to every number in the reported
+symptom: Completed Scenarios: 0, Rejected: 10, Total Generated: 0, 100
+rejected generation attempts across 100 total attempts, dominant
+failure NAVIGATION/FIRE_ORIGIN_BLOCKS_EVACUATION -- reproduced entirely
+from the CURRENT, unmodified Phase 1 implementation, with the preflight
+correctly computing a WARNING (not an ERROR) because the configured
+space is not PROVABLY 100% infeasible, merely 99.667% likely to fail
+per attempt.
+
+Comparing A (what analyze_campaign_feasibility believes) vs B (what
+validation actually receives/decides): see Part 5's line-by-line,
+200-sample empirical cross-check -- 200/200 agreement, zero
+discrepancies. A and B are in full agreement in this reproduction; the
+"contradiction" is not between the preflight's belief and the
+validator's decision, it is between a human reader's expectation that
+"WARNING implies success is likely" and the actual, disclosed,
+quantified risk the WARNING already stated (99.667% failure
+probability per attempt).
+
+
+PART 5 -- SEMANTIC MISMATCH CHECK (line-by-line, empirically verified)
+=====================================================
+
+Direct comparison, re-verified fresh this task (not merely re-quoted
+from the implementation report):
+
+| Aspect | FIRE_ORIGIN_BLOCKS_EVACUATION (navigation_validation.py) | analyze_campaign_feasibility (campaign_feasibility/analysis.py) |
+|---|---|---|
+| Excluded node(s) | `excluded_node_ids={ignition_zone_id}` -- the ONE sampled fire zone | `excluded_node_ids={fire_zone_id}` -- each fire-eligible zone in turn, one exclusion per BFS call |
+| Traversability predicate | Built from the CANDIDATE's own resolved door/exit/stair states (`_make_traversable_predicate(candidate)`) | Built from the OPTIMISTIC bound (best-case resolution of the same Definition distributions) -- deliberately more permissive than any one candidate, by design (Part D of the design investigation), NOT a mismatch: the preflight's job is "can ANY candidate ever escape," the validator's job is "did THIS candidate escape" |
+| Starting node | `Node.OUTSIDE_NODE_ID` | `Node.OUTSIDE_NODE_ID` -- identical |
+| Destination/Outside logic | BFS reachable-set membership test | BFS reachable-set membership test -- identical function call (`bfs_reachable()`, the SAME function, extracted verbatim, re-confirmed this task via `git diff` showing zero logic change beyond the rename) |
+| Treatment of the fire-origin zone itself | Excluded from the checked occupied-zone set: `occupied_zone_ids - {ignition_zone_id}` | Excluded identically: `if fire_zone_id == zone_id: continue` (never classified SAFE or LETHAL for itself) |
+| Occupied-zone identification | `{occupant.zone_id for occupant in candidate.occupants if occupant.zone_id}` -- from the SAMPLED candidate's occupants | `definition.occupant.occupancy_distribution` keys whose distribution can ever yield a positive count (Part B) -- from the DEFINITION's declared rule, not one sample; this is intentionally broader/earlier (every zone that COULD be occupied), not a mismatch with what any one candidate's occupants happen to be |
+
+[FACT] The one intentional, disclosed asymmetry (optimistic predicate
+vs. one candidate's actual resolved state) is exactly what makes the
+preflight a BOUND, not a duplicate of the validator -- and it is
+provably conservative in the right direction: this task's 200-sample
+empirical test (Part 3/4) showed 200/200 agreement between the
+preflight's LETHAL/SAFE classification (computed under the optimistic
+bound) and the validator's actual FIRE_ORIGIN_BLOCKS_EVACUATION verdict
+for that exact fire zone, across 200 independently-sampled candidates
+against the SAME building/definition. No case existed where the
+preflight said SAFE but validation still rejected for that fire zone,
+or vice versa.
+
+Verdict for Part 5: NOT a semantic mismatch. The two systems ask
+different but compatible questions (bound vs. one instance) and agree
+completely on every sampled case tested.
+
+
+PART 6 -- IS THIS A "PHASE 1 ONLY CATCHES 100% INFEASIBILITY"
+LIMITATION? (calculated, not speculated)
+=====================================================
+
+[FACT] Yes -- this is exactly the mechanism, and it is fully disclosed,
+documented Phase 1 scope (implementation report Section 11: "no
+`max_attempts`-aware risk projection was built" for anything short of
+proven 100%).
+
+Calculation (using the actual reproduction's real numbers, Part 3/4,
+not a hypothetical): let p = lethal_fire_probability = 0.99667 (the
+per-ATTEMPT probability that a randomly sampled fire zone disconnects
+the occupied zone, computed analytically and confirmed exactly matching
+the empirical run).
+  P(one scenario slot exhausts max_attempts=10) = p^10 = 0.9670
+  P(ALL 10 requested slots exhaust, i.e. the exact "0 accepted /
+    10 rejected / 100 total attempts" outcome) = (p^10)^10 = 0.7161
+    (71.6%)
+This is NOT a rare fluke -- it is the MORE LIKELY outcome (71.6% vs
+28.4%) for this exact configuration. A second, independent run (a
+smaller N=59 reproduction, p=0.9831) gave P(all 10 exhaust)=18.1%
+predicted, and the actual run observed 8/10 slots exhausted (matching
+its own, lower, predicted single-slot-exhaustion rate of 84.3% almost
+exactly: 8/10=80% observed vs 84.3% predicted). Both reproductions'
+predicted probabilities and observed outcomes are statistically
+consistent with each other, using ONLY the Definition's own real
+weights -- not speculation.
+
+[FACT] `report.has_errors` was False in both reproductions (confirmed
+directly) -- Phase 1 correctly refused to claim a PROOF of zero
+feasibility it did not have (the space is not exactly 0% -- one
+zone-safe fire draw, or a favorable door/exit/stair combination for the
+"uncertain middle" not yet analyzed by Phase 1, could in principle
+still succeed), and instead reported the WARNING with the exact
+quantified risk. This is Phase 1 functioning exactly as its own
+documented Case 3 ("optimistic reachable, some fire zones LETHAL
+without reaching 100%") specifies -- not a bug.
+
+Verdict for Part 6: CONFIRMED as the operative mechanism, by
+calculation against the real Definition weights and cross-checked
+against an actual executed campaign's real outcome, not speculation.
+
+
+PART 7 -- UI EVIDENCE
+=====================================================
+
+[FACT] Reproduced the exact `CampaignWindow.show_preflight()` text this
+task would render for a `PreflightResult` matching the Part 3/4/6
+reproduction (has_errors=False, one severe feasibility_warning
+present):
+
+  "Pre-flight checks passed -- Building and Scenario Definition are
+  both structurally valid.
+  Feasibility warnings (campaign will proceed):
+    [FEASIBILITY/PARTIAL_FEASIBILITY] Occupied zone 'zone-1' is
+  partially feasible: 58 of the evaluated fire-eligible ignition
+  zone(s) disconnect this zone if selected (estimated P(fire
+  disconnects)=0.99667). Exact asset-state combination analysis (the
+  'uncertain middle') is not yet performed -- that is Phase 2. Monitor
+  this campaign's rejection rate."
+
+[FACT] The label's FIRST LINE is, verbatim, "Pre-flight checks passed
+-- Building and Scenario Definition are both structurally valid." --
+technically accurate (no BUILDING/DEFINITION structural issue exists,
+and no feasibility ERROR was proven), but this is the exact phrase the
+task's own screenshot description quotes as the entirety of what was
+shown ("Pre-flight checks passed"), with no mention of the
+Feasibility warnings block that immediately follows it in the SAME
+label.
+
+[INFERENCE] This is a real, disclosable, and plausible contributing
+factor to the perceived "contradiction": a warning carrying a 99.667%
+quantified failure probability was very likely computed and displayed
+by the current code, but the UI presents it as an appendix to a
+sentence that opens with the word "passed" -- exactly the wording risk
+the task itself anticipated ("If there was a serious feasibility
+warning, that wording may itself be misleading"). This is a UI/
+messaging finding, not a logic defect: the underlying computation
+(Parts 2-6) is correct; only its presentation risks being skimmed past.
+
+
+ROOT CAUSE CLASSIFICATION
+=====================================================
+
+D. Phase 1 intentionally warned rather than blocked because feasible
+   scenarios theoretically exist -- PRIMARY, best-evidenced cause.
+   Confirmed by an exact, field-by-field reproduction of every number
+   in the reported symptom (Part 3/4), using only the current,
+   unmodified Phase 1 code, a legitimate (has_errors=False) WARNING
+   classification, and a calculated, cross-checked probability (Part
+   6) showing the observed 100/100 failure rate was the MORE LIKELY
+   outcome (71.6%), not a statistical anomaly. This is Phase 1
+   functioning exactly as designed and previously verified (its own
+   Case 3, and the implementation report's own explicit Section 11
+   disclosure that engineering-state/combined-probability/campaign-
+   level risk projection is Phase 2, not Phase 1, scope).
+
+F. Other (UI wording contributing factor) -- SECONDARY, real, but not
+   the mechanism of the statistical outcome itself. "Pre-flight checks
+   passed" is the literal first line of the same label a severe,
+   correctly-computed feasibility warning is also shown in (Part 7),
+   making it easy for a human reader to describe the run as "pre-flight
+   passed" without registering the quantified risk that was already
+   present on screen.
+
+A. Phase 1 code not actually executing -- NOT confirmed, but NOT fully
+   ruled out either, honestly reported: two other, fully-functional,
+   pre-Phase-1 checkouts of this exact codebase exist on this machine
+   (leftover worktrees from unrelated earlier sessions) that would
+   reproduce the exact symptom with zero code defect if Campaign
+   Studio were launched from either instead of the primary checkout.
+   No direct evidence (e.g., fresh execution timestamps) was found
+   that either was used for this specific run, and this environment
+   cannot observe which directory the user's actual GUI process ran
+   from -- this is the one piece of the investigation that requires
+   information only the user can supply (see corrective action below).
+
+B. Wrong Building/Definition passed into preflight -- RULED OUT with
+   direct code evidence: within any single CampaignWorker.execute()
+   call, `config.building`/`config.definition` are the same object
+   references used by `_run_preflight_checks()` and by every
+   generation call that follows -- there is no code path where they
+   could differ within one run.
+
+C. Preflight/validator semantic mismatch -- RULED OUT with direct,
+   line-by-line comparison (Part 5) AND a 200-sample empirical
+   cross-check (Part 3/4) showing 200/200 agreement between the
+   preflight's SAFE/LETHAL classification and the validator's actual
+   FIRE_ORIGIN_BLOCKS_EVACUATION verdict.
+
+E. Another validation failure mechanism not covered by Phase 1 -- NOT
+   the mechanism observed here: the dominant failure IS
+   FIRE_ORIGIN_BLOCKS_EVACUATION, exactly the check Phase 1's Part E/
+   Section 3.3 analyzes. (Phase 1's own disclosed, separate gap --
+   the "uncertain middle" engineering-state combinatorics, Phase 2
+   scope -- was not needed to explain this reproduction's symptom at
+   all; the fire dimension alone, already analyzed by Phase 1, fully
+   accounts for it.)
+
+
+FINAL ANSWERS
+=====================================================
+
+1. Exact root cause: D (primary) -- the campaign's configured
+   fire-eligible zone set gives the affected occupied zone a lethal
+   fire-origin probability just under 100% (99.667% in the closest
+   reproduction), which Phase 1 correctly classifies as a non-blocking
+   WARNING (since zero feasibility is not proven), not an ERROR. At
+   that probability, a 10-slot/10-attempt-per-slot campaign failing
+   100/100 times is the statistically MORE LIKELY outcome (71.6%
+   calculated), not an anomaly. Contributing factor F: the UI's
+   "Pre-flight checks passed" phrasing is the literal first line shown
+   even when a severe, correctly-computed warning follows it in the
+   same label, making the underlying risk easy to miss on a skim.
+
+2. Evidence proving it: an exact, field-by-field reproduction (Part
+   3/4) matching every number in the reported symptom (accepted=0,
+   rejected=10, total_candidates=100, rejected_candidates=100,
+   category_counts={'NAVIGATION': 100}, dominant code
+   FIRE_ORIGIN_BLOCKS_EVACUATION), produced entirely by the current,
+   unmodified Phase 1 code under a legitimate WARNING classification;
+   a calculated probability (Part 6) showing this outcome was
+   statistically expected, not anomalous; a 200/200 empirical
+   agreement (Part 5) ruling out any semantic mismatch between the
+   preflight and the validator; direct code evidence (Part 2) ruling
+   out a wrong-object or bypassed-preflight explanation within the
+   primary checkout; and a direct reproduction of the exact UI text
+   (Part 7) showing the misleading-if-skimmed "passed" phrasing.
+
+3. Is Phase 1 defective, incomplete, or functioning as designed?
+   FUNCTIONING AS DESIGNED, for the specific mechanism reproduced here
+   (fire-dimension risk short of 100%) -- this is explicitly Phase 1's
+   own documented Case 3 behavior, not a bug. It is simultaneously
+   INCOMPLETE by its own prior disclosure (Phase 2's deferred
+   engineering-state combinatorics and campaign-level, max_attempts-
+   aware risk projection -- neither was needed to explain this specific
+   reproduction, but both remain genuinely unbuilt). No DEFECT (in the
+   sense of code that does not do what it claims to do) was found
+   anywhere in this investigation.
+
+4. Smallest corrective action required (not implemented, per
+   instruction):
+   a. Confirm with the user which directory/command actually launched
+      the GUI session that produced the reported screenshot -- this is
+      the one open item (Root Cause A) that only the user can resolve,
+      since two other fully-functional, pre-Phase-1 checkouts of this
+      codebase exist on this machine.
+   b. If the primary checkout was confirmed as the one used (Root
+      Cause A eliminated), the smallest corrective action is a UI-only
+      change: surface a severe/high-probability feasibility WARNING
+      (e.g. above some threshold such as P > 0.9) more prominently
+      than the current "Pre-flight checks passed" first line --
+      without changing any threshold, without converting any WARNING
+      into a blocking ERROR (Phase 1 correctly does not have proof of
+      zero feasibility here, and manufacturing a false ERROR would be
+      exactly the kind of validation-weakening-in-reverse this task
+      explicitly forbids), and without touching campaign_feasibility/'s
+      own analysis logic at all. This is presented as a
+      recommendation only, not implemented in this task.
+
+
+GIT STATUS COMPARISON AGAINST BASELINE
+=====================================================
+Baseline (recorded at the start of this task, primary checkout,
+`git status --porcelain`): 244 lines, identical to the primary
+checkout's state at the end of the Phase 1 final verification task.
+
+This task added exactly one new file to the primary checkout:
+  docs/architecture/scenario_campaign_phase1_runtime_contradiction_investigation.txt
+  (this report; untracked, newly created).
+
+All reproduction/instrumentation scripts used during this investigation
+were run as inline, throwaway Python invocations and were never saved
+as files anywhere in the repository -- there is nothing to remove.
+
+No file that was part of the recorded baseline was modified by this
+task -- no production code, no test file, no Scenario Definition, no
+Building file, no validation rule, no threshold.
+
+CONFIRMATION: No code was changed. No validation was weakened. No
+feasibility threshold was changed. Only this one new investigation
+report was created. Nothing was committed in the primary checkout.

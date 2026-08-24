@@ -1,0 +1,914 @@
+SCENARIO CAMPAIGN ZERO-GENERATION INVESTIGATION
+=====================================================
+Status: INVESTIGATION ONLY. No production code, tests, the Scenario
+Definition, or the Building file were modified by this task. No
+validation was weakened. No commit was made in the primary checkout.
+
+Evidence-labeling discipline carried over from the ML/RL investigation
+thread:
+  [FACT]       directly verified by reading the cited code.
+  [INFERENCE]  a conclusion drawn by combining two or more [FACT]s.
+  [RECOMMEND]  a proposal, not a decision and not implemented.
+
+Baseline: `git status --porcelain` recorded at the start of this task
+(232 lines) matches the primary checkout's end-of-prior-task state
+exactly (the pre-existing modified/untracked file set from the
+canonical AI-state work, plus the one new ML/RL investigation report).
+This investigation's own file additions are listed at the end of this
+report, against that recorded baseline.
+
+
+PART 1 -- EXACT CAMPAIGN INPUTS
+=====================================================
+
+1. The exact Scenario Definition used
+-----------------------------------------------------
+[FACT] There is no ScenarioDefinition file anywhere in this repository
+that could have produced this campaign. Traced the actual call chain:
+CampaignController.build_config() (designer/campaign/campaign_controller.py:96)
+calls `definition = self.window.build_scenario_definition()` --
+CampaignWindow's own method (designer/campaign/campaign_window.py:706)
+that constructs a ScenarioDefinition live, in memory, from whatever the
+Campaign Studio's own widgets (Population Profile Editor, Engineering
+Category Editor, fire/occupant group boxes) currently hold. No
+ScenarioDefinition is ever loaded from, or saved to, a file anywhere in
+this pipeline -- confirmed by grep: no `ScenarioDefinition` catalog,
+storage, or serialization module exists (this is the same, already-
+documented gap the code's own comments name: "No Definition Storage/
+Catalog exists anywhere in this codebase," campaign_controller.py:14).
+The Scenario Definition that produced this campaign exists only as
+transient in-memory widget state in whatever Designer session the user
+ran, and cannot be recovered from repository files.
+
+2. The exact building/project file used
+-----------------------------------------------------
+[FACT] Same conclusion, by the same trace: CampaignController.
+build_config() calls `building = self.get_building()` (campaign_
+controller.py:59), which CampaignController's constructor documents as
+a callback supplied by whatever window opened the Campaign Studio --
+i.e., the Building currently open in the Designer session, not a file
+this pipeline reads from disk. The only place a Building/Project file
+is ever written by this pipeline is CampaignWorker.
+_ensure_building_project_saved() (designer/campaign/campaign_worker.py:689),
+which saves `building.syn` into the campaign's OUTPUT directory -- and
+[FACT] that method is only ever reached from _export_scenario_artifacts(),
+which is only ever called from _simulate(), which is only ever called
+when a scenario was accepted (campaign_worker.py:290-305). Since this
+campaign accepted 0 scenarios, `building.syn` was never written. There
+is no on-disk artifact of the Building used, for this specific failed
+run, anywhere.
+
+3. The campaign configuration
+-----------------------------------------------------
+[FACT] CampaignConfig (campaign_worker.py:120-144): name, building,
+definition, definition_id (a sha256-derived id, campaign_controller.py:
+12-27, since no real Definition catalog exists), count, master_seed,
+output_directory, max_attempts (default 10, see Part 1.5), dt (default
+5.0), accepted_hashes, diagnostics_mode (default True). All of these
+except the two constants (max_attempts default, dt default) come from
+CampaignWindow's live widget state at the moment "Start" was clicked --
+none are persisted to a file either.
+
+4. The requested number of scenarios
+-----------------------------------------------------
+[FACT] config.count = 10, read directly off the UI's own reporting:
+"Current Scenario: Scenario 10/10 (rejected)" and "Rejected: 10" both
+directly reflect `config.count == 10` (campaign_worker.py:273,
+`for index in range(config.count)`, and :319, `f"Scenario {index+1}/
+{config.count} (rejected)"`).
+
+5. The maximum generation/retry attempts and where it is configured
+-----------------------------------------------------
+[FACT] DEFAULT_MAX_ATTEMPTS = 10, defined in scenario_pipeline/
+pipeline.py:34, and threaded through as CampaignConfig.max_attempts's
+default (campaign_worker.py:131). CampaignWindow exposes it as a
+user-editable field (`self.window.max_attempts()`, campaign_controller.
+py:105), so the campaign that produced this failure may have used the
+default (10) or an explicitly-set value -- cannot be distinguished from
+the UI text alone, but the arithmetic below (Part 1.6) is consistent
+with 10.
+
+6. Whether "Rejected: 10" and "100 rejected generation attempts"
+represent different levels of retries
+-----------------------------------------------------
+[FACT] YES -- two genuinely different, both-correct-by-construction
+counters:
+  - "Rejected: 10" / "Total Generated: 0" / "Accepted: 0" /
+    "Rejected: 10" (the CampaignSummary panel) count at the
+    SCENARIO-SLOT level: config.count (10) outer loop iterations
+    (campaign_worker.py:273), each of which either produces one
+    accepted scenario or is fully rejected after exhausting every
+    retry for that slot. All 10 slots were rejected, so
+    rejected_count == 10 (campaign_worker.py:318).
+  - "100 rejected generation attempts across 100 total attempts" is
+    DiagnosticsCollector.rejected_candidates / total_candidates
+    (designer/campaign/diagnostics.py:52-53), which counts every
+    single generate_scenario()+validate() call made by
+    _generate_with_diagnostics()'s inner loop (campaign_worker.py:439,
+    `for attempt_index in range(config.max_attempts)`), accumulated
+    across ALL 10 outer slots by ONE DiagnosticsCollector instance
+    created once before the outer loop begins (campaign_worker.py:235)
+    and never reset between slots.
+  - The arithmetic is exactly consistent: 10 scenario slots x
+    max_attempts=10 retries each = 100 total low-level candidate
+    attempts, 100 rejected, 0 accepted, 10/10 slots exhausted. This
+    confirms max_attempts was 10 (the default) for this run.
+This distinction, and whether the UI communicates it clearly, is
+analyzed further in Part 7 and Part 10.
+
+Resolving the two zone UUIDs
+-----------------------------------------------------
+[FACT] Both UUIDs as given in the task
+(`1b066421-f304-8e9b-ea8083b6bf0` and
+`67fa5a0c-bb64-4cde-b2a4-fa9542dfdb8`) are malformed: a standard UUID
+has five hyphen-separated groups of 8-4-4-4-12 hex characters; both
+strings here have a final group one character short (11, not 12). This
+is consistent with a transcription artifact (the values were manually
+retyped from a live UI panel into the task text, not copy-pasted from a
+file) rather than anything about the underlying data -- see the
+persistence-gap finding in Part 10, which explains why no exact
+copy-paste was possible.
+[FACT] A full-repository grep (both the exact strings given and their
+first-8-character prefixes, which would be unaffected by any trailing
+truncation) returns zero matches anywhere in the tracked repository,
+including every test fixture, every sample building, and every worktree.
+[INFERENCE, high confidence] This is the expected, correct result given
+Part 1.1/1.2's finding: the zone ids are uuid4-style identifiers minted
+inside models/zone.py when the specific Building was authored in a live
+Designer session, and that Building was never saved to any file this
+repository (or its output directories) retains. There is no way to
+resolve these two specific ids to human-readable zone names, floors, or
+navigation-topology positions from repository evidence -- doing so
+would require either the original .syn project file (wherever the user
+saved it, if at all, outside this repository) or the campaign's own
+output directory (which, per Part 1.2, was never populated for this
+failed run). This is stated plainly rather than fabricated; Part 2
+below explains the general topology MECHANICS that apply regardless of
+which specific Building was used.
+
+
+PART 2 -- NAVIGATION TOPOLOGY RECONSTRUCTION
+=====================================================
+
+[FACT] The specific topology (which zone is "Zone A," what doors/exits
+connect it to what, whether an alternative route exists) cannot be
+reconstructed for this exact campaign, per Part 1's finding that the
+Building file does not exist anywhere in the repository. What follows
+is the general topology MODEL that governs every Building this pipeline
+could ever validate, traced from navigation/graph_builder.py and
+scenario_validator/navigation_validation.py, which is sufficient to
+determine which of the task's options A-D is structurally possible,
+even without the specific Building.
+
+[FACT] NavigationGraphGenerator.build() (navigation/graph_builder.py:39-87)
+constructs, per Building: one single OUTSIDE node
+(Node.OUTSIDE_NODE_ID); one ZONE node per Zone on every floor; Door
+edges (Zone<->Zone or Zone<->AssemblyPoint, from each Door's own
+zone_a_id/zone_b_id); Exit edges (Zone->OUTSIDE, from each Exit's own
+zone_id); Stair edges (Zone<->Zone across exactly two floors, from each
+Staircase's from_zone_id/to_zone_id/to_floor_id). No edge is ever
+inferred from geometry -- only explicit ids already authored on the
+Door/Exit/Staircase object produce an edge (graph_builder.py:26-29).
+[FACT] Every edge navigation_validation.py's BFS walks is treated as
+bidirectional (its own comment, navigation_validation.py:139-140:
+"since every edge is bidirectional... 'reachable from Outside' under
+the candidate's traversable edges is exactly 'can reach an open
+Exit'"), so validate_navigation() computes reachability as a single BFS
+from the OUTSIDE node outward, using only the CANDIDATE's own sampled
+door/exit/stair states (never the Building's own authored default
+open/closed/locked state -- deliberately, per navigation_validation.py:
+16-27's own docstring, to avoid mutating the Building to check a
+sampled candidate).
+
+Generic topology template (illustrative, not this campaign's actual
+Building):
+
+    Occupied Zone Z
+      -> Door/Stair edge(s) -> intermediate Zone(s)
+        -> ... -> Exit edge -> Outside
+
+The three navigation checks that ran against this campaign's candidates
+(scenario_validator/navigation_validation.py:119-224), in the exact
+order they execute inside one validate_navigation() call:
+
+  (1) NO_EVACUATION_ROUTE (lines 141-153): every occupied zone must be
+      in the BFS-reachable set from Outside, under the candidate's own
+      door/exit/stair states -- no fire-zone exclusion at this stage.
+  (2) FIRE_ORIGIN_BLOCKS_EVACUATION (lines 161-180): the SAME BFS,
+      re-run with the fire's own ignition_zone_id excluded as a node --
+      every occupied zone OTHER than the ignition zone itself must
+      still reach Outside without passing through it.
+  (3) INSUFFICIENT_REACHABLE_EGRESS (lines 189-222): counts how many
+      distinct OPEN exits are each individually reachable from at
+      least one occupied zone, and rejects if fewer than
+      definition.engineering.min_open_exits qualify.
+
+Which of the task's four hypotheses applies
+-----------------------------------------------------
+Without the actual Building, hypothesis (D) -- "the navigation graph
+itself is wrong" -- cannot be confirmed or ruled out directly. However,
+combining Part 1's UUID-resolution failure with Part 4's rejection-code
+analysis below yields a strong [INFERENCE]:
+
+  - Hypothesis (C), "doors/exits are being sampled as closed/blocked,"
+    is NOT the dominant explanation: the dominant code across all 100
+    attempts is FIRE_ORIGIN_BLOCKS_EVACUATION (see Part 4), which is
+    computed with the ignition zone EXCLUDED but every other door/exit
+    state exactly as sampled -- if door/exit closure alone were the
+    cause, plain NO_EVACUATION_ROUTE (check (1), no fire exclusion)
+    would dominate instead, since check (1) is strictly easier to fail
+    under (it has one fewer excluded node) than check (2). The fact
+    that the DOMINANT failure is specifically the fire-exclusion check,
+    not the baseline reachability check, means most candidates DO have
+    a general route to an exit under their sampled door/exit states --
+    they only fail specifically because that route runs through
+    wherever the fire ignited.
+  - This points toward hypothesis (A), "there genuinely is only one
+    route to safety [from the affected occupied zone] and it passes
+    through the ignition zone," combined with a Scenario-Definition-
+    level cause (Part 4/6): the fire's `allowed_ignition_zone_ids`
+    (or the absence of any restriction, defaulting to "every zone on
+    the Building," fire_definition.py's own §3.2 comment,
+    scenario_generator/generator.py:168-174) evidently includes the
+    zone(s) that sit on the occupied zone's only path to an exit,
+    often enough that ~54% of all attempts (108/208 NAVIGATION
+    occurrences under ONE code, Part 4) hit exactly this failure.
+  - Hypothesis (B), "alternative routes exist but are incorrectly
+    excluded," is NOT supported by any code evidence found: navigation_
+    validation.py's traversability predicate (lines 55-74) reads every
+    door/exit/stair state directly off the CANDIDATE, with no
+    exclusion logic beyond the documented fire-zone exclusion in check
+    (2) -- there is no other mechanism in this module that could
+    incorrectly suppress a real alternative route.
+
+
+PART 3 -- FIRE/OCCUPANT/DOOR-STATE GENERATION ORDER
+=====================================================
+
+[FACT] generate_scenario() (scenario_generator/generator.py:43-101)
+calls, in this exact order: build_metadata() -> _generate_occupants()
+(placements + assistance pairing) -> _generate_firefighters() ->
+_generate_fire() -> _generate_door_states() -> _generate_exit_states()
+-> _generate_stair_states() -> _generate_obstacle_states() ->
+_generate_camera_states() -> _generate_detector_states() ->
+_generate_events().
+
+[FACT] Critically, every one of these categories draws from its own
+independent RNG stream (category_rng(attempt_seed, "fire"),
+"occupant", "door", "exit", "stair", ... -- generator.py:50-59),
+and NONE of the category-generation functions ever reads another
+category's already-generated output for placement/state decisions:
+_generate_fire() (lines 163-219) reads only definition.fire and the
+Building's zone/floor lookup -- never the occupants list.
+_generate_door_states()/_generate_exit_states()/_generate_stair_states()
+(lines 540-597) read only definition.engineering's distributions and
+the Building's door/exit/stair lookup -- never the fire or occupants.
+_generate_occupants() (lines 297-326) reads only definition.occupant
+and the Building's zone lookup -- never the fire.
+
+[FACT] This module's own docstring states the answer to the task's
+central Part 3 question explicitly and by design: "Building lookups --
+read-only resolution of ids to geometry/state, never connectivity
+(§4.2: 'never to reason about connectivity, since reachability stays
+exclusively a Validator concern')" (generator.py:104-108), and the
+module-level docstring: "No accept/reject branch exists anywhere in
+this module (§4.1: 'not a validator') -- generate_scenario() always
+returns a candidate Scenario; whether that candidate is acceptable is
+entirely the ... Scenario Validator's concern" (generator.py:31-34).
+
+Answer: the generator does NOT know, at generation time, "do not place
+occupants in a state where their only evacuation route passes through
+the fire origin" -- and by explicit, documented architectural design,
+it is never supposed to. Fire placement, occupant placement, and
+door/exit/stair state sampling are three fully independent random
+draws, each oblivious to the other two and to the Building's
+connectivity graph. Reachability (including the fire-exclusion check)
+is discovered EXCLUSIVELY by scenario_validator.navigation_validation.
+validate_navigation() (Part 2), which only ever runs AFTER a complete
+candidate (fire + occupants + every engineering state) has already been
+fully constructed.
+
+[FACT] Confirming the exact ordering at the orchestration level:
+run_pipeline() (scenario_pipeline/pipeline.py:64-101) and campaign_
+worker.py's own restated mirror, _generate_with_diagnostics() (campaign_
+worker.py:439-461), both call `candidate = generate_scenario(request)`
+FIRST, in full, THEN `report = validate(candidate, ...)` SECOND -- one
+full candidate construction per attempt, one full validation pass per
+attempt, with no early-exit and no partial-construction feasibility
+check anywhere in between.
+
+[FACT] Each attempt is also fully independent of every prior attempt's
+outcome: `attempt_seed = derive_attempt_seed(request.seed,
+request.attempt_index)` (generator.py:48) is a pure function of
+(scenario_seed, attempt_index) -- it does not depend on, and validate()
+(scenario_validator/validator.py:36-41) is documented as "a pure,
+stateless function of its four inputs ... no attempt counter, no seed,
+no memory of a previous call" (validator.py:30-33). No mechanism
+anywhere lets a rejected attempt influence the next attempt's sampling.
+This directly explains why the generator "repeatedly wastes attempts"
+exactly as the task suspected -- confirmed by code, not inferred from
+symptoms alone.
+
+
+PART 4 -- REJECTION PATTERN ANALYSIS
+=====================================================
+
+[FACT] Available data: only the aggregated text the CampaignSummary/
+Validation Report panel displayed, as pasted into the task (no on-disk
+artifact exists to inspect further -- Part 1's finding that this failed
+run left nothing on disk applies here too). Working from that text plus
+the DiagnosticsCollector code that produced it (designer/campaign/
+diagnostics.py):
+
+  - total candidate attempts: 100 (DiagnosticsSummary.total_candidates)
+  - total accepted: 0
+  - total rejected: 100 (DiagnosticsSummary.rejected_candidates)
+  - dominant failure category: NAVIGATION, 208 occurrences
+    (DiagnosticsSummary.category_counts["NAVIGATION"])
+  - dominant single (category, code) row: 108 occurrences, whose
+    quoted message text ("...can only reach an open Exit by routing
+    through the fire's ignition zone...") matches, word for word,
+    FIRE_ORIGIN_BLOCKS_EVACUATION's own f-string (navigation_
+    validation.py:176-179) -- NOT NO_EVACUATION_ROUTE's f-string
+    ("...has no path to an open Exit under this candidate's
+    door/exit/stair state.", navigation_validation.py:150-151).
+    [INFERENCE, high confidence] The task's paraphrase of the dominant
+    row's code tag ("[NAVIGATION.NO_EVACUATION_ROUTE]") is very likely
+    a transcription slip (plausibly carried over from the separately-
+    quoted "First rejection" line, which IS genuinely NO_EVACUATION_
+    ROUTE and whose message text matches that code correctly) -- the
+    underlying data, per DiagnosticsCollector.record_candidate_report()'s
+    own logic (diagnostics.py:117-160), guarantees a row's code and
+    message always originate from the same report.add() call, so a
+    real code/message mismatch inside the application is not possible
+    given this code. The actual dominant code was almost certainly
+    FIRE_ORIGIN_BLOCKS_EVACUATION, not NO_EVACUATION_ROUTE.
+  - first rejection recorded: NO_EVACUATION_ROUTE, on occupied zone
+    '1b066421-...' -- this one's code/message pairing IS internally
+    consistent with the quoted text.
+
+A critical, code-grounded limitation on what this data CAN and CANNOT
+tell us:
+-----------------------------------------------------
+[FACT] DiagnosticsCollector groups every issue by `key = (issue.
+category, issue.code)` ONLY (diagnostics.py:137) -- not by object_id,
+not by the specific zone-id pair embedded in the message text. The
+displayed message for a row is frozen to whichever issue was the FIRST
+one seen under that (category, code) key (diagnostics.py:142-144,
+`if key not in self._row_messages: self._row_messages[key] =
+issue.message`); every subsequent occurrence of that same code, even if
+it names a COMPLETELY DIFFERENT zone-id pair, only increments `count`
+(diagnostics.py:140) without ever updating the displayed message.
+
+[INFERENCE] Consequently, the task's requested table --
+
+  Occupied Zone | Fire Zone | Open/Closed State | Failure Count | Structural Cause
+
+-- cannot be fully populated from the data this UI is capable of
+surfacing today. The "108 times" figure is a count of how many
+candidate attempts hit the FIRE_ORIGIN_BLOCKS_EVACUATION *code*; it is
+NOT, and cannot be confirmed to be, a count of how many attempts hit
+that code for the exact SAME (occupied zone, fire zone) pair. The one
+pair the UI can show (1b066421.../67fa5a0c...) is only the FIRST such
+pair encountered across the whole campaign -- the other 107
+occurrences may repeat that same pair, or may span many different
+occupied-zone/fire-zone combinations that all happen to share the same
+FIRE_ORIGIN_BLOCKS_EVACUATION code. Distinguishing these two
+possibilities would require either the raw per-attempt
+ScenarioValidationReport objects (never persisted anywhere, per Part 1)
+or a code change to key the collector by (category, code, object_id) --
+which this investigation does not implement, per its explicit scope.
+
+What CAN be determined from the code alone, independent of that
+limitation:
+-----------------------------------------------------
+[FACT] 208 NAVIGATION occurrences across 100 attempts averages ~2.08
+per attempt -- consistent with a single attempt commonly failing BOTH
+NO_EVACUATION_ROUTE-adjacent and FIRE_ORIGIN_BLOCKS_EVACUATION-adjacent
+checks simultaneously for different zones, or with INSUFFICIENT_
+REACHABLE_EGRESS also contributing; the exact split among the three
+NAVIGATION codes beyond the one dominant row is not visible in the data
+available.
+[FACT] 0 out of 100 attempts accepted, with the SAME dominant category
+persisting from the very first attempt (the "First rejection" row) all
+the way through all 100 -- this is inconsistent with "one bad random
+combination repeated by chance": each of the 100 attempts independently
+re-samples fire zone, occupant placement, and every door/exit/stair
+state from fresh, attempt-indexed RNG streams (Part 3) with zero shared
+state between them, so a 100/100 failure rate under the same dominant
+code is only plausible if the FEASIBLE region of the Scenario
+Definition's own sampling space (fire-eligible zones x occupancy zones
+x door/exit distributions) is empty or very small relative to its
+total sampling space -- i.e., this is evidence for Part 4's options 2
+("systematic problem with the building topology") and/or 3 ("a
+scenario-definition sampling range that makes valid scenarios extremely
+unlikely"), NOT option 1 ("one bad random combination repeated many
+times," which random independent re-sampling would not reliably
+reproduce 100/100 times) and NOT option 4 alone ("generator samples
+invalid combinations blindly" is true or every generator in this
+architecture by design, per Part 3, but is not sufficient on its own to
+explain a 100% failure rate -- a generator that "samples blindly" would
+still accept sometimes if the feasible region were non-trivial).
+
+
+PART 5 -- PRE-FLIGHT vs CANDIDATE-LEVEL VALIDATION
+=====================================================
+
+[FACT] Pre-flight (CampaignWorker._run_preflight_checks(), campaign_
+worker.py:364-378) runs exactly two frozen, pre-existing validators,
+unchanged by this pipeline: designer.validation.validate_building_authoring()
+(Building well-formedness) and ScenarioDefinition.validate(building=...)
+(-> scenario_definition.validation.validate_definition(),
+scenario_definition/validation.py:117-131).
+
+Table -- what validate_definition() actually checks (the Definition
+pre-flight side; the Building pre-flight side is out of this
+investigation's scope, since the task's evidence points at the
+Definition, not the Building's own authoring):
+
+| Validation Rule | Pre-flight | Candidate-level | Why |
+|---|---|---|---|
+| Distribution shapes well-formed (ranges, weights) | YES (_check_distribution_shapes) | N/A (structural, not re-checked per candidate) | Purely about the Definition's own authored rules, never about a sampled outcome. |
+| Occupancy counts non-negative | YES (_check_occupancy_counts) | N/A | Same as above. |
+| Event templates have required fields | YES (_check_event_templates) | validate_events() also runs per-candidate | Redundant coverage across both layers by design. |
+| Fire allow/forbid zone-id sets disjoint | YES (_check_ignition_allow_forbid_disjoint) | N/A | Structural authoring consistency. |
+| Every referenced id (zone/door/exit/stair/floor) exists on the Building | YES (_check_ids_exist_on_building) | validate_building() also re-checks per candidate | Building-dependent existence check, cheap, safe to run twice. |
+| min_open_exits is achievable in principle | YES (_check_min_open_exits_feasible) -- COUNT-ONLY, optimistic | INSUFFICIENT_REACHABLE_EGRESS (navigation_validation.py) checks it for real, per candidate, using the graph | Pre-flight only counts how many exits COULD resolve OPEN in isolation (ignoring which zones they actually connect to); it never builds a NavigationGraph. |
+| "allowed_ignition_floor_ids has at least one eligible zone" (_check_allowed_floor_has_a_reachable_zone) | YES, but MISNAMED -- it is a pure allow/forbid SET-MEMBERSHIP check, not a graph reachability check | validate_navigation() performs the real, graph-based reachability check | [FACT] Despite its name, this function (scenario_definition/validation.py:431-459) never constructs or queries a NavigationGraph, never reads occupant.occupancy_distribution, and never reads door/exit/stair state distributions -- it only checks that a floor named in allowed_ignition_floor_ids has at least one zone id that survives the allow/forbid set intersection. This is a genuine naming trap in the existing code: its name promises exactly the capability this whole investigation is asking "does pre-flight have?", and the honest answer is that this specific function does not provide it, despite appearing to by name. |
+| Whether occupied zones can reach an open Exit at all (NO_EVACUATION_ROUTE) | NO | YES (validate_navigation(), check 1) | Requires a full NavigationGraph BFS against BOTH which zones are occupied (a sampled occupant placement) AND which doors/exits/stairs are open (a sampled engineering state) -- neither is known until a candidate exists. |
+| Whether the fire's ignition zone is the sole route out (FIRE_ORIGIN_BLOCKS_EVACUATION) | NO | YES (validate_navigation(), check 2) | Same reason -- additionally requires a sampled fire ignition zone, which also does not exist pre-candidate. |
+| Whether enough OPEN exits are actually reachable (INSUFFICIENT_REACHABLE_EGRESS) | NO (only the optimistic count-based min_open_exits_feasible above) | YES (validate_navigation(), check 3) | Same reason. |
+
+Direct answers to the task's three specific questions:
+-----------------------------------------------------
+- "Could pre-flight have detected that the scenario definition has a
+  zero or near-zero feasible generation space?" [FACT] With the checks
+  that exist today: NO. Every pre-flight check is either (a) purely
+  structural (ids resolve, distributions well-formed, counts
+  non-negative) or (b) an optimistic, graph-unaware count/set-membership
+  check (min_open_exits_feasible, and the misleadingly-named
+  _check_allowed_floor_has_a_reachable_zone). None of them ever
+  construct a NavigationGraph, and none of them ever cross-reference
+  occupancy_distribution (which zones will be occupied) against the
+  fire's allowed/forbidden zone-id sets in light of the Building's
+  actual connectivity. A Definition can pass every existing pre-flight
+  check while having a mathematically empty feasible region for
+  navigation, exactly as happened here.
+- "Does it only check structural correctness?" [FACT] Essentially yes,
+  with one partial exception (min_open_exits_feasible, which is a count
+  over a Building-dependent set but still ignores connectivity/topology
+  entirely).
+- "Is there already any feasibility analysis capability that the
+  generator is failing to use?" [FACT] NO existing module in this
+  repository combines NavigationGraphGenerator with a Scenario
+  Definition's occupancy/fire/engineering distributions to compute
+  feasible-space size or existence ahead of candidate construction. The
+  ONLY code in the whole Scenario Engine that ever asks "does this
+  state actually enable evacuation" is scenario_validator.navigation_
+  validation.validate_navigation() (its own docstring says exactly
+  this, navigation_validation.py:29-31), and it is deliberately,
+  architecturally scoped to run against a fully-sampled candidate,
+  never ahead of one (§5.1's "never modifies anything," and the
+  Generator/Validator separation Part 3 already confirmed). Building
+  such a capability would be genuinely new work, not a matter of wiring
+  up something already built (this mirrors the exact shape of finding
+  already established for the ML/RL investigation thread: ingredients
+  exist, the specific combining computation does not).
+
+This investigation deliberately does not conclude that pre-flight
+SHOULD simulate every possible scenario -- see Part 6/9's discussion of
+the computational/architectural cost of a real feasibility check versus
+lighter alternatives.
+
+
+PART 6 -- FIX LOCATION OPTIONS (A-E), EVALUATED CRITICALLY
+=====================================================
+
+Option A -- change the validator to allow evacuation paths through the
+fire-origin zone
+-----------------------------------------------------
+- Exact code change: remove or weaken scenario_validator/navigation_
+  validation.py's check (2) (FIRE_ORIGIN_BLOCKS_EVACUATION, lines
+  161-180), or the `excluded_node_ids={ignition_zone_id}` behavior it
+  depends on.
+- Preserves existing architecture? Technically yes (a small, localized
+  change), but only in the mechanical sense.
+- Hides a real invalid scenario? YES, unambiguously. This check exists
+  specifically to catch a scenario where the ONLY way out of a zone is
+  to walk into the fire's own point of origin -- an evacuation
+  impossibility, not a validator bug. Weakening it would let genuinely
+  unsafe/impossible scenarios through as "accepted," directly
+  contradicting the task's explicit instruction ("Do NOT weaken
+  NAVIGATION.NO_EVACUATION_ROUTE merely to make the campaign generate
+  data") and the same instruction's spirit applied to
+  FIRE_ORIGIN_BLOCKS_EVACUATION.
+- Prevents wasted generation attempts? NO -- it doesn't address why the
+  Definition keeps sampling this structural failure in the first place,
+  it only stops flagging it once sampled.
+- Generalizes to future buildings? N/A -- this is not a fix, it is
+  removing a real safety check. REJECTED as an option; included here
+  only because the task asked for it to be evaluated.
+
+Option B -- change the Scenario Definition manually so the fire cannot
+be generated in the problematic zone
+-----------------------------------------------------
+- Exact code change: none -- this is a content change to the (external,
+  unpersisted) ScenarioDefinition itself, e.g. adding the ignition zone
+  to forbidden_ignition_zone_ids, narrowing allowed_ignition_zone_ids,
+  or adjusting occupancy_distribution so the affected zone is unoccupied.
+- Preserves existing architecture? Yes, fully -- no code touched at all.
+- Hides a real invalid scenario? No -- it prevents the invalid
+  combination from being sampled in the first place, which is different
+  from suppressing detection of it.
+- Prevents wasted generation attempts? Yes, for THIS specific Definition
+  -- but only after a human has already diagnosed the exact zone-pair
+  problem (which, per Part 4, the current tooling only partially
+  surfaces) and manually edited the Definition.
+- Generalizes to future buildings? NO -- this is a one-off, manual fix
+  to one Definition against one Building. It does nothing for the next
+  Building/Definition combination that has the same structural issue,
+  and provides no early warning next time.
+- [RECOMMEND-relevant] This is the fastest way to unblock THIS specific
+  campaign, but is not a systemic fix and was explicitly not requested
+  to be implemented in this task.
+
+Option C -- improve the generator so it samples only combinations with
+at least one feasible evacuation route
+-----------------------------------------------------
+- Exact code change: would require scenario_generator/generator.py to
+  gain awareness of Building connectivity (a NavigationGraph) and to
+  couple fire-zone sampling with occupant-zone sampling and door/exit/
+  stair-state sampling -- a fundamental change to the Generator's own
+  documented contract ("never to reason about connectivity, since
+  reachability stays exclusively a Validator concern," generator.py:
+  107-108; "not a validator," generator.py:31-34).
+- Preserves existing architecture? NO -- this directly contradicts the
+  frozen architecture doc's own Generator/Validator separation
+  (§4.2/§4.13, cited verbatim in the module's own docstring). This is
+  not a minor tweak; it would merge two deliberately-separated
+  responsibilities.
+- Hides a real invalid scenario? No.
+- Prevents wasted generation attempts? Potentially yes, but at the cost
+  of making the Generator's sampling logic dramatically more complex
+  (rejection-sampling-aware, or constrained-sampling-aware, coupling
+  every category's RNG stream together) -- exactly the kind of
+  architectural erosion the existing docstrings were written to guard
+  against.
+- Generalizes to future buildings? Yes, if built correctly, but at high
+  implementation and maintenance cost, and by breaking an existing,
+  explicitly-documented architectural boundary. Not recommended as a
+  first step.
+
+Option D -- add a feasibility/reachability constraint before expensive
+scenario construction
+-----------------------------------------------------
+- Exact code change: a new, additive check -- either (i) inside
+  scenario_definition's pre-flight validation (extending
+  _check_allowed_floor_has_a_reachable_zone, or adding a genuinely new
+  check, to actually build a NavigationGraph and cross-reference it
+  against occupancy_distribution/fire eligibility/engineering
+  defaults), or (ii) a new, separate feasibility-analysis module that
+  CampaignController or CampaignWorker could call before starting the
+  per-scenario loop, reusing NavigationGraphGenerator (already public,
+  already used identically by scenario_validator itself) without
+  touching the Generator or Validator's own responsibilities.
+- Preserves existing architecture? YES -- this is purely additive: it
+  does not touch scenario_generator (still "not a validator," still
+  connectivity-blind) and does not touch scenario_validator's own
+  per-candidate checks (still the sole authority on whether one
+  concrete, sampled candidate is acceptable). It adds a NEW layer that
+  answers a DIFFERENT question ("is this Definition's sampling space
+  plausible at all against this Building," asked once, cheaply, ahead
+  of the expensive per-attempt loop) rather than replacing an existing
+  one.
+- Hides a real invalid scenario? No -- it would REJECT/WARN earlier for
+  the same underlying reason validate_navigation() already rejects,
+  just before wasting attempts rather than after.
+- Prevents wasted generation attempts? YES, directly -- this is the
+  only option that targets the actual waste (100 attempts, 0 accepted)
+  without touching the Generator/Validator separation or weakening any
+  check.
+- Generalizes to future buildings? YES -- built once, reused for every
+  future Definition/Building pair, exactly like every other pre-flight
+  check already is.
+- [RECOMMEND-relevant] This is the most architecturally consistent fix
+  location evaluated. Note the important caveat the task itself
+  flagged: a FULL feasibility guarantee (checking every possible
+  combination of sampled door/exit/stair states, not just the
+  Building-authored defaults) is combinatorially expensive in general
+  -- see Part 9 for a scoped, honest version of what this check could
+  cheaply cover versus what it cannot.
+
+Option E -- the building navigation topology itself needs correction
+-----------------------------------------------------
+- Exact code change: none in this repository -- this would be a content
+  change to the (unrecoverable, per Part 1) Building file itself (e.g.,
+  adding a second egress path, an additional door, from the affected
+  zone).
+- Preserves existing architecture? Yes, fully -- no code touched.
+- Hides a real invalid scenario? No -- if the topology genuinely has
+  only one route out of an occupied zone and that route can coincide
+  with the fire's own origin, that IS a real, physically meaningful
+  fact about the Building as authored (a genuine single-point-of-
+  failure egress design), and validate_navigation() is correctly
+  flagging it, not malfunctioning.
+- Prevents wasted generation attempts? Only if the topology really is
+  the root cause (Part 2's hypothesis A) rather than the Scenario
+  Definition's fire-eligibility being too broad relative to a topology
+  that is otherwise fine (also consistent with Part 2's evidence) --
+  this investigation cannot distinguish these two without the actual
+  Building file (Part 1), so this cannot be confirmed as sufficient on
+  its own.
+- Generalizes to future buildings? N/A -- topology fixes are inherently
+  per-building.
+- [RECOMMEND-relevant] Cannot be ruled in or out with current evidence;
+  worth checking directly against the real Building (which this
+  investigation never obtained) before assuming it's needed, since
+  Option B/D may be sufficient if the real cause is Definition-side
+  over-permissiveness rather than a genuinely single-egress zone.
+
+
+PART 7 -- GENERATOR EXHAUSTION BEHAVIOR
+=====================================================
+
+[FACT] Attempt limit definition: DEFAULT_MAX_ATTEMPTS = 10
+(scenario_pipeline/pipeline.py:34), overridable per campaign via
+CampaignConfig.max_attempts (campaign_worker.py:131), itself sourced
+from CampaignWindow.max_attempts() (a user-editable UI field,
+campaign_controller.py:105).
+
+[FACT] Retry mechanics: for a given scenario slot (fixed scenario_seed),
+run_pipeline()/the mirrored _generate_with_diagnostics() loop
+(scenario_pipeline/pipeline.py:64-115, campaign_worker.py:439-461) tries
+up to max_attempts times, each with attempt_index incrementing by
+exactly one and a fresh, independently-derived attempt_seed (Part 3).
+The FIRST accepted candidate within that budget is returned immediately
+(pipeline.py:81-94); if every attempt within the budget is rejected,
+the slot as a whole is reported rejected and the outer per-scenario
+loop (campaign_worker.py:273) moves on to the next slot with a NEW
+scenario_seed (derive_scenario_seed(master_seed, index+1)) -- a
+completely fresh random draw space, unrelated to the failed slot's.
+
+[FACT] Whether the generator detects repeated structurally impossible
+combinations: NO. Confirmed directly by Part 3's evidence: no state is
+carried between attempts (validate() is documented stateless,
+validator.py:30-33) and no state is carried between scenario slots
+either (each slot gets an independent scenario_seed, and
+DiagnosticsCollector only ACCUMULATES observations for display -- it
+never feeds anything back into generation, confirmed by grep: no
+caller of DiagnosticsCollector ever reads its state back into
+GenerationRequest or ScenarioDefinition).
+
+[FACT] Whether failed candidates influence future sampling: NO, by the
+same evidence -- confirmed architecturally deliberate, not an oversight
+(Part 3's citations).
+
+[FACT] Whether the same invalid combination can be repeatedly sampled:
+YES, structurally certain to happen whenever the Definition's feasible
+region is empty or small relative to its full sampling space, precisely
+BECAUSE nothing changes between attempts except the RNG draw itself --
+if the draw space itself cannot produce a feasible candidate (or can
+only rarely), every attempt independently rediscovers a failure, as
+observed here (100/100).
+
+[FACT] Whether exhaustion is correctly reported to the UI: partially.
+The counts themselves (Rejected: 10, 100 rejected generation attempts)
+are individually correct given what they each measure (Part 1.6) --
+this is "correct by design," not a bug in the arithmetic. However:
+  - [FACT] "Total Generated: 0" and "Accepted: 0" are always
+    IDENTICAL by construction: CampaignSummary.total_generated is set
+    to accepted_count (campaign_worker.py:338, `total_generated=
+    accepted_count`), the exact same value as CampaignSummary.accepted
+    (campaign_worker.py:339). Two differently-labeled fields display
+    the same number under every possible campaign outcome, not just
+    this failure -- this is redundant, and a user could easily (and
+    reasonably) assume "Total Generated" means something closer to
+    "100" (the raw attempt count) given the surrounding "Rejected: 10"
+    context, when it does not.
+  - [FACT] Neither the CampaignSummary panel ("Rejected: 10") nor the
+    Diagnostics panel ("100 rejected generation attempts") ever states
+    the max_attempts value or the multiplication relating them
+    (10 slots x 10 attempts/slot = 100) anywhere in the UI text
+    produced by show_summary()/explain_total_rejection() (campaign_
+    window.py:900-930, diagnostics.py:61-89) -- a user has to already
+    know the architecture (as this investigation had to reconstruct
+    from source) to understand why "10" and "100" are both correct and
+    how they relate. This is the concrete basis for the task's own
+    question 6 (Part 1) -- correct by design, but the UI text does not
+    make the two-level relationship legible on its own.
+
+
+PART 8 -- ROOT CAUSE
+=====================================================
+
+[INFERENCE, synthesizing Parts 1-7] The zero-generation outcome is not
+a bug in any single module -- every module involved (generator,
+navigation validator, pre-flight validator, diagnostics collector,
+campaign worker) is behaving exactly as its own documentation says it
+should. The root cause is an architectural gap between two correctly-
+functioning halves:
+
+  1. The Generator is, by explicit and repeatedly-documented design,
+     completely connectivity-blind: fire placement, occupant placement,
+     and door/exit/stair state sampling are three independent random
+     draws with no awareness of the Building's navigation graph or of
+     each other (Part 3).
+  2. The ONLY place connectivity is ever checked is per-candidate,
+     post-construction, inside scenario_validator.navigation_validation
+     (Part 2) -- and pre-flight validation, despite one function's
+     misleading name, never performs an equivalent check ahead of time
+     (Part 5).
+  3. For THIS Scenario Definition/Building pair, the combination of
+     fire-zone eligibility (likely unrestricted or too broad,
+     defaulting to "every zone on the Building" absent an explicit
+     allow-list per fire_definition.py's own documented default) and
+     the occupied zone's own topology produced a feasible region that
+     is empty, or so small that 100 independent random draws (10 slots
+     x 10 attempts) never once landed inside it (Part 4).
+  4. Because nothing in the pipeline detects "empty feasible region"
+     ahead of time, and because attempts carry no memory of prior
+     failures (Part 7), the system's only possible behavior in this
+     situation is to exhaust every attempt across every slot, one
+     independent random failure at a time, and report "0 accepted"
+     only at the very end.
+
+Root cause, stated in one sentence: the Scenario Definition (most
+likely its fire ignition-zone eligibility, possibly interacting with a
+Building topology where the affected occupied zone has a narrow or
+single egress path) defines a navigation-feasible generation space that
+is empty or near-empty, and no stage of this pipeline -- by design --
+checks for that condition before spending expensive, independent
+generation attempts discovering it one at a time.
+
+
+PART 9 -- RECOMMENDED NEXT IMPLEMENTATION PHASE
+=====================================================
+
+[RECOMMEND] Build a scoped, additive PRE-FLIGHT feasibility check
+(Option D), NOT a Generator redesign (Option C) and NOT a validator
+weakening (Option A): before the per-scenario generation loop begins,
+reuse NavigationGraphGenerator (already public, already the exact
+machinery scenario_validator.navigation_validation itself uses) to
+answer one specific, cheap, well-defined question per occupied zone
+(as declared by definition.occupant.occupancy_distribution) that
+pre-flight can already resolve without sampling anything: "excluding
+every zone that COULD be the fire's ignition zone under this
+Definition's own allowed/forbidden rules, is this occupied zone still
+connected to Outside using the BUILDING's own authored door/exit/stair
+defaults?" This mirrors check (2) (FIRE_ORIGIN_BLOCKS_EVACUATION)
+almost exactly, but runs it against the Definition's whole ELIGIBLE
+fire-zone SET (not one sampled zone) and the Building's own defaults
+(not one sampled engineering state) -- a single, cheap, deterministic
+BFS per occupied zone, computed once per campaign start, not once per
+attempt.
+
+Why this scope, and not a broader one: a fully exhaustive feasibility
+check (covering every possible sampled combination of door/exit/stair
+states, not just the Building's authored defaults) is combinatorially
+infeasible in general -- exactly the caution the task itself asked this
+investigation not to bypass ("do not automatically conclude pre-flight
+should simulate every possible scenario"). The scoped version above
+answers the specific, structural, Definition-authoring-time question
+that would have caught THIS failure (a fire-eligible zone set broad
+enough to overlap an occupied zone's only route) without attempting
+general combinatorial coverage. It would surface as a new pre-flight
+WARNING or ERROR (author's choice, not decided here) rather than
+silently blocking the campaign, consistent with the existing pre-flight
+pattern (Part 5's table) of stopping before any generation attempt is
+wasted, with a specific, actionable message naming the occupied zone
+and the offending part of the fire-eligibility rule -- something the
+current dominant-failure text (Part 4) cannot yet do precisely, because
+of the (category, code)-only grouping limitation also found in this
+investigation.
+
+This is presented as a recommendation only, per the task's explicit
+instruction not to implement it in this phase.
+
+
+PART 10 -- UI/REPORTING ISSUES FOUND
+=====================================================
+
+1. [FACT] "Total Generated" and "Accepted" are always numerically
+   identical (both set to accepted_count) -- two labels for one number,
+   which invites the reasonable misreading that "Total Generated" means
+   the raw attempt count (100 here). See Part 7.
+2. [FACT] Neither "Rejected: 10" (scenario-slot level) nor "100 rejected
+   generation attempts" (candidate-attempt level) is labeled with its
+   own granularity anywhere in the UI text, and the relationship between
+   them (10 slots x max_attempts=10 = 100) is never stated. Both are
+   individually correct; their juxtaposition without explanation is
+   what produced the task's own question 6. See Part 1.6/Part 7.
+3. [FACT] DiagnosticsCollector's per-row aggregation key is (category,
+   code) only, discarding the specific object_id/zone-pair beyond the
+   first occurrence of each code -- so a "seen N times" count and its
+   displayed message cannot be relied upon to mean "this exact pair
+   failed N times"; it may mean "this failure code fired N times, for
+   a mix of different pairs, with only the first one's pair shown."
+   This directly limits how precisely a user (or this investigation)
+   can diagnose a dominant failure from the UI alone. See Part 4.
+4. [FACT] No mechanism anywhere in designer/campaign/campaign_window.py
+   persists the Validation Report panel, the dominant-failure
+   explanation, or (independently) the Building/Scenario Definition
+   used, to disk when a campaign fully fails (0 accepted) -- confirmed
+   by scanning every method in that file for save/export/write logic.
+   Combined with _ensure_building_project_saved() never being reached
+   on a 0-accepted run (Part 1.2), a fully-failed campaign leaves
+   literally zero artifacts on disk: not the Building, not the
+   Definition, not the per-attempt validation reports, nothing beyond
+   whatever a user manually transcribes from the live window (which is
+   exactly what happened in this task, and plausibly explains both the
+   malformed UUIDs and the code/message mismatch noted in Part 1 and
+   Part 4 -- manual transcription of a transient UI, with no
+   machine-readable export available to copy from instead).
+5. [INFERENCE] Item 4 is arguably the most actionable, lowest-risk UI
+   finding of this investigation: it does not touch validation logic
+   or the Generator/Validator boundary at all, and would directly solve
+   the practical problem this very investigation ran into (having to
+   reconstruct campaign inputs from a user's manual transcription
+   instead of an artifact). Not evaluated further here since Part 9
+   restricts this investigation to one recommended phase, but flagged
+   as a strong candidate for a future, separate, low-risk phase.
+
+
+PART 11 -- EXPLICIT NON-GOALS OF THIS INVESTIGATION
+=====================================================
+
+- No code was implemented, including the Part 9 recommendation.
+- The Scenario Definition used for this campaign was not altered (it
+  could not be -- it does not exist as a persisted artifact this
+  investigation could reach; see Part 1).
+- The Building file used for this campaign was not altered, for the
+  same reason.
+- No validation rule (NO_EVACUATION_ROUTE, FIRE_ORIGIN_BLOCKS_
+  EVACUATION, or INSUFFICIENT_REACHABLE_EGRESS) was weakened, removed,
+  or bypassed.
+- No claim is made about which specific option among B/D/E is
+  sufficient on its own to fix THIS specific campaign, since the actual
+  Building/Definition could not be inspected (Part 1) -- Part 9's
+  recommendation targets the systemic, cross-building gap (Option D),
+  not a guaranteed fix for this one unreachable instance.
+- No attempt was made to reconstruct or guess plausible zone names,
+  floor layouts, or topology for the two UUIDs in the task -- Part 2
+  is explicit that this was not possible from repository evidence, and
+  no fabricated topology diagram is presented as if it were this
+  campaign's real Building.
+- No change was proposed to DiagnosticsCollector's (category, code)
+  grouping granularity (Part 4/10's finding) -- noted as a real
+  limitation, not fixed or redesigned in this phase.
+- No performance/scalability analysis of a full combinatorial
+  feasibility checker was produced beyond the qualitative caution in
+  Part 9 -- the task explicitly asked this investigation not to assume
+  pre-flight should simulate every possible scenario, and no such
+  design is proposed here.
+
+
+ASSUMPTIONS THAT COULD NOT BE FULLY VERIFIED
+=====================================================
+- That max_attempts was exactly 10 (the DEFAULT_MAX_ATTEMPTS constant)
+  for this specific campaign, rather than a different user-set value
+  that happens to produce the same 10x10=100 arithmetic by coincidence
+  (e.g., a different count/max_attempts pair could not produce this
+  exact 10/100 relationship, so this is actually well-constrained by
+  the arithmetic itself, but the UI text alone does not state
+  max_attempts directly).
+- That the dominant row's true code was FIRE_ORIGIN_BLOCKS_EVACUATION
+  rather than NO_EVACUATION_ROUTE (Part 4) -- inferred with high
+  confidence from the message text matching FIRE_ORIGIN_BLOCKS_
+  EVACUATION's f-string verbatim and the collector's code guaranteeing
+  code/message pairing, but not independently confirmed against the
+  original campaign (which, per Part 1/10, left no artifact to check
+  against).
+- That the malformed UUIDs and the apparent code/message mismatch are
+  both explained by manual transcription from a live UI with no export
+  mechanism (Part 10, item 4) -- a plausible, internally consistent
+  explanation given the evidence, but not something this investigation
+  could confirm directly (e.g., by asking whether the user typed the
+  values from memory or from a screenshot).
+- Whether the real Building's topology genuinely has only one route out
+  of the affected occupied zone (Part 2's hypothesis A) versus a wider
+  topology whose feasible fire-zone subset the Definition simply failed
+  to exclude -- both remain consistent with the available evidence, and
+  distinguishing them requires the actual Building file, which this
+  investigation could not obtain from the repository.
+
+
+GIT STATUS COMPARISON AGAINST BASELINE
+=====================================================
+Baseline (recorded at the start of this task, primary checkout,
+`git status --porcelain`): 232 lines, identical to the primary
+checkout's state at the end of the prior (ML/RL) investigation task --
+the same pre-existing canonical-AI-state-work file set, plus the
+ml_building_state_rl_integration_investigation.txt report already
+created in that prior task.
+
+This task added exactly one new file to the primary checkout:
+  docs/architecture/scenario_campaign_zero_generation_investigation.txt
+  (this report; untracked, newly created).
+
+No file that was part of the recorded baseline was modified by this
+task. No Scenario Definition, no Building file, no test file, and no
+production code file was altered.
+
+CONFIRMATION: No production code changed as a result of this task. No
+validation was weakened. Only this one new investigation report was
+created. Nothing was committed in the primary checkout.

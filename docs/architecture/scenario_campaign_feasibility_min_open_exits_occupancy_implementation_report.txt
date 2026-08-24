@@ -1,0 +1,499 @@
+SCENARIO CAMPAIGN FEASIBILITY -- min_open_exits x UNCERTAIN-OCCUPANCY
+CORRECTNESS EXTENSION (Phase 2B.1)
+=====================================================
+Status: IMPLEMENTED. This closes the one narrow, explicitly-disclosed
+correctness gap Phase 2B left open (its own Section 6/8-item-3/
+Section 11): min_open_exits' NAVIGATION-based reachable-egress check
+was, before this task, evaluated using only GUARANTEED-occupied zones,
+never accounting for a SAFE uncertain zone's own possible presence.
+Monte Carlo, campaign-level yield formulas, and UI/UX changes remain
+explicitly out of scope, per instruction. Nothing was committed.
+
+Both prerequisite reports, plus the Phase 2 investigation, were
+re-read in full before any code was written:
+  1. docs/architecture/scenario_campaign_feasibility_phase2_investigation.txt
+  2. docs/architecture/scenario_campaign_feasibility_phase2a_implementation_report.txt
+  3. docs/architecture/scenario_campaign_feasibility_phase2b_implementation_report.txt
+
+
+1. THE EXACT VALIDATOR SEMANTICS DISCOVERED (re-traced fresh, not
+assumed from prior reports)
+=====================================================
+
+[FACT] `scenario_validator/navigation_validation.py::_occupied_zone_ids()`
+reads ONLY `{occupant.zone_id for occupant in candidate.occupants if
+occupant.zone_id}` -- `candidate.firefighters` is never read anywhere
+in this module (grep-verified this task, re-confirming Phase 2A's own
+finding still holds unchanged). Firefighters therefore do NOT affect
+min_open_exits, or any other NAVIGATION check, at all.
+
+[FACT] `validate_navigation()` has an early `if not occupied_zone_ids:
+return report` -- when there are zero occupants anywhere, NONE of its
+four checks run, including check (4). The only min_open_exits-relevant
+rule left active in that case is `engineering_validation.py`'s own
+unconditional `MIN_OPEN_EXITS_UNSATISFIED` (`open_exit_count <
+engineering.min_open_exits`, driven purely by exit STATE, never by
+occupancy or reachability).
+
+[FACT] Check (4), `INSUFFICIENT_REACHABLE_EGRESS`, re-read line by
+line this task:
+```
+indoor_traversable = _make_traversable_predicate(candidate, include_exits=False)
+reachable_zone_count = 0
+for exit_state in candidate.exit_states:
+    if not exit_state.is_open: continue
+    exit_edge = <edge for this exit_state.exit_id>
+    reachable_from_exit = bfs_reachable(graph, [exit_edge.from_node], indoor_traversable)
+    if reachable_from_exit & occupied_zone_ids:
+        reachable_zone_count += 1
+if reachable_zone_count < min_open_exits: ... ERROR
+```
+This counts DISTINCT OPEN exits that are reachable from AT LEAST ONE
+ACTUALLY-OCCUPIED zone (`occupied_zone_ids`, the real candidate's real
+occupants) -- not "all open exits globally" (that is the separate,
+unconditional STRUCTURAL rule), not "reachable from ALL occupied
+zones" (a much stronger, unimplemented condition), and not gated by
+fire-origin exclusion at all (unlike checks (1)/(2), check (4) builds
+its own fresh `indoor_traversable` predicate with no `excluded_node_ids`
+anywhere -- confirmed by direct inspection, not assumed).
+
+[FACT] `occupied_zone_ids` is derived once, from the REAL candidate's
+real sampled occupant placements -- for this analysis module (which
+never samples), the equivalent question is: for a given fixed
+engineering state, which zones COULD end up occupied this attempt, and
+with what probability, and does check (4) hold across every occupancy
+realization consistent with "every UNSAFE zone is empty" (the
+requirement checks (1)/(2) already impose).
+
+[FACT] No other validation rule depends on the occupancy PATTERN
+(which specific zones end up occupied) the way check (4) does. Checks
+(1)/(2) depend only on whether EACH INDIVIDUAL zone (checked one at a
+time) is itself occupied -- already exactly modeled by Phase 2B's own
+per-zone P(zero) reduction. `MIN_OPEN_EXITS_UNSATISFIED` (STRUCTURAL)
+depends only on exit STATE, never occupancy. The five other,
+out-of-scope categories (STRUCTURAL PINNED_STATE_MISMATCH, GEOMETRY,
+most of OCCUPANCY/FIRE, EVENTS, DATASET) remain unaffected and
+unexamined, unchanged from Phase 2A/2B's own scoping.
+
+
+2. THE PREVIOUSLY INCOMPLETE PHASE 2B BEHAVIOR
+=====================================================
+
+Phase 2B's own `_reachable_open_exit_count(graph, state_map,
+guaranteed_zones)` (removed by this task, folded into the new
+`_zone_reachable_open_exit_sets()`) computed `egress_ok` using ONLY the
+module-level `guaranteed_zones` set (zones whose occupancy_distribution
+guarantees P(zero)==0.0), never the SAFE-but-uncertain zones. When
+`egress_ok` was already True from guaranteed zones alone, the result
+was exact (this is precisely the shortcut this task preserves). When
+`egress_ok` was False from guaranteed zones alone but a SAFE uncertain
+zone's own possible presence could, if occupied, supply the missing
+reachable exit(s), Phase 2B silently treated the whole combination as
+"insufficient egress unless literally nobody is present" -- understating
+`p_valid` (a real, disclosed-but-uncorrected false negative) whenever
+such a zone existed. This never affected `exact_for_analyzed_dimensions`,
+but it DID mean `exact=True` was, in that narrow case, an overclaim in
+substance (though never contradicted by any test in this thread, since
+no prior test constructed this specific configuration) -- Section 8
+below explains why `exact=True` is now genuinely, not just nominally,
+correct.
+
+
+3. THE MATHEMATICAL MODEL IMPLEMENTED
+=====================================================
+
+For one fixed (fire-branch, engineering-state) combination, having
+already classified every occupancy-relevant zone as UNSAFE or SAFE
+(Phase 2B's own unchanged two-check classification):
+
+  p_U = P(every UNSAFE zone is empty) -- unchanged from Phase 2B,
+  still a simple product of per-zone P(zero) values. An unsafe zone's
+  ONLY valid contribution is zero occupants; it is never given to the
+  exit-coverage computation below, exactly matching the task's own
+  explicit "an unsafe zone must never help satisfy min_open_exits"
+  requirement.
+
+  If `min_open_exits <= 0`: `P(valid | combination) = p_U` -- the
+  min_open_exits dimension cannot reject anything, closed-form,
+  unchanged from Phase 2B, no exit-coverage work performed at all.
+
+  Otherwise, among the SAFE zones:
+    `base_reachable` = union of reachable-open-exit sets
+    (`_zone_reachable_open_exit_sets()`) over SAFE zones that are
+    GUARANTEED occupied (P(zero)==0.0) -- their contribution is
+    unconditional.
+    `need = min_open_exits - |base_reachable|`.
+
+  If `need <= 0`: `base_reachable` alone already meets the threshold,
+  so no SAFE zone's uncertain occupancy can possibly matter to this
+  condition -- `P(valid | combination) = p_U`, the exact Phase 2B
+  closed-form shortcut, preserved byte-for-byte in behavior for this
+  (the common) case. This is `ThresholdAlreadySatisfiedTests` in the
+  new test suite.
+
+  If `need > 0`: every SAFE zone with genuine uncertainty
+  (0 < P(zero) < 1) contributes its RESIDUAL reachable-exit set
+  (`R(zone) - base_reachable`) if nonempty; zones with an IDENTICAL
+  residual are merged into one GROUP whose activation probability is
+  `1 - product(P(zero) over the group's zones)` (Section 5). Let
+  `coverage_probability = P(|union of activated groups' residuals| >=
+  need)`, computed exactly by `_exit_coverage_probability_at_least()`
+  (Section 4/6).
+
+  Let `p_all_safe_empty = product(P(zero) over ALL safe zones)` --
+  provably 0.0 the instant any SAFE zone is guaranteed-occupied (its
+  own P(zero) factor is 0.0), so this term is a real possibility only
+  when NO safe zone is forced to be present. Let `structural_ok =
+  (total open exit count >= min_open_exits)` -- unchanged, the same
+  unconditional STRUCTURAL rule Phase 2A already reproduces.
+
+  `P(valid | combination) = p_U * (coverage_probability +
+  (p_all_safe_empty if structural_ok else 0.0))`
+
+  This single formula, implemented verbatim in `_combo_occupancy_factor()`,
+  is a full generalization: it reduces to Phase 2B's own formula exactly
+  whenever no SAFE zone has genuine uncertainty (the coverage DP then
+  sees zero groups, contributing 0 whenever `need>0`, leaving only the
+  `p_all_safe_empty`/`structural_ok` structural-fallback term -- which
+  IS Phase 2B's own `p_safe_all_empty * structural_ok` branch, verified
+  identical by inspection and by every pre-existing Phase 2A/2B test
+  passing unchanged).
+
+
+4. HOW UNSAFE-ZONE EMPTINESS AND min_open_exits ARE COMBINED
+=====================================================
+
+Multiplicatively, via `p_U`, exactly as Phase 2B already established
+(Section 3 above) -- `p_U` is computed once per combination and applied
+as an outer factor around the ENTIRE occupancy-dependent condition
+(both the "every unsafe zone empty" requirement and the min_open_exits
+condition are required SIMULTANEOUSLY for validity; since a candidate's
+occupant placements across DIFFERENT zones are independent draws
+(Phase 2B's own proof, unchanged), and unsafe zones never appear in any
+SAFE-zone coverage computation, `p_U` and the coverage/structural term
+are independent factors of two disjoint zone sets' own independent
+occupancy events). `UnsafeAndSafeUncertainZoneJointTests` verifies this
+multiplicative combination directly against a hand-derived `q * p`.
+
+
+5. HOW OVERLAPPING REACHABLE-EXIT SETS ARE HANDLED
+=====================================================
+
+[PROVEN, this task, a genuine structural finding not assumed from
+either prior report] Within a SINGLE fixed engineering-state
+combination, two zones' own reachable-open-exit sets
+(`_zone_reachable_open_exit_sets()`) can only ever be IDENTICAL (both
+zones lie in the same connected "indoor" component) or DISJOINT
+(different components) -- never partially overlapping-but-different.
+Reason: reaching a given exit means reaching that exit's own hosting
+zone; since every Edge in this graph is bidirectional
+(navigation_validation.py's own documented invariant, re-confirmed),
+two zones that both reach the same exit are, by that very fact, mutually
+reachable from each other too, which means they lie in the SAME
+connected component -- and a connected component's own total set of
+reachable exits is, by definition, shared identically by every zone in
+it. A real Building/Definition therefore cannot construct the classic
+"{B,C} vs {C,D}" partial-overlap example end-to-end as two DISTINCT,
+non-identical zone contributions under one combination.
+
+This does not make the general union-of-sets handling unnecessary,
+for two reasons: (a) the merge-by-identical-contribution step
+(Section 6) still needs a correct, general mechanism even for the
+"identical" case (many zones sharing one component, `Identical
+ContributionMergeTests`, `LargeUncertainZoneCountStressTests`), and
+(b) implementing the DP in fully general form (no identical-vs-disjoint
+special-casing) is not meaningfully more complex, and keeps the module
+correct if the graph model's edge-directionality assumption ever
+changes. `_exit_coverage_probability_at_least()` is therefore
+implemented generally, and `ExitCoverageDPUnitTests` verifies it
+directly against the task's own worked `{B,C}`/`{C,D}` example and a
+three-way overlap case (`{B,C}`, `{C,D}`, `{D}`, hand-enumerated over
+all 8 activation patterns) at the algorithm level, proving the
+implementation does NOT reduce to naively summing contribution SIZES
+(which would wrongly credit the `{C,D}`-only outcome as meeting a
+3-exit threshold).
+
+
+6. COMPLEXITY AND STATE-SPACE BOUNDS
+=====================================================
+
+Per engineering-state combination: `_zone_reachable_open_exit_sets()`
+costs exactly one `bfs_reachable()` call per OPEN exit (identical cost
+to the `_reachable_open_exit_count()` function it replaces -- never one
+call per zone). The coverage DP (`_exit_coverage_probability_at_least()`)
+then runs over GROUPS, not zones: zones sharing an identical residual
+reachable-exit set are merged into one group before the DP ever sees
+them (`_combo_occupancy_factor()`'s own `contribution_groups` dict,
+keyed by the residual `FrozenSet[str]`), so the DP's own state count
+depends only on the number of DISTINCT residual sets and the size of
+their union -- provably bounded by `2^m` where `m` is the number of
+DISTINCT exits appearing among those residuals, never by the number of
+underlying zones or occupants. `LargeUncertainZoneCountStressTests`
+demonstrates this directly: 60 zones sharing one identical residual
+collapse to exactly 1 DP group, `total_states_considered` stays 1 (not
+`2^60`), and the result matches the closed-form `1 - p^60` exactly.
+
+`total_states_considered` (the OUTER engineering-state enumeration,
+`DEFAULT_MAX_ENUMERATED_STATES`) is completely UNCHANGED in shape --
+occupancy uncertainty, including this extension's own exit-coverage
+work, still contributes ZERO additional dimension to that count
+(re-verified: every new/modified test's `total_states_considered`
+equals exactly `(safe fire branches) x 2^(uncertain door/exit/stair
+objects)`, with no occupancy-driven multiplication anywhere).
+
+A SEPARATE, dedicated safety bound was added for the new DP itself:
+`MAX_EXIT_COVERAGE_STATES = 4096`, checked ONCE per
+`compute_exact_candidate_validity()` call (never per combination,
+never mid-enumeration) against `2^(total Exit edges in the Building)`
+-- a purely structural, combo-invariant upper bound on any single
+combination's own exit-coverage state space (real state counts stay far
+below this in practice, since grouping collapses identical
+contributions first; this is a hard safety ceiling for the pathological
+case of many, many DISTINCT exit subsets, kept entirely separate from
+`DEFAULT_MAX_ENUMERATED_STATES` so neither limit silently absorbs the
+other's budget). The check is skipped entirely (zero overhead) whenever
+`min_open_exits <= 0` or no zone has genuine occupancy uncertainty --
+preserving every existing fast path. When exceeded, the function
+returns immediately (`state_space_too_large=True`, `exact=False`,
+`p_valid=None`) BEFORE any enumeration begins -- never a partial or
+approximated result. Verified directly by
+`ExitCoverageStateSpaceProtectionTests`, which monkeypatches
+`MAX_EXIT_COVERAGE_STATES` down to 1 on an otherwise-normal 2-exit
+fixture and confirms the honest "too large" result, not a silently
+wrong or estimated one.
+
+
+7. SHORTCUTS / PRUNING USED
+=====================================================
+
+- The `need <= 0` shortcut (Section 3): whenever guaranteed-occupied
+  SAFE zones alone already meet `min_open_exits`, no coverage DP runs
+  at all -- `ThresholdAlreadySatisfiedTests`.
+- Redundant zones (whose residual, after subtracting `base_reachable`,
+  is empty) are dropped before ever reaching the DP --
+  `RedundantUncertainZonesTests` (end-to-end) and
+  `ExitCoverageDPUnitTests::test_redundant_contribution_does_not_change_the_probability`
+  (algorithm-level).
+- Identical-contribution merging (Section 5/6) -- zones sharing one
+  residual collapse to one DP group, tested at both small scale
+  (`IdenticalContributionMergeTests`) and large scale
+  (`LargeUncertainZoneCountStressTests`, 60 zones).
+- The exit-coverage state-space bound (Section 6) is checked once,
+  up front, never inside the enumeration loop.
+- `DEFAULT_MAX_ENUMERATED_STATES` and Phase 2A's own LETHAL-fire-origin
+  pruning and topological relevant-edge pruning are completely
+  untouched -- re-verified unchanged by the full Phase 2A/2B regression
+  suites passing without modification (Section 10).
+
+
+8. EXACTNESS-STATUS CHANGES
+=====================================================
+
+No field, meaning, or computation path for `exact` /
+`exact_for_analyzed_dimensions` was changed -- both retain their
+Phase 2A/2B definitions verbatim (`exact = not unresolved_occupancy_
+zone_ids` AND no engineering-state or exit-coverage enumeration skipped
+for size; `exact_for_analyzed_dimensions` unchanged). What changed is
+what those fields now MEAN in substance: before this task, `exact=True`
+could occur in a configuration where a SAFE uncertain zone's own
+occupancy genuinely could have changed the min_open_exits outcome, an
+unmodeled (though disclosed-in-prose) dimension -- an overclaim in
+substance if not in the field's own literal definition. After this
+task, every randomness dimension this module claims to analyze
+(fire origin, door/exit/stair state, min_open_exits INCLUDING its
+occupancy interaction, and every zone's own occupancy uncertainty) is
+either computed exactly or explicitly disclosed as unresolved/too-large
+via `unresolved_occupancy_zone_ids` or `state_space_too_large` --
+`exact=True` is now genuinely, provably exact for every dimension this
+module claims to cover, not merely nominally so. No currently-supported
+randomness affecting NAVIGATION-scoped candidate validity remains
+unmodeled; the five non-NAVIGATION validator categories remain the
+same, already-disclosed, deliberately out-of-scope exclusion carried
+over unchanged from Phase 2A/2B.
+
+
+9. TESTS AND HAND-DERIVED EXPECTED RESULTS
+=====================================================
+
+New file: tests/test_campaign_feasibility_min_open_exits_occupancy.py
+-- 13 tests, all passing:
+
+  ThresholdAlreadySatisfiedTests (1): a guaranteed zone alone already
+    meets min_open_exits=1 -- an additional uncertain SAFE zone's own
+    occupancy must not (and does not) change p_valid=1.0.
+  SingleUncertainZoneProvidesMissingExitTests (1): guaranteed zone
+    reaches only exit-A (1 exit, min_open_exits=2); uncertain SAFE zone
+    reaches only exit-B, P(occupied)=0.7. Hand-derived P(valid)=0.7
+    exactly, matching the task's own worked example.
+  ExitCoverageDPUnitTests (3): direct algorithm-level tests of
+    `_exit_coverage_probability_at_least()` -- the task's own
+    `{B,C}`/`{C,D}` two-zone overlap example (need=2, hand-derived
+    `1-(1-0.6)(1-0.75)=0.9`); a three-zone overlap (`{B,C}`,`{C,D}`,`{D}`,
+    need=3) hand-enumerated over all 8 activation patterns to 0.40
+    exactly, explicitly proving the naive "additive contribution size"
+    approach would overcount; a redundant-contribution sanity check.
+  IdenticalContributionMergeTests (1): three real zones sharing one
+    connected indoor component (hence one IDENTICAL, not merely
+    overlapping, contribution) merge into one DP group; hand-derived
+    P(valid)=0.9 exactly, `total_states_considered` stays 1.
+  UnsafeAndSafeUncertainZoneJointTests (1): an unsafe zone (P(empty)=
+    q=0.6) plus an independent SAFE uncertain zone supplying the
+    missing exit (P(occupied)=p=0.7) -- hand-derived P(valid)=q*p=0.42
+    exactly.
+  MultipleSafeUncertainZonesRequiredJointlyTests (1): two SAFE
+    uncertain zones, neither alone sufficient (each reaches only 1 of
+    the 2 additionally-needed exits) -- hand-derived P(valid)=
+    P(both occupied)=0.25 exactly.
+  RedundantUncertainZonesTests (1): a SAFE uncertain zone whose only
+    reachable exit is already in `base_reachable` -- verified, across
+    two different values of its own P(zero) (0.9 and 0.1), that
+    p_valid is IDENTICAL and unaffected in both cases.
+  NoOccupantsTests (1): zero occupancy_distribution entries -- only the
+    unconditional STRUCTURAL rule applies; matches
+    `validate_navigation()`'s own early return, hand-derived P(valid)=
+    0.6 (the exit-state distribution's own weight).
+  MinOpenExitsDisabledTests (1): min_open_exits=0 with both an unsafe
+    uncertain zone and a locked-door trap present -- confirms the
+    exit-reachability question is skipped entirely (P(valid)=P(unsafe
+    zone empty)=0.6 exactly, unaffected by exit topology).
+  LargeUncertainZoneCountStressTests (1): 60 independent SAFE uncertain
+    zones sharing one identical reachable-exit contribution --
+    `total_states_considered` stays 1 (not `2^60`), P(valid)=
+    1-0.9^60 exactly, deliberately paired with a separate guaranteed
+    zone so the "nobody at all present" structural-fallback term is
+    forced to exactly 0.0 (isolating this test to the coverage DP's own
+    behavior, not a degenerate "always valid" collapse -- see this
+    test's own inline comments for the reasoning).
+  ExitCoverageStateSpaceProtectionTests (1): `MAX_EXIT_COVERAGE_STATES`
+    monkeypatched to 1 on an otherwise-normal fixture -- confirms
+    `state_space_too_large=True`, `exact=False`, `p_valid=None`, never
+    an approximated result.
+
+Modified: none. Every existing test in
+tests/test_campaign_feasibility_exact_validity.py (18) and
+tests/test_campaign_feasibility_occupancy_uncertainty.py (15) passes
+UNCHANGED, byte-for-byte, with zero modification -- confirming this
+extension is a strict behavioral generalization of Phase 2A/2B, not a
+reinterpretation.
+
+
+10. FULL REGRESSION RESULT
+=====================================================
+
+Focused suite (new): 13/13 passed
+(tests/test_campaign_feasibility_min_open_exits_occupancy.py, run
+standalone first).
+
+Combined regression run (every file this thread's own standing
+regression set already covers, plus the new file):
+  tests/test_campaign_feasibility_min_open_exits_occupancy.py (13, new)
+  tests/test_campaign_feasibility_occupancy_uncertainty.py (15,
+    unchanged)
+  tests/test_campaign_feasibility_exact_validity.py (18, unchanged)
+  tests/test_campaign_feasibility.py (21)
+  tests/test_campaign_studio.py
+  tests/test_campaign_diagnostics.py
+  tests/test_scenario_validator.py (67)
+  tests/test_scenario_generator.py
+  tests/test_scenario_pipeline.py
+  tests/test_scenario_definition.py
+  tests/test_builder_navigation_preview.py
+  tests/test_engineering_navigation_graph.py
+  tests/test_navigation_graph.py
+  tests/test_obstacle_navigation_integration.py
+  Result: 489 passed, 0 failed (476 pre-existing + 13 new).
+
+A bare, no-path-filter `pytest -q` run was also attempted from the repo
+root, for completeness. It does NOT complete in this repository:
+pytest's default `*_test.py` discovery pattern also matches
+`status_test.py` (a stray PyQt6 GUI script at the repo root, not a real
+test module), which calls `sys.exit(app.exec())` at import time and
+crashes collection with an INTERNALERROR before any test runs ("no
+tests ran in 1124.33s"). This is a pre-existing repository hygiene
+issue, unrelated to this task's own changes (confirmed:
+`status_test.py` is untouched by this task, and the crash happens at
+collection time, before any of this task's files are even reached) --
+and is exactly why every prior report in this thread (Phase 1 onward)
+runs an explicit list of test files/directories rather than a bare
+`pytest -q`, a practice this task follows unchanged. The 489-passed
+combined run above is that same standing regression set Phase 2A's and
+Phase 2B's own reports used as their own "full regression" evidence.
+
+Process note, carried over unchanged from every prior report in this
+thread: this environment's `python`/`pytest` PATH occasionally resolves
+to an unrelated, concurrent session's own virtual environment; every
+test run in this report was executed via the explicit, correct
+interpreter (`/c/Python314/python -m pytest ...`) to avoid this.
+
+
+11. FILES CHANGED
+=====================================================
+
+Modified:
+  campaign_feasibility/exact_validity.py -- extended in place:
+    - New `MAX_EXIT_COVERAGE_STATES` module constant (separate from
+      `DEFAULT_MAX_ENUMERATED_STATES`).
+    - New `_zone_reachable_open_exit_sets()` (replaces the old,
+      single-count `_reachable_open_exit_count()`, same per-exit BFS
+      cost, now recorded per zone).
+    - New `_exit_coverage_probability_at_least()` (the exact
+      union-of-sets subset DP over merged groups).
+    - New `_combo_occupancy_factor()` (the full, exact per-combination
+      formula from Section 3, replacing the old inline `egress_ok`/
+      `structural_ok` branch in `_compute_with_occupancy()`).
+    - `_compute_with_occupancy()`: the per-combination occupancy logic
+      now delegates to `_combo_occupancy_factor()`; a new, one-time
+      state-space precheck for the exit-coverage DP was added right
+      after `all_occupancy_zone_ids` is computed.
+    - `CandidateValidityResult.exact`'s own docstring updated to
+      describe the newly-closed gap (Section 8); module header
+      docstring updated to reference this report.
+    - No other function, the `DEFAULT_MAX_ENUMERATED_STATES` constant,
+      `_compute_structural_only()`, the fire-branch/LETHAL-pruning
+      logic, or `CandidateValidityResult`'s own field SET, were
+      changed.
+
+New:
+  tests/test_campaign_feasibility_min_open_exits_occupancy.py -- 13 new
+    tests (Section 9).
+  docs/architecture/scenario_campaign_feasibility_min_open_exits_
+    occupancy_implementation_report.txt -- this report.
+
+Not touched: `scenario_generator/`, `scenario_validator/`,
+`campaign_feasibility/analysis.py`, `campaign_feasibility/model.py`,
+`campaign_feasibility/__init__.py` (no new public export was needed --
+`compute_exact_candidate_validity`/`CandidateValidityResult`/
+`DEFAULT_MAX_ENUMERATED_STATES` already cover this extension's entire
+public surface), `designer/campaign/*`.
+
+
+12. CONFIRMATION -- GENERATOR AND VALIDATOR SEMANTICS UNTOUCHED
+=====================================================
+
+[FACT] `git status --porcelain -- scenario_generator/` returns empty --
+zero changes.
+[FACT] `git status --porcelain -- scenario_validator/` shows exactly
+one pre-existing modification, `scenario_validator/navigation_validation.py`
+-- confirmed, by inspecting its diff, to be Phase 1's own already-
+disclosed `bfs_reachable()` extraction from an EARLIER phase of this
+thread (predates this task, matches Phase 2A's own report's own
+description of it verbatim), never touched again this task. This task
+only ever called the read-only `Read` tool on both
+`scenario_validator/navigation_validation.py` and
+`scenario_validator/engineering_validation.py` (to re-trace the exact
+semantics, Section 1) -- neither was opened with `Edit` or `Write` at
+any point.
+[FACT] `campaign_feasibility/exact_validity.py` contains zero imports
+of `scenario_generator` or `scenario_validator` anywhere (grep-
+verified this task, matching Phase 2A/2B's own established discipline)
+-- both are referenced only in comments explaining what this module
+MIRRORS, never imports.
+[FACT] No Scenario Definition semantics were altered -- this module
+still contains zero calls to `sample()` or any RNG-consuming function
+anywhere (grep-verified this task); every probability in this
+extension is computed analytically from already-declared distributions
+and already-built graph topology.
+[FACT] `designer/campaign/` was not modified by this task --
+`compute_exact_candidate_validity()` remains unwired from
+`CampaignWorker`/`analyze_campaign_feasibility()`/the UI, unchanged
+from Phase 2A/2B (UI/campaign-integration wiring remains out of scope).

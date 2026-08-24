@@ -1,0 +1,772 @@
+SCENARIO CAMPAIGN ACCEPTANCE PIPELINE AND UNIQUENESS INVESTIGATION
+=====================================================
+Status: INVESTIGATION ONLY. No production code, tests, Scenario
+Definitions, or Building files were modified by this task. No
+commit was made in the primary checkout.
+
+Evidence-labeling discipline, unchanged from every prior report in this
+thread:
+  [FACT]       directly verified by reading the cited code, or by a
+               throwaway (never saved) reproduction script run this task.
+  [INFERENCE]  a conclusion drawn from combining [FACT]s.
+  [DESIGN]     a proposed design element -- not decided, not
+               implemented, offered for evaluation.
+
+This investigation corrects a real gap in the prior Phase 2
+investigation report (docs/architecture/scenario_campaign_feasibility_
+phase2_investigation.txt), whose Section 6.4 and "deterministic
+distributions" edge-case note stated the duplicate-rejection risk more
+broadly than the code actually supports. That correction is the single
+most important finding of this task and is stated up front.
+
+
+EXECUTIVE CONCLUSION
+=====================================================
+
+1. **Candidate validity, campaign yield, and uniqueness are genuinely
+   separate mathematical concerns**, but two of the three
+   (validity and uniqueness) turn out to share the SAME underlying
+   computation in the one regime where uniqueness is non-trivial at
+   all (Section 5/8). They should be architecturally separated as
+   distinct, independently-callable analyses with distinct outputs and
+   distinct user-facing meanings -- but implemented so the expensive
+   part (state-space enumeration) is computed once and reused by both,
+   not duplicated.
+
+2. **Duplicate rejection DOES change the validity probability model in
+   principle** -- P(next candidate accepted) is provably
+   state-dependent on `accepted_hashes` whenever the underlying content
+   space is finite (Section 3/9). Simple i.i.d. Bernoulli/binomial
+   modeling (Phase 2's Section 3 formulas) is therefore not universally
+   exact.
+
+3. **However -- and this is the correction the prior Phase 2 report did
+   not yet make -- duplicate rejection is PRACTICALLY, PROVABLY
+   negligible for the overwhelming majority of real campaigns**,
+   because of a fact this task verified precisely and the prior report
+   had not yet checked: occupant and firefighter POSITION (a
+   continuous (x, y) float pair) is part of the hashed content, is
+   sampled via an unconditional `random.Random.uniform()` call the
+   Scenario Definition has NO way to constrain to a fixed value (no
+   Distribution-based control over position exists anywhere in the
+   Generator), and is serialized with full floating-point precision
+   (no rounding anywhere in the serialization path). ANY scenario with
+   at least one occupant or firefighter therefore has, for all
+   practical purposes, a ZERO probability of an exact content-hash
+   collision -- regardless of how "deterministic" (all-FixedValue) the
+   rest of the Definition is. Duplicate rejection is a real,
+   deterministically-provable risk ONLY for a narrow, identifiable
+   class of Definitions: zero occupants, zero firefighters, a
+   non-continuous fire growth-time distribution, and no continuous
+   event timings. This narrows the "Important context" framing this
+   task opened with substantially, with direct code evidence (Section
+   2/7).
+
+4. **Campaign yield (Phase 2's Layer 2 formulas) can still be modeled
+   using simple Bernoulli/binomial assumptions with negligible error**
+   for the vast majority of realistic campaigns, precisely because of
+   finding 3 -- the state-dependence duplicate rejection introduces is
+   real in principle but numerically irrelevant outside the narrow
+   "no continuous entropy source" regime, where a separate, cheap,
+   deterministic check (not a probability adjustment) is the correct
+   tool instead (Section 5/8).
+
+
+PART 1 -- THE COMPLETE ACCEPTANCE PIPELINE (traced call path)
+=====================================================
+
+[FACT] Starting from one generation attempt inside a campaign slot
+(designer/campaign/campaign_worker.py::_generate_with_diagnostics(),
+the path CampaignWorker.execute() actually uses in Diagnostics Mode,
+the default):
+
+  for attempt_index in range(config.max_attempts):
+      request = GenerationRequest(definition=config.definition,
+          definition_id=config.definition_id, building=config.building,
+          seed=scenario_seed, attempt_index=attempt_index)
+      candidate = generate_scenario(request)                    # scenario_generator/generator.py
+      report = validate(candidate, config.definition,
+          config.building, accepted_hashes=frozenset(accepted_hashes))  # scenario_validator/validator.py
+      first_rejection_row = collector.record_candidate_report(report)  # designer/campaign/diagnostics.py
+      if first_rejection_row is not None:
+          self.first_rejection_detected.emit(first_rejection_row)
+      if report.accepted:
+          return candidate
+  return None
+
+[FACT] `validate()` (scenario_validator/validator.py:36-71) runs, in
+this exact fixed order, after a building-existence precondition:
+  validate_building -> [if OK] validate_occupants, validate_fire,
+  validate_engineering, validate_navigation, validate_events,
+  validate_dataset
+  -- every one of these six (plus the building precondition) contributes
+  to the single `report.accepted` boolean
+  (`not any(issue.severity == ERROR for issue in report.issues)`,
+  scenario_validator/report.py:56-59) -- acceptance requires ALL of
+  them to be error-free, not navigation alone.
+
+[FACT] Back in `CampaignWorker.execute()` (the outer per-slot loop):
+  scenario = self._generate_accepted_scenario(config, scenario_seed,
+      accepted_hashes, collector)
+  if scenario is not None:
+      accepted_count += 1
+      save_scenario(scenario, config.output_directory)      # scenario_storage
+      accepted_hashes.add(compute_candidate_content_hash(scenario))  # scenario_validator/dataset_validation.py
+      ... simulate, export artifacts ...
+  else:
+      rejected_count += 1
+
+[FACT] `accepted_hashes` (a plain `set[str]`) is seeded ONCE per
+campaign run, BEFORE the per-slot loop begins:
+  `accepted_hashes = set(config.accepted_hashes) |
+   set(load_accepted_hashes(config.output_directory))`
+  (`config.accepted_hashes` -- caller-supplied, e.g. for a resumed
+  campaign against an existing output directory;
+  `load_accepted_hashes()` -- scenario_storage's own read of whatever
+  the output directory's catalog already contains from a PRIOR run).
+  It then GROWS, in-place, every time ANY slot in THIS run accepts a
+  candidate -- and this growing set is passed, by reference, into
+  EVERY subsequent attempt's `validate()` call for the REST of the
+  campaign (both later attempts of a slot that hasn't yet succeeded,
+  and every attempt of every later slot).
+
+1.1 Rejection classification (the "candidate-invalid" vs
+"valid-but-not-accepted" distinction the task asks for)
+-----------------------------------------------------
+
+| Rejection point | Category | Condition | Property of candidate itself? | Depends on previously accepted candidates? | Can occur even if navigation passes? | Consumes a retry? | Deterministic given candidate + campaign state? |
+|---|---|---|---|---|---|---|---|
+| validate_building | STRUCTURAL (Building-level) | Building itself malformed -- effectively a pre-flight-caught case, not really candidate-dependent | No (Building only) | No | Yes | Yes | Yes |
+| validate_occupants | OCCUPANCY / GEOMETRY | Count out of declared support (near-never under legitimate sampling, one real rounding edge case -- Section 2 of the Phase 2 report, unchanged); profile-id support; occupant outside zone bounds (never under legitimate sampling) | Yes | No | Yes | Yes | Yes |
+| validate_fire | FIRE | Ignition zone/floor/profile not allowed, or forbidden, or growth param out of support -- near-never EXCEPT the `ignition_zone_preference`-outside-eligible-set gap (Phase 2 report, re-confirmed unchanged this task) | Yes | No | Yes | Yes | Yes |
+| validate_engineering | STRUCTURAL | `min_open_exits` unsatisfied (a REAL, sampling-driven risk); `PINNED_STATE_MISMATCH` (near-never under legitimate sampling) | Yes | No | Yes | Yes | Yes |
+| validate_navigation | NAVIGATION | The reachability checks Phase 1/2 already model in full | Yes | No | N/A (this IS the navigation check) | Yes | Yes |
+| validate_events | EVENTS | Missing fields, bad timestamps, pinned-event contradiction/missing, conflicting events at the same instant -- only relevant when `event_templates` is non-empty | Yes | No | Yes | Yes | Yes |
+| validate_dataset (metadata/round-trip) | DATASET | Missing metadata field, unknown generation_version, serialization round-trip mismatch -- near-never under legitimate sampling (Generator always populates required metadata correctly; a round-trip failure would be a serialization bug) | Yes | No | Yes | Yes | Yes |
+| **validate_dataset (DUPLICATE)** | **DATASET** | **candidate's content_hash already present in `accepted_hashes`** | **No -- this is the one rejection reason that is NOT a property of the candidate alone; it is a property of (candidate, campaign state)** | **YES -- explicitly, by construction (Section 2)** | **YES -- a candidate can pass every other check, including navigation, and still be rejected here** | **Yes -- exactly the same retry-consuming path as every other rejection (`report.accepted` is False either way; the outer loop's `if report.accepted: return candidate` branch does not distinguish WHY)** | **Yes, deterministically, GIVEN the current `accepted_hashes` set -- but that set itself is campaign-history-dependent, not a fixed property of the Definition** |
+
+[FACT] DUPLICATE is therefore the ONE, and only, rejection reason in
+the entire six-category taxonomy that is genuinely
+"candidate-valid-but-not-accepted" rather than "candidate-invalid" --
+every other rejection reason reflects something actually wrong with
+THIS candidate on its own terms; DUPLICATE reflects a candidate that is
+"a perfectly valid scenario that happens to be identical to one already
+in the campaign," rejected purely to enforce distinctness, not
+correctness.
+
+
+PART 2 -- DUPLICATE DETECTION: THE EXACT MECHANISM
+=====================================================
+
+[FACT] scenario_validator/dataset_validation.py::compute_candidate_
+content_hash(candidate) = `_content_hash_from_data(candidate.to_dict())`,
+where `_content_hash_from_data(data)`:
+  1. `content_only = {key: value for key, value in data.items() if key
+     != "metadata"}` -- EVERY top-level field of `Scenario.to_dict()`
+     EXCEPT `metadata` is included.
+  2. `canonical = json.dumps(content_only, sort_keys=True,
+     separators=(",", ":"))` -- a canonical, key-sorted, whitespace-free
+     JSON string.
+  3. `hashlib.sha256(canonical.encode("utf-8")).hexdigest()`.
+
+[FACT] `Scenario.to_dict()` (scenario/scenario.py:87-102) -- the exact,
+complete field list fed into the hash:
+  occupants, fire, door_states, exit_states, stair_states,
+  obstacle_states, camera_states, detector_states, events, difficulty,
+  firefighters.
+  (metadata -- scenario_id, definition_id, definition_content_hash,
+  seed, created_at, generation_version, rejected_attempt_count, extra
+  -- is explicitly EXCLUDED, by design, per dataset_validation.py's own
+  comment: hashing it would have made two candidates with byte-
+  identical sampled CONTENT but different seeds/timestamps never hash
+  equal, "silently defeating duplicate detection entirely.")
+
+[FACT, verified field-by-field, not assumed] For each field:
+  - `occupants`: each `ScenarioOccupant.to_dict()` includes
+    `occupant_id` (DETERMINISTIC -- `f"occ-{zone_id}-{index}"`,
+    Section 1.6 of the Phase 2 report, re-confirmed unchanged),
+    `zone_id`, `floor_id`, **`position`** (a `[x, y]` list from
+    `position_to_list()`, scenario/serialization.py:18-22 -- verified
+    this task to apply ZERO rounding, formatting, or discretization:
+    `return [x, y]`, the raw Python float, unchanged), `behaviour_
+    profile_id`, `assisting_occupant_id`, `assistance_type`.
+  - `fire`: `ScenarioFire.to_dict()` includes `ignition_zone_id`,
+    `ignition_floor_id`, `fire_profile`, and **`growth_parameters`**
+    (a `{"growth_time": float}` dict, `mapping_to_dict()` verified this
+    task to apply zero rounding: `return dict(mapping)`).
+  - `firefighters`: each `ScenarioFirefighter.to_dict()` includes
+    `firefighter_id`, `team_id`, `entry_zone_id`, `floor_id`,
+    **`position`** (same continuous, unrounded (x, y) as occupants),
+    `arrival_time` (a float, itself sampled via
+    `sample(firefighter_def.arrival_time_distribution, firefighter_rng)`
+    -- continuous if that distribution is a UniformRange), `behaviour_
+    profile_id`, rescue-target ids.
+  - `door_states`/`exit_states`/`stair_states`/`obstacle_states`/
+    `camera_states`/`detector_states`: each is an id + an enum-name
+    string or bool -- purely discrete, small, enumerable.
+  - `events`: each `ScenarioEvent` includes `time` (a float, sampled
+    via `sample(template.time, event_rng)` -- continuous if
+    `template.time` is a UniformRange) among other discrete fields.
+  - `difficulty`: always `None` in every generated candidate this
+    thread has observed (no code path in `generate_scenario()` ever
+    sets it to anything else -- `difficulty=None` is passed literally
+    at construction, generator.py:100).
+
+[FACT] `json.dumps()`'s float encoding uses Python's `float.__repr__`
+internally (the standard library `json` module's float encoder,
+unchanged since Python 3.1's shortest-round-tripping-repr guarantee) --
+i.e. FULL IEEE-754 double precision is preserved in the canonical
+string; there is no truncation, no fixed-decimal rounding, anywhere in
+this serialization path.
+
+[FACT, precise answer to Part 2's exact question] Two scenarios are
+considered duplicates IF AND ONLY IF their full canonical JSON dumps of
+every field above are byte-identical -- this means, explicitly:
+  - random seeds: EXCLUDED (inside `metadata`, never hashed) -- two
+    scenarios from different seeds that happen to sample identical
+    CONTENT would still be flagged duplicate, correctly, by design.
+  - scenario IDs / timestamps / definition_content_hash / generation_
+    version: EXCLUDED (inside `metadata`).
+  - occupant identities (`occupant_id`): INCLUDED, but deterministic
+    given (zone_id, index) -- contributes no extra entropy of its own
+    (two placements with the same zone/index always produce the same
+    id), but also never CAUSES a false non-duplicate by itself.
+  - occupant ORDERING: `sequence_to_list()` preserves list order, and
+    `_generate_occupant_placements()` always iterates `sorted(...)` by
+    zone_id then by index -- ordering is a deterministic function of
+    content, not an independent source of variation; two candidates
+    with the same occupant SET would also have the same occupant
+    ORDER, so this cannot cause a false non-match either.
+  - fire metadata (ignition zone/floor/profile): INCLUDED, discrete.
+  - door/exit/stair state: INCLUDED, discrete.
+  - behavior assignments (`behaviour_profile_id`): INCLUDED, discrete
+    (drawn from a WeightedOptions/FixedValue over a finite string set).
+  - **occupant/firefighter POSITION and fire GROWTH TIME (when
+    continuous) and event TIME (when continuous): INCLUDED, and this is
+    the decisive finding** -- these are the fields that, in the common
+    case, make exact duplication practically impossible regardless of
+    how constrained everything else is.
+
+
+PART 3 -- THE MATHEMATICAL NATURE OF DUPLICATE REJECTION (derived, not
+assumed)
+=====================================================
+
+Setup: let the space of possible RAW draws (before any validation) be
+partitioned by their resulting CONTENT (the hashed `to_dict()` minus
+metadata) into distinct content values c_1, c_2, ..., each with total
+probability mass P(c_i) = sum of probabilities of every raw draw that
+produces exactly that content. Split these into VALID content values
+V = {v_1, ..., v_K} (pass all six non-DUPLICATE validator categories)
+and INVALID content (everything else).
+
+[FACT/derivation] For a SINGLE attempt, given the current campaign
+state `accepted_hashes = A`:
+  P(this attempt is accepted | A) = sum_{v_i in V, v_i not in A} P(v_i)
+    = p_valid_total - mass(A intersect V)
+  where p_valid_total = sum_{v_i in V} P(v_i) (exactly Phase 2's
+  "P(valid | navigation)"-and-friends figure, generalized here to all
+  six categories).
+
+[FACT, re-confirmed this task] `A` is CONSTANT across every attempt
+WITHIN one slot (it only grows when a slot SUCCEEDS, which ends that
+slot immediately -- `return candidate` on the same line the loop would
+otherwise continue) -- so within one slot, all `max_attempts` attempts
+ARE genuinely i.i.d. Bernoulli(p_valid_total - mass(A_slot_start
+intersect V)) trials against a FIXED `A`. The state transition happens
+strictly at SLOT boundaries, never mid-slot.
+
+[FORMAL ANSWER to Part 3's central question] P(candidate accepted) is
+campaign-state-dependent BECAUSE `accepted_hashes` is threaded, by
+reference, through every `validate()` call for the remainder of a
+campaign run, and grows monotonically every time any slot succeeds --
+so the EFFECTIVE per-attempt acceptance probability for slot j+1 is
+p_valid_total minus whatever probability mass the FIRST j accepted
+slots' specific (random) outcomes happened to consume. This is
+mathematically real and provable directly from the code (Section 1),
+not a hypothetical.
+
+[FORMAL ANSWER to "can yield still be modeled as independent Bernoulli
+trials"] NOT exactly, in principle -- but the DEVIATION from
+independence is bounded by mass(A intersect V), which is bounded above
+by min(count, K) x max_i P(v_i) (the largest possible per-value
+probability mass, times how many distinct values could plausibly have
+already been consumed). Section 7's finding shows that whenever V
+contains at least one continuously-parameterized field (occupant/
+firefighter position, or a continuous growth-time/event-time), every
+individual v_i's probability mass is effectively 0 (a single point in a
+continuous space), so mass(A intersect V) is negligible NO MATTER HOW
+MANY slots have already succeeded -- the deviation from the simple
+Bernoulli model vanishes. The deviation is only material when V is
+itself small and discrete (Section 4/7).
+
+The correct stochastic-process framing, once "invalid" draws are set
+aside (they are pure Bernoulli(1 - p_valid_total) noise that does not
+change `A` and does not affect the coupon-collecting dynamics at all):
+this IS a weighted, budget-limited variant of the classical Coupon
+Collector's Problem -- specifically, "collect distinct coupons from a
+WEIGHTED distribution over K coupon types, under a hard budget of
+(count x max_attempts) total draws (each of which may also be a
+'blank'/invalid draw with probability 1 - p_valid_total that neither
+succeeds nor removes a coupon from the remaining pool), and report how
+many distinct coupons were collected within budget." It is explicitly
+NOT "sampling without replacement" in the classical urn sense (which
+would imply a FIXED, finite total item count with items literally
+removed from a common pool at a known rate) -- the underlying draw
+process is still full replacement every time (nothing is depleted from
+the SAMPLING distribution itself; `p_valid_total` and each `P(v_i)`
+never change), only the ACCEPTANCE RULE changes as more values get
+marked "already seen." "Sampling with replacement plus rejection of
+already-seen values" is the most literally accurate name; "budget-
+limited weighted coupon collection" is the standard name for the
+resulting process's well-studied mathematical shape.
+
+
+PART 4 -- THE DETERMINISTIC / LOW-DIVERSITY CASE
+=====================================================
+
+[FACT] When V (the distinct-valid-content space) is finite with K
+values, and `count > K`: by Section 3's own derivation, once all K
+values have been placed into `accepted_hashes`, EVERY subsequent
+attempt (in every remaining slot) has `mass(A intersect V) =
+p_valid_total`, i.e. P(accepted) = 0, IDENTICALLY, not merely small.
+[FACT] Every remaining slot WILL exhaust its full `max_attempts` budget
+producing nothing but rejections (a mix of genuinely-invalid draws and
+now-guaranteed DUPLICATE draws of already-seen valid content) -- this
+is not probabilistic underproduction, it is a DETERMINISTIC ceiling:
+the campaign can never accept more than K scenarios, full stop, no
+matter how large `max_attempts` or `count` is.
+[FACT] The retry budget IS applied per requested slot exactly as
+Phase 1/2 already established (`for index in range(config.count):
+... for attempt_index in range(config.max_attempts):`) -- there is no
+cross-slot retry pooling; a slot that fails all `max_attempts` simply
+ends, and the NEXT slot starts its own fresh `max_attempts` budget
+(against the SAME, larger `accepted_hashes`).
+[FACT] This condition CAN be detected before generation, deterministically,
+whenever K is finite and computable (Section 8) -- comparing the
+requested `count` against the computed K is a simple integer
+comparison, not a probability estimate.
+[FACT, re-verified this task, CORRECTING the Phase 2 report's looser
+claim] K is finite and computable ONLY when the candidate's content has
+NO continuously-parameterized field -- concretely, ALL of the following
+must hold simultaneously:
+  1. Zero occupants are ever placed (occupancy_distribution empty, or
+     every zone's distribution can only ever round to 0 -- Phase 1's
+     own `_can_be_occupied()` logic, reusable here to PROVE this).
+  2. Zero firefighters are ever deployed (`firefighter_def.
+     entry_zone_ids` empty, or `team_count_distribution` can only ever
+     round to 0).
+  3. `fire.growth_parameter_distribution` is a FixedValue (or a
+     WeightedOptions over a finite set) -- NOT a UniformRange.
+  4. No `event_templates` entry has a continuous (UniformRange) `time`
+     distribution (only relevant if `event_templates` is non-empty at
+     all).
+If ANY of these does not hold, K is effectively unbounded/uncountable
+(a continuous space) and duplicate rejection's practical probability is
+provably ~0 -- reported as "not a concern" rather than enumerated.
+
+[INFERENCE] Given every occupant-containing Campaign Studio scenario
+this thread has ever constructed or observed necessarily fails
+condition 1 (an evacuation scenario campaign with zero occupants would
+be a highly unusual, deliberately engineering-state-only test
+configuration, not a typical use case), the deterministic-underproduction
+failure mode this task's "Important context" opened with is REAL and
+PROVABLE, but applies to a narrower slice of real usage than the prior
+Phase 2 report implied. This does not make it unimportant -- a
+people-free "does this engineering-state space have enough distinct
+combinations" test campaign is a plausible, legitimate use case (e.g.
+stress-testing door/fire-state diversity in isolation) -- it makes it a
+correctly-scoped, cheaply-detectable special case rather than a general
+concern applying to every campaign.
+
+Enumerability of Distribution kinds, precisely (Part 4's own explicit
+sub-question):
+  - FixedValue: contributes exactly 1 distinct value, 0 bits of entropy.
+  - WeightedOptions: contributes exactly len(weights) distinct values
+    (finite, by construction -- `Mapping[Any, float]`, re-confirmed
+    this task via distributions.py).
+  - UniformRange, discrete=True: contributes `high - low + 1` distinct
+    integer values -- finite, but only used for occupancy counts in
+    every fixture this thread has observed (never for door/exit/stair
+    state, which are always enum-name/bool-valued and would not
+    type-check meaningfully as a numeric range).
+  - UniformRange, discrete=False (continuous): contributes an
+    UNCOUNTABLE space in principle; contributes, in the ACTUAL
+    implementation, up to 2^53-ish distinguishable IEEE-754 double
+    values within its interval -- for any practical `count`/
+    `max_attempts`, indistinguishable from "infinite" for collision
+    purposes. This is the type used for `growth_parameter_distribution`
+    (when in "Range" mode) and for `event_templates[i].time` (when
+    range-valued), and it is NEVER the type driving occupant/firefighter
+    POSITION at all -- position has no Distribution-based control
+    whatsoever; it is always `rng.uniform(zone.x, zone.x+zone.width)`,
+    unconditionally, regardless of anything the Definition states.
+
+
+PART 5 -- THE THREE PROBABILITY LAYERS: ARCHITECTURALLY CORRECT
+SEPARATION
+=====================================================
+
+Layer 1 -- Candidate Validity Analysis: "can a freshly sampled
+candidate pass the Scenario Validator" -- [DESIGN] the natural,
+already-underway extension of `campaign_feasibility/` (Phase 2's own
+enumeration/estimation machinery, Section 4 of that report). Computes
+p_valid_total (across all six categories, or navigation-scoped as
+already recommended, Section 2 of this report) -- a property of the
+Definition+Building ALONE, independent of any campaign run's history.
+
+Layer 2 -- Campaign Retry/Yield Analysis: "given P(valid) and retry
+semantics, what yield should we expect" -- [FACT, directly answering
+the task's own question] mathematically valid using the SIMPLE
+Bernoulli/binomial formulas ONLY when duplicate rejection is either
+disabled OR (Section 3/4's finding) negligible -- which this task
+establishes is the case whenever Layer 3 (below) reports "not a
+concern." When Layer 3 instead reports a finite, non-negligible K,
+Layer 2's formulas need the STATE-DEPENDENT correction Section 3
+derives (a materially harder, sequential calculation, not a simple
+closed form) -- [DESIGN] recommendation: Layer 2 should ACCEPT an
+optional flag/input from Layer 3 ("duplicate rejection is negligible"
+vs. "K is finite, here it is") and switch formula accordingly, rather
+than always assuming independence or always doing the harder
+state-dependent math.
+
+Layer 3 -- Campaign Diversity/Uniqueness Analysis: "does the configured
+distribution contain enough distinct valid outcomes" -- [DESIGN] a
+genuinely separate QUESTION and separate user-facing deliverable from
+Layer 1, but (the central architectural finding of this investigation)
+COMPUTATIONALLY IDENTICAL to Layer 1's own exact-enumeration machinery
+in the one regime where it is non-trivial at all: both need the SAME
+pruned, enumerated set of (fire zone x door x exit x stair x occupancy-
+event) combinations Phase 2's Section 4 already designs; Layer 1 SUMS
+each combination's probability weight to get p_valid_total, Layer 3
+COUNTS how many distinct combinations are valid to get K. In the
+(much more common) regime where a continuous entropy source is present
+(Section 4's four conditions), Layer 3 requires NO enumeration at all
+-- a cheap, structural presence/absence check on the Definition
+(does it place any occupant/firefighter, is growth_parameter_
+distribution/any event time continuous) suffices to prove K is
+effectively unbounded.
+
+[DESIGN, direct recommendation] Layer 3 should be its own,
+separately-named result/module (its OUTPUT and USER-FACING MEANING are
+genuinely different from Layer 1's -- "is this configuration even
+capable of a valid scenario" vs. "does it have enough DISTINCT valid
+scenarios for what was requested" are different questions a user needs
+answered separately, and conflating them into one number would hide
+exactly the kind of surprise this whole investigation was launched to
+prevent), but it should be IMPLEMENTED as a thin function that either
+(a) short-circuits via the cheap structural check (the common case,
+Section 4), or (b) calls Layer 1's own enumeration function and
+aggregates its result differently (count vs. sum) -- never a second,
+independently-written enumeration engine. This directly satisfies the
+"do not duplicate navigation validation logic" constraint at one remove:
+it also prevents duplicating the STATE-SPACE ENUMERATION logic Phase 2
+is designing.
+
+
+PART 6 -- WHAT CAN BE PREDICTED, CLASSIFIED
+=====================================================
+
+Provably exact (before generation, with certainty):
+  - No valid candidate is possible at all (Phase 1's existing ERROR
+    cases, unchanged).
+  - Exactly one deterministic valid outcome exists (K=1, the fully
+    FixedValue/no-continuous-entropy case -- computable via the same
+    enumeration as Layer 3).
+  - Requested campaign `count` exceeds the maximum possible distinct
+    valid outcomes K -- [FACT] provable exactly whenever Section 4's
+    four conditions hold (no continuous entropy source), via the same
+    enumeration.
+  - Whether continuous entropy is present at all (occupant/firefighter
+    existence, growth-time mode, event-time mode) -- a cheap, exact,
+    structural fact about the Definition, not an estimate.
+
+Exactly probabilistic (calculable exactly, not merely estimated):
+  - p_valid_total for the fire/engineering-state dimension, whenever
+    the relevant/uncertain state space is small enough to enumerate
+    (Phase 2's own Section 4 threshold discussion, unchanged by this
+    investigation).
+  - K itself (the count of distinct valid outcomes), computed exactly
+    by the SAME enumeration, whenever it is finite at all (Section 4/5).
+  - The state-dependent, sequential P(accepted | A) correction (Section
+    3) -- exactly computable, in principle, for a SMALL, finite K (a
+    direct sum over the shrinking-mass sequence), though this report
+    does not recommend implementing the full sequential correction
+    unless K is small enough that it is cheap AND actually needed (see
+    "Proposed Next Steps").
+
+Estimated (requires sampling/approximation):
+  - p_valid_total, when the relevant/uncertain state space exceeds
+    Phase 2's own tractability threshold (Option C, unchanged by this
+    investigation).
+  - Nothing NEW from THIS investigation requires estimation -- the
+    uniqueness question this task focuses on turned out to be either
+    exactly provable (finite K, computed via the same enumeration) or
+    provably negligible (continuous entropy present), with no
+    genuinely-estimation-requiring middle ground identified. This is
+    itself a notable finding: uniqueness, unlike validity, did not
+    surface its own "uncertain middle" requiring Monte Carlo.
+
+
+PART 7 -- CONTINUOUS/DISCRETIZED DISTRIBUTION ANALYSIS (traced, not
+theoretical)
+=====================================================
+
+[FACT, re-stated for emphasis, this is the crux of the whole
+investigation] The implementation performs ZERO rounding or
+discretization anywhere between a continuous `rng.uniform()` draw and
+the final SHA256 content hash:
+  `rng.uniform(a, b)` -> raw Python `float` -> `position_to_list()`
+  passes it through unchanged -> `json.dumps()` encodes it at full
+  `float.__repr__` precision -> `hashlib.sha256()` hashes the resulting
+  string byte-for-byte.
+No `round()`, no fixed-decimal formatting, no quantization step exists
+anywhere in this chain (grep-verified this task across scenario/
+serialization.py, scenario/occupant.py, scenario/firefighter.py,
+scenario/fire.py, scenario_validator/dataset_validation.py -- zero
+occurrences of `round(` in any of them).
+[FACT] Therefore: two genuinely independent raw samples become
+duplicate-hash-colliding ONLY if EVERY single field's sampled value is
+bit-for-bit identical -- for any field drawn from a continuous
+distribution, this requires an exact IEEE-754 double match, which
+`random.Random`'s Mersenne-Twister-based `uniform()` produces with
+probability that is not literally zero (it IS a discrete, finite-
+precision floating-point machine after all) but is astronomically small
+(on the order of 1 in 2^52 or smaller per continuous field, per pair
+of attempts) -- correctly treated as "practically impossible," not
+"impossible," and this report says so precisely rather than rounding
+that claim up to a false certainty.
+[FACT] No serialization step "collapses" multiple distinct raw samples
+into the same representation -- the opposite risk (two DIFFERENT raw
+samples serializing to the SAME string) was specifically checked for
+and not found; `json.dumps`'s float encoding is well known to be
+INJECTIVE for finite IEEE-754 doubles (each distinct double produces a
+distinct shortest-round-tripping string, by the Python `repr`
+algorithm's own documented guarantee).
+
+
+PART 8 -- DOES DUPLICATE REJECTION BELONG IN THE FEASIBILITY PREFLIGHT?
+=====================================================
+
+[DESIGN, direct recommendation] NO, not as the SAME analysis question
+inside the SAME result object Phase 1 already returns per zone
+(`ZoneFeasibilityResult` is scoped to "can THIS zone reach Outside" --
+uniqueness is a CAMPAIGN-wide property, not a per-zone one, and folding
+it in would be a real category error, not merely an aesthetic one).
+[DESIGN] YES, it belongs in the SAME PACKAGE (`campaign_feasibility/`),
+as a SEPARATE, clearly-named analysis function/module
+(e.g. `campaign_feasibility/diversity.py`, name illustrative, not
+decided) that:
+  - is called from the SAME `CampaignWorker._run_preflight_checks()`
+    integration point Phase 1 already uses (no new UI hook needed --
+    `PreflightResult` already has room for a fourth category of row,
+    mirroring how `feasibility_issues`/`feasibility_warnings` were
+    added onto the existing `building_issues`/`definition_issues`
+    shape without inventing new machinery);
+  - reuses Layer 1's enumeration output directly (Section 5) rather
+    than re-enumerating;
+  - is SKIPPED ENTIRELY (a cheap, near-instant return) whenever the
+    Section 4 structural check finds a continuous entropy source
+    present -- meaning it adds effectively zero overhead to the
+    common case.
+[DESIGN] The alternative the task offers for comparison
+(`campaign_analysis/yield_analysis` + `diversity_analysis`, as a
+SEPARATE top-level package from `campaign_feasibility/`) is NOT
+recommended: it would duplicate the Building/NavigationGraph
+construction and the enumeration machinery across two packages, or
+require an awkward cross-package dependency for Layer 3 to reach
+Layer 1's enumeration -- extra structural complexity for no
+architectural benefit, since Layer 3's own natural home (the SAME
+`analyze_campaign_feasibility()` entry point, extended, exactly as
+Phase 2 already recommends extending it with campaign-level `max_
+attempts`/`count` parameters for Layer 2) already exists.
+
+
+PART 9 -- MATHEMATICAL MODELS, BOTH CASES
+=====================================================
+
+Case 1 -- duplicate rejection disabled/negligible (the common case,
+Section 4's four conditions any one of which being violated implies
+this case):
+  P(candidate valid) = p  [Layer 1, Phase 2's own machinery, unchanged]
+  P(slot succeeds within max_attempts) = 1 - (1-p)^max_attempts
+  P(slot exhausts) = (1-p)^max_attempts
+  E[accepted count] = count x (1 - (1-p)^max_attempts)
+  P(campaign produces 0 accepted) = (1-p)^(max_attempts x count)
+  [FACT] Identical to Phase 2's own Section 3, re-derived here with the
+  EXPLICIT precondition under which it is exact rather than approximate
+  made precise for the first time: exact whenever no continuous entropy
+  source is present in V at all (trivially, since then A can never
+  meaningfully deplete p because K IS 1 or a small finite set with
+  large per-value mass and low realistic collision odds only matter
+  when K is ALSO small -- see Case 2), and an EXCELLENT approximation
+  (error bounded by the negligible mass(A intersect V) term, Section 3)
+  whenever a continuous entropy source IS present, which is the regime
+  Phase 2's own reproductions (and every realistic occupant-containing
+  campaign) actually live in.
+
+Case 2 -- duplicate rejection material (K finite and small, i.e.
+Section 4's four conditions all hold):
+  Let v_1..v_K be the distinct valid content values with (exactly
+  computable, via the shared enumeration) probabilities p_1..p_K,
+  sum = p_valid_total.
+  For slot j (0-indexed, j=0 is the first slot), let A_{j} = the set of
+  distinct values already accepted going into slot j (a RANDOM set,
+  depending on which specific values earlier slots happened to draw --
+  order matters for which values got "used up," though not for the
+  COUNT of how many are used up in expectation).
+  Within slot j (A fixed at A_j for the whole slot, Section 3's own
+  proof): P(slot j succeeds) = 1 - (1 - (p_valid_total -
+  mass(A_j intersect V)))^max_attempts.
+  This is NOT a simple Binomial(count, q) any more -- q itself changes,
+  stochastically, slot to slot, as a function of which specific values
+  got consumed. [FACT, the correct framing, Section 3] this is a
+  budget-limited, weighted Coupon Collector process, not sampling
+  without replacement (nothing is removed from the underlying sampling
+  distribution) and not a simple Binomial. A fully exact treatment
+  requires either (a) a Markov-chain-style recursive expectation over
+  which subset of V has been collected so far (tractable only for
+  small K, exactly the regime this case restricts to), or (b) direct
+  simulation of the coupon-collection process itself (cheap, since K is
+  small by this case's own precondition, and no Scenario/Generator
+  machinery needs to be invoked at all -- just draws from the K
+  known probabilities). [DESIGN] Recommendation: for K below a small
+  threshold (e.g. tens), compute the exact recursive expectation;
+  otherwise, this case does not arise at all under Section 4's own
+  conditions (a K in the hundreds+ would require MANY distinct
+  discrete engineering-state/fire-zone combinations with zero
+  occupants -- itself already covered by Phase 2's own state-space
+  tractability discussion for Layer 1, since the SAME combinatorics
+  drive both).
+  The provable, DETERMINISTIC headline result, regardless of exact
+  Markov-chain modeling: if `count > K`, AT LEAST `count - K` slots are
+  GUARANTEED to fail (P=1, not merely likely) -- this single fact is
+  cheap, exact, and arguably the single most useful thing to surface to
+  a user, without needing the full sequential-expectation machinery at
+  all for MOST product purposes.
+
+
+ARCHITECTURAL RECOMMENDATION (Part 8's deliverable, restated as the
+report's own section)
+=====================================================
+
+[DESIGN]
+- Layer 1 (Candidate Validity): lives in `campaign_feasibility/`,
+  exactly where Phase 2 already plans it (`enumeration.py`,
+  `estimation.py`). No change from the Phase 2 report's own
+  recommendation.
+- Layer 2 (Campaign Yield): lives in `campaign_feasibility/
+  campaign_risk.py`, exactly where Phase 2 already plans it -- EXTENDED
+  (new finding from this task) to accept an optional "duplicate
+  rejection is material" signal from Layer 3, switching between the
+  simple closed-form formulas (Case 1) and a flag that the number is a
+  slight underestimate of risk (Case 2, when Layer 3 reports a small,
+  finite K) rather than silently being wrong.
+- Layer 3 (Diversity/Uniqueness): a NEW, clearly-separate module in the
+  SAME package, e.g. `campaign_feasibility/diversity.py` (name
+  illustrative) -- short-circuiting to "not a concern" via a cheap
+  structural check in the common case, and reusing Layer 1's own
+  enumeration to compute an exact K in the narrow case where it
+  applies. NOT a new top-level package.
+
+
+PART 10 -- IMPACT ON THE PROPOSED PHASE 2 SEQUENCE
+=====================================================
+
+[DESIGN, direct recommendation] The sequence should be REORGANIZED,
+not left unchanged -- specifically to insert the (now known to be
+cheap) Layer 3 structural check EARLY, since it is a near-free
+precondition check that determines whether ANY of the harder duplicate-
+aware math in Section 9/Case 2 is ever relevant at all:
+
+  Revised sequence:
+  2A. Exact enumeration for the fire + door/exit/stair "uncertain
+      middle" (unchanged from the original Phase 2A) -- Layer 1's core.
+  2B. `min_open_exits` + occupancy uncertainty added to the same
+      enumeration (unchanged from the original Phase 2B).
+  2C. [NEW, inserted here, cheap] The Layer 3 structural short-circuit
+      check (Section 4's four conditions) -- near-zero additional cost
+      once 2A/2B's enumeration machinery exists, since the "continuous
+      entropy present" case requires NO enumeration at all, and the
+      "finite K" case reuses 2A/2B's own enumeration, just counting
+      instead of summing. Ships alongside 2A/2B, not as a separate
+      later phase, because it answers a DIFFERENT, cheaply-obtained
+      question a user needs at the SAME time as validity.
+  2D. Monte Carlo fallback (renumbered from 2C) -- unchanged in
+      substance, still only for Layer 1's own large-state-space case;
+      this investigation found NO Monte-Carlo-requiring case for Layer
+      3 at all (Section 6), so this step's scope does not grow.
+  2E. UI/UX (renumbered from 2D) -- EXTENDED, not just renumbered, to
+      also surface Layer 3's output (K, and the deterministic "at least
+      count - K slots will fail" headline when relevant) alongside
+      Layer 1/2's existing numbers, per Section 8's integration
+      recommendation -- one preflight panel, one message, not two
+      separate UI surfaces.
+
+This reordering reflects the single biggest finding of this task: the
+uniqueness question, once traced precisely, turned out to be CHEAPER
+and MORE OFTEN TRIVIAL than the original Phase 2 sequencing assumed --
+worth resolving early (a fast, mostly-skip-able check) rather than
+treated as a late, separate concern.
+
+
+NEXT IMPLEMENTATION TASK -- CONCISE RECOMMENDATION
+=====================================================
+
+[DESIGN] Implement Phase 2A exactly as already planned (fire + door/
+exit/stair exact enumeration, extending `campaign_feasibility/
+analysis.py`/new `enumeration.py`), and, in the SAME implementation
+pass, add the Section 4 structural short-circuit check (four cheap
+boolean conditions over the Definition -- occupant existence, firefighter
+existence, growth-time distribution kind, event-time distribution kind)
+as a small, separate, easily-tested function that Layer 2/3 both
+consult. Do NOT yet implement the full sequential/Markov-chain exact
+model for Case 2 (small finite K) or the Monte Carlo fallback (Option
+C/2D) -- both are real but lower-priority, and this investigation found
+no evidence either is needed to correctly handle the reproduced
+99.667%-lethal-fire case or the general common (occupant-containing)
+campaign, which the structural short-circuit already handles for free.
+
+
+EDGE CASE NOTE, DISCLOSED HONESTLY
+=====================================================
+[INFERENCE] This investigation's own conclusion -- that duplicate
+rejection is practically negligible whenever occupants/firefighters are
+present -- depends on the Generator's occupant/firefighter position
+sampling remaining exactly as currently implemented
+(`rng.uniform(zone.x, zone.x+zone.width)`, unconditional, no
+Distribution-based control). If a FUTURE change ever gave the Definition
+schema a way to PIN occupant position to a fixed point (not present in
+the schema today, and out of this investigation's own scope to propose),
+this report's Case 1/Case 2 boundary would need to be re-derived. This
+is flagged so a future reader does not mistake this report's finding for
+a permanent mathematical truth rather than a fact about the CURRENT
+Generator implementation, exactly as this whole investigation was asked
+to determine from the actual code rather than assumption.
+
+
+GIT STATUS COMPARISON AGAINST BASELINE
+=====================================================
+Baseline (recorded at the start of this task, primary checkout,
+`git status --porcelain`): 250 lines, identical to the primary
+checkout's state at the end of the Phase 2 investigation task.
+
+This task added exactly one new file to the primary checkout:
+  docs/architecture/scenario_campaign_acceptance_and_uniqueness_investigation.txt
+  (this report; untracked, newly created).
+
+All verification checks performed during this investigation (field-by-
+field to_dict() tracing, serialization rounding checks) were done by
+reading source files directly -- no throwaway scripts were run or saved
+for this particular task (unlike prior tasks in this thread, this
+investigation's evidence was obtainable entirely by direct code
+reading, cited precisely above).
+
+No file that was part of the recorded baseline was modified by this
+task -- no production code, no test file, no Scenario Definition, no
+Building file.
+
+CONFIRMATION: No implementation files were changed. No code was
+written. No validation rule, threshold, or Scenario Definition
+semantics were altered. Only this one new investigation report was
+created. Nothing was committed in the primary checkout.

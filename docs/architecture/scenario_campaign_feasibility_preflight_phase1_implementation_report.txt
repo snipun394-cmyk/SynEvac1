@@ -1,0 +1,528 @@
+SCENARIO CAMPAIGN FEASIBILITY PREFLIGHT -- PHASE 1 IMPLEMENTATION REPORT
+=====================================================
+Status: IMPLEMENTED (Phase 1 only -- Section 3.4's "uncertain middle"
+exhaustive enumeration/seeded sampling is explicitly NOT implemented,
+per instruction). Nothing was committed. This report is the required
+final deliverable; git status/diff evidence is reproduced verbatim at
+the end.
+
+This follows directly from the two prior investigation reports (both
+re-read in full before any code was written):
+  1. docs/architecture/scenario_campaign_zero_generation_investigation.txt
+  2. docs/architecture/scenario_campaign_feasibility_preflight_investigation.txt
+
+
+0. WORKTREE NOTE (process, not architecture)
+=====================================================
+This repository's EnterWorktree base is a stale single-commit stub
+(missing scenario_validator/, scenario_generator/, campaign_feasibility/,
+and nearly everything else), a known limitation already documented from
+earlier sessions in this thread. Since this task requires editing many
+existing files and running the real pytest suite (impossible against
+that stale base), every file below was authored/edited either directly
+in the primary checkout, or in a worktree used purely as a scratch
+location whose finished content was then copied (`cp`) into the primary
+checkout -- never diffed against the worktree's own stale copy. All
+`pytest` runs, `git status`, and `git diff` in this report were run
+directly against the primary checkout, which is the only checkout that
+has ever held the real current codebase.
+
+
+1. EXACT INTEGRATION POINT
+=====================================================
+
+Traced before writing any code, exactly as instructed:
+
+CampaignController.build_config() (designer/campaign/campaign_controller.py)
+assembles a CampaignConfig from the currently-open Designer Building and
+a live, in-memory ScenarioDefinition -- unchanged, not touched by this
+phase.
+
+CampaignController.on_start() constructs a CampaignWorker(config) and
+calls worker.start() (or, in every test, worker.execute() directly,
+synchronously). CampaignWorker.execute() (designer/campaign/campaign_worker.py)
+is where all pre-flight logic already lived, gated behind
+`if config.diagnostics_mode:` (default True):
+
+    if config.diagnostics_mode:
+        preflight = self._run_preflight_checks(config)
+        self.preflight_completed.emit(preflight)
+        if preflight.has_errors:
+            return CampaignSummary(..., rejection_explanation=self._preflight_explanation(preflight))
+
+This is the exact, single integration point Phase 1 uses.
+_run_preflight_checks() previously called only
+designer.validation.validate_building_authoring() and
+ScenarioDefinition.validate(building=...). It now ALSO calls
+campaign_feasibility.analyze_campaign_feasibility(config.building,
+config.definition) as a third, equally read-only check, before the
+per-scenario generation loop begins. No new call site, no new signal,
+no new UI panel was created -- the existing preflight_completed signal,
+PreflightResult type, and Validation Report panel are reused and
+extended, per the investigation's own Part D.1 recommendation ("use
+the existing campaign/UI blocking error mechanism").
+
+Deliberate scoping decision: the feasibility preflight is gated behind
+the SAME `config.diagnostics_mode` flag the existing Building/Definition
+preflight already is. Extending that gate's meaning (e.g. making
+pre-flight run even when diagnostics_mode=False) would be an unrelated
+behavior change to diagnostics_mode's own semantics, outside this
+phase's requested scope -- so it was not made. This is called out again
+in Section 9 (discrepancies).
+
+
+2. EXACT FILES CHANGED
+=====================================================
+
+New files:
+  navigation/reachability.py
+      bfs_reachable() -- extracted verbatim from scenario_validator/
+      navigation_validation.py's own private `_bfs_reachable()`.
+  campaign_feasibility/__init__.py
+      Public exports: analyze_campaign_feasibility, CampaignFeasibilityReport,
+      ZoneFeasibilityResult, ZoneFeasibilityStatus.
+  campaign_feasibility/model.py
+      ZoneFeasibilityStatus (ERROR/WARNING/OK), ZoneFeasibilityResult,
+      CampaignFeasibilityReport -- the dedicated Part G result model.
+  campaign_feasibility/analysis.py
+      analyze_campaign_feasibility() and its helpers -- the whole of
+      Parts B-F.
+  tests/test_campaign_feasibility.py
+      21 new tests -- Parts A-J's own unit/integration coverage
+      (Section 6 below).
+
+Modified files:
+  scenario_validator/navigation_validation.py
+      `_bfs_reachable()` removed; imports and calls
+      `navigation.reachability.bfs_reachable()` instead. Every other
+      line (the three NAVIGATION checks, their order, their messages)
+      is byte-for-byte unchanged. Verified behavior-preserving by
+      running the full pre-existing tests/test_scenario_validator.py
+      suite immediately after this one change, before writing anything
+      else -- 67/67 passed.
+  designer/campaign/diagnostics.py
+      PreflightResult gains two new fields, feasibility_issues and
+      feasibility_warnings (both Tuple[ValidationRow, ...], defaulting
+      to ()); has_errors now also checks feasibility_issues. Nothing
+      about ValidationRow, DiagnosticsSummary, DiagnosticsCollector, or
+      explain_total_rejection() changed -- DiagnosticsCollector itself
+      was NOT modified, per Part E's own conclusion (see Section 7).
+  designer/campaign/campaign_worker.py
+      One new import (`from campaign_feasibility import
+      analyze_campaign_feasibility`). _run_preflight_checks() gains one
+      new call and two new PreflightResult fields populated from its
+      result. One new small helper, _feasibility_error_code().
+      _preflight_explanation() gains one new paragraph plus the Part I
+      explicit sentence. No other method changed.
+  designer/campaign/campaign_window.py
+      show_preflight() extended to render feasibility_issues (folded
+      into the existing "Pre-flight checks FAILED:" listing) and
+      feasibility_warnings (shown in BOTH the passed and failed
+      branches, since warnings are non-blocking by design and the
+      campaign proceeds either way). No other method changed.
+  tests/test_campaign_diagnostics.py
+      Two pre-existing tests updated -- see Section 8 ("discrepancies
+      found"), both intentional, evidence-based updates reflecting
+      genuinely improved behavior, not weakened assertions.
+
+Files explicitly NOT touched (verified, not merely assumed):
+  scenario_generator/ -- `git diff --stat -- scenario_generator/`
+  returns empty (Section 10's evidence). Confirmed additionally by a
+  new source-level test (GeneratorUnaffectedTests, Section 6) that
+  asserts the string "navigation", "campaign_feasibility", and
+  "bfs_reachable" do not appear anywhere in scenario_generator/generator.py's
+  own source.
+  scenario_validator/'s three validation modules that matter here
+  (navigation_validation.py's own three checks, their codes, their
+  messages, their order) -- unchanged; only the BFS primitive moved.
+  scenario_definition/ -- untouched.
+  DiagnosticsCollector -- untouched (Section 7).
+  Building/Scenario Definition data models -- untouched; no
+  feasibility-specific state was added to either (Part G's own
+  instruction).
+
+
+3. OPTIMISTIC/PESSIMISTIC SEMANTICS (Parts C/D)
+=====================================================
+
+Both bounds are computed once per campaign, from the Definition's own
+declared distributions plus the Building's own authored defaults --
+never from a sampled draw.
+
+OPTIMISTIC: a door/exit/stair edge is optimistically traversable if its
+distribution assigns ANY positive weight to a traversable outcome
+(Door: OPEN or CLOSED; Exit: True/open; Stair: AVAILABLE), or, absent a
+distribution, if the Building's own authored default is traversable
+(mirrors scenario_generator.generator.py's own default_for() rule
+exactly -- door.locked, exit.is_blocked, stair always AVAILABLE in V1).
+
+PESSIMISTIC: an edge is pessimistically traversable ONLY if its
+distribution assigns ZERO weight to every non-traversable outcome --
+i.e. GUARANTEED traversable regardless of which value is sampled. A
+FixedValue traversable value, or a WeightedOptions with no weight at
+all on a non-traversable state, qualifies; anything with genuine
+sampling risk does not.
+
+Each occupied zone's optimistic/pessimistic reachability is then a
+plain set-membership check against TWO graph-wide BFS results (computed
+once, not once per zone): `bfs_reachable(graph, [Node.OUTSIDE_NODE_ID],
+optimistic_predicate)` and the pessimistic equivalent -- reusing
+navigation.reachability.bfs_reachable() verbatim, per Part A's
+instruction not to write a second reachability algorithm.
+
+Interpretation (Part D), implemented exactly as specified:
+  1. optimistic_reachable=False -> ZoneFeasibilityStatus.ERROR, blocking,
+     independent of the fire dimension entirely (checked first, with an
+     early return -- the fire cut analysis is not even attempted for
+     such a zone, since it cannot change a already-proven-impossible
+     verdict).
+  2. pessimistic_reachable=True (with every eligible fire zone SAFE) ->
+     ZoneFeasibilityStatus.OK.
+  3. optimistic_reachable=True and pessimistic_reachable=False (or any
+     fire zone is LETHAL without reaching 100% probability) ->
+     ZoneFeasibilityStatus.WARNING, explicitly non-blocking. No exact
+     probability is claimed for the engineering-state dimension in this
+     case (Phase 2's own scope, Section 11) -- the WARNING text says so
+     explicitly ("Exact asset-state combination analysis ... is not yet
+     performed -- that is Phase 2").
+
+
+4. FIRE SAFE/LETHAL CLASSIFICATION SEMANTICS (Part E)
+=====================================================
+
+For each occupied zone Z, the fire-eligible zone set is resolved by a
+pure restatement of scenario_generator.generator.py::_generate_fire()'s
+own eligibility rule (allowed, minus forbidden, intersected with
+allowed-floor if stated) -- the same computation already duplicated
+once in scenario_definition/validation.py's own (misleadingly named)
+_check_allowed_floor_has_a_reachable_zone, restated a third time here
+for the same reason that precedent already exists in this codebase
+(campaign_controller.py's own derive_definition_id() comment: "the same
+algorithm, independently implemented per package").
+
+For each zone F in the ACTUAL sampling population (see Section 5), a
+SINGLE BFS is computed with F excluded as a node, under the OPTIMISTIC
+predicate -- reusing the identical
+`bfs_reachable(graph, [Node.OUTSIDE_NODE_ID], optimistic_predicate,
+excluded_node_ids={F})` call navigation_validation.py's own
+FIRE_ORIGIN_BLOCKS_EVACUATION check performs, just run ahead of
+candidate construction, against every eligible zone rather than one
+sampled zone. This is computed ONCE per fire zone F (not once per
+(occupied zone, fire zone) pair, since which nodes remain reachable
+when F is excluded does not depend on which occupied zone is asking) --
+an efficiency refinement beyond the investigation's own worked
+description, noted in Section 9.
+
+Z is classified SAFE for F if Z is still in that reachable set, LETHAL
+otherwise. Exactly one exclusion is applied per test -- F == Z is never
+classified into either set: this mirrors navigation_validation.py's
+own FIRE_ORIGIN_BLOCKS_EVACUATION check exactly, which excludes the
+ignition zone from its own occupied-zone set
+(`occupied_zone_ids - {ignition_zone_id}`) -- "do not invent a new
+interpretation of what fire blocking means," per the task's own
+instruction.
+
+
+5. PROBABILITY CALCULATION METHOD (Part F)
+=====================================================
+
+Purely analytical -- no random sampling anywhere in this module.
+
+The ACTUAL fire-zone sampling population is resolved exactly as
+scenario_generator.generator.py::_generate_fire() actually samples it,
+not as an idealized architecture might:
+  - If `ignition_zone_preference` is stated, the population is that
+    WeightedOptions' own keys/weights, taken DIRECTLY -- NOT intersected
+    with the eligible set. This mirrors generator.py's own documented,
+    admittedly-unresolved architectural question verbatim ("§13's open
+    question ... this module trusts the preference distribution as
+    authored") -- this implementation is faithful to the actual runtime
+    sampling behavior, not to what a cleaner architecture might do
+    instead.
+  - Otherwise, the population is uniform over the eligible set (mirrors
+    sample_uniform_choice()'s own default policy).
+
+P(fire disconnects Z) = (sum of weight over LETHAL zones in the
+population, excluding Z itself) / (sum of weight over the WHOLE
+population, excluding Z itself). Returns None (not 0.0, not 1.0) when
+that denominator is zero -- e.g. the only population member is Z
+itself, or the eligible set is empty -- rather than fabricating an
+answer; this is a real, disclosed edge case (Section 9).
+
+Reported per-zone, never collapsed into one number across zones (Part
+F's own explicit instruction) -- CampaignFeasibilityReport.zone_results
+is a tuple, one ZoneFeasibilityResult per potentially-occupied zone, and
+no aggregate campaign-level probability is computed anywhere in this
+phase (deliberately -- the investigation's Section 3.5 flagged this as
+a real second-order refinement with a non-trivial "both dimensions
+co-occur" boundary, and this phase does not claim a semantics for it
+that hasn't been earned).
+
+
+6. TEST RESULTS
+=====================================================
+
+New focused suite (Part J, all 10 items covered):
+  tests/test_campaign_feasibility.py -- 21 tests, all passing:
+    OptimisticBoundTests (3): unreachable-even-optimistically ERROR
+      (J.1); reachable-both-bounds passes (J.2); optimistic-only is a
+      non-blocking WARNING (J.3).
+    FireCutAnalysisTests (2): SAFE fire origin (J.4); LETHAL fire
+      origin (J.5).
+    FireProbabilityTests (3): uniform mixed safe/lethal, verified exact
+      0.5 (J.6); weighted mixed safe/lethal, verified exact 0.3 against
+      real WeightedOptions weights (J.7); 100%-lethal is a blocking
+      ERROR (J.8, analysis-module level).
+    PotentiallyOccupiedZoneTests (5): Part B precision -- zero-fixed-
+      occupancy excluded; absent-from-distribution excluded;
+      nonexistent-zone-id skipped not crashed; all-zero-weight
+      WeightedOptions excluded; any-positive-weight WeightedOptions
+      included.
+    ResultModelTests (3): empty report; error/warning partitioning;
+      building=None returns an empty report rather than raising.
+    PreviousFailureClassReproductionTests (1): the exact 5-zone chain
+      fixture from the zero-generation investigation's own root-cause
+      reproduction -- zone-1 classified ERROR, P=1.0 (J.9, analysis
+      level).
+    GeneratorUnaffectedTests (2): source-level assertion that
+      scenario_generator/generator.py contains no reference to
+      "navigation"/"campaign_feasibility"/"bfs_reachable" (J.10);
+      generate_scenario() output shape smoke check.
+    CampaignIntegrationTests (2): 100%-lethal blocks the WHOLE
+      CampaignWorker campaign, not just the analysis module (J.8, full
+      integration); the decisive proof for J.9 -- scenario_generator.
+      generate_scenario() is monkeypatched to raise if called, then a
+      zero-feasibility campaign is run end-to-end through
+      CampaignWorker.execute() -- passes, meaning generation was
+      never attempted.
+
+  Result: 21/21 passed.
+
+Regression suite actually run (chosen for direct relevance to every
+file this phase touched or reasons about):
+  tests/test_campaign_feasibility.py    21 passed
+  tests/test_campaign_studio.py         (part of 110 passed, see below)
+  tests/test_campaign_diagnostics.py    (part of 110 passed, see below)
+  tests/test_scenario_validator.py      67 passed (run standalone
+                                         immediately after the
+                                         bfs_reachable extraction, before
+                                         any other change, to isolate
+                                         that one refactor's own
+                                         correctness)
+  tests/test_scenario_generator.py      \
+  tests/test_scenario_pipeline.py        > all included in the combined
+  tests/test_scenario_definition.py     /  351-test run below
+  Combined run (test_campaign_feasibility + test_campaign_studio +
+  test_campaign_diagnostics + test_scenario_validator +
+  test_scenario_generator + test_scenario_pipeline +
+  test_scenario_definition): 351 passed, 0 failed.
+  Navigation-package regression (test_builder_navigation_preview.py,
+  test_engineering_navigation_graph.py, test_navigation_graph.py,
+  test_obstacle_navigation_integration.py -- every test file that
+  exercises navigation/, the one other package touched by the
+  bfs_reachable extraction): 92 passed, 0 failed.
+
+No test outside these files was modified or is expected to be affected
+(neither navigation/reachability.py nor campaign_feasibility/ is
+imported by anything except the files listed in Section 2).
+
+
+7. IS DiagnosticsCollector SUFFICIENT? (Part E of the design task,
+re-confirmed during implementation)
+=====================================================
+
+Confirmed unchanged, exactly as the design investigation concluded:
+DiagnosticsCollector was not modified. The feasibility preflight's own
+result (CampaignFeasibilityReport) never touches DiagnosticsCollector's
+(category, code)-only shape -- it is converted, once, into plain
+ValidationRow entries (the same small display type building_issues/
+definition_issues already used) inside CampaignWorker._run_preflight_checks(),
+which is the correct layer for that conversion (campaign_feasibility/
+itself has no dependency on designer.campaign.diagnostics at all --
+verified: campaign_feasibility/analysis.py and model.py import only
+navigation.* and scenario_definition.distributions).
+
+
+8. BLOCKING vs WARNING RULES (Part H, as implemented)
+=====================================================
+
+Case 1 (any zone optimistic_reachable=False) -> ERROR, blocking.
+Case 2 (lethal_fire_probability == 1.0 for any zone, with a non-empty
+  lethal set) -> ERROR, blocking.
+Case 3 (pessimistic_reachable=False, OR any fire zone LETHAL without
+  reaching 100%) -> WARNING, non-blocking; campaign proceeds normally
+  through the existing, unmodified generation loop.
+Case 4 (pessimistic_reachable=True AND no fire zone LETHAL) -> OK,
+  informational only, not surfaced as a warning row (ZoneFeasibilityStatus.OK
+  results are simply absent from PreflightResult.feasibility_issues/
+  feasibility_warnings -- only ERROR/WARNING zones ever produce a
+  ValidationRow).
+
+CampaignWorker.execute()'s existing `if preflight.has_errors:` branch
+(unmodified in its own control flow, only in what feeds
+PreflightResult.has_errors) already implements the ERROR-blocks/
+WARNING-doesn't-block split correctly, since PreflightResult.has_errors
+only inspects feasibility_issues (ERROR-only), never
+feasibility_warnings.
+
+
+9. DISCREPANCIES BETWEEN THE INVESTIGATION PLAN AND WHAT THE REAL CODE
+REQUIRED
+=====================================================
+
+1. Efficiency refinement beyond the investigation's own description:
+   Section 3.3 of the design investigation described "an O(|eligible
+   zones|) sequence of BFS calls" per occupied zone, implying (worst
+   case) O(occupied zones x eligible zones) BFS calls overall. The
+   actual implementation computes each fire-zone exclusion BFS exactly
+   ONCE per distinct fire zone (not once per (occupied zone, fire zone)
+   pair), since which nodes remain reachable when a given fire zone is
+   excluded does not depend on which occupied zone is asking. This is a
+   strict efficiency improvement over the investigation's own worked
+   description, not a deviation from its intent.
+
+2. The `zone_id == fire_zone_id` exclusion (Section 4/5 above) was not
+   spelled out in as much explicit detail in the design investigation
+   as it needed to be for a correct implementation -- the investigation
+   named the general principle ("reuse the existing exclusion behavior")
+   but the exact renormalization-of-probability consequence (excluding
+   Z from BOTH the SAFE/LETHAL classification AND the probability
+   denominator) had to be worked out during implementation, guided by
+   navigation_validation.py's own FIRE_ORIGIN_BLOCKS_EVACUATION
+   exclusion semantics.
+
+3. Two pre-existing tests in tests/test_campaign_diagnostics.py needed
+   updating, not merely left alone:
+     - RootCauseReproductionTests::test_chain_topology_with_every_zone_occupied_produces_navigation_rejections
+       previously asserted `summary.rejected > 0` (i.e., "wasted
+       attempts happen and are correctly categorized"). With Phase 1
+       in place, this exact fixture (the canonical reproduction of the
+       original failure) is now caught at pre-flight -- accepted=0
+       AND rejected=0, because generation never runs at all. The test
+       was updated to assert the new, better outcome (preflight blocks
+       with a FEASIBILITY issue naming zone-1) rather than the old,
+       now-obsolete "rejections happen" behavior.
+     - PerCandidateCaptureTests::test_rejection_explanation_populated_when_every_scenario_is_rejected
+       previously asserted `summary.rejected == 3` for a fixture whose
+       door is permanently LOCKED (FixedValue, zero sampling
+       uncertainty) -- this is now a Case 1 (ZONE_UNREACHABLE_OPTIMISTIC)
+       pre-flight ERROR, so `summary.rejected == 0` (blocked before any
+       attempt), not 3. Updated accordingly.
+   Both updates were verified to reflect a genuine behavior IMPROVEMENT
+   (fewer wasted attempts, an earlier and more specific explanation),
+   not a weakened or fabricated assertion -- both are, in fact, the two
+   scenarios Part J.9's own reproduction requirement asks this phase to
+   catch "BEFORE candidate generation begins," now literally
+   demonstrated by tests that used to demonstrate the opposite. The
+   scenario_validator-level NAVIGATION rejection behavior these two
+   tests originally targeted remains independently covered, unchanged,
+   by tests/test_scenario_validator.py and by
+   RootCauseReproductionTests::test_longer_chain_makes_navigation_the_dominant_rejection_reason
+   (which calls generate_scenario()/validate() directly, bypassing
+   CampaignWorker's pre-flight entirely, and was NOT changed).
+
+4. The investigation's Section 3.3 diagram implied computing reachable-
+   excluding-F sets eagerly for every eligible zone up front; the
+   implementation instead builds a plain dict keyed by fire_zone_id,
+   computed once, then reused per zone via dict lookup -- a direct,
+   uneventful translation, not really a discrepancy, but recorded here
+   since it is the concrete data structure the investigation's prose
+   left unspecified.
+
+5. `_can_be_occupied()`'s handling of UniformRange/unknown distribution
+   kinds (Part B: "be precise here") was not addressed in the design
+   investigation at all (Section 3 focuses on door/exit/stair
+   distributions, not occupancy count distributions) -- implemented
+   during this phase using the same rounding rule
+   scenario_generator.generator.py's own `_generate_occupant_placements()`
+   uses (`max(0, int(round(raw_count)))`), applied to the distribution's
+   own declared upper bound (FixedValue.value, the max weighted-option
+   key with positive weight, or UniformRange.high) -- a new,
+   implementation-time decision, not previously specified.
+
+
+10. GIT STATUS / GIT DIFF EVIDENCE
+=====================================================
+
+Baseline (recorded at the start of this task, primary checkout,
+`git status --porcelain`): 234 lines, identical to the primary
+checkout's state at the end of the prior (feasibility preflight
+design) investigation task.
+
+Final `git status --porcelain`: 242 lines -- exactly 8 new entries
+relative to baseline:
+
+   M designer/campaign/campaign_window.py
+   M designer/campaign/campaign_worker.py
+   M designer/campaign/diagnostics.py
+   M scenario_validator/navigation_validation.py
+   M tests/test_campaign_diagnostics.py
+  ?? campaign_feasibility/
+  ?? navigation/reachability.py
+  ?? tests/test_campaign_feasibility.py
+
+`git diff --stat` for the five modified files:
+  designer/campaign/campaign_window.py        | 42 +++++++++++++--
+  designer/campaign/campaign_worker.py        | 82 +++++++++++++++++++++++++++--
+  designer/campaign/diagnostics.py            | 38 ++++++++++---
+  scenario_validator/navigation_validation.py | 53 +++++--------------
+  tests/test_campaign_diagnostics.py          | 48 ++++++++++++++---
+  5 files changed, 202 insertions(+), 61 deletions(-)
+
+`git diff --stat -- scenario_generator/`: EMPTY (confirmed, no output)
+-- scenario_generator itself did NOT become connectivity-aware; it was
+not touched at all.
+
+No file outside this exact list was created or modified. No Scenario
+Definition, no Building file, and no validation RULE (as opposed to
+where it is checked) changed. Nothing was committed in the primary
+checkout, per instruction.
+
+
+11. WHAT REMAINS FOR PHASE 2 (explicit, per instruction)
+=====================================================
+
+Not implemented in this phase, exactly as scoped:
+  - Section 3.4's "uncertain middle" exact enumeration: for a zone that
+    is optimistic_reachable=True but pessimistic_reachable=False (or
+    has a non-100% LETHAL fire probability), Phase 1 reports a WARNING
+    with no exact probability for the engineering-state dimension.
+    Phase 2 would prune to the relevant, genuinely-uncertain door/exit/
+    stair objects on that zone's own path to Outside and either
+    enumerate their joint state space exactly (when small) or fall back
+    to reproducible seeded sampling (when not) -- neither is built.
+  - Section 3.5's combined fire-and-engineering-state joint probability
+    (currently each dimension is evaluated independently; no combined
+    P(infeasible) figure is computed or reported for a zone whose risk
+    comes from both dimensions at once).
+  - Any campaign-level (as opposed to per-zone) aggregate probability
+    or expected-rejection-rate figure (Part D.3's "~X% of scenario
+    slots are expected to exhaust every retry" framing) -- Phase 1
+    reports per-zone facts only; no `max_attempts`-aware risk projection
+    was built.
+  - The Section 6 (Part F of the prior investigation) persistence
+    follow-up -- still entirely separate, still not required by
+    anything in Phase 1, still not implemented.
+  - Any change to DiagnosticsCollector's (category, code)-only
+    granularity -- still a valid, separate, orthogonal improvement
+    opportunity for POST-HOC diagnosis of a campaign that proceeds past
+    a Phase 1 WARNING and still produces rejections; untouched here.
+
+
+CONFIRMATION
+=====================================================
+- Focused tests run: 21/21 passed (tests/test_campaign_feasibility.py).
+- Relevant regression suite run: 351/351 passed (campaign + scenario_
+  validator/generator/pipeline/definition suites) plus 92/92 passed
+  (navigation-package suite) -- 443 tests total, 0 failures.
+- git diff inspected: exactly 5 modified files, 3 new files (one a
+  package directory), as listed in Section 2/10.
+- scenario_generator confirmed unmodified (`git diff --stat --
+  scenario_generator/` empty; also asserted at the source level by a
+  new test).
+- The preflight is confirmed, by a monkeypatch test that makes
+  scenario_generator.generate_scenario() raise if called, to catch the
+  original zero-generation failure class BEFORE any candidate
+  generation attempt -- not merely "before completion," literally
+  before the first call.
+- Nothing was committed in the primary checkout.
