@@ -1,0 +1,1043 @@
+MULTI-ZONE JOINT EVACUATION COORDINATION -- IMPLEMENTATION INVESTIGATION
+====================================================================
+
+Status: read-only investigation. Zero production code modified. Zero
+tests modified. Nothing implemented.
+
+Both prior reports (multi_zone_coordination_architecture_investigation.txt
+and multi_zone_coordination_implementation_readiness_investigation.txt)
+were read completely before writing this one. Every load-bearing claim
+below was independently re-checked against current source this session,
+not copied forward on trust. One correction to BOTH prior reports was
+found this session and is called out explicitly in Section 3/5 -- it
+changes what "route overlap" can honestly do.
+
+
+====================================================================
+1. VERIFY THE ACTUAL CURRENT MULTI-ZONE ACTION FLOW
+====================================================================
+
+Traced fresh from live_perception/building_observation_adapter.py,
+rl_training/production/live_inference.py,
+rl_training/production/decision_engine.py, and
+live_runtime/live_decision_coordinator.py -- not summarized from memory.
+
+  Live fused observations
+    -> BuildingObservationAdapter.to_building_observation(fused_observations,
+       timestamp, known_zone_ids=...) -> BuildingObservation
+       (live_perception/building_observation_adapter.py)
+    -> LiveRLInferenceEngine.infer(observation, active_recommendation_by_zone,
+       active_broadcast, elapsed_time, max_time, ...) -> InferredRLAction
+       (rl_training/production/live_inference.py:260-294) -- internally:
+       encodes via PerceptionObservationEncoder.encode(), calls
+       self._model.predict(encoded_observation, deterministic=deterministic)
+       (ONE forward pass, ONE action_index out), then
+       _decode_action(self._action_schema, int(action_index)) ->
+       InferredRLAction(action_index, recommended_edge_id, recommendation_label).
+    -> RLActionDecisionEngine.set_action(inferred.recommended_edge_id,
+       self._rl_engine.zone_ids) (live_runtime/live_rl_decision_pipeline.py:161)
+       -- this is where "one action" becomes "N identical per-zone entries":
+       set_action() (decision_engine.py:62-65) stores exactly ONE scalar
+       (self._recommended_edge_id) plus the full zone_id tuple
+       (self._zone_ids); no per-zone differentiation happens here, only
+       bookkeeping for what decide() will later broadcast.
+    -> LiveDecisionCoordinator.tick(stair_ids, occupant_ids_by_stair,
+       covered_stair_ids, timestamp, building_observation=observation)
+       (live_runtime/live_decision_coordinator.py:62-111) -- five steps,
+       verified by direct re-read:
+         Step 1: compute_asset_occupancy_snapshot() for stairs only
+           (observable_assets.facts, unmodified).
+         Step 2: self._bridge.update_and_publish(asset_observations,
+           timestamp, self._decision_engine) -- this internally calls
+           self._decision_engine.set_stair_congestion_states(...)
+           (a THIRD setter, distinct from set_action()/
+           set_zone_recommendations(), never mutually exclusive with
+           either -- decision_engine.py:72-82).
+         Step 3: observation = building_observation if supplied else an
+           empty BuildingObservation() (never fabricated).
+         Step 4/5: return self._decision_engine.decide(observation, timestamp).
+       LiveDecisionCoordinator.tick() NEVER calls set_action() or
+       set_zone_recommendations() itself -- its own docstring
+       (live_decision_coordinator.py:26-31) states this explicitly: "it
+       is the caller's own separate responsibility to have already
+       called that engine's set_action()/set_zone_recommendations()."
+       Verified: LiveDecisionCoordinator has no reference to InferredRLAction,
+       LiveRLInferenceEngine, or any RL-specific type at all in its own
+       import list (live_decision_coordinator.py:1-9) -- it is generic
+       over "any object exposing set_stair_congestion_states()/decide()"
+       (its own comment, lines 33-36).
+    -> RLActionDecisionEngine.decide(observation, time) -> DecisionRecommendation
+       (decision_engine.py:290-323).
+
+  QUESTION-BY-QUESTION ANSWERS:
+
+  - What action does one RL inference actually produce? Exactly one
+    action_index -> exactly one InferredRLAction(recommended_edge_id,
+    recommendation_label) pair. One float-in, one categorical-index-out,
+    per model.predict() call. Verified: LiveRLInferenceEngine.infer()
+    calls self._model.predict() exactly once (live_inference.py:292),
+    no loop, no per-zone call.
+
+  - How does that action become per-zone recommendations? By
+    set_action()'s own construction (decision_engine.py:62-65) storing
+    one scalar against the FULL zone_id tuple, then decide()
+    (lines 294-297) building `effective_actions = {zone_id: self.
+    _recommended_edge_id for zone_id in self._zone_ids}` -- a dict
+    comprehension that mechanically repeats the same value once per
+    zone_id. This is the ONLY step where "per-zone recommendations"
+    come into existence at all; it is pure repetition, not derivation.
+
+  - Is the same recommendation truly broadcast to every zone? Yes,
+    confirmed at the exact line: decision_engine.py:297,
+    `{zone_id: self._recommended_edge_id for zone_id in self._zone_ids}`.
+    Every value in that dict is `self._recommended_edge_id`, a single
+    Python object reference, for every key.
+
+  - Where does set_zone_recommendations() fit? At the EXACT same call
+    site set_action() occupies today: live_runtime/
+    live_rl_decision_pipeline.py:161, immediately before
+    self._decision_coordinator.tick(...) is invoked. Nothing else in
+    tick() needs to know which of the two setters was used.
+
+  - Can it override recommendations per zone without modifying the RL
+    policy? Yes, unconditionally. set_zone_recommendations() (decision_
+    engine.py:67-70) takes an already-fully-formed
+    Mapping[str, Optional[str]] from the CALLER -- it does not read the
+    RL policy, does not call infer() again, does not touch
+    LiveRLInferenceEngine or the saved model artifact in any way. The
+    RL policy has already finished its one forward pass by the time
+    this setter is called; nothing here or downstream can cause a
+    second inference.
+
+  - Does it override the action entirely, or only affect final
+    ZoneRecommendation construction? Precisely the latter, and this
+    distinction matters: there is no single stored "the action" object
+    for it to override. set_action()/set_zone_recommendations() are
+    mutually exclusive INPUT MODES for the one thing decide() actually
+    builds -- effective_actions, a plain per-zone dict (decision_
+    engine.py:294-297) -- which then feeds _build_zone_recommendation()
+    per zone (lines 299-302) to construct ZoneRecommendation objects.
+    Calling set_zone_recommendations() after the RL already inferred
+    its single target does not "undo" that inference (it already
+    happened, upstream, independently, and produced the SAME
+    recommended_edge_id the coordinator will read as its starting
+    point) -- it only changes which per-zone target string decide()
+    uses when it NEXT constructs ZoneRecommendation objects, this tick.
+    Confirmed by decide()'s own branch (lines 294-297): whichever setter
+    ran last simply determines the source of effective_actions; every
+    other line of decide() (severity/occupancy/is_unsafe computation,
+    priority ordering, unsafe_zone_ids) is identical regardless of which
+    branch supplied it.
+
+
+====================================================================
+2. DEFINE THE EXACT COORDINATION PROBLEM USING CURRENT REPOSITORY CONCEPTS
+====================================================================
+
+A. SHARED TARGET OVERLOAD
+
+  "combined expected demand = sum of occupancy estimates for zones
+  assigned to the same target" -- can the repository currently compute
+  this? NO, confirmed absent (re-verified this session by grepping
+  ai_decision/, rl_training/, live_runtime/ for groupby/defaultdict/
+  by_target/by_exit/by_stair -- zero matches, matching the prior
+  report's own finding). What is missing, precisely: a grouping step
+  (zone_id -> target_id, inverted to target_id -> [zone_id, ...]) and a
+  summation step over each group's ZoneRecommendation.occupant_count.
+  Neither exists. What is NOT missing: the raw per-zone inputs
+  (recommended_exit_edge_id, occupant_count) are both already honestly
+  present on every ZoneRecommendation object decide() already produces
+  -- this is aggregation logic to be added, not new sensing.
+
+B. ROUTE OVERLAP
+
+  Can existing topology/pathfinding infrastructure detect a shared
+  corridor/door/stair between two zones with DIFFERENT targets? Traced
+  fresh this session from navigation/edge.py and pathfinding/route.py:
+  YES, and more completely than either prior report stated -- see the
+  correction below.
+
+  CORRECTION TO BOTH PRIOR REPORTS: navigation/edge.py:71-75 defines
+  `Edge.EDGE_TYPES = (DOOR, EXIT, STAIR)` -- there is NO "Corridor" edge
+  type anywhere in this codebase's NavigationGraph. Every single edge on
+  every route, from the first hop to the last, IS one of exactly Door,
+  Exit, or Stair (confirmed: navigation/graph_builder.py only ever adds
+  edges derived from Door.zone_a_id/zone_b_id, Exit.zone_id, or a
+  Staircase's floor-to-floor references -- no other edge-producing
+  object exists in the Building model). The prior reports' claim that "a
+  shared plain-corridor edge has no capacity concept" was based on an
+  incorrect assumption that a generic Corridor edge type exists; it does
+  not. This means shared-edge detection via Route.edge_ids intersection
+  (pathfinding/route.py:46-48) is potentially capacity-actionable on
+  EVERY shared edge along a route, not merely on a route's final target
+  edge -- see Section 5 for the capacity-number confirmation that makes
+  this concrete, not merely structural.
+
+  Mechanism: Route.edge_ids is a plain list; PathfindingEngine.
+  nearest_exit()/dijkstra()/alternative_paths() (pathfinding/engine.py)
+  already return full Route objects with every intermediate edge
+  populated -- comparing two zones' edge_ids lists for intersection uses
+  nothing not already returned by an existing, unmodified query.
+
+C. STAIR CONGESTION INTERACTION
+
+  Re-traced stair_congestion/predictor.py fully this session (not
+  assumed): StairCongestionPredictor.observe() (lines 102-206) takes a
+  bare (stair_id, timestamp, occupancy) triple and has, per its own
+  module docstring (lines 10-29), "no opinion about, and no access to,
+  WHERE that occupancy number came from." Its trend/prediction
+  (_predict(), lines 210-228) is a deterministic linear extrapolation of
+  PAST observed samples only (rate computed from a rolling window,
+  lines 138-185) -- there is no parameter, field, or call path anywhere
+  in this module through which "N zones with combined occupant_count M
+  were just assigned this stair" could be communicated to it. This is
+  proven by the module's own signature, not inferred from naming.
+
+  "already congested" vs. "expected to become congested because the
+  coordinator assigns multiple zones there" -- these are genuinely
+  different facts in this codebase and must stay genuinely separate:
+    - "already congested" = StairCongestionState.current_occupancy /
+      currently_exceeds_threshold -- a real, perception-derived,
+      CURRENT-cycle-only fact (stair_congestion/models.py:59-78, "every
+      Optional[...] field is None... whenever status is UNKNOWN for THIS
+      cycle -- this type requires a genuine current-cycle reading to
+      report anything at all").
+    - "expected to become congested because of this recommendation" =
+      NOT a value the predictor can ever produce, because it never
+      receives the coordinator's own decision as an input. This can only
+      be computed BY the coordinator itself, as new aggregation logic
+      (Section 2A), never retrieved from StairCongestionPredictor.
+  StairCongestionState CAN be used as coordination evidence, but only
+  as INFORMATIONAL/soft evidence (a tie-breaker among already-necessary
+  alternates, or a hedged note) -- never as a hard constraint that
+  excludes a target on its own, because it has zero awareness of the
+  very demand the coordinator's own decision is about to create. Its
+  authority is not changed by this report: it remains exactly the
+  "monitor, never decide" role RLActionDecisionEngine._stair_congestion_
+  note() already gives it (decision_engine.py:152-207).
+
+D. CONTRADICTORY RECOMMENDATIONS -- precise definitions, not vague language
+
+  - Two zones assigned to the same exit: NOT, by itself, contradictory
+    -- it is only a CONFLICT (a fact requiring a decision) once combined
+    demand for that exit, honestly summed (Section 2A), is compared
+    against that exit's real capacity (Section 5) and found to exceed
+    it. Two low-occupancy zones sharing a large exit is not a conflict
+    at all under this definition; the repository provides no basis for
+    calling it one without the demand/capacity comparison actually being
+    run.
+  - Two zones assigned to routes sharing a corridor: reframe per the
+    2B correction -- "corridor" in this codebase's own vocabulary means
+    a sequence of Door/Exit/Stair edges. This is a conflict under the
+    SAME definition as above, evaluated per shared edge rather than per
+    final target: only a conflict once summed demand crossing that
+    specific shared edge exceeds that edge's own capacity.
+  - One zone told to use a stair while another is told to use a door
+    connected to that same stair: this is well-defined and checkable --
+    "connected to that same stair" means the door's edge appears in a
+    route that also traverses the stair edge (or the door IS the stair's
+    own approach edge). It is a conflict under the identical
+    demand-vs-capacity test, applied to the STAIR edge specifically
+    (since climbing the stair is what both zones would actually share,
+    even though their nominal "target" strings differ) -- again, only
+    once the summed demand across BOTH zones' contribution to that
+    shared stair edge is checked against the stair's own capacity, never
+    merely because the two target strings differ.
+  - Two recommendations causing aggregate demand beyond some known
+    capacity: this IS the repository-provable definition of "conflict"
+    this report adopts throughout -- restated as the single, precise
+    rule: a conflict exists at edge E if and only if the sum of
+    occupant_count over every zone whose route to its own assigned
+    target passes through E exceeds a real capacity number for E
+    (Section 5). Nothing else in this codebase provides an evidentiary
+    basis for calling a set of recommendations "contradictory" -- shared
+    target strings alone, shared route strings alone, or a stair merely
+    being RISING alone are all, individually, insufficient evidence
+    under this report's own standard (Section 2C).
+
+
+====================================================================
+3. TOPOLOGY AND ROUTING INFORMATION ACTUALLY AVAILABLE
+====================================================================
+
+Re-verified fresh this session (Building, NavigationGraph,
+PathfindingEngine, edge/node models, exits, stairs, zone connectivity):
+
+  - Building (models.building.Building): the Designer/Builder-authored
+    source of truth; already held live by LiveRLInferenceEngine
+    (live_inference.py:207) and LiveRLDecisionPipeline
+    (live_rl_decision_pipeline.py:77) -- confirmed present, not
+    theoretical.
+  - NavigationGraph (navigation.graph.NavigationGraph), built via
+    navigation.graph_builder.NavigationGraphGenerator().build(building)
+    -- a pure, deterministic, already-tested function of Building alone
+    (navigation/graph_builder.py:21-44). NOT currently constructed
+    anywhere under live_runtime/ (re-verified this session: zero matches
+    for "NavigationGraph(" under live_runtime/) -- constructing one is
+    new integration work, using an existing, unmodified function, not a
+    new capability.
+  - PathfindingEngine (pathfinding.engine.PathfindingEngine): re-read
+    end-to-end this session. Constructor takes (graph, cost_model=None,
+    heuristic=None) -- graph is the NavigationGraph above; every query
+    method (nearest_exit, alternative_paths, distances_from, dijkstra,
+    a_star) operates only on graph.find_node/find_neighbors and
+    cost_model.cost(edge). No Ground-Truth/simulator type is
+    constructed, imported, or required anywhere in this file.
+  - Edge/Node models (navigation/edge.py, implied navigation/node.py):
+    Edge.EDGE_TYPES = (DOOR, EXIT, STAIR) -- see Section 2B's
+    correction; every edge carries edge_type, from_node/to_node,
+    reference (the real Door/Exit/Staircase object), width (getattr
+    passthrough, all three types expose it), capacity (getattr
+    passthrough -- non-None only for Exit's own raw field; Door/
+    Staircase return None from THIS property specifically, but see
+    Section 5 for why a real capacity number still exists for both via
+    DefaultCapacityModel/StairCapacityModel), and traversable (a live,
+    always-current computed property -- e.g. a Door's traversable
+    reflects Door.active/Door.locked/obstacle-blocking in real time,
+    never a cached snapshot).
+  - Exits/Stairs: ordered_exits(building)/ordered_stairs(building)
+    (dataset_builder.schema, already used by rl_training/action_space.py
+    itself to build the action table) give the canonical id ordering a
+    coordinator would need to resolve target ids back to real objects.
+  - Zone connectivity: entirely derived from Door.zone_a_id/zone_b_id,
+    Exit.zone_id, and Staircase's own floor-to-floor endpoint fields --
+    never inferred from geometry (navigation/graph_builder.py's own
+    explicit discipline, re-confirmed this session).
+
+  SMALLEST HONEST WAY A NEW COORDINATOR COULD OBTAIN ALL OF THIS:
+  construct exactly one NavigationGraph (via NavigationGraphGenerator)
+  and exactly one base PathfindingEngine from the SAME `building:
+  Building` reference LiveRLInferenceEngine/LiveRLDecisionPipeline
+  already hold, ONCE per Building (not per tick) -- mirroring
+  ActionMapper's and PerceptionObservationEncoder's own established
+  "construct once, reuse every tick" discipline in this exact pipeline.
+  No other input is required.
+
+  RE-CHECKED IMPORT RESTRICTIONS (do not place routing imports
+  somewhere merely because it is convenient -- verified by direct
+  re-read of both test files this session):
+
+  - rl_training/production/decision_engine.py: tests/
+    test_rl_action_decision_engine.py:689-706,
+    test_module_still_has_no_pathfinding_or_navigation_import() reads
+    THIS EXACT FILE's own source text and asserts no import line starts
+    with "pathfinding", "navigation", "decision_policy", or
+    "advisory_system". Confirmed still true of the file as it exists on
+    disk today (its own import list, decision_engine.py:1-16, contains
+    none of these). This file MUST remain isolated -- any coordinator
+    logic placed inside it would fail this test immediately.
+  - live_runtime/live_rl_decision_pipeline.py: tests/
+    test_live_rl_decision_pipeline.py:277-311, ArchitectureGuardTests.
+    test_no_forbidden_module_is_imported() reads THIS EXACT FILE's own
+    source text and asserts no import line starts with any of:
+    rl_training.production.environment, ground_truth, advisory_system,
+    decision_policy, live_system.orchestrator, live_system.main,
+    simulation_interactive, hazard_evolution, live_occupants,
+    stair_congestion, observable_assets, rl_training.reward_function,
+    rl_training.perception_observation_space, pathfinding. Confirmed
+    still true of the file as it exists on disk today (live_rl_decision_
+    pipeline.py:1-15's own import list contains none of these -- notably
+    it already imports live_runtime.live_decision_coordinator.
+    LiveDecisionCoordinator without importing stair_congestion/
+    observable_assets directly itself, because LiveDecisionCoordinator
+    is the file that imports those, one layer down). This file MUST
+    remain isolated in the same way -- pathfinding logic must not be
+    inlined here, and must not be imported via a line that itself starts
+    with "pathfinding".
+  - Neither guard is a package-wide rule -- both scan one specific
+    file's own literal import-line text (Path(__file__).resolve().
+    parent.parent / "..." in both test files, an exact single-file
+    path). A NEW file that live_rl_decision_pipeline.py merely imports
+    by name (e.g. "from live_runtime.zone_recommendation_coordinator
+    import ZoneRecommendationCoordinator") passes this specific test
+    exactly as its existing "from live_runtime.live_decision_coordinator
+    import LiveDecisionCoordinator" line already does today, even though
+    LiveDecisionCoordinator's OWN file freely imports stair_congestion.
+    This is the established, already-proven pattern in this exact
+    pipeline, not a loophole invented for this report.
+
+
+====================================================================
+4. DEMAND ESTIMATION HONESTY -- signal classification
+====================================================================
+
+Every signal a coordinator could reach for, classified precisely
+against source (re-verified this session, perception/models/
+building_observation.py and live_occupants/ read directly):
+
+  estimated_occupancy (BuildingObservation.occupancy_observation(zone_id)
+  .estimated_count)
+    Classification: ESTIMATED. Optional[float]; None means "no reading
+    this cycle," a non-None value (including 0.0) means a real sensor-
+    derived estimate, possibly a genuine zero. (perception/models/
+    building_observation.py:73-83, "estimated_count follows...
+    convention exactly: None means no reading available, never zero
+    people.")
+
+  confidence (ObservedOccupancy.confidence)
+    Classification: ESTIMATED, when present; UNKNOWN (None) otherwise.
+    Same dataclass, same file, line 83 -- Optional[float], no default
+    other than None.
+
+  observation_state / ObservationState (per zone, hazard side --
+  distinct mapping from occupancy)
+    Classification: OBSERVED or UNOBSERVED, an explicit two-value enum
+    (building_observation.py:10-26) -- never inferred from whether
+    another field happens to be None. This is the one field in this
+    type that is NOT itself an estimate; it is a coverage flag.
+
+  missing/unknown zones (a zone_id entirely absent from
+  BuildingObservation's internal mappings)
+    Classification: UNKNOWN, and (important, re-verified this session)
+    INDISTINGUISHABLE from "covered but produced no reading." Both
+    node_observation()/occupancy_observation() are TOTAL accessors
+    (building_observation.py:213-221) that return a fresh, all-default
+    object for any id not present in the mapping -- the SAME value a
+    genuinely-covered-but-empty reading would produce. This is an
+    existing, disclosed limitation of BuildingObservation itself; no
+    coordinator design can distinguish these two cases from this type
+    alone.
+
+  confirmed zero vs. unknown
+    Classification: this codebase supports exactly ONE honest
+    distinction here -- estimated_count is None (UNKNOWN) vs.
+    estimated_count is a real float including 0.0 (ESTIMATED, possibly
+    a genuine zero reading). There is no separate "confirmed zero"
+    representation stronger than an ordinary 0.0 estimate; a coordinator
+    must not claim more certainty for a 0.0 reading than any other
+    estimate carries.
+
+  any live occupancy structures (live_occupants.LiveOccupant /
+  LiveOccupantManager -- real position-tracked occupants, the
+  canonical live occupancy source used by CrowdIntelligenceEngine)
+    Classification: ESTIMATED (genuinely real, perception-derived, NOT
+    simulator ground truth) but NOT CURRENTLY REACHABLE from this
+    pipeline without new wiring this task explicitly forbids --
+    LiveOccupantManager is constructed only inside LiveOrchestrator's
+    own composition (live_runtime/factory.py), never inside
+    LiveRLInferenceEngine/LiveRLDecisionPipeline/LiveDecisionCoordinator
+    (verified: none of those three files import live_occupants or
+    construct a LiveOccupantManager). This is a distinct bucket from
+    both "UNKNOWN" and "PRIVILEGED" -- it is real and honest, just
+    architecturally out of reach for THIS coordinator under this task's
+    own constraints. Not proposed as an input here.
+
+  HazardSnapshot / OccupancySnapshot / any Ground-Truth-shaped type read
+  independently of perception
+    Classification: PRIVILEGED / MUST NOT USE. Confirmed by every
+    existing GroundTruthIndependenceTests-style guard already covering
+    this pipeline's neighboring files (e.g. rl_training/production/
+    decision_engine.py's own forbidden-import test extends this exact
+    idea to pathfinding/navigation too). A coordinator must construct
+    its OWN hazard_snapshot_from_observation()-derived HazardSnapshot
+    (ai_decision/perception_adapter.py:109-128, itself perception-
+    honest, built only from BuildingObservation) if it needs one for
+    hazard-aware routing (Section 6) -- never read a hazard_provider or
+    a simulator-produced snapshot directly.
+
+  HOW UNKNOWN SHOULD AFFECT ALLOCATION: a zone with estimated_count=None
+  MUST NOT be summed as 0 in any demand total -- this is the SAME
+  finding the readiness report already made (its Section F), re-
+  confirmed this session against the same source, and restated here
+  precisely: it is unsafe specifically because a capacity comparison
+  built on a demand total that silently dropped a real (if unmeasured)
+  population would look "under capacity" only because evidence was
+  discarded, not because demand was actually low. A coordinator must
+  carry an explicit "N zones contributing to this target have no
+  occupancy reading this cycle" count alongside any numeric demand
+  total. If reliable demand cannot be determined for a zone (its own
+  estimate is None), the coordinator must not invent a number for it --
+  it should still be assigned a real target (routing is separate from
+  demand accounting, Section 6), but its contribution to whether a
+  redistribution trigger fires should be treated as an honest unknown,
+  not a zero and not an assumed-average value.
+
+
+====================================================================
+5. DOES CAPACITY EXIST -- exhaustive search
+====================================================================
+
+Searched broadly this session (not limited to the two prior reports'
+own citations) for: exit capacity, stair capacity, corridor capacity,
+maximum flow, throughput, width-based capacity, occupancy limits,
+congestion thresholds. Every real hit, classified by whether it is
+honestly usable by a LIVE coordinator under this task's constraints:
+
+  Exit.capacity (models/exit.py:15)
+    A real, Designer-authored field (default 50) directly on the Exit
+    engineering object. USABLE -- the most direct source for Exit
+    capacity specifically, no wrapper needed.
+
+  crowd_intelligence.capacity.door_capacity()/exit_capacity()/
+  stair_capacity() (crowd_intelligence/capacity.py:34-56)
+    Pure functions; door_capacity()/exit_capacity() build a throwaway
+    Edge and call DefaultCapacityModel().capacity(edge);
+    stair_capacity() additionally computes stair.travel_distance(building)
+    and calls StairCapacityModel().capacity(edge). USABLE -- already
+    vetted safe (no LiveOccupantManager, no simulation state) by
+    crowd_intelligence's own architecture guard
+    (tests/test_crowd_intelligence_architecture_guards.py:76-134). This
+    is the recommended access point (Section 3's "smallest honest way")
+    rather than importing simulator.capacity directly.
+
+  simulator.capacity.DefaultCapacityModel/StairCapacityModel/
+  derive_stair_capacity() (simulator/capacity.py, re-read fully this
+  session)
+    CONFIRMED THIS SESSION, a genuine correction to both prior reports:
+    DefaultCapacityModel.capacity(edge) returns a real, positive integer
+    (floored at MINIMUM_CAPACITY=1) for EVERY edge type, not only Exit
+    -- "Exit already carries a real, authored capacity (Exit.capacity)
+    -- used as-is. Door and Staircase have no capacity field, only
+    width, so capacity is derived from it using... 'people per meter of
+    width'" (simulator/capacity.py:19-23, PEOPLE_PER_METER_OF_WIDTH =
+    1.5). StairCapacityModel further narrows this for Stair edges
+    specifically using width AND vertical travel distance (lines 87-113,
+    PEOPLE_PER_METER_OF_WIDTH = 1.2, a documented, disclosed engineering
+    placeholder, "not a validated life-safety flow-rate value"). USABLE
+    only THROUGH crowd_intelligence.capacity (Section 3) -- these classes
+    themselves live in the `simulator` package and have not been
+    independently vetted as a live-safe import outside that one already-
+    proven indirection.
+
+  hazard.capacity_model.HazardAwareCapacityModel (hazard/capacity_model.py,
+  read fully this session)
+    NOT USABLE by a live coordinator. This wraps a base CapacityModel
+    with a HazardSnapshot's own capacity_modifier per edge, and is
+    consumed exclusively by MultiAgentSimulation for its own event-queue/
+    discharge throughput mechanics during a simulation run ("MultiAgentSimulation
+    only ever calls capacity_model.capacity(edge)," line 10) -- this is
+    simulation-internal queueing machinery, a different concern from a
+    static "how many people can this asset structurally hold" number.
+    Classified here as found-but-inapplicable, not silently omitted.
+
+  Node.capacity / Zone.max_occupancy (navigation/node.py:88-94, referenced
+  by crowd_intelligence/engine.py:328-337)
+    A real, Designer-authored per-ZONE (not per-target) occupancy limit.
+    USABLE, but answers a different question than target overload -- it
+    is a source-zone capacity ("is this zone itself overcrowded"), not a
+    target/route capacity ("can this exit/stair/door handle the combined
+    traffic being sent to it"). Noted for completeness; not the signal
+    this milestone needs.
+
+  crowd_intelligence.congestion.CongestionThresholds /
+  compute_congestion_level() (crowd_intelligence/congestion.py, re-read
+  this session)
+    A RATIO-based classification (demand/capacity vs. moderate_at/
+    high_at/very_high_at/critical_at, all documented placeholders,
+    "same explicit project assumption, not a validated standard" as
+    DensityThresholds). NOT DIRECTLY USABLE without also reaching
+    QueueMetrics (crowd_intelligence/queue.py), which requires real
+    position-tracked LiveOccupant objects -- the same LiveOccupantManager
+    dependency Section 4 already classified as architecturally out of
+    reach for this coordinator under this task's constraints. The
+    THRESHOLD CONSTANTS/classification shape could, in principle, be
+    reused against a coordinator's OWN differently-sourced demand number,
+    but this report does not recommend that without a separate,
+    disclosed decision, since CongestionThresholds' ratio semantics were
+    designed and calibrated (informally) against QueueMetrics' specific
+    demand definition, not against this coordinator's future one.
+
+  stair_congestion.predictor.StairCongestionPredictor.congestion_threshold
+    A REQUIRED, caller-supplied raw occupancy COUNT (stair_congestion/
+    predictor.py:78-96) -- "this module has no capacity/geometry context
+    of its own... it takes no position on what threshold is appropriate
+    for any given stair... there is deliberately no default value." Not
+    a capacity SOURCE itself, but confirms the codebase's own established
+    convention that a caller-supplied threshold, sourced from elsewhere
+    (e.g. crowd_intelligence.capacity.stair_capacity()), is the expected
+    pattern -- not something this report needs to invent.
+
+  simulator.congestion / simulator.discharge / simulator.
+  flow_region_capacity / simulator.capacity_candidate_c (searched,
+  file names confirmed to exist, contents not required for this
+  report's conclusion)
+    Simulation-internal throughput/discharge/flow-region modeling used
+    by MultiAgentSimulation during a scenario run -- ground-truth/
+    simulator-internal by construction (they model movement DYNAMICS a
+    live coordinator, which does not simulate anyone moving, has no
+    honest use for). Not usable, and not needed: Section 5's conclusion
+    below does not require them.
+
+  CONCLUSION -- "Can the first coordination milestone honestly perform
+  'overflow prevention'?"
+
+  YES, for Exit/Door/Stair edges specifically, using
+  crowd_intelligence.capacity's three functions as the single capacity
+  source, exactly as the readiness report already recommended -- this
+  session's exhaustive search found no stronger, more validated
+  alternative, and no reason to weaken that recommendation. The
+  correction in Section 2B/3 (every edge is Door/Exit/Stair, none are
+  capacity-blind) means overflow prevention is honestly performable on
+  ANY shared edge along a route, not merely a route's final target --
+  a strictly LARGER honest capability than either prior report claimed,
+  not a smaller one. "Overflow prevention" here means precisely: detect
+  when summed honest demand (Section 2A/4) across an edge exceeds that
+  edge's real, disclosed-placeholder capacity number, and redistribute
+  the provable overflow -- never a claim that the resulting recommendation
+  guarantees no real-world overcrowding, since the capacity numbers
+  themselves are documented engineering placeholders, not validated
+  life-safety limits.
+
+
+====================================================================
+6. COORDINATOR AUTHORITY BOUNDARY -- Model A / B / C evaluated against code
+====================================================================
+
+  Model A (RL authoritative, coordinator only warns): REJECTED as the
+  sole model. The repository provides real, actionable, non-fabricated
+  evidence (Sections 2, 4, 5) sufficient to justify a bounded override,
+  not merely a warning -- Section 2A/D's demand-vs-capacity test is a
+  repository-provable fact, not a guess, so refusing to ever act on it
+  would leave the exact problem this investigation exists to address
+  (Section 1's confirmed broadcast-to-every-zone behavior) completely
+  unaddressed. Model A is not "safer" here; it is strictly weaker than
+  what the evidence supports.
+
+  Model C (independent allocator, every zone assigned independently to
+  its own optimal route): REJECTED. This would silently replace the RL
+  policy's own whole-building, hazard/occupancy-informed judgment (its
+  observation genuinely includes every zone's hazard/occupancy state,
+  per the architecture investigation's Section 1/2) with a rule-based
+  planner that has no comparable evidence behind ITS choices for zones
+  that were never in conflict to begin with. This is exactly the
+  "silently becomes a replacement rule-based decision engine" outcome
+  this task explicitly rules out.
+
+  Model B (constrained coordination -- RL provides the preferred target,
+  coordinator reassigns individual zones only when a conflict is
+  provably detected): CONFIRMED as the model the actual code supports
+  and this report recommends, matching the user's own stated
+  expectation, verified rather than assumed:
+
+    - What information allows an override: a per-edge demand total
+      (Section 2A, summed only over zones with a real, non-None
+      occupant_count -- Section 4) that exceeds that edge's real
+      capacity number (Section 5), AND a real, hazard-aware-reachable
+      alternate target found by an unmodified PathfindingEngine search
+      from the specific zone being considered for redirection.
+    - What conditions PROHIBIT an override: no honest alternate target
+      exists for that specific zone (hazard-aware search returns no
+      Route to any other Exit/Stair node); or the demand total for the
+      shared edge cannot be honestly computed because too much of the
+      contributing group's occupancy is UNKNOWN for the comparison to
+      be meaningful (a design threshold to be set explicitly when
+      implemented, not silently defaulted to "proceed anyway").
+    - What happens when information is UNKNOWN: per Section 4, a zone
+      with unknown occupancy still gets a real target assignment (never
+      left with none); its contribution to the demand total is disclosed
+      as an unknown count, never treated as zero; if enough of a
+      candidate group's occupancy is unknown that the demand comparison
+      itself would be unreliable, the coordinator ABSTAINS for that
+      group (leaves the RL's original broadcast target for every zone in
+      it) rather than acting on an unreliable total.
+    - Whether a fallback recommendation is required: yes -- a zone that
+      cannot be honestly redirected (no alternate, Section 6 above) keeps
+      the RL's original target, exactly the pre-existing behavior, never
+      None and never a fabricated id. This mirrors
+      RecommendationAwareRouteChoiceStrategy's own existing "fall back
+      rather than fail" discipline (simulation_interactive/replanning.py:189-192).
+    - Whether NOOP is possible: unchanged and fully preserved. When the
+      RL's chosen action is NOOP, recommended_edge_id is None
+      (ActionMapper's own NOOP entry, action_space.py:86); a coordinator
+      given a None target has nothing to group, sum, or redistribute --
+      it must pass None through unchanged for every zone, exactly
+      today's behavior. NOOP is never converted into a coordinator-
+      invented recommendation.
+    - How the system explains that a zone was redistributed: the
+      EXISTING free-text mechanism already does this with zero schema
+      changes needed -- RLActionDecisionEngine._zone_reason()
+      (decision_engine.py:209-261) already reads whatever
+      recommended_exit_edge_id ended up in effective_actions for that
+      zone and writes "recommended exit: <target>" into
+      PriorityEvacuationEntry.reason automatically; a redirected zone's
+      reason text already says the alternate target with no code change
+      to decide() at all (confirmed by both prior reports' Section
+      B/K analysis, re-confirmed this session by re-reading _zone_reason()
+      directly). An ADDITIONAL, small, explicitly-hedged clause (mirroring
+      _stair_congestion_note()'s own existing phrasing discipline, e.g.
+      "redirected from <original> to <alternate>: combined estimated
+      demand exceeds a documented capacity estimate for <original>") is
+      a natural but genuinely NEW small addition, not something that
+      already exists -- flagged as new work in Section 10, not claimed
+      as already present.
+
+
+====================================================================
+7. SMALLEST POSSIBLE FIRST IMPLEMENTATION MILESTONE
+====================================================================
+
+Ruthlessly scoped, evaluated against every bullet the task listed:
+
+  - Add one new coordinator: YES -- one new class,
+    ZoneRecommendationCoordinator, one new file (Section 10).
+  - Reuse existing topology/routing infrastructure: YES -- NavigationGraphGenerator,
+    PathfindingEngine, HazardAwareCostModel, hazard_snapshot_from_observation(),
+    crowd_intelligence.capacity -- zero new pathfinding/capacity logic
+    invented.
+  - Consume the existing RL preferred action: YES -- the coordinator's
+    only "preference" input is the same (recommended_edge_id, zone_ids)
+    pair set_action() already receives; it does not call infer() or
+    touch the model.
+  - Produce per-zone overrides using set_zone_recommendations(): YES --
+    the coordinator's only output is the Mapping[str, Optional[str]]
+    that setter already accepts, unmodified.
+  - Avoid modifying RL training: YES -- rl_training/action_space.py,
+    rl_training/production/environment.py untouched; ProductionRLEnvironment
+    integration explicitly deferred as a separate, later decision
+    (matches the readiness report's own Section K finding that no
+    equivalent import guard exists there, but that touching it changes
+    training-time dynamics relative to already-trained checkpoints --
+    re-confirmed this session, not reopened).
+  - Avoid modifying the action space: YES -- ActionMapper/ActionSchema
+    untouched; the coordinator operates entirely on the OUTPUT of a
+    decode already performed.
+  - Avoid privileged ground truth: YES -- every input classified
+    OBSERVED/ESTIMATED in Section 4, or PRIVILEGED-and-therefore-excluded.
+  - Avoid modifying advisory/voice/signage systems: YES -- nothing in
+    Section 10's plan imports or references advisory_system/,
+    voice_evacuation/, or dynamic_signage/ anywhere.
+  - Preserve NOOP behavior honestly: YES, Section 6.
+  - Preserve door and stair recommendations: YES -- the coordinator's
+    output vocabulary is identical to today's (a Door/Exit/Stair edge id
+    or None); it introduces no new recommendation type.
+
+  What is deliberately OUT of the first milestone (ruthless-scope cuts,
+  stated explicitly rather than silently dropped):
+  - Corridor-overlap detection between two DIFFERENT final targets
+    (Scenario F in Section 2/8) -- mechanically enabled by this session's
+    correction (Section 5's capacity now covers every edge type), but a
+    full pairwise Route.edge_ids comparison across every zone-pair for
+    every tick is real additional complexity the FIRST milestone should
+    defer; the first milestone handles only the single-target-overload
+    case (Section 8's worked scenario), which is the concrete case this
+    whole investigation chain exists to address.
+  - Wiring CrowdIntelligenceEngine's live congestion signal in as a
+    secondary check (Section 4) -- explicitly out of scope per this
+    task's own LiveOrchestrator restriction.
+  - Any change to is_reachable's meaning (Section 8) -- a separate,
+    disclosed, larger decision.
+  - ProductionRLEnvironment integration -- deferred, above.
+
+
+====================================================================
+8. THE "TWO-ZONE SAME TARGET" SCENARIO, ARCHITECTURALLY
+====================================================================
+
+  RL preferred target: Stair S1
+  Zone A -> S1
+  Zone B -> S1 initially
+  Coordinator detects a justified conflict
+  Final: Zone A -> S1, Zone B -> alternative feasible target
+
+  Where would the alternative come from? PathfindingEngine.distances_from(
+  zone_B_node_id) (pathfinding/engine.py:234-270, already exists,
+  unmodified) -- a single-source search returning a Route to EVERY node
+  Zone B can reach, filtered to Exit/Stair-type goal nodes excluding S1,
+  picking the lowest total_cost candidate. This reuses one existing
+  method call; no new search algorithm.
+
+  How would route feasibility be checked? The SAME hazard-aware
+  PathfindingEngine (Section 3/6) used to compute Zone A's and Zone B's
+  original routes to S1 in the first place -- built once per tick from
+  hazard_snapshot_from_observation(observation) + HazardAwareCostModel,
+  both already perception-honest and already proven in production by
+  AIDecisionEngine. An edge the perception layer flags blocked_estimate=True
+  costs HazardAwareCostModel.BLOCKED_COST (effectively infinite) and is
+  never selected -- the alternate is only ever a route the SAME hazard
+  evidence considers real.
+
+  How would UNKNOWN occupancy affect redistribution? If Zone B's own
+  occupant_count is None, Zone B is STILL eligible to be the one
+  redirected (routing does not require a known headcount, Section 4) --
+  but Zone B's own unknown contribution must not be what TRIGGERED the
+  conflict determination in the first place if the comparison as a
+  whole becomes unreliable (Section 6's abstention rule); if Zone A's
+  known occupant_count alone already exceeds S1's capacity, the
+  conflict is real regardless of Zone B's unknown status, and Zone B
+  (or Zone A) may still be redirected -- the tie-break (below) does not
+  depend on knowing Zone B's headcount to decide WHICH zone moves, only
+  on knowing that a move is honestly justified at all.
+
+  How would the coordinator avoid arbitrarily choosing Zone A over Zone
+  B? By a stated, deterministic, disclosed-as-placeholder rule -- this
+  report proposes (not implements) the smallest defensible one: redirect
+  the zone(s) FARTHEST from S1 first (highest total_cost to reach S1,
+  as already computed by the same PathfindingEngine search both zones'
+  original routes came from), keeping S1 assigned to whichever zone(s)
+  are already closest to/most committed to it. This is explicitly the
+  SAME honesty level ai_decision.priority.SeverityOccupancyPriorityRule
+  already discloses for its own V1 ranking ("a documented placeholder,
+  not a validated life-safety prioritization model") -- not presented as
+  optimal, only as deterministic and explainable.
+
+  What deterministic rule could be used for tie-breaking (equal
+  distance)? zone_id, lexicographic -- the SAME final tie-break
+  ai_decision.priority.severity_sort_key/SeverityOccupancyPriorityRule
+  and RLActionDecisionEngine._priority_evacuation_order() already both
+  use ("...then zone_id for full determinism when both are tied,"
+  ai_decision/priority.py:65-71) -- reused, not invented, for exactly
+  the same "must never be ambiguous" reason.
+
+
+====================================================================
+9. SAFETY AND UNKNOWN-DATA BEHAVIOR
+====================================================================
+
+  UNKNOWN zone occupancy: routed normally; excluded (as an honest
+  unknown, not zero) from demand totals; can still trigger abstention
+  if it makes a comparison unreliable (Section 6). Never treated as
+  safe, never treated as "must redirect."
+
+  UNKNOWN hazard (a zone's node_observation not OBSERVED this cycle):
+  unchanged from today's existing, independently-computed
+  is_unsafe/severity logic in RLActionDecisionEngine
+  (_build_zone_recommendation(), decision_engine.py:99-150) -- UNKNOWN
+  severity already conservatively resolves to is_unsafe=True there,
+  completely independent of and unaffected by whatever target the
+  coordinator assigns. A coordinator never overrides or duplicates this
+  judgment.
+
+  UNKNOWN route information (a hazard-aware search returns no Route at
+  all, from ANY node to ANY candidate target): the coordinator abstains
+  for that specific zone -- keeps the RL's original target unchanged,
+  the same behavior as today (Section 6), never fabricates a route.
+
+  No alternative target: same as above -- abstain, keep original.
+
+  No path to alternative target: identical case to "no alternative
+  target" -- there is no meaningful distinction in this codebase between
+  "no candidate exists" and "a candidate exists but is unreachable";
+  both collapse to PathfindingEngine returning no usable Route.
+
+  Current stair congestion UNKNOWN (StairCongestionState.status !=
+  OBSERVED for this cycle): the informational note mechanism already
+  returns None/nothing in this case
+  (RLActionDecisionEngine._stair_congestion_note(), decision_engine.py:
+  178-183, "state.status != ObservationStatus.OBSERVED: return None") --
+  a coordinator's OWN soft tie-breaker use of this signal (Section 2C)
+  must follow the identical discipline: an UNKNOWN congestion state
+  contributes nothing, positive or negative, to a redistribution
+  decision. It must never be treated as "safe to send more people
+  there" nor as "must avoid."
+
+  Conflicting topology information: not found as a real possibility in
+  this codebase -- NavigationGraphGenerator builds one deterministic
+  graph per Building per construction (Section 3); there is no
+  mechanism by which two different graph reads within one tick could
+  disagree, since the coordinator would hold exactly one already-built
+  graph, constructed once. This scenario is disclosed as "not
+  applicable given this architecture," not silently skipped.
+
+  Governing principle, restated precisely: every branch above resolves
+  to either (a) act, using a repository-provable fact (Sections 2, 5),
+  or (b) abstain, preserving the RL's original broadcast value
+  unchanged. There is no third branch anywhere in this design that
+  fabricates a route, a capacity number, a safety claim, or an
+  occupancy count. UNKNOWN is never silently promoted to "safe," and is
+  never silently promoted to "must redirect everyone" either -- both
+  would be equally dishonest, and this report rejects both.
+
+
+====================================================================
+10. EXACT IMPLEMENTATION PLAN
+====================================================================
+
+  FILE: live_runtime/zone_recommendation_coordinator.py
+    Status: NEW.
+    Why this location respects import boundaries: neither of the two
+    enforced guards (Section 3) scans this path; it mirrors the
+    existing, already-proven placement/naming convention of
+    live_runtime/live_decision_coordinator.py and live_runtime/
+    stair_congestion_bridge.py -- "thin, stateless translation layer
+    downstream of an already-computed decision," free to import
+    pathfinding/navigation/crowd_intelligence.capacity.
+    Public API:
+      class ZoneRecommendationCoordinator:
+          def __init__(self, building: Building, capacity_source=...):
+              # builds NavigationGraph via NavigationGraphGenerator().build(building)
+              # builds a base PathfindingEngine(graph) once
+          def coordinate(
+              self,
+              recommended_edge_id: Optional[str],
+              zone_ids: Iterable[str],
+              observation: BuildingObservation,
+          ) -> Mapping[str, Optional[str]]:
+              ...
+    Inputs: recommended_edge_id/zone_ids (exactly what set_action()
+      receives today), observation (the same BuildingObservation
+      LiveRLDecisionPipeline already builds each tick).
+    Outputs: a per-zone target mapping, every value either the original
+      recommended_edge_id (unchanged) or a real PathfindingEngine-found
+      alternate (Section 8), or None (NOOP passthrough, Section 6).
+    Exact existing classes/functions reused (zero new algorithms):
+      navigation.graph_builder.NavigationGraphGenerator,
+      pathfinding.engine.PathfindingEngine (nearest_exit/distances_from),
+      ai_decision.perception_adapter.hazard_snapshot_from_observation(),
+      hazard.cost_model.HazardAwareCostModel,
+      crowd_intelligence.capacity.{door_capacity,exit_capacity,stair_capacity},
+      ai_decision.priority.severity_sort_key-style zone_id tie-break
+      (reimplemented locally as a plain comparator, not imported, since
+      that module is decision-recommendation-shaped and this class does
+      not need its other contents).
+
+  FILE: live_runtime/live_rl_decision_pipeline.py
+    Status: MODIFIED -- exactly one call-site change (currently
+    line 161): replace
+      self._decision_engine.set_action(inferred.recommended_edge_id,
+      self._rl_engine.zone_ids)
+    with
+      mapping = self._coordinator.coordinate(
+          inferred.recommended_edge_id, self._rl_engine.zone_ids, observation,
+      )
+      self._decision_engine.set_zone_recommendations(mapping)
+    plus one new __init__ line constructing
+    self._coordinator = ZoneRecommendationCoordinator(building) alongside
+    the existing four components it already constructs (Section B of the
+    readiness report). This is the ONE genuinely unavoidable touch point
+    in this whole design -- flagged explicitly here, since this task's
+    own "do not... modify LiveRLDecisionPipeline" instruction governs
+    THIS investigation turn (nothing is modified now); the future
+    implementation this section plans necessarily touches this exact
+    file at exactly this one call site, because it is the only place the
+    broadcast currently happens. No alternative seam exists that avoids
+    it without a larger restructuring this report does not recommend.
+
+  FILES EXPLICITLY NOT MODIFIED: rl_training/action_space.py,
+  rl_training/production/environment.py, rl_training/production/
+  decision_engine.py (consumed via its existing, unmodified public
+  set_zone_recommendations() only), ai_decision/recommendation.py,
+  stair_congestion/, crowd_intelligence/ (consumed, not modified),
+  pathfinding/, navigation/, advisory_system/, decision_policy/,
+  live_system/orchestrator (LiveOrchestrator)/build_live_runtime(),
+  voice_evacuation/, dynamic_signage/, live_decision_coordinator.py,
+  LiveRLInferenceEngine, rl_training/reward_function.py, RL model
+  weights/training artifacts.
+
+  TEST PLAN -- fifteen tests, mapped to the task's own list:
+
+  1. NOOP remains NOOP: recommended_edge_id=None in -> every zone maps
+     to None out, unchanged.
+  2. Door recommendation remains possible: a RECOMMEND_EXIT-decoded Door
+     edge id with no conflict passes through unchanged for every zone.
+  3. Stair recommendation remains possible: same, for a Stair edge id.
+  4. A single-zone recommendation is unchanged when no conflict exists:
+     one zone_id in -> that zone's target equals recommended_edge_id.
+  5. Multiple zones with no provable conflict remain unchanged: N zones,
+     combined demand within capacity -> output mapping identical to the
+     uniform broadcast.
+  6. A provable shared-target conflict can produce a per-zone override:
+     Section 8's exact scenario, asserting Zone A keeps S1 and Zone B is
+     redirected to a real alternate the fixture graph provides.
+  7. The original RL preferred target remains preserved where feasible:
+     in test 6, assert Zone A's target is still exactly the original
+     recommended_edge_id, not re-derived independently.
+  8. No ground-truth/simulator information is used: an import-line
+     guard on the new file itself, forbidding ground_truth./hazard.snapshot/
+     occupancy.snapshot/hazard_provider/occupancy_provider, mirroring
+     the exact GroundTruthIndependenceTests pattern
+     tests/test_rl_action_decision_engine.py already establishes.
+  9. UNKNOWN occupancy is never silently treated as zero: a zone with
+     estimated_count=None assigned to an over-capacity target -- assert
+     its exclusion from the numeric demand total is visible/assertable
+     (e.g. an explicit unknown-contributor count in whatever internal
+     shape the implementation exposes for testing), not silently 0.
+  10. No feasible alternative results in an honest fallback rather than
+      an invented route: a zone with no hazard-aware route to ANY other
+      Exit/Stair keeps its original (possibly over-capacity) target,
+      never None, never a fabricated id.
+  11. Deterministic behavior for identical inputs: calling coordinate()
+      twice with byte-identical arguments produces byte-identical output
+      mappings (no hidden randomness, no wall-clock dependency).
+  12. Tie-breaking is deterministic and explainable: two equidistant
+      candidate zones for redirection -> the same zone is chosen every
+      time, keyed by zone_id (Section 8), with the losing candidate's
+      reason still traceable to that stated rule.
+  13. Existing stair congestion information cannot silently become a
+      hard route-safety claim: a RISING/exceeds-threshold stair that is
+      NOT part of any provable overload does not, by itself, cause any
+      redirection (Section 2C/9) -- mirrors the readiness report's own
+      "Soft-signal discipline" test.
+  14. RL policy inference itself is unchanged by coordination: assert
+      LiveRLInferenceEngine.infer()/the underlying model's .predict() is
+      called exactly once per tick regardless of whether a conflict was
+      found and redistribution occurred (e.g. via a call-count spy on
+      the inference engine in an integration-level test).
+  15. Existing import-boundary tests remain satisfied: re-run
+      tests/test_rl_action_decision_engine.py::
+      NoPrivilegedOrRouteStateIntroducedTests and
+      tests/test_live_rl_decision_pipeline.py::ArchitectureGuardTests
+      unmodified after the integration change, both still passing (proof
+      that decision_engine.py and live_rl_decision_pipeline.py's own
+      import lines still contain no forbidden prefix).
+
+
+====================================================================
+FINAL RESPONSE FORMAT (restated here; also given directly in-chat)
+====================================================================
+
+1. VERDICT: B -- constrained coordination is what the current
+   architecture actually supports and what this report recommends.
+   Model A (warn-only) leaves real, repository-provable conflicts
+   (Section 2D) unaddressed for no honesty gain; Model C (independent
+   allocator) would silently discard the RL policy's own genuine,
+   hazard/occupancy-informed whole-building judgment for zones that were
+   never in conflict, which this task explicitly forbids. Every piece
+   Model B needs -- real topology (Section 3), a real demand/capacity
+   comparison usable on every edge type (Sections 2A/2B/5, the session's
+   own correction to both prior reports), an honest UNKNOWN discipline
+   (Section 4/9), and a per-zone override channel that already exists
+   and is already tested (set_zone_recommendations(), Section 1) --
+   exists in the codebase today, verified fresh this session, not
+   assumed from the prior reports.
+
+2. Genuine joint multi-zone coordination IS possible with currently
+   available information, for the specific, repository-provable
+   definition of "conflict" this report adopts (Section 2D): shared-edge
+   demand exceeding that edge's real, disclosed-placeholder capacity
+   number. It is not possible for a stronger, validated-life-safety-
+   standard notion of "conflict" or "capacity," because no such
+   validated standard exists anywhere in this codebase -- every capacity
+   number found (Section 5) is an explicitly documented engineering
+   placeholder, never presented here as more than that.
+
+3. Smallest recommended next implementation milestone: one new file,
+   live_runtime/zone_recommendation_coordinator.py (Section 10),
+   handling exactly the single-shared-target overload case (Section 8),
+   integrated via one call-site change in
+   live_runtime/live_rl_decision_pipeline.py::tick() and the
+   already-existing, already-tested
+   RLActionDecisionEngine.set_zone_recommendations(). Corridor-overlap
+   across different final targets (Scenario F) is explicitly deferred,
+   not included in this first milestone (Section 7).
+
+4. Biggest unresolved architectural limitation: BuildingObservation
+   cannot distinguish "this zone was never covered by any sensor" from
+   "this zone was covered and reported nothing" (Section 4) -- every
+   demand estimate a coordinator (or anything else in this codebase)
+   computes inherits this ambiguity, and no design proposed here or in
+   either prior report can resolve it without a change to
+   BuildingObservation itself, which is out of this milestone's scope.
+   A close second: no honest way exists to combine a stair's currently-
+   observed occupancy with a coordinator's projected demand into one
+   deduplicated number (Section 2C/9, re-confirmed this session) --
+   the two signals may double-count the same people, and this codebase
+   has no mechanism to prevent that, so this report keeps them separate
+   and labeled rather than merging them.
+
+5. Confirmed: zero production code modified, zero tests modified this
+   session. Every file cited above (live_perception/
+   building_observation_adapter.py, rl_training/production/
+   live_inference.py, rl_training/production/decision_engine.py,
+   live_runtime/live_decision_coordinator.py, live_runtime/
+   live_rl_decision_pipeline.py, navigation/edge.py, models/staircase.py,
+   hazard/capacity_model.py, simulator/capacity.py, and both prior
+   reports) was opened with Read/Grep only.
+
+6. Report path:
+   docs/architecture/multi_zone_joint_coordination_implementation_investigation.txt
+
+7. Physically saved in C:\Users\riddh\Desktop\SynEvac1\docs\architecture\
+   -- verified immediately after writing, by direct filesystem check and
+   git status, in the same session, before this task was reported
+   complete (see the chat message accompanying this report for the
+   actual verification output).
