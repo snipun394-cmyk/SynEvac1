@@ -1,0 +1,103 @@
+{
+  "audit": "pre_training_ai_dataset_audit_v1",
+  "generator": "scripts/audit_differential_targeting.py::run_full_differential_sweep -> audit_one_state_differential",
+  "state_construction": "action_space_audit._advance_to_tick: resets ResearchEvacGymEnv(scenario) with the eval seed and replays the GLOBAL_DEADBAND heuristic (margin=RECOMMENDED_MARGIN) to the decision tick.",
+  "rollouts": {
+    "GLOBAL": "audit_selective_guidance_control.run_intervention(deepcopy(sim), heuristic_action, None): the heuristic's own action applied to every eligible occupant at the decision tick.",
+    "NO_INTERVENTION": "run_intervention(deepcopy(sim), None, None): no relabel at the decision tick.",
+    "PAIRWISE": "audit_differential_targeting.run_differential_intervention(deepcopy(sim), [(Zi,a),(Zj,b)]): relabel ONLY eligible occupants of two currently non-empty zones; every OTHER zone keeps its existing labels (not the heuristic's).",
+    "continuation": "Every later decision: the same deterministic GLOBAL_DEADBAND heuristic, applied globally."
+  },
+  "targets": {
+    "T90": "compute_metrics(sim.evacuated).T90 (tick at which ceil(0.9*40)=36 occupants have exited; inf if undefined)",
+    "T100": "compute_metrics(sim.evacuated).T100 (last exit tick; MAX_STEPS if censored)",
+    "total_unmet_demand": "prior_total_unmet + sum over post-decision ticks of timing_experiment.diagnostic_all_edges_unmet (sum over all edges of max(0, candidates - capacity), measured BEFORE each tick's relabel/admission)",
+    "hazard_edge_unmet_demand": "if the scenario has a scheduled hazard: prior_hazard_unmet + per-tick H_CE1 overflow for branch-A candidates (from t=0, including pre-onset ticks); else 0"
+  },
+  "checks": {
+    "real_counterfactual_simulator_rollout": true,
+    "rollout_starts_from_exactly_the_same_state": true,
+    "stored_labels_reproduce_exactly": true,
+    "prior_unmet_preserved": "YES: prior_total_unmet / prior_hazard_unmet are seeded into the accumulators, so stored totals = pre-decision history + post-decision.",
+    "candidate_applied_only_at_decision_point": "YES: target_group / apply_differential only on the first macro-step.",
+    "future_decisions_controlled_consistently": "YES: deterministic heuristic continuation in every arm.",
+    "candidate_effect_isolated": "YES for the one-step effect: arms differ only in the first decision.",
+    "input_contains_candidate_information": "NO: features are computed before the relabel (action-independence audit)."
+  },
+  "label_reproduction": {
+    "n_rollouts_rerun": 9450,
+    "pairwise_stride": 1,
+    "n_label_mismatches": 0,
+    "mismatches": [],
+    "n_rollouts_not_starting_from_identical_state": 0,
+    "hazard_unmet_post_diagnostic_vs_realized_tick_log": {
+      "diagnostic_equals_realized": 1073,
+      "diagnostic_differs": 5377
+    },
+    "n_no_hazard_rollouts_with_realized_H_CE1_overflow_but_label_0": 2897,
+    "seconds": 7.48,
+    "seconds_per_rollout": 0.00079,
+    "passed": true
+  },
+  "structure": {
+    "n_trajectories": 150,
+    "n_trajectories_where_GLOBAL_outcome_identical_at_all_3_ticks": 150,
+    "n_states_NO_INTERVENTION_outcome_equals_GLOBAL": 399,
+    "n_tick0_states_NO_INTERVENTION_equals_GLOBAL": 150,
+    "n_states_with_nonzero_prior_total_unmet": 300,
+    "prior_unmet_share_of_GLOBAL_total_unmet": {
+      "mean": 0.5262,
+      "max": 1.0
+    },
+    "prior_hazard_unmet_at_later_ticks_values": {
+      "0": 100,
+      "20": 62,
+      "18": 37,
+      "22": 1
+    },
+    "S1_hazard_edge_unmet_label_values": {
+      "0": 150
+    }
+  },
+  "contamination_and_definition_issues": [
+    {
+      "id": "T1",
+      "severity": "must-fix before regression",
+      "issue": "Stored total_unmet_demand and hazard_edge_unmet_demand INCLUDE the pre-decision accumulated unmet. That part is identical for every candidate at a state and is not in the observation: an unobserved additive offset for regression (harmless for within-state ranking).",
+      "fix": "Target = stored - prior (post-decision unmet)."
+    },
+    {
+      "id": "T2",
+      "severity": "must-fix",
+      "issue": "hazard_edge_unmet_demand counts H_CE1 overflow from t=0 whenever a hazard is SCHEDULED (including pre-onset ticks at nominal capacity) and is forced to 0 in S1 even when H_CE1 overflows. The label therefore encodes whether a hazard is scheduled (future information in the TARGET, not an input leak): identical pre-onset S1/S2 observations get systematically different hazard-edge labels.",
+      "fix": "Define it uniformly: H_CE1 overflow at ticks t >= t_h only (0 if no hazard), or H_CE1 overflow at all ticks for every scenario."
+    },
+    {
+      "id": "T3",
+      "severity": "disclose",
+      "issue": "Per-tick unmet is measured BEFORE that tick's relabel and admission, so on the decision tick it uses PRE-action labels (all arms alike). The count may therefore differ from the simulator's own realized tick_log overflow.",
+      "evidence": {
+        "diagnostic_equals_realized": 1073,
+        "diagnostic_differs": 5377
+      }
+    },
+    {
+      "id": "T4",
+      "severity": "must-fix for a common action space",
+      "issue": "Candidate semantics differ across existing data. PAIRWISE rows here leave non-targeted zones untouched; evaluate_differential_rl._oracle_candidate_continuation (the machinery the prior design proposed for new data, and the semantics of the frozen robust controller's Discrete(211) space) applies the heuristic globally THEN overrides, with prior unmet reset to 0. Rows from the two machineries are neither the same action nor the same target.",
+      "fix": "Adopt ONE candidate semantics and ONE target definition for all training data."
+    },
+    {
+      "id": "T5",
+      "severity": "must-fix for a comparable candidate set",
+      "issue": "'GLOBAL' is only the heuristic's chosen action (PARITY or FAVOR_B here); the unchosen global actions were never rolled out. 250/450 states have ONLY 2 candidates; pairwise rows exist only where >= 2 zones are non-empty.",
+      "fix": "Evaluate one fixed candidate set at every state (e.g. the 3 global actions, NO_INTERVENTION, and all feasible zone overrides)."
+    },
+    {
+      "id": "T6",
+      "severity": "disclose",
+      "issue": "Labels are ONE-STEP counterfactuals with heuristic continuation: they describe 'take a now, then the heuristic', not an AI-controlled closed loop.",
+      "fix": "Closed-loop evaluation must be a separate, explicitly-run experiment."
+    }
+  ]
+}

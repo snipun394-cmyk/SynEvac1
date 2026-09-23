@@ -1,0 +1,51 @@
+{
+  "audit": "pre_training_ai_dataset_audit_v1",
+  "status": "PREREGISTRATION DRAFT -- freeze (record the file hash) before any training",
+  "primary_test_family": "D_joint_timing_x_compliance on the new-data design (held-out t_h AND held-out p, disjoint seeds). With existing data only family A is possible; any such result must be labeled in-distribution.",
+  "statistics": "95% cluster-bootstrap CIs resampling TRAJECTORIES (not rows), 2000 resamples; every criterion reported per test family, never pooled.",
+  "prediction_success": {
+    "question": "Does the model predict action outcomes better than simple baselines?",
+    "baselines": [
+      "global mean",
+      "mean by action key",
+      "exact-state lookup",
+      "1-NN state analogue"
+    ],
+    "criterion": "MAE on T100 and on post-decision total unmet each below the BEST non-learning baseline with the paired-difference CI excluding 0; T90 and hazard-edge unmet reported, not gated; upper-quantile coverage within +/-5 points of nominal.",
+    "not_success": "Beating only the global mean."
+  },
+  "recommendation_success": {
+    "question": "Does the selector choose actions whose realized outcomes are close to the oracle's?",
+    "metrics": [
+      "outcome-equivalence rate (realized vector == oracle-best vector over the SAME candidate set)",
+      "regret in T100 and post-decision unmet vs the oracle-best candidate",
+      "oracle-advantage capture on states where the oracle strictly beats d(s)"
+    ],
+    "criterion": "Outcome-equivalence rate above d(s)'s own rate with CI excluding 0 on states where a strict improvement exists. Exact oracle-action match is diagnostic only."
+  },
+  "safety_success": {
+    "question": "Does the AI-assisted policy avoid harmful recommendations?",
+    "harmful_definition": "Realized outcome strictly worse than d(s) under the established 4-criterion order (one-step counterfactual from the same state).",
+    "criterion": "Harmful-recommendation rate upper 95% CI bound <= 1% in every test family, and no recommendation raises post-decision hazard-edge unmet by more than dH."
+  },
+  "generalization_success": {
+    "families": {
+      "A_in_distribution_heldout_seeds": "diagnostic",
+      "B_heldout_hazard_timing": "diagnostic",
+      "C_heldout_compliance_probability": "diagnostic",
+      "D_joint_timing_x_compliance": "PRIMARY",
+      "E_template_zero_shot": "diagnostic, expected hard, never a gate"
+    },
+    "criterion": "Prediction, recommendation and safety criteria all met on D; A-C and E reported with the same metrics."
+  },
+  "closed_loop_success": {
+    "question": "Executed at every decision, is evacuation at least as good and as safe as the deterministic baseline?",
+    "protocol": "Full-episode rollouts on the primary test cells with common random numbers (same seeds / compliance vectors) for the AI-assisted and d(s)-only policies. A SEPARATE run: training labels are one-step counterfactuals with heuristic continuation (target audit T6).",
+    "criterion": "Non-inferiority: paired T100 difference upper 95% CI bound <= 0.5 tick; paired hazard-edge unmet difference upper bound <= dH; no episode with lower completion rate than d(s)."
+  },
+  "explicitly_not_success_criteria": [
+    "Beating the heuristic is NOT required: recommendation quality is measured against the oracle over the same candidate set, safety against d(s).",
+    "Exact oracle-action match is NOT required (diagnostic only).",
+    "Any result obtained with a feature classified D, E, F or G does not count."
+  ]
+}

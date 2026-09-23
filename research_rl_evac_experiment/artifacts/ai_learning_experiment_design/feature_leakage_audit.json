@@ -1,0 +1,48 @@
+{
+  "audit": "pre_training_ai_dataset_audit_v1",
+  "temporal_leakage": {
+    "n_pre_onset_hazard_states": 150,
+    "n_pre_onset_states_where_feature29_recovers_exact_future_t_h": 150,
+    "n_pre_onset_states_with_hazard_phase_0_5": 150,
+    "n_no_hazard_states": 150,
+    "n_no_hazard_states_with_sentinel": 150,
+    "baseline_residual_cap_values_pre_onset": {
+      "1.0": 150
+    },
+    "leak_confirmed": true,
+    "source_evidence": "observation.py: `has_hazard = sim.t_h <= MAX_STEPS`, then `time_since_onset = (sim.t - sim.t_h) / MAX_STEPS` and `hazard_phase = 1.0 if sim.t >= sim.t_h else 0.5` -- no check that the onset has happened."
+  },
+  "residual_capacity": {
+    "n_states": 450,
+    "n_value_mismatches": 0,
+    "mismatches": [],
+    "hazard_update_precedes_decision_in_tick_order": true,
+    "reveals_future_onset": false,
+    "passed": true
+  },
+  "q_label_compliance_leak": {
+    "n_states_prior_action_favor_B_with_nonempty_hub": 50,
+    "n_states_Q_A_equals_hidden_noncompliant_baseline_A_count": 2,
+    "mean_Q_A_at_H": 1.28,
+    "mean_hidden_noncompliant_baseline_A_at_H": 0.32,
+    "pearson_r": 0.9338,
+    "partial_r_controlling_for_hub_size": 0.9076,
+    "leaks_hidden_compliance": true,
+    "why_not_exact": "Occupants in transit at the last decision tick were not eligible for relabel and keep an older label, so the count is a strong proxy rather than an exact read-out."
+  },
+  "action_independence": {
+    "n_state_candidate_pairs_checked": 9450,
+    "observation_recomputed_on_unmodified_state_is_identical": true,
+    "features_that_change_if_computed_after_candidate_relabel": {
+      "Q_A_at_H": 412,
+      "Q_B_at_H": 412
+    },
+    "temporal_only_features_that_change": {},
+    "action_sensitive_features": [
+      "Q_A_at_H",
+      "Q_B_at_H"
+    ],
+    "as_generated_any_feature_depends_on_candidate": false,
+    "interpretation": "Every state feature is computed at end of tick t-1, before the candidate's relabel (step 2/3 of tick t), so as generated none depends on the candidate. Only the listed features would become action-dependent under a wrong computation order; both are hidden-label features already excluded from the admissible set."
+  }
+}

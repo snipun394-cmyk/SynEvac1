@@ -1,0 +1,509 @@
+{
+  "audit": "pre_training_ai_dataset_audit_v1",
+  "simulator_is_deterministic_given": "(occupant distribution, t_h, compliance vector, action sequence); no other RNG",
+  "sources_of_apparent_stochasticity": [
+    "hidden per-occupant compliance vector",
+    "hidden future hazard onset t_h (before onset)"
+  ],
+  "variance_decomposition": {
+    "T90": {
+      "admissible_features_plus_action": {
+        "n_groups": 140,
+        "n_groups_with_repeats": 138,
+        "n_groups_with_conflicting_targets": 94,
+        "total_sum_sq": 9774.695,
+        "within_group_sum_sq": 2594.27,
+        "irreducible_share": 0.2654
+      },
+      "plus_n_noncompliant_active_only": {
+        "n_groups": 1265,
+        "n_groups_with_repeats": 1182,
+        "n_groups_with_conflicting_targets": 570,
+        "total_sum_sq": 9774.695,
+        "within_group_sum_sq": 2334.616,
+        "irreducible_share": 0.2388
+      },
+      "plus_true_t_h": {
+        "n_groups": 198,
+        "n_groups_with_repeats": 196,
+        "n_groups_with_conflicting_targets": 98,
+        "total_sum_sq": 9774.695,
+        "within_group_sum_sq": 846.34,
+        "irreducible_share": 0.0866
+      },
+      "plus_t_h_and_n_noncompliant_active": {
+        "n_groups": 1729,
+        "n_groups_with_repeats": 1472,
+        "n_groups_with_conflicting_targets": 400,
+        "total_sum_sq": 9774.695,
+        "within_group_sum_sq": 613.733,
+        "irreducible_share": 0.0628
+      },
+      "plus_t_h_and_noncompliance_by_room": {
+        "n_groups": 7444,
+        "n_groups_with_repeats": 1569,
+        "n_groups_with_conflicting_targets": 193,
+        "total_sum_sq": 9774.695,
+        "within_group_sum_sq": 118.833,
+        "irreducible_share": 0.0122
+      },
+      "plus_full_compliance_vector_eq_trajectory_id": {
+        "n_groups": 9381,
+        "n_groups_with_repeats": 69,
+        "n_groups_with_conflicting_targets": 0,
+        "total_sum_sq": 9774.695,
+        "within_group_sum_sq": 0.0,
+        "irreducible_share": 0.0
+      }
+    },
+    "T100": {
+      "admissible_features_plus_action": {
+        "n_groups": 140,
+        "n_groups_with_repeats": 138,
+        "n_groups_with_conflicting_targets": 96,
+        "total_sum_sq": 9581.619,
+        "within_group_sum_sq": 4406.49,
+        "irreducible_share": 0.4599
+      },
+      "plus_n_noncompliant_active_only": {
+        "n_groups": 1265,
+        "n_groups_with_repeats": 1182,
+        "n_groups_with_conflicting_targets": 625,
+        "total_sum_sq": 9581.619,
+        "within_group_sum_sq": 3967.338,
+        "irreducible_share": 0.4141
+      },
+      "plus_true_t_h": {
+        "n_groups": 198,
+        "n_groups_with_repeats": 196,
+        "n_groups_with_conflicting_targets": 102,
+        "total_sum_sq": 9581.619,
+        "within_group_sum_sq": 925.18,
+        "irreducible_share": 0.0966
+      },
+      "plus_t_h_and_n_noncompliant_active": {
+        "n_groups": 1729,
+        "n_groups_with_repeats": 1472,
+        "n_groups_with_conflicting_targets": 383,
+        "total_sum_sq": 9581.619,
+        "within_group_sum_sq": 674.409,
+        "irreducible_share": 0.0704
+      },
+      "plus_t_h_and_noncompliance_by_room": {
+        "n_groups": 7444,
+        "n_groups_with_repeats": 1569,
+        "n_groups_with_conflicting_targets": 165,
+        "total_sum_sq": 9581.619,
+        "within_group_sum_sq": 111.333,
+        "irreducible_share": 0.0116
+      },
+      "plus_full_compliance_vector_eq_trajectory_id": {
+        "n_groups": 9381,
+        "n_groups_with_repeats": 69,
+        "n_groups_with_conflicting_targets": 0,
+        "total_sum_sq": 9581.619,
+        "within_group_sum_sq": 0.0,
+        "irreducible_share": 0.0
+      }
+    },
+    "total_unmet_post": {
+      "admissible_features_plus_action": {
+        "n_groups": 140,
+        "n_groups_with_repeats": 138,
+        "n_groups_with_conflicting_targets": 123,
+        "total_sum_sq": 4451458.656,
+        "within_group_sum_sq": 289921.51,
+        "irreducible_share": 0.0651
+      },
+      "plus_n_noncompliant_active_only": {
+        "n_groups": 1265,
+        "n_groups_with_repeats": 1182,
+        "n_groups_with_conflicting_targets": 979,
+        "total_sum_sq": 4451458.656,
+        "within_group_sum_sq": 252089.502,
+        "irreducible_share": 0.0566
+      },
+      "plus_true_t_h": {
+        "n_groups": 198,
+        "n_groups_with_repeats": 196,
+        "n_groups_with_conflicting_targets": 154,
+        "total_sum_sq": 4451458.656,
+        "within_group_sum_sq": 132020.72,
+        "irreducible_share": 0.0297
+      },
+      "plus_t_h_and_n_noncompliant_active": {
+        "n_groups": 1729,
+        "n_groups_with_repeats": 1472,
+        "n_groups_with_conflicting_targets": 979,
+        "total_sum_sq": 4451458.656,
+        "within_group_sum_sq": 96513.158,
+        "irreducible_share": 0.0217
+      },
+      "plus_t_h_and_noncompliance_by_room": {
+        "n_groups": 7444,
+        "n_groups_with_repeats": 1569,
+        "n_groups_with_conflicting_targets": 825,
+        "total_sum_sq": 4451458.656,
+        "within_group_sum_sq": 16354.333,
+        "irreducible_share": 0.0037
+      },
+      "plus_full_compliance_vector_eq_trajectory_id": {
+        "n_groups": 9381,
+        "n_groups_with_repeats": 69,
+        "n_groups_with_conflicting_targets": 0,
+        "total_sum_sq": 4451458.656,
+        "within_group_sum_sq": 0.0,
+        "irreducible_share": 0.0
+      }
+    },
+    "hazard_unmet_post": {
+      "admissible_features_plus_action": {
+        "n_groups": 140,
+        "n_groups_with_repeats": 138,
+        "n_groups_with_conflicting_targets": 122,
+        "total_sum_sq": 3060456.786,
+        "within_group_sum_sq": 753538.96,
+        "irreducible_share": 0.2462
+      },
+      "plus_n_noncompliant_active_only": {
+        "n_groups": 1265,
+        "n_groups_with_repeats": 1182,
+        "n_groups_with_conflicting_targets": 979,
+        "total_sum_sq": 3060456.786,
+        "within_group_sum_sq": 683125.782,
+        "irreducible_share": 0.2232
+      },
+      "plus_true_t_h": {
+        "n_groups": 198,
+        "n_groups_with_repeats": 196,
+        "n_groups_with_conflicting_targets": 112,
+        "total_sum_sq": 3060456.786,
+        "within_group_sum_sq": 172442.14,
+        "irreducible_share": 0.0563
+      },
+      "plus_t_h_and_n_noncompliant_active": {
+        "n_groups": 1729,
+        "n_groups_with_repeats": 1472,
+        "n_groups_with_conflicting_targets": 766,
+        "total_sum_sq": 3060456.786,
+        "within_group_sum_sq": 133613.696,
+        "irreducible_share": 0.0437
+      },
+      "plus_t_h_and_noncompliance_by_room": {
+        "n_groups": 7444,
+        "n_groups_with_repeats": 1569,
+        "n_groups_with_conflicting_targets": 559,
+        "total_sum_sq": 3060456.786,
+        "within_group_sum_sq": 20769.833,
+        "irreducible_share": 0.0068
+      },
+      "plus_full_compliance_vector_eq_trajectory_id": {
+        "n_groups": 9381,
+        "n_groups_with_repeats": 69,
+        "n_groups_with_conflicting_targets": 0,
+        "total_sum_sq": 3060456.786,
+        "within_group_sum_sq": 0.0,
+        "irreducible_share": 0.0
+      }
+    }
+  },
+  "interpretation": "irreducible_share = within-group sum of squares / total sum of squares when rows are grouped by the listed key: the share of target variance that NO function of that key can explain on this dataset. 'admissible_features_plus_action' is the proposed model's information set; adding the hidden t_h and compliance vector should drive it to 0 because the simulator is deterministic.",
+  "S1_vs_S2_tick0": {
+    "identical_admissible_observation_across_S1_and_S2": true,
+    "T100_by_action_and_scenario": {
+      "GLOBAL:1": {
+        "S1": {
+          "n": 50,
+          "mean": 12.0,
+          "min": 12.0,
+          "max": 12.0
+        },
+        "S2": {
+          "n": 50,
+          "mean": 14.0,
+          "min": 14.0,
+          "max": 14.0
+        }
+      },
+      "NO_INTERVENTION": {
+        "S1": {
+          "n": 50,
+          "mean": 12.0,
+          "min": 12.0,
+          "max": 12.0
+        },
+        "S2": {
+          "n": 50,
+          "mean": 14.0,
+          "min": 14.0,
+          "max": 14.0
+        }
+      }
+    },
+    "meaning": "At t=0 every S1 and every S2 state is the same admissible input; only the unobservable future hazard (and hidden compliance) separates their outcomes."
+  },
+  "multiple_actions_identical_outcomes": {
+    "mean_distinct_outcome_share_per_state": 0.4961,
+    "n_pairwise_rows": 8550,
+    "n_pairwise_rows_identical_to_GLOBAL_outcome": 1880,
+    "outcome_vs_GLOBAL_counts": {
+      "PAIRWISE_worse_than_GLOBAL": 5438,
+      "PAIRWISE_tie": 1880,
+      "NO_INTERVENTION_tie": 399,
+      "PAIRWISE_better_than_GLOBAL": 1232,
+      "NO_INTERVENTION_worse_than_GLOBAL": 51
+    }
+  },
+  "hidden_noncompliance_vs_outcome_correlation_tick0_GLOBAL": {
+    "S3|GLOBAL:1|total_unmet_post": -0.323,
+    "S3|GLOBAL:1|hazard_unmet_post": 0.253
+  },
+  "candidate_target_forms": {
+    "exact_per_row_outcome": "NOT identifiable wherever identical observations map to different outcomes.",
+    "expected_outcome": "Identifiable as a conditional mean over the TRAINING distribution of hidden compliance and hazard timing, and only as transferable as that distribution. With one compliance level and one timing per template, the expectation here is over seeds only.",
+    "prediction_interval_or_distribution": "Estimable: identical observations repeat many times, so conditional spread is measurable.",
+    "probability_of_harmful_outcome": "Estimable as a conditional probability; base rates in outcome_vs_GLOBAL_counts.",
+    "decision": "Deferred by instruction."
+  },
+  "baseline_target_predictability": {
+    "note": "NOT the model experiment. Folds group whole trajectories (seed index mod 5, identical in every scenario). Inputs = the admissible state features + action key; 1-NN ties averaged; lookups fall back to the action-key mean. Row-weighted: states with 56 candidate rows dominate.",
+    "results": {
+      "trajectory_grouped_5fold": {
+        "T90": {
+          "target_std": 1.017,
+          "n_rows": 9450,
+          "exact_lookup_hit_rate": 0.9998,
+          "global_mean": {
+            "MAE": 0.8541,
+            "RMSE": 1.0171
+          },
+          "mean_by_action_family": {
+            "MAE": 0.8373,
+            "RMSE": 1.0049
+          },
+          "mean_by_action_key": {
+            "MAE": 0.7074,
+            "RMSE": 0.8445
+          },
+          "mean_by_scenario_tick_action_DIAGNOSTIC_uses_scenario_id": {
+            "MAE": 0.1615,
+            "RMSE": 0.3055
+          },
+          "exact_state_lookup": {
+            "MAE": 0.3895,
+            "RMSE": 0.5265
+          },
+          "nearest_state_analogue_1NN": {
+            "MAE": 0.3894,
+            "RMSE": 0.5264
+          }
+        },
+        "T100": {
+          "target_std": 1.0069,
+          "n_rows": 9450,
+          "exact_lookup_hit_rate": 0.9998,
+          "global_mean": {
+            "MAE": 0.8605,
+            "RMSE": 1.007
+          },
+          "mean_by_action_family": {
+            "MAE": 0.8614,
+            "RMSE": 1.0067
+          },
+          "mean_by_action_key": {
+            "MAE": 0.778,
+            "RMSE": 0.9033
+          },
+          "mean_by_scenario_tick_action_DIAGNOSTIC_uses_scenario_id": {
+            "MAE": 0.1594,
+            "RMSE": 0.3211
+          },
+          "exact_state_lookup": {
+            "MAE": 0.5341,
+            "RMSE": 0.686
+          },
+          "nearest_state_analogue_1NN": {
+            "MAE": 0.5341,
+            "RMSE": 0.6859
+          }
+        },
+        "total_unmet_post": {
+          "target_std": 21.7038,
+          "n_rows": 9450,
+          "exact_lookup_hit_rate": 0.9998,
+          "global_mean": {
+            "MAE": 17.0882,
+            "RMSE": 21.7054
+          },
+          "mean_by_action_family": {
+            "MAE": 16.2291,
+            "RMSE": 18.7659
+          },
+          "mean_by_action_key": {
+            "MAE": 14.6686,
+            "RMSE": 17.3747
+          },
+          "mean_by_scenario_tick_action_DIAGNOSTIC_uses_scenario_id": {
+            "MAE": 2.2516,
+            "RMSE": 3.8242
+          },
+          "exact_state_lookup": {
+            "MAE": 4.3874,
+            "RMSE": 5.5973
+          },
+          "nearest_state_analogue_1NN": {
+            "MAE": 4.3824,
+            "RMSE": 5.5851
+          }
+        },
+        "hazard_unmet_post": {
+          "target_std": 17.9961,
+          "n_rows": 9450,
+          "exact_lookup_hit_rate": 0.9998,
+          "global_mean": {
+            "MAE": 13.5,
+            "RMSE": 17.9964
+          },
+          "mean_by_action_family": {
+            "MAE": 13.452,
+            "RMSE": 17.8834
+          },
+          "mean_by_action_key": {
+            "MAE": 10.6445,
+            "RMSE": 13.2456
+          },
+          "mean_by_scenario_tick_action_DIAGNOSTIC_uses_scenario_id": {
+            "MAE": 1.9302,
+            "RMSE": 4.3779
+          },
+          "exact_state_lookup": {
+            "MAE": 7.0062,
+            "RMSE": 8.974
+          },
+          "nearest_state_analogue_1NN": {
+            "MAE": 7.0044,
+            "RMSE": 8.9729
+          }
+        }
+      },
+      "leave_one_scenario_out_DIAGNOSTIC": {
+        "T90": {
+          "target_std": 1.017,
+          "n_rows": 9450,
+          "exact_lookup_hit_rate": 0.6138,
+          "global_mean": {
+            "MAE": 1.2016,
+            "RMSE": 1.3764
+          },
+          "mean_by_action_family": {
+            "MAE": 1.1839,
+            "RMSE": 1.3656
+          },
+          "mean_by_action_key": {
+            "MAE": 1.1308,
+            "RMSE": 1.3388
+          },
+          "mean_by_scenario_tick_action_DIAGNOSTIC_uses_scenario_id": {
+            "MAE": 1.1308,
+            "RMSE": 1.3388
+          },
+          "exact_state_lookup": {
+            "MAE": 1.1618,
+            "RMSE": 1.3439
+          },
+          "nearest_state_analogue_1NN": {
+            "MAE": 1.1639,
+            "RMSE": 1.345
+          }
+        },
+        "T100": {
+          "target_std": 1.0069,
+          "n_rows": 9450,
+          "exact_lookup_hit_rate": 0.6138,
+          "global_mean": {
+            "MAE": 1.225,
+            "RMSE": 1.3922
+          },
+          "mean_by_action_family": {
+            "MAE": 1.23,
+            "RMSE": 1.3958
+          },
+          "mean_by_action_key": {
+            "MAE": 1.2238,
+            "RMSE": 1.4012
+          },
+          "mean_by_scenario_tick_action_DIAGNOSTIC_uses_scenario_id": {
+            "MAE": 1.2238,
+            "RMSE": 1.4012
+          },
+          "exact_state_lookup": {
+            "MAE": 1.3994,
+            "RMSE": 1.5366
+          },
+          "nearest_state_analogue_1NN": {
+            "MAE": 1.4015,
+            "RMSE": 1.5418
+          }
+        },
+        "total_unmet_post": {
+          "target_std": 21.7038,
+          "n_rows": 9450,
+          "exact_lookup_hit_rate": 0.6138,
+          "global_mean": {
+            "MAE": 22.384,
+            "RMSE": 27.0447
+          },
+          "mean_by_action_family": {
+            "MAE": 21.6274,
+            "RMSE": 24.6366
+          },
+          "mean_by_action_key": {
+            "MAE": 21.6364,
+            "RMSE": 24.9116
+          },
+          "mean_by_scenario_tick_action_DIAGNOSTIC_uses_scenario_id": {
+            "MAE": 21.6364,
+            "RMSE": 24.9116
+          },
+          "exact_state_lookup": {
+            "MAE": 17.9542,
+            "RMSE": 22.1638
+          },
+          "nearest_state_analogue_1NN": {
+            "MAE": 16.6568,
+            "RMSE": 20.7549
+          }
+        },
+        "hazard_unmet_post": {
+          "target_std": 17.9961,
+          "n_rows": 9450,
+          "exact_lookup_hit_rate": 0.6138,
+          "global_mean": {
+            "MAE": 17.7823,
+            "RMSE": 22.6967
+          },
+          "mean_by_action_family": {
+            "MAE": 17.7289,
+            "RMSE": 22.6785
+          },
+          "mean_by_action_key": {
+            "MAE": 17.5995,
+            "RMSE": 22.5526
+          },
+          "mean_by_scenario_tick_action_DIAGNOSTIC_uses_scenario_id": {
+            "MAE": 17.5995,
+            "RMSE": 22.5526
+          },
+          "exact_state_lookup": {
+            "MAE": 19.5654,
+            "RMSE": 23.5745
+          },
+          "nearest_state_analogue_1NN": {
+            "MAE": 19.1254,
+            "RMSE": 23.4058
+          }
+        }
+      }
+    }
+  }
+}

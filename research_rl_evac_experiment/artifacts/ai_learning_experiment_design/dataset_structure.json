@@ -1,0 +1,239 @@
+{
+  "audit": "pre_training_ai_dataset_audit_v1",
+  "file": "artifacts/differential_targeting/differential_targeting_raw_records.json",
+  "file_sha256": "cfd4590f0a9a2c938f5a16017dcd869925dfa5962b7535c8ee6406f97b1633e4",
+  "n_records_decision_states": 450,
+  "record_fields": [
+    "candidates",
+    "decision_tick",
+    "heuristic_action",
+    "n_pairs_collapsed_to_global",
+    "n_pairs_evaluated",
+    "nonempty_zones",
+    "pairwise_results",
+    "scenario",
+    "seed"
+  ],
+  "stores_observation_or_feature_vector": false,
+  "n_candidate_tuples_GLOBAL_and_NO_INTERVENTION": 900,
+  "n_pairwise_tuples": 8550,
+  "n_total_state_action_outcome_tuples": 9450,
+  "exact_row_count_matches_claim_9450": true,
+  "n_unique_states": 450,
+  "n_unique_action_keys": 66,
+  "action_family_counts": {
+    "GLOBAL": 450,
+    "NO_INTERVENTION": 450,
+    "PAIRWISE": 8550
+  },
+  "global_action_variants": {
+    "GLOBAL:1": 337,
+    "GLOBAL:2": 113
+  },
+  "pairwise_zone_pairs": {
+    "R1|R2": 1350,
+    "R1|R3": 1350,
+    "R1|R4": 1350,
+    "R2|R3": 1350,
+    "R2|R4": 1350,
+    "R3|R4": 1350,
+    "C2|H": 450
+  },
+  "scenarios": {
+    "S1": 150,
+    "S2": 150,
+    "S3": 150
+  },
+  "seeds": {
+    "n_unique": 50,
+    "min": 10000,
+    "max": 10049,
+    "pool": "EVAL_SEED_POOL (10000-10049)"
+  },
+  "decision_ticks": {
+    "0": 150,
+    "5": 150,
+    "10": 150
+  },
+  "hazard_timings_represented": {
+    "S1": null,
+    "S2": 7,
+    "S3": 5
+  },
+  "compliance_probabilities_represented": [
+    0.9
+  ],
+  "compliance_probability_source": "NOT stored in the dataset. compliance.COMPLIANCE_PROBABILITY=0.9 is the module default used by gym_env.reset() -> generate_compliance_vector(scenario, seed) with no p override; the generator script never varies it.",
+  "every_tuple_has_simulator_outcome": true,
+  "n_exact_duplicate_state_action_rows": 0,
+  "n_rows_T90_undefined": 0,
+  "n_rows_T100_censored": 0,
+  "per_scenario_tick": {
+    "S1_tick0": {
+      "n_states": 50,
+      "n_tuples": 2800,
+      "nonempty_zones": {
+        "R1+R2+R3+R4": 50
+      },
+      "pairwise_per_state": {
+        "54": 50
+      }
+    },
+    "S1_tick10": {
+      "n_states": 50,
+      "n_tuples": 100,
+      "nonempty_zones": {
+        "(none)": 50
+      },
+      "pairwise_per_state": {
+        "0": 50
+      }
+    },
+    "S1_tick5": {
+      "n_states": 50,
+      "n_tuples": 100,
+      "nonempty_zones": {
+        "H": 50
+      },
+      "pairwise_per_state": {
+        "0": 50
+      }
+    },
+    "S2_tick0": {
+      "n_states": 50,
+      "n_tuples": 2800,
+      "nonempty_zones": {
+        "R1+R2+R3+R4": 50
+      },
+      "pairwise_per_state": {
+        "54": 50
+      }
+    },
+    "S2_tick10": {
+      "n_states": 50,
+      "n_tuples": 100,
+      "nonempty_zones": {
+        "H": 50
+      },
+      "pairwise_per_state": {
+        "0": 50
+      }
+    },
+    "S2_tick5": {
+      "n_states": 50,
+      "n_tuples": 100,
+      "nonempty_zones": {
+        "H": 50
+      },
+      "pairwise_per_state": {
+        "0": 50
+      }
+    },
+    "S3_tick0": {
+      "n_states": 50,
+      "n_tuples": 2800,
+      "nonempty_zones": {
+        "R1+R2+R3+R4": 50
+      },
+      "pairwise_per_state": {
+        "54": 50
+      }
+    },
+    "S3_tick10": {
+      "n_states": 50,
+      "n_tuples": 100,
+      "nonempty_zones": {
+        "H": 50
+      },
+      "pairwise_per_state": {
+        "0": 50
+      }
+    },
+    "S3_tick5": {
+      "n_states": 50,
+      "n_tuples": 550,
+      "nonempty_zones": {
+        "C2+H": 50
+      },
+      "pairwise_per_state": {
+        "9": 50
+      }
+    }
+  },
+  "n_states_with_zero_pairwise_rows": 250,
+  "composition_of_9450": "450 states x 2 'candidates' (GLOBAL = the heuristic's own action, NO_INTERVENTION) = 900, plus 8550 pairwise zone-differential rollouts concentrated on 200 states. It is NOT 9,450 independent states; it is 450 states with a highly unequal number of evaluated actions per state.",
+  "replay": {
+    "n_states_replayed": 450,
+    "n_replay_mismatches": 0,
+    "mismatches": [],
+    "all_reached": true,
+    "passed": true
+  },
+  "integrity": {
+    "before": {
+      "simulator.py": "77b63dd2ace0247bd71a9c9bd3ab8f737776b89e86dd5398951b1bac462b3d37",
+      "observation.py": "bae0a3a9a85556ee81cdc159b9c5dbcfd8aa745cdf8b8492f87cccdf6bcdc895",
+      "actions.py": "e1e9abb7d9198f9fc8150c1c0e61abfaca4b452f0d6ec12bde7ea4dfa1d3776d",
+      "compliance.py": "9c38e1f428d9213a04098d3dc352abcce8b616ed153883ecbf1d72a934ac8e1a",
+      "scenarios.py": "8e48dbc224c2991fea73549f82d412efb407fbaedfe2c03d2c0253289767222c",
+      "topology.py": "2c556d014f2e29727af88bdd380af2410f6c6a42befb0080f0f91bd9dd0d504c",
+      "metrics.py": "d2af26deed1ea7d2898089941a246e96e3621725ab6b3e5f6b80a890f866a837",
+      "target_group.py": "47697b65f60e949f7f565740963a722b8b67787af93bfb661415b0f6129604df",
+      "differential_targeting.py": "7456109114634fea049dc6f020bdb1955b94edf0ab27e10cbf707c49e923d2c5",
+      "deadband_heuristic.py": "6fb10b882bde0461381beef9e2ea8949addce70e33018247336b92e0af05303a",
+      "capacity_aware_heuristic.py": "5b3236fea37684cf394ebfd27d5fbf2e91870f07f74d8ee9d219102340326ce2",
+      "observable_robust_differential.py": "61182f8c56ffa53d642760dc15a6560c475cc39ecd6741b1f298a41ee2a56cde",
+      "action_space_audit.py": "2a22933826a58bc0e6a26c4e1c4a3560ee0eb9f6d21fccc6706b62aeec342ff6",
+      "timing_experiment.py": "056f539248a040ad0d4785f446ec72447764a65ba7895a2060c9bb6b6d9abb01",
+      "stress_test_scenarios.py": "51e7e604fc5296975f334f44251b9de3f982fe5b43e8088c171c14555c5d4da4",
+      "gym_env.py": "04e31d2f1ebe400855abaeb9e07ff3a3f76aab0de7735a59f907b421d89c5ef3",
+      "differential_rl_action_space.py": "9fc8514746b4291b3b1b3a08919eaef47d00891474100cfde2455ed1eda34d3e",
+      "differential_rl_env.py": "41f4cdb3ebc628ac8ae6c8a323c6a1aa3d5f3da3d8b83d1825bbee8d54eda639",
+      "scripts/audit_differential_targeting.py": "5e1b546bce16e4dd6208e68a18ad032b87a3e0e9a3a5ef3615193e3edd14bf45",
+      "scripts/audit_selective_guidance_control.py": "add0f3f4f6eddb274e54f0b2fd5c2eea17676750b97be1786667288e5b725891",
+      "scripts/evaluate_differential_rl.py": "b912f87e8b76f0fc3f2d093c1ba3013022c80c98fb66e3758aec8e2ef5e2cab6",
+      "scripts/audit_ai_learning_experiment_design.py": "91834608274f05cb6c06179a646e28ead1e19fffcaff9271038c8c587313989c",
+      "scripts/audit_timing_conditioned_differential_policy.py": "8666f30282431eb71f3bcaaf1f96892f3281c981cfa5634021fbee76b843899e",
+      "artifacts/differential_targeting/differential_targeting_raw_records.json": "cfd4590f0a9a2c938f5a16017dcd869925dfa5962b7535c8ee6406f97b1633e4",
+      "artifacts/differential_targeting/differential_targeting_results.json": "4a3e700dd784f1ae8cda5e4a9fb5e1770fd8ef4585543161318f46d222d836bf",
+      "artifacts/differential_targeting/DIFFERENTIAL_TARGETING_AUDIT.md": "4a40a3219b58f7cca467064f0ed401cc9c5df6494067b746b5cb2cfbe336dca4",
+      "artifacts/timing_conditioned_differential/timing_action_matrix.json": "fe0e71d51d1739b083cfaeb9694278c4696a79a9a366764c07175fb389342643",
+      "artifacts/ai_learning_experiment_design/AI_LEARNING_EXPERIMENT_DESIGN.md": "c918c435b88af3ad92a4c7a4dfe4a11cc677fce8eb3f275abe6be3953c9d2d57",
+      "artifacts/ai_learning_experiment_design/candidate_paradigms.json": "68f593ac44170ac9d9c7ef33fd768cd08f509ddbef0397b9f34d4d3876e1a5f3",
+      "artifacts/ai_learning_experiment_design/integrity_verification.json": "d3c8a5e63c930ee358b6fef2f13c5bb07e30f741adcf0b5ecd85231419a44ed6",
+      "artifacts/ai_learning_experiment_design/leakage_audit.json": "0edcb544b2b97b909da0d571d86d8c67e88ce286e387c20f5e78b5d9c01c2d67",
+      "artifacts/ai_learning_experiment_design/objective_definitions.json": "ffed315ee3de9c12da1ea88b59520717f7d70d4d130b877da1bd72e5b3f1c82a",
+      "artifacts/ai_learning_experiment_design/observable_feature_analysis.json": "90cd8c45c9bd932de078d5809313eeb405d7816a5e3cfb3fede24259ab1a260c",
+      "artifacts/ai_learning_experiment_design/proposed_experiment.json": "af647a4a209707673a16ed98d442b2a7fa1d4c975c27070cfef6b805c168d58a",
+      "artifacts/ai_learning_experiment_design/simulator_gap_analysis.json": "65a0cb17af423f1270fd1faff5414a5d8afda3b0912a3e9eb61145532eae5199",
+      "artifacts/ai_learning_experiment_design/success_criteria.json": "696be5aabb793f99414e4453d4f4644ee26deaebb76ee43ace6e8d96200fa105"
+    },
+    "all_protected_unchanged": true,
+    "controller": {
+      "expected": "98b570ba7d7d451c82acf919113db2e5",
+      "actual": "98b570ba7d7d451c82acf919113db2e5",
+      "match": true
+    },
+    "checkpoints": {
+      "n_checkpoints": 15,
+      "mismatches": [],
+      "all_match": true
+    }
+  },
+  "other_candidate_data_NOT_part_of_9450": {
+    "file": "artifacts/timing_conditioned_differential/timing_action_matrix.json",
+    "n_records": 80,
+    "t_h": [
+      3,
+      6,
+      7,
+      10
+    ],
+    "compliance_p": 0.75,
+    "decision_tick": 0,
+    "seeds": "90000-90019",
+    "machinery": "evaluate_differential_rl._oracle_candidate_continuation (heuristic globally, then override; prior unmet reset to 0)",
+    "compatible_with_9450": false,
+    "note": "All 80 are tick-0 states of one symmetric distribution, so the 27-D observation is the same vector in every record; timing and compliance are invisible in its inputs."
+  }
+}

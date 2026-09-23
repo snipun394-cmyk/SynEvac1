@@ -1,0 +1,65 @@
+{
+  "audit": "pre_training_ai_dataset_audit_v1",
+  "status": "DEFINITION ONLY -- not implemented",
+  "notation": {
+    "s": "decision state; x(s) = admissible feature vector, computed before any candidate is applied",
+    "C_s": "fixed candidate set at s; always contains the default d(s)",
+    "d_s": "default action: the frozen deterministic controller. GLOBAL_DEADBAND applied globally, or observable_robust_differential.py (MD5 98b570ba7d7d451c82acf919113db2e5) if the Discrete(211) 'heuristic globally + override' semantics is adopted for C_s",
+    "y_hat": "predicted vector y_hat(s,a) = [T90, T100, U, H]; U = post-decision total unmet, H = post-decision hazard-edge unmet (after target fixes T1/T2)",
+    "q_hi": "per-component upper predictive quantile (or conformal upper bound) at a preregistered level",
+    "delta": "practical-equivalence tolerances (d90, d100, dU, dH), fixed before training; T90/T100 are integer ticks, so d90 = d100 = 0.5 tick is the natural choice"
+  },
+  "established_ordering": {
+    "order": [
+      "T90 (undefined -> +inf)",
+      "T100",
+      "total_unmet_demand",
+      "hazard_edge_unmet_demand"
+    ],
+    "source": "audit_differential_targeting.sort_key_full_ranking",
+    "preserved": true
+  },
+  "why_literal_lexicographic_argmin_is_inappropriate_for_regression": "Continuous predictions essentially never tie exactly on T90, so a literal lexicographic argmin reduces to argmin predicted T90 and silently ignores T100, U and H -- an effective CHANGE of the established ordering. The order is therefore kept as a TOLERANCE-lexicographic order: criterion k+1 is consulted only among candidates within delta_k of the best on criterion k.",
+  "steps": [
+    {
+      "step": 1,
+      "name": "safety constraint (pessimistic non-regression vs the default)",
+      "rule": "A(s) = { a in C_s : q_hi_k(s,a) <= y_hat_k(s,d) + delta_k for every component k }. d(s) is always in A(s). This is a constraint, not a reordering: the objective in steps 2-3 keeps the established order."
+    },
+    {
+      "step": 2,
+      "name": "primary objective",
+      "rule": "Within A(s): keep a with y_hat_T90(s,a) <= min_A y_hat_T90 + d90."
+    },
+    {
+      "step": 3,
+      "name": "secondary objectives (tolerance-lexicographic, established order)",
+      "rule": "Then T100 within d100 of the best, then U within dU, then minimal H. Remaining ties: prefer d(s), then the lowest candidate id."
+    },
+    {
+      "step": 4,
+      "name": "strict-improvement requirement",
+      "rule": "Output a* != d(s) only if a* beats d(s) by more than delta_k on the FIRST criterion where they differ by more than the tolerance; otherwise output d(s)."
+    },
+    {
+      "step": 5,
+      "name": "fallback",
+      "rule": "Output d(s) if: (i) x(s) is outside training support (nearest-training-state distance above the 99th percentile of within-training nearest-neighbour distances); (ii) any feature is missing or invalid (e.g. trend features at t=0); (iii) the model or quantile head fails; (iv) A(s) = {d(s)}."
+    },
+    {
+      "step": 6,
+      "name": "uncertainty handling",
+      "rule": "Upper bounds in step 1 only; point predictions in steps 2-4. Quantile level and conformal calibration are fit on VALIDATION cells only and frozen in the preregistration."
+    }
+  ],
+  "properties": [
+    "Deterministic given model outputs.",
+    "Never predicted-worse than d(s) at the pessimistic bound; realized safety is measured separately.",
+    "Reduces to the frozen default when the model is uninformative."
+  ],
+  "open_decisions_for_the_user": [
+    "Default d(s): GLOBAL heuristic vs the frozen robust controller (follows from the candidate semantics chosen).",
+    "Quantile level for the safety bound.",
+    "delta values for U and H (unit: occupant-ticks)."
+  ]
+}

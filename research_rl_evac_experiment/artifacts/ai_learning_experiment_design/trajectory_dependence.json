@@ -1,0 +1,78 @@
+{
+  "audit": "pre_training_ai_dataset_audit_v1",
+  "rows_per_trajectory": {
+    "n_trajectories": 150,
+    "histogram_rows_to_n_trajectories": {
+      "60": 100,
+      "69": 50
+    },
+    "min": 60,
+    "max": 69
+  },
+  "states_per_trajectory": {
+    "3": 150
+  },
+  "rows_per_seed": {
+    "n_seeds": 50,
+    "min": 189,
+    "max": 189
+  },
+  "rows_per_scenario": {
+    "S1": 3000,
+    "S2": 3000,
+    "S3": 3450
+  },
+  "rows_per_decision_tick": {
+    "0": 8400,
+    "5": 750,
+    "10": 300
+  },
+  "repeated_state_frequency": {
+    "n_states": 450,
+    "n_distinct_27D_observations": 12,
+    "n_distinct_admissible_feature_vectors": 11,
+    "admissible_vector_multiplicity_histogram": {
+      "1": 1,
+      "7": 1,
+      "10": 1,
+      "12": 1,
+      "20": 1,
+      "50": 4,
+      "100": 2
+    },
+    "largest_identical_admissible_group": 100,
+    "distinct_admissible_vectors_per_scenario_tick": {
+      "S1_tick0": 1,
+      "S1_tick10": 1,
+      "S1_tick5": 1,
+      "S2_tick0": 1,
+      "S2_tick10": 1,
+      "S2_tick5": 1,
+      "S3_tick0": 1,
+      "S3_tick10": 5,
+      "S3_tick5": 1
+    },
+    "n_admissible_vectors_shared_by_more_than_one_scenario": 2,
+    "scenario_tick_groups_with_identical_admissible_input": [
+      "S1_tick0 = S2_tick0",
+      "S1_tick5 = S2_tick5"
+    ]
+  },
+  "repeated_compliance_vector_frequency": {
+    "n_trajectories": 150,
+    "n_distinct_compliance_vectors": 149,
+    "max_repeat": 2,
+    "n_distinct_noncompliance_by_initial_room_profiles": 118,
+    "note": "generate_compliance_vector keys on (scenario NAME, seed), so the same seed gives DIFFERENT vectors in S1/S2/S3; 'seed' is not a latent shared across scenarios."
+  },
+  "shared_rollouts": "The GLOBAL row at ticks 0/5/10 of one trajectory is the same heuristic reference trajectory re-simulated (see target_generation_audit.structure for identical-outcome counts).",
+  "grouping_hierarchy": [
+    "scenario template (occupant distribution)",
+    "hazard-timing x compliance-probability cell",
+    "trajectory = (scenario, seed): one hidden compliance vector + one heuristic reference trajectory",
+    "decision state = (scenario, seed, decision_tick)",
+    "candidate-action row"
+  ],
+  "minimum_split_unit": "trajectory (scenario, seed): every tick and every candidate row of a trajectory in the same split. A random row split places the same state (2 to 56 candidate rows) and the shared GLOBAL rollout in both train and test.",
+  "recommended_split_unit": "seed index assigned identically in every scenario (seed k in the same split in S1, S2, S3), plus explicit cell / template hold-outs for generalization tests."
+}
