@@ -1,0 +1,107 @@
+{
+  "amendment": "A1",
+  "title": "Acceptance-criteria amendment A1 to Spec v2: G1, X5, X7",
+  "status": "PROPOSED -- awaiting approval; NOT evaluated",
+  "created_utc": "2026-09-24T18:27:20Z",
+  "provenance": {
+    "parent_specification": "Spec v2 (experiment_specification_v2_d1_d2)",
+    "parent_spec_version_record_sha256": "b0e761dfa665c1ac0b899a1e16abe5ea884a9589f392abf8487bfcd52597c1e2",
+    "parent_diversity_requirements_sha256": "a0bd57866b25da7c5f225c1633e6fdf518b3d95b6f96b431867e25abcf2d9052",
+    "parent_dataset_design_sha256": "4eb14cc48a86947def844f5c5e25567e536f59ee71bd75bad3d1208619d395f1",
+    "parent_split_specification_sha256": "f611493374a0a18527e12a105a0dbb429a4ef4689c2e3f2a6c3175d8eb7cd68a",
+    "frozen_full_dataset_rows_sha256": "36aa757f6f2414713d7f5625f562298df2e72baf97a61969a69c0e3ecb967179",
+    "frozen_full_generation_record_sha256": "5a39842efa2cc4d71dfb3ce1f7adfcba09d20f5a016080374de4f67be0b2fbd4",
+    "original_full_go_no_go_sha256": "b16d6b9659a7e78520f65ab918782ab4e4ed3ff756a46d866467b20228349998",
+    "pilot_rows_sha256": "df6e5092af310640c47583fd6fcb27e641db730344cc558c71ee8d4518cb4298",
+    "git_parent_commit": "bdfb54e",
+    "created_before_model_training": true,
+    "dataset_rows_changed": false,
+    "model_results_informed_amendment": false,
+    "statement": "A1 was written before any model was trained. No dataset row was changed or regenerated. No model result exists; none informed A1. Spec v2 files and the original Spec v2 acceptance result are unchanged."
+  },
+  "information_available_when_A1_was_written": {
+    "disclosure": "A1 is NOT blind to the data. The following exploratory, read-only results had already been seen by the user and by the author when A1 was written. The amended rules are derived from each criterion's stated purpose and the project's pre-existing alpha = 0.05 / 95% convention (Spec v2 statistics: 95% intervals, 2000 resamples), not from these values; the seed is deliberately new and the resample count differs from the exploratory run.",
+    "exploratory_G1_X5": "300 pilot-shaped resamples, seed 20260924: tick>=10 distinct share mean 0.533 (5-95%: 0.497-0.569) vs pilot 0.5158; overall distinct share mean 0.2375 (5-95%: 0.2216-0.2528) vs pilot 0.2299",
+    "exploratory_X7": "per-role Cramer's V = 0 for layout x t_h and layout x p in all 7 split roles; every layout has an identical cell allocation within each role"
+  },
+  "original_results_preserved": {
+    "G1": {"criterion": "decision ticks >= 10: distinct admissible inputs >= 25% of those states AND >= 10 distinct per template",
+           "measured": {"tick_ge_10_distinct_share": 0.1838, "min_distinct_per_template": 118}, "result": "FAIL"},
+    "X5": {"criterion": "diversity materially exceeds the old dataset: distinct admissible inputs >= 110 (10x old) AND distinct share >= 0.1222 (5x old) AND distinct (input, candidate) pairs >= 1400 (10x old)",
+           "measured": {"distinct_inputs": 1389, "distinct_share": 0.0749, "distinct_input_candidate_pairs": 413922}, "result": "FAIL"},
+    "X7": {"criterion": "no structural confound: every template has every (t_h, p) level (association 0); seeds unique per trajectory; realized perturbation rate within 0.5 +/- 0.1; no censored T100",
+           "measured": {"all_trajectory_cramers_v_t_h": 0.0399, "all_trajectory_cramers_v_p": 0.0477, "seeds_unique": true, "perturbation_rate": 0.5145, "censored_rows": 0},
+           "result": "FAIL"},
+    "overall_spec_v2_status": "FULL DATASET NO-GO",
+    "note": "These original results are permanent and are not rewritten by A1."
+  },
+  "why_original_is_invalid": {
+    "G1_and_X5_share_clauses": "For a finite reachable state space with visit probabilities p_i, the expected number of distinct states in n draws is E[D(n)] = sum_i (1 - (1 - p_i)^n). The probability that draw n+1 is new, pi_n = sum_i p_i (1 - p_i)^n, is non-increasing in n and E[D(n)] = sum_{k<n} pi_k >= n * pi_n, so E[D(n+1)]/(n+1) = (E[D(n)] + pi_n)/(n+1) <= E[D(n)]/n. The distinct share is therefore non-increasing in sample size and tends to 0; any fixed share threshold fails at a large enough n regardless of data quality. Observed on the frozen data by whole-trajectory rarefaction: tick>=10 share 0.746 (~200 states) -> 0.542 (~800) -> 0.286 (~6,400) -> 0.184 (18,538). X5's 0.1222 additionally compares a share measured at n = 18,538 with 5x a share measured at n = 450 (old dataset).",
+    "X7_association_clause": "Layout, t_h and p are design inputs; the all-trajectory Cramer's V is a deterministic function of the allocation table (0.0399 / 0.0477 computed from dataset_design.json alone, before data existed, equal to the observed values). It is 0 within every split role, within the six main layouts and within the two zero-shot layouts; the non-zero value arises only because the zero-shot layouts are allocated uniformly (3 per non-buffer cell) while the main layouts are role-weighted. Cramer's V is also biased upward: fully random layout assignment with the same margins gives a mean V of about 0.035-0.038, never 0, so 'association 0' is attainable only by exact balance. The clause measures the sampling design, not layout-timing/compliance dependence."
+  },
+  "amended_criteria": {
+    "G1-A1": {
+      "purpose": "The full dataset must contain at least pilot-level observable-state diversity when evaluated at the pilot's sampling scale.",
+      "reference_value": {"statistic": "pilot distinct share at decision ticks >= 10", "value": 0.5158, "exact": "163 / 316", "source": "pilot/pilot_diversity.json"},
+      "resampling": {
+        "unit": "whole trajectories (every decision state of a selected trajectory is included; rows are never sampled individually)",
+        "stratification": "stratified by the 120 pilot cells = 8 layouts (D0_sym, D1_east_heavy, D2_west_heavy, D3_first_room_heavy, D4_second_room_heavy, D5_R1_concentrated, Z1_R4_concentrated, Z2_mixed) x t_h {none, 3, 5, 7, 9} x p {0.5, 0.7, 0.9}",
+        "per_cell_draw": "exactly 2 distinct trajectories per cell, without replacement within the resample",
+        "eligible_pool_per_cell": "main layouts: TRAIN-role trajectories of that (layout, t_h, p) in the frozen dataset (20 each); zero-shot layouts: DIAG_TEMPLATE_ZERO_SHOT trajectories of that (layout, t_h, p) (3 each)",
+        "resample_size": "240 trajectories (the pilot's exact structure)",
+        "n_resamples": 2000,
+        "rng": "numpy.random.default_rng(5544240)",
+        "draw_order": "for each resample r = 1..2000: for layout in the order listed above, for t_h in (none, 3, 5, 7, 9), for p in (0.5, 0.7, 0.9): pool sorted by trajectory_id; idx = rng.choice(len(pool), size=2, replace=False)",
+        "shared_with": "X5-A1 uses the same 2000 resamples"
+      },
+      "statistic": "s_r = (number of distinct 26-feature admissible vectors among the resample's decision states with decision_tick >= 10) / (number of such states)",
+      "pass_rule": {
+        "clause_1_pilot_matched_diversity": "one-sided resampling p-value p = (1 + #{r : s_r >= 0.5158}) / (2000 + 1); PASS iff p >= 0.05 (the pilot's diversity is not significantly greater than the full dataset's at the pilot's scale)",
+        "clause_2_retained_unchanged": "minimum over the 8 layouts of the number of distinct admissible inputs at decision ticks >= 10 in the full dataset >= 10",
+        "G1_A1_passes_iff": "clause_1 AND clause_2"
+      },
+      "confidence_procedure": "percentile method over the 2000 resamples: report mean, median, 2.5/5/95/97.5 percentiles (numpy 'linear' interpolation) and the Monte Carlo standard error of p, sqrt(p(1-p)/2000)",
+      "rationale": "The pilot value is a single noisy realization of a pilot-shaped sample. The question 'does the full dataset have at least pilot-level diversity at the pilot's scale' is a one-sided non-inferiority question, tested at the project's pre-existing alpha = 0.05. Rejected alternatives: (a) 'resampled median >= pilot value' treats the single pilot realization as exact and would fail about half the time for two equally diverse processes; (b) a two-sided equivalence test would penalize MORE diversity, contrary to the purpose. Stratifying by the 120 pilot cells reproduces the pilot's trajectory structure so the share is compared at identical sample size and design."
+    },
+    "X5-A1": {
+      "purpose": "The full dataset's diversity must not fall below the validated pilot's when compared at the pilot's scale, and must materially exceed the old dataset in absolute terms.",
+      "reference_value": {"statistic": "pilot overall distinct share (all decision ticks)", "value": 0.2299, "exact": "183 / 796", "source": "pilot/pilot_diversity.json"},
+      "resampling": "identical to G1-A1 (same 2000 stratified whole-trajectory resamples, same RNG and draw order)",
+      "statistic": "u_r = (number of distinct 26-feature admissible vectors among ALL of the resample's decision states) / (number of those states)",
+      "pass_rule": {
+        "clause_1_pilot_matched_diversity": "p = (1 + #{r : u_r >= 0.2299}) / (2000 + 1); PASS iff p >= 0.05",
+        "clause_2_retained_unchanged": "distinct admissible inputs in the full dataset >= 110",
+        "clause_3_retained_unchanged": "distinct (input, candidate) pairs in the full dataset >= 1400",
+        "removed": "distinct share >= 0.1222 (5x the old dataset's share at n = 450); scale-dependent, replaced by clause 1",
+        "X5_A1_passes_iff": "clause_1 AND clause_2 AND clause_3"
+      },
+      "confidence_procedure": "as G1-A1",
+      "rationale": "Same scale argument as G1-A1. The original purpose (diversity materially exceeds the old dataset) stays carried by the two unchanged absolute 10x clauses; the ratio clause is replaced by a comparison at a matched sample size."
+    },
+    "X7-A1": {
+      "purpose": "Within the experimental allocation structure, layout must not be systematically associated with hazard timing or compliance probability; no structural confound.",
+      "unit": "one record per trajectory present in the frozen full dataset (layout, split_role, t_h, p read from the dataset rows' metadata, not from the design file)",
+      "strata": "the 7 split roles (TRAIN, VALIDATION, TEST_PRIMARY_JOINT, TEST_HELDOUT_TIMING, TEST_HELDOUT_COMPLIANCE, DIAG_EXTRAPOLATION, DIAG_TEMPLATE_ZERO_SHOT). The six main layouts occur only in the first six roles and the two zero-shot layouts only in DIAG_TEMPLATE_ZERO_SHOT, so the main and zero-shot layouts are never compared with each other; their different allocations are design-intended and are reported descriptively, never gated.",
+      "tests": ["layout x t_h", "layout x p"],
+      "statistic": "T = sum over strata s of X2_s, where X2_s is the Pearson chi-square statistic of the layout x level contingency table of stratum s, over the levels present in that stratum (a stratum with a single layout or a single level contributes 0)",
+      "null_distribution": "layouts exchangeable within each stratum: permute layout labels among the trajectories of each stratum independently (all within-stratum margins preserved); B = 10000 permutations; numpy.random.default_rng(5544007); per permutation, strata processed in the order listed above, rng.permutation applied to the stratum's layout labels ordered by trajectory_id; the same permutations serve both tests",
+      "p_value": "p = (1 + #{b : T_b >= T_obs}) / (10000 + 1)",
+      "pass_rule": {
+        "clause_1_stratified_independence": "PASS iff p >= 0.05 for layout x t_h AND p >= 0.05 for layout x p (each at alpha = 0.05, no multiplicity correction: correcting would make the acceptance check easier to pass)",
+        "clause_2_retained_unchanged": "seeds unique per trajectory",
+        "clause_3_retained_unchanged": "realized perturbation rate within 0.5 +/- 0.1",
+        "clause_4_retained_unchanged": "no censored T100",
+        "X7_A1_passes_iff": "all four clauses"
+      },
+      "reported_not_gated": ["X2_s, p_s and Cramer's V_s per stratum", "pooled T over the six main-layout strata and over the zero-shot stratum separately", "main vs zero-shot t_h and p marginals (design-intended difference)"],
+      "rationale": "A stratified (Cochran-Mantel-Haenszel-style) independence test asks the intended question inside the allocation structure. An exact within-stratum permutation null avoids asymptotic approximations and the upward bias of Cramer's V, and it does not require an unattainable statistic of exactly 0. A perfectly balanced realized allocation gives T_obs = 0 and p = 1; the test fails only if the realized dataset shows layout-dependent timing or compliance inside a split role (for example missing, duplicated or mislabeled trajectories)."
+    }
+  },
+  "unchanged_criteria": ["G2", "G3", "G4", "G5", "G6", "G7", "X1", "X2", "X3", "X4", "X6", "X8", "X9", "X10"],
+  "acceptance_after_A1": "Overall acceptance under A1 = the unchanged original results of G2-G7 and X1-X4, X6, X8-X10 (all PASS in full_go_no_go.json) AND G1-A1 AND X5-A1 AND X7-A1, evaluated once, after approval, with the exact procedures above. The original Spec v2 result remains NO-GO on record regardless.",
+  "preserved_limitations": {
+    "A": "60% of decision states occur at ticks 0 and 5 and are fixed by the occupant layout: 20 distinct inputs across 11,088 states. Outcomes at these states are learnable only as conditional distributions.",
+    "B": "G3 candidate sufficiency (BASE2_298 vs the unrestricted space) has never been tested on states with more than 4 non-empty eligible zones; no such state occurred in the pilot or in the full-dataset re-check."
+  },
+  "not_done": ["amended criteria not evaluated", "no model trained", "no selector implemented", "no dataset row changed or regenerated", "Spec v2 files unchanged"]
+}
