@@ -1,0 +1,392 @@
+{
+  "audit": "experiment_specification_v2_d1_d2",
+  "spec_version": "v2",
+  "decisions": {
+    "D1": "approved",
+    "D2": "decided: SYMMETRIC_SPLIT_DEADBAND_margin0"
+  },
+  "label_free_default": {
+    "policy_id": "SYMMETRIC_SPLIT_DEADBAND_margin0",
+    "module": "scripts/ai_learning_label_free_default.py::label_free_default_action",
+    "definition": "deadband_heuristic_action(rule input with Q_A = Q_B = waiting_H_total / 2, margin 0); PARITY by default; FAVOR_B once the hazard has actually started (residual H->CE1 capacity 2/6) and at least one person waits at the hub; never FAVOR_A",
+    "inputs": "exactly the 26 admissible features (the 27-D rule input is rebuilt from them)",
+    "never_reads": [
+      "Q_A_at_H",
+      "Q_B_at_H",
+      "hidden compliance",
+      "target_exit",
+      "future information",
+      "t_h",
+      "p"
+    ],
+    "evidence": "LABEL_FREE_DEFAULT_AUDIT.md: ties the hidden-label heuristic in 230/230 existing episodes",
+    "policy_hash": "2614f9af3d4a43e61b008e863b51212acb4b50d64a859e223253758785066f85"
+  },
+  "files": {
+    "FINAL_EXPERIMENT_SPECIFICATION.md": {
+      "changed": true,
+      "v1_sha256": "0eb0820943569a0d404d224a72f9bd5bc24e8d3f22c50505e9c39952289156d8",
+      "v2_sha256": "3c0078aaab8b79971d7bd0a4ab485d7b0dc4081af3f7412920490f4acda4e6c5",
+      "fields_changed": [
+        "rewritten as v2 (v1 archived)"
+      ]
+    },
+    "candidate_action_set.json": {
+      "changed": false,
+      "v1_sha256": "78dee3c225735b4ee78c108eeb0e3aa72627a9da8410055182ed9c64e4ca7e3c",
+      "v2_sha256": "78dee3c225735b4ee78c108eeb0e3aa72627a9da8410055182ed9c64e4ca7e3c",
+      "fields_changed": []
+    },
+    "target_definitions.json": {
+      "changed": true,
+      "v1_sha256": "e0c0565a09377d04b2d3de82f01f63285e9f825c7eb07ceced5ec1549a68945d",
+      "v2_sha256": "58470bd589dfbebc865e01d82d7e8a394274d390a8d4b8ed5c54b99711eaae5a",
+      "fields_changed": [
+        "continuation",
+        "targets.future_hazard_edge_unmet_demand",
+        "stored_per_row",
+        "changes_vs_existing_labels"
+      ]
+    },
+    "final_feature_manifest.json": {
+      "changed": false,
+      "v1_sha256": "67f54855bd58207df2e929d7c6f7f50753b77fa05cb29dfc49977989c1f21910",
+      "v2_sha256": "67f54855bd58207df2e929d7c6f7f50753b77fa05cb29dfc49977989c1f21910",
+      "fields_changed": []
+    },
+    "scenario_space.json": {
+      "changed": true,
+      "v1_sha256": "85c7948ed1a9b12fa8876371e594a23530b47d574a7110adb19f5f6811670a6c",
+      "v2_sha256": "472066595635be487a9f592ca770dd96beb2312bc62bfa31ece0457c28af3ae3",
+      "fields_changed": [
+        "dimensions.E_initial_congestion.indirect_sources"
+      ]
+    },
+    "dataset_design.json": {
+      "changed": true,
+      "v1_sha256": "b8fbf10b706f01da98e0831d0fa36b16eb83f1175dc9deaebbf31c48e57b91d0",
+      "v2_sha256": "4eb14cc48a86947def844f5c5e25567e536f59ee71bd75bad3d1208619d395f1",
+      "fields_changed": [
+        "factors.pre_decision_policy",
+        "continuation",
+        "phases.PHASE_1_PILOT"
+      ]
+    },
+    "diversity_requirements.json": {
+      "changed": true,
+      "v1_sha256": "5ffefd63102b446f734fbb786ac0c0626f6859bc29d44dac3d3be7a0df309d75",
+      "v2_sha256": "a0bd57866b25da7c5f225c1633e6fdf518b3d95b6f96b431867e25abcf2d9052",
+      "fields_changed": [
+        "design_time_count_label_free_pre_decision",
+        "go_no_go_after_pilot (G6 computation made exact; X1-X10 added)",
+        "old_dataset_reference_values"
+      ]
+    },
+    "split_specification.json": {
+      "changed": true,
+      "v1_sha256": "d26d70c31f443ac5a23938e3aecda3ebf980137d5a7ef75b07eb87f4a58dd10f",
+      "v2_sha256": "f611493374a0a18527e12a105a0dbb429a4ef4689c2e3f2a6c3175d8eb7cd68a",
+      "fields_changed": [
+        "final_go_no_go",
+        "pilot_role"
+      ]
+    },
+    "selector_design.json": {
+      "changed": true,
+      "v1_sha256": "d7f024a9715df638edbe2e828b5311d4b6cd6d866b4aca9fefb26a86148ab2bf",
+      "v2_sha256": "8a41c7777458d8363f4343981b08555207d2f95dfa32327c0b9fa55562de9c48",
+      "fields_changed": [
+        "inputs",
+        "default_and_fallbacks",
+        "caveat (removed)",
+        "never_uses"
+      ]
+    },
+    "closed_loop_evaluation.json": {
+      "changed": true,
+      "v1_sha256": "b8d4286d0c7f46a78d6e7025393ea20fbb3399d72442a5ffcd28bf44c33d4fcd",
+      "v2_sha256": "a81de9f7de6a5e424be11c7394034c2219e0c0a71b9179c502fc68e3862c9bc1",
+      "fields_changed": [
+        "policies",
+        "protocol",
+        "primary_endpoint",
+        "caveat"
+      ]
+    },
+    "preregistered_success_criteria.json": {
+      "changed": true,
+      "v1_sha256": "69042e0d3e3d239bad2920104efb1be47e93c393ed7c328fd8e28759664a3d9e",
+      "v2_sha256": "3ec6fdb6dfe107d35809a5dc3508d1cf2e257ede5218990321a1f342863107f2",
+      "fields_changed": [
+        "status",
+        "outcome_prediction.baselines",
+        "safety.harm_reference",
+        "closed_loop.criterion",
+        "closed_loop.reference_arm"
+      ]
+    }
+  },
+  "unchanged_verified": {
+    "candidate_action_set.json": true,
+    "final_feature_manifest.json": true
+  },
+  "base2_recheck_label_free": {
+    "states_used": {
+      "dt450": 450,
+      "timing80": 80
+    },
+    "note": "EXISTING states only (no new configuration). The unrestricted reference is every absolute assignment {UNTOUCHED, FAVOR_A, PARITY, FAVOR_B} over the non-empty eligible zones. Outcomes use the proposed future-target definitions and heuristic continuation. Rollouts are cached by resulting label map, since identical label maps give identical deterministic outcomes.",
+    "n_unique_rollouts": 19615,
+    "n_states_T90_reached_before_decision": 0,
+    "seconds": 82.2,
+    "measurement_checks": {
+      "hazard_all_ticks_matches_tick_log": 19615,
+      "hazard_onset_matches_tick_log": 19615,
+      "n": 19615
+    },
+    "per_candidate_set": {
+      "GLOBAL4": {
+        "n_states": 530,
+        "share_states_where_set_best_equals_unrestricted_best": 0.7358,
+        "mean_T100_regret_ticks": 0.2566,
+        "max_T100_regret_ticks": 2.0,
+        "mean_T90_regret_ticks": 0.0075,
+        "mean_future_unmet_regret": 0.8792,
+        "candidates_per_state": {
+          "min": 4,
+          "max": 4
+        },
+        "behaviorally_distinct_per_state": {
+          "min": 1,
+          "max": 3,
+          "mean": 2.65
+        }
+      },
+      "SIDE28": {
+        "n_states": 530,
+        "share_states_where_set_best_equals_unrestricted_best": 0.8604,
+        "mean_T100_regret_ticks": 0.0925,
+        "max_T100_regret_ticks": 1.0,
+        "mean_T90_regret_ticks": 0.0,
+        "mean_future_unmet_regret": 0.0981,
+        "candidates_per_state": {
+          "min": 28,
+          "max": 28
+        },
+        "behaviorally_distinct_per_state": {
+          "min": 1,
+          "max": 9,
+          "mean": 5.82
+        }
+      },
+      "SIDE64": {
+        "n_states": 530,
+        "share_states_where_set_best_equals_unrestricted_best": 0.8604,
+        "mean_T100_regret_ticks": 0.0925,
+        "max_T100_regret_ticks": 1.0,
+        "mean_T90_regret_ticks": 0.0,
+        "mean_future_unmet_regret": 0.0981,
+        "candidates_per_state": {
+          "min": 64,
+          "max": 64
+        },
+        "behaviorally_distinct_per_state": {
+          "min": 1,
+          "max": 9,
+          "mean": 5.82
+        }
+      },
+      "PAIRED82": {
+        "n_states": 530,
+        "share_states_where_set_best_equals_unrestricted_best": 0.8491,
+        "mean_T100_regret_ticks": 0.0849,
+        "max_T100_regret_ticks": 1.0,
+        "mean_T90_regret_ticks": 0.0,
+        "mean_future_unmet_regret": 0.0962,
+        "candidates_per_state": {
+          "min": 82,
+          "max": 82
+        },
+        "behaviorally_distinct_per_state": {
+          "min": 1,
+          "max": 9,
+          "mean": 5.82
+        }
+      },
+      "BASE1_46": {
+        "n_states": 530,
+        "share_states_where_set_best_equals_unrestricted_best": 0.9491,
+        "mean_T100_regret_ticks": 0.0302,
+        "max_T100_regret_ticks": 1.0,
+        "mean_T90_regret_ticks": 0.0,
+        "mean_future_unmet_regret": 0.0302,
+        "candidates_per_state": {
+          "min": 46,
+          "max": 46
+        },
+        "behaviorally_distinct_per_state": {
+          "min": 1,
+          "max": 27,
+          "mean": 13.62
+        }
+      },
+      "BASE2_298": {
+        "n_states": 530,
+        "share_states_where_set_best_equals_unrestricted_best": 1.0,
+        "mean_T100_regret_ticks": 0.0,
+        "max_T100_regret_ticks": 0.0,
+        "mean_T90_regret_ticks": 0.0,
+        "mean_future_unmet_regret": 0.0,
+        "candidates_per_state": {
+          "min": 298,
+          "max": 298
+        },
+        "behaviorally_distinct_per_state": {
+          "min": 1,
+          "max": 81,
+          "mean": 37.01
+        }
+      },
+      "E211_global_then_override": {
+        "n_states": 530,
+        "share_states_where_set_best_equals_unrestricted_best": 0.934,
+        "mean_T100_regret_ticks": 0.0302,
+        "max_T100_regret_ticks": 1.0,
+        "mean_T90_regret_ticks": 0.0019,
+        "mean_future_unmet_regret": 0.0396,
+        "candidates_per_state": {
+          "min": 1,
+          "max": 67
+        },
+        "behaviorally_distinct_per_state": {
+          "min": 1,
+          "max": 33,
+          "mean": 16.22
+        }
+      },
+      "DT_leave_untouched_pairwise": {
+        "n_states": 530,
+        "share_states_where_set_best_equals_unrestricted_best": 0.9038,
+        "mean_T100_regret_ticks": 0.0604,
+        "max_T100_regret_ticks": 1.0,
+        "mean_T90_regret_ticks": 0.0019,
+        "mean_future_unmet_regret": -0.2094,
+        "candidates_per_state": {
+          "min": 2,
+          "max": 56
+        },
+        "behaviorally_distinct_per_state": {
+          "min": 1,
+          "max": 33,
+          "mean": 15.81
+        }
+      }
+    }
+  },
+  "pilot_exact_specification": {
+    "role": "PILOT",
+    "purpose": "validate the data-generation process only; discarded afterwards, never used for training or testing",
+    "templates": {
+      "D0_sym": {
+        "R1": 10,
+        "R2": 10,
+        "R3": 10,
+        "R4": 10
+      },
+      "D1_east_heavy": {
+        "R1": 5,
+        "R2": 5,
+        "R3": 15,
+        "R4": 15
+      },
+      "D2_west_heavy": {
+        "R1": 15,
+        "R2": 15,
+        "R3": 5,
+        "R4": 5
+      },
+      "D3_first_room_heavy": {
+        "R1": 15,
+        "R2": 5,
+        "R3": 15,
+        "R4": 5
+      },
+      "D4_second_room_heavy": {
+        "R1": 5,
+        "R2": 15,
+        "R3": 5,
+        "R4": 15
+      },
+      "D5_R1_concentrated": {
+        "R1": 25,
+        "R2": 5,
+        "R3": 5,
+        "R4": 5
+      },
+      "Z1_R4_concentrated": {
+        "R1": 5,
+        "R2": 5,
+        "R3": 5,
+        "R4": 25
+      },
+      "Z2_mixed": {
+        "R1": 7,
+        "R2": 13,
+        "R3": 13,
+        "R4": 7
+      }
+    },
+    "t_h_levels": [
+      "none",
+      "3",
+      "5",
+      "7",
+      "9"
+    ],
+    "p_levels": [
+      0.5,
+      0.7,
+      0.9
+    ],
+    "replicates_per_cell": 2,
+    "n_trajectories": 240,
+    "trajectory_order": "index = enumerate over template (TEMPLATE_ORDER) -> t_h level -> p level -> replicate (0, 1)",
+    "seed_rule": "seed = 190000 + trajectory index (0..239): unique per trajectory, inside the PILOT range, disjoint from every full-dataset role range",
+    "compliance": "generate_compliance_vector('AILX_v1|PILOT|' + template, seed, p=p)",
+    "t_h_none_value": 181,
+    "pre_decision_policy": {
+      "policy": "SYMMETRIC_SPLIT_DEADBAND_margin0",
+      "epsilon": 0.5,
+      "rng": "numpy.random.default_rng([seed, int(round(p * 1000)), t_h_int, 7])",
+      "draw_order": "at each decision tick: u = rng.random(); if u < 0.5: a = int(rng.integers(0, 3)) else a = label_free_default(x); a is issued as a global action at that tick"
+    },
+    "decision_states": "every decision tick t (multiple of 5) with n_active > 0, captured BEFORE that tick's action",
+    "candidate_set": "BASE2_298 (candidate_action_set.json, unchanged); all 298 rows stored per state; one rollout per behavioral-equivalence class (hash of the resulting label map), copied to its members",
+    "continuation": "SYMMETRIC_SPLIT_DEADBAND_margin0",
+    "unmet_measurement": "after each tick's relabel, before its admission",
+    "storage": "artifacts/ai_learning_experiment_design/pilot/pilot_rows.csv.gz",
+    "g3_recheck_states": "the 40 pilot states with the most non-empty eligible zones; ties by trajectory index, then tick",
+    "g3_unrestricted_space": "every absolute assignment {UNTOUCHED, FAVOR_A, PARITY, FAVOR_B} over the non-empty eligible zones, same continuation and targets"
+  },
+  "go_no_go": {
+    "G1": "decision ticks >= 10: distinct admissible inputs >= 25% of those states AND >= 10 distinct per template",
+    "G2": ">= 50% of states have >= 3 distinct target vectors among their 298 candidates",
+    "G3": "BASE2_298 best == unrestricted best in >= 95% of the 40 re-check states AND mean T100 regret <= 0.1 tick",
+    "G4": "independent regeneration reproduces every stored row exactly AND the hazard measurement equals the simulator tick_log in 100% of rollouts",
+    "G5": "leakage re-audit on the rows passes: stored features are exactly the 26 admissible names; identical across a state's candidates; equal to the replayed pre-decision observation; unchanged by every candidate relabel; for every pre-onset hazard state, replaying the same history with no hazard gives identical features; residual capacity is 1 before onset and 2/6 after",
+    "G6": "T100 irreducible share < 0.6 on post-onset rows, computed as SSW/SST over (features, candidate_id) groups that contain rows from >= 2 distinct trajectories; if such groups cover < 10% of post-onset rows the criterion is NOT EVALUABLE and counts as not passed",
+    "G7": "every (template, t_h, p) pilot cell has 2 complete trajectories",
+    "X1": "targets valid: no-hazard rows have hazard target 0; rows whose episode ends before onset have hazard target 0; future_T100 = T100_abs - t_d and future_T90 = T90_abs - t_d (or 0 with the reached flag) on every row; for every t_d > 0 state, pre-decision unmet + future unmet of the default candidate equals the unmet of a full-episode rerun from t=0",
+    "X2": "zero leakage (= G5)",
+    "X3": "every candidate rollout starts from a state whose fingerprint equals the recorded pre-decision state (100%)",
+    "X4": "joint timing x compliance design valid: 4 TEST_PRIMARY_JOINT cells; test t_h and p levels disjoint from training levels; every template crosses every t_h and p; seed ranges disjoint across roles and from PILOT; compliance keys role-specific",
+    "X5": "diversity materially exceeds the old dataset: distinct admissible inputs >= 110 (10x old) AND distinct share >= 0.1222 (5x old) AND distinct (input, candidate) pairs >= 1400 (10x old)",
+    "X6": "sufficient target variation (= G2)",
+    "X7": "no structural confound: every template has every (t_h, p) level (association 0); seeds unique per trajectory; realized perturbation rate within 0.5 +/- 0.1; no censored T100",
+    "X8": "targets not dominated by unobservable history: pre-decision unmet is excluded (X1 decomposition check)",
+    "X9": "candidate semantics consistent: fast label maps equal apply_differential_action label maps for every class representative; the default candidate BASE=l(s) equals applying l(s) globally with actions.apply_action",
+    "X10": "continuation label-free: the generator and default module never reference the hidden heuristic; every continuation call receives a 26-feature vector; every row records the current continuation hash",
+    "rule": "GO only if G1-G7 and X1-X10 all pass. Thresholds are fixed in this v2 specification before any pilot data exists and must not be relaxed afterwards."
+  },
+  "seconds": 89.1
+}

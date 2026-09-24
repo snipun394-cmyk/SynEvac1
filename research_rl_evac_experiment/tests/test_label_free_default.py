@@ -158,9 +158,16 @@ class TestDeliverables:
         assert f["additional_mechanism_required"] is False
 
     def test_frozen_spec_files_untouched(self):
+        """This audit left the v1 specification untouched. Files later superseded by specification v2 are checked
+        through their byte-for-byte v1 archive."""
         rec = self._j("d1_d2_decision_record.json")["integrity"]["before"]
         for n in spec.OUTPUT_FILES:
             p = os.path.join(lf.OUT_DIR, n)
+            archived = os.path.join(lf.OUT_DIR, "spec_versions", "v1", n)
+            with open(p, encoding="utf-8") as f:
+                text = f.read()
+            if "experiment_specification_v2_d1_d2" in text and os.path.isfile(archived):
+                p = archived
             assert rec[f"OUT_DIR/{n}"] == prior.sha256_file(p)
             with open(p, encoding="utf-8") as f:
                 assert spec.MARKER in f.read()

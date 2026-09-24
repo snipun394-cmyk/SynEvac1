@@ -1,14 +1,15 @@
 {
-  "audit": "final_experiment_specification_audit_v1",
+  "audit": "experiment_specification_v2_d1_d2",
   "status": "DESIGN ONLY; run after training, on TEST_PRIMARY_JOINT (primary) and each diagnostic family",
   "policies": {
     "P1_no_intervention": "never relabel",
-    "P2_capacity_aware_heuristic": "GLOBAL_DEADBAND (margin 0.75) at every decision",
+    "P2_label_free_default": "SYMMETRIC_SPLIT_DEADBAND_margin0 at every decision (primary comparator)",
+    "P2b_hidden_label_heuristic_REFERENCE": "GLOBAL_DEADBAND (margin 0.75) at every decision -- REFERENCE ARM ONLY: reads hidden Q_A/Q_B; reported, never a gate, never a fallback",
     "P3_frozen_deterministic_safety_controller": "observable_robust_differential.py (MD5 98b570ba7d7d451c82acf919113db2e5), executed under DifferentialRLGymEnv's global-then-override semantics (the semantics its actions 102/6 were audited under). It matches only the exact S2/S3 tick-0 observations, so on the new templates it reduces to the heuristic; reported for continuity.",
-    "P4_ai_assisted": "selector_design over the trained model at every decision; d(s)=P2",
-    "P5_full_information_oracle": "at every decision, the BASE2_298 candidate with the best TRUE one-step outcome (heuristic continuation); an upper reference, not achievable"
+    "P4_ai_assisted": "selector_design over the trained model at every decision; d(s) = BASE=l(s) (label-free)",
+    "P5_full_information_oracle": "at every decision, the BASE2_298 candidate with the best TRUE one-step outcome (label-free continuation); an upper reference, not achievable"
   },
-  "protocol": "Common random numbers: identical (template, t_h, p, compliance key, seed) for every policy; full episodes; paired comparisons against P2.",
+  "protocol": "Common random numbers: identical (template, t_h, p, compliance key, seed) for every policy; full episodes; paired comparisons against P2 (label-free default); P2b reported alongside.",
   "metrics": [
     "T90",
     "T100",
@@ -19,12 +20,23 @@
     "abstention / fallback rate",
     "switch count"
   ],
-  "primary_endpoint": "Episode-level paired lexicographic comparison P4 vs P2: share of episodes strictly worse (safety) with share strictly better reported alongside.",
+  "primary_endpoint": "Episode-level paired lexicographic comparison P4 vs P2 (label-free default): share of episodes strictly worse (safety) with share strictly better reported alongside.",
   "secondary": [
     "paired T100 difference",
     "paired T90 difference",
     "paired unmet differences",
     "gap to P5"
   ],
-  "caveat": "Training labels assume heuristic continuation (one-step counterfactual, Q^heuristic). Applying the selector at every decision is a policy-improvement step whose lexicographic, non-additive objective is not covered by the policy-improvement theorem, so closed-loop gains must be measured, not assumed."
+  "caveat": "Training labels assume label-free continuation (one-step counterfactual, Q^label-free). Applying the selector at every decision is a policy-improvement step whose lexicographic, non-additive objective is not covered by the policy-improvement theorem, so closed-loop gains must be measured, not assumed.",
+  "spec_version": "v2",
+  "decisions_applied": [
+    "D1",
+    "D2"
+  ],
+  "supersedes": {
+    "version": "v1",
+    "v1_marker": "final_experiment_specification_audit_v1",
+    "v1_sha256": "b8d4286d0c7f46a78d6e7025393ea20fbb3399d72442a5ffcd28bf44c33d4fcd",
+    "archived_copy": "spec_versions/v1/closed_loop_evaluation.json"
+  }
 }

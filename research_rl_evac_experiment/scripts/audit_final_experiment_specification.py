@@ -1333,9 +1333,20 @@ def run(seeds_per_cell: int = 3, states_limit: int | None = None) -> dict:
     return ctx
 
 
+SUPERSEDING_MARKER = "experiment_specification_v2_d1_d2"
+
+
 def write_outputs(ctx: dict, out_dir: str = OUT_DIR) -> list:
+    """Skips any file already superseded by specification v2 (D1/D2), so a re-run of this v1 audit never
+    overwrites the frozen v2 specification. v1 content stays archived in spec_versions/v1/."""
     created: set = set()
     for name in OUTPUT_FILES:
+        path = os.path.join(out_dir, name)
+        if os.path.isfile(path):
+            with open(path, encoding="utf-8") as f:
+                if SUPERSEDING_MARKER in f.read():
+                    print(f"  skipping {name}: superseded by specification v2")
+                    continue
         _safe_write(name, ctx["outputs"][name], created, out_dir=out_dir)
     return sorted(created)
 

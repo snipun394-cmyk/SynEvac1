@@ -1,5 +1,5 @@
 {
-  "audit": "experiment_specification_v2_d1_d2",
+  "audit": "final_experiment_specification_audit_v1",
   "existing_dataset_baseline": {
     "states": 450,
     "distinct_admissible_inputs": 11
@@ -205,57 +205,13 @@
   },
   "irreducible_structure": "At t=0 (and before onset / before any hub admission) the input is identical across t_h, p and seed within a template. For those states the learnable target is the conditional outcome distribution under the TRAINING mixture of t_h and p; the joint hold-out tests robustness to a shift in that mixture, not input generalization. Every result must be reported separately for pre-onset and post-onset states.",
   "go_no_go_after_pilot": {
-    "G1": "decision ticks >= 10: distinct admissible inputs >= 25% of those states AND >= 10 distinct per template",
-    "G2": ">= 50% of states have >= 3 distinct target vectors among their 298 candidates",
-    "G3": "BASE2_298 best == unrestricted best in >= 95% of the 40 re-check states AND mean T100 regret <= 0.1 tick",
-    "G4": "independent regeneration reproduces every stored row exactly AND the hazard measurement equals the simulator tick_log in 100% of rollouts",
-    "G5": "leakage re-audit on the rows passes: stored features are exactly the 26 admissible names; identical across a state's candidates; equal to the replayed pre-decision observation; unchanged by every candidate relabel; for every pre-onset hazard state, replaying the same history with no hazard gives identical features; residual capacity is 1 before onset and 2/6 after",
-    "G6": "T100 irreducible share < 0.6 on post-onset rows, computed as SSW/SST over (features, candidate_id) groups that contain rows from >= 2 distinct trajectories; if such groups cover < 10% of post-onset rows the criterion is NOT EVALUABLE and counts as not passed",
-    "G7": "every (template, t_h, p) pilot cell has 2 complete trajectories",
-    "X1": "targets valid: no-hazard rows have hazard target 0; rows whose episode ends before onset have hazard target 0; future_T100 = T100_abs - t_d and future_T90 = T90_abs - t_d (or 0 with the reached flag) on every row; for every t_d > 0 state, pre-decision unmet + future unmet of the default candidate equals the unmet of a full-episode rerun from t=0",
-    "X2": "zero leakage (= G5)",
-    "X3": "every candidate rollout starts from a state whose fingerprint equals the recorded pre-decision state (100%)",
-    "X4": "joint timing x compliance design valid: 4 TEST_PRIMARY_JOINT cells; test t_h and p levels disjoint from training levels; every template crosses every t_h and p; seed ranges disjoint across roles and from PILOT; compliance keys role-specific",
-    "X5": "diversity materially exceeds the old dataset: distinct admissible inputs >= 110 (10x old) AND distinct share >= 0.1222 (5x old) AND distinct (input, candidate) pairs >= 1400 (10x old)",
-    "X6": "sufficient target variation (= G2)",
-    "X7": "no structural confound: every template has every (t_h, p) level (association 0); seeds unique per trajectory; realized perturbation rate within 0.5 +/- 0.1; no censored T100",
-    "X8": "targets not dominated by unobservable history: pre-decision unmet is excluded (X1 decomposition check)",
-    "X9": "candidate semantics consistent: fast label maps equal apply_differential_action label maps for every class representative; the default candidate BASE=l(s) equals applying l(s) globally with actions.apply_action",
-    "X10": "continuation label-free: the generator and default module never reference the hidden heuristic; every continuation call receives a 26-feature vector; every row records the current continuation hash",
-    "rule": "GO only if G1-G7 and X1-X10 all pass. Thresholds are fixed in this v2 specification before any pilot data exists and must not be relaxed afterwards."
-  },
-  "design_time_count_label_free_pre_decision": {
-    "epsilon_0.0": {
-      "n_decision_states": 4352,
-      "n_distinct_admissible_inputs": 67,
-      "distinct_share_tick_ge_10": 0.0309
-    },
-    "epsilon_0.3": {
-      "n_decision_states": 4561,
-      "n_distinct_admissible_inputs": 429,
-      "distinct_share_tick_ge_10": 0.2366
-    },
-    "epsilon_0.5": {
-      "n_decision_states": 4685,
-      "n_distinct_admissible_inputs": 596,
-      "distinct_share_tick_ge_10": 0.3108
-    }
-  },
-  "old_dataset_reference_values": {
-    "states": 450,
-    "distinct_inputs": 11,
-    "distinct_input_action_pairs": 140,
-    "T100_irreducible_share": 0.4599
-  },
-  "spec_version": "v2",
-  "decisions_applied": [
-    "D1",
-    "D2"
-  ],
-  "supersedes": {
-    "version": "v1",
-    "v1_marker": "final_experiment_specification_audit_v1",
-    "v1_sha256": "5ffefd63102b446f734fbb786ac0c0626f6859bc29d44dac3d3be7a0df309d75",
-    "archived_copy": "spec_versions/v1/diversity_requirements.json"
+    "G1_distinct_inputs": "for decision ticks >= 10: distinct admissible inputs >= 25% of those pilot states and >= 10 per template. Ticks 0 and 5 are template-determined by construction (one or two inputs per template) and are exempt; they are handled by the distributional target.",
+    "G2_target_spread": "in >= 50% of pilot states, candidates produce >= 3 distinct outcome vectors (otherwise the ranking task is near-trivial)",
+    "G3_candidate_sufficiency": "BASE2_298 best equals the unrestricted-absolute best in >= 95% of the 40 re-checked pilot states (chosen to include states with >= 5 non-empty zones), and mean T100 regret <= 0.1 tick",
+    "G4_label_integrity": "replay reproduces every pilot row exactly; measurement check matches tick_log 100%",
+    "G5_leakage": "action-independence and temporal-leak checks pass on pilot data (admissible features unchanged by any candidate relabel; no feature recovers t_h before onset)",
+    "G6_identifiability": "irreducible share (admissible + candidate) for T100 below 0.6 on post-onset states; if above, the model target must be distributional only",
+    "G7_coverage": "every non-buffer cell of the pilot grid has >= 2 complete trajectories",
+    "rule": "All of G1-G7 must pass to proceed to Phase 3; any failure returns to design, not to training."
   }
 }

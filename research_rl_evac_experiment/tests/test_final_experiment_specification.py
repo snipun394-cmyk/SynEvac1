@@ -229,8 +229,14 @@ outputs_present = pytest.mark.skipif(
 @outputs_present
 class TestDeliverables:
     def _j(self, n):
-        with open(os.path.join(spec.OUT_DIR, n), encoding="utf-8") as f:
-            return json.load(f)
+        """The v1 content of `n`: the live file, or its byte-for-byte archive once specification v2 superseded it."""
+        live = os.path.join(spec.OUT_DIR, n)
+        with open(live, encoding="utf-8") as f:
+            d = json.load(f)
+        if d.get("spec_version") == "v2":
+            with open(os.path.join(spec.OUT_DIR, d["supersedes"]["archived_copy"]), encoding="utf-8") as f:
+                d = json.load(f)
+        return d
 
     def test_all_deliverables_marked_and_parse(self):
         for n in spec.OUTPUT_FILES:

@@ -1,25 +1,8 @@
 {
-  "audit": "experiment_specification_v2_d1_d2",
+  "audit": "final_experiment_specification_audit_v1",
   "decision_time": "t_d: the decision tick (multiple of 5). The observation is computed at the end of tick t_d-1 (sim.t == t_d) before any relabel; the candidate is applied at the start of tick t_d.",
   "horizon": "From tick t_d until the episode ends (all occupants evacuated, or MAX_STEPS=180).",
-  "continuation": {
-    "policy_id": "SYMMETRIC_SPLIT_DEADBAND_margin0",
-    "module": "scripts/ai_learning_label_free_default.py::label_free_default_action",
-    "definition": "deadband_heuristic_action(rule input with Q_A = Q_B = waiting_H_total / 2, margin 0); PARITY by default; FAVOR_B once the hazard has actually started (residual H->CE1 capacity 2/6) and at least one person waits at the hub; never FAVOR_A",
-    "inputs": "exactly the 26 admissible features (the 27-D rule input is rebuilt from them)",
-    "never_reads": [
-      "Q_A_at_H",
-      "Q_B_at_H",
-      "hidden compliance",
-      "target_exit",
-      "future information",
-      "t_h",
-      "p"
-    ],
-    "evidence": "LABEL_FREE_DEFAULT_AUDIT.md: ties the hidden-label heuristic in 230/230 existing episodes",
-    "policy_hash": "2614f9af3d4a43e61b008e863b51212acb4b50d64a859e223253758785066f85",
-    "rule": "at every decision tick after t_d, identical for every candidate"
-  },
+  "continuation": "Every later decision tick: the frozen GLOBAL_DEADBAND heuristic (margin 0.75) applied globally.",
   "targets": {
     "future_T90": {
       "definition": "T90_abs - t_d, where T90_abs = compute_metrics(sim.evacuated).T90 (exit tick of the ceil(0.9*40)=36th evacuee). If >= 36 occupants had exited before t_d: 0, with flag T90_reached_before_decision=True, and the criterion is constant across candidates, so the selector skips it and the loss masks it. If T90 is undefined: +inf (never observed).",
@@ -36,9 +19,10 @@
       "implementation_without_simulator_change": "apply the relabel with actions.apply_action / apply_differential_action, then call timing_experiment.diagnostic_all_edges_unmet, then sim._run_one_tick(None). Equivalent to _run_one_tick(action) because relabeling is its first step after the pure-function hazard update."
     },
     "future_hazard_edge_unmet_demand": {
-      "unit": "occupant-ticks",
-      "definition": "sum over t in [max(t_d, t_h), end) of max(0, H_CE1 branch-A candidates(t) - cap_H_CE1(t)), measured after tick t's relabel and before its admission; 0 before onset; 0 in no-hazard scenarios and whenever the episode ends before onset",
-      "decision": "D1 (approved)"
+      "definition_recommended": "sum over t in [max(t_d, t_h), end) of max(0, H_CE1 branch-A candidates(t) - cap_H_CE1(t)), measured the same way; 0 when no hazard is scheduled or it never starts before the end.",
+      "alternative": "the same sum over ALL ticks t >= t_d for EVERY scenario (onset-agnostic).",
+      "status": "REQUIRES USER DECISION (D1): both definitions remove the prior label's future-information problem; they change the meaning of the 4th ranking criterion differently.",
+      "unit": "occupant-ticks"
     }
   },
   "verification": {
@@ -55,27 +39,14 @@
     "future_T100",
     "T100_censored",
     "future_unmet_demand",
-    "future_hazard_edge_unmet_demand (D1 definition only)",
+    "future_hazard_edge_unmet_demand (both definitions until D1 is decided)",
     "T90_abs",
-    "T100_abs (for comparability with prior experiments)",
-    "continuation policy id + hash"
+    "T100_abs (for comparability with prior experiments)"
   ],
   "changes_vs_existing_labels": [
     "pre-decision unmet removed (fixes T1)",
     "hazard-edge unmet no longer keyed on a scheduled-but-future hazard (fixes T2)",
     "unmet measured post-relabel, matching the simulator (fixes T3)",
-    "one absolute candidate semantics (fixes T4, T5)",
-    "continuation: hidden-label heuristic -> label-free default (D2)"
-  ],
-  "spec_version": "v2",
-  "decisions_applied": [
-    "D1",
-    "D2"
-  ],
-  "supersedes": {
-    "version": "v1",
-    "v1_marker": "final_experiment_specification_audit_v1",
-    "v1_sha256": "e0c0565a09377d04b2d3de82f01f63285e9f825c7eb07ceced5ec1549a68945d",
-    "archived_copy": "spec_versions/v1/target_definitions.json"
-  }
+    "one absolute candidate semantics (fixes T4, T5)"
+  ]
 }

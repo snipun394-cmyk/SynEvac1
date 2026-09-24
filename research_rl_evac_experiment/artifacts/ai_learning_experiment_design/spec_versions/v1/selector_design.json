@@ -1,0 +1,34 @@
+{
+  "audit": "final_experiment_specification_audit_v1",
+  "status": "DESIGN ONLY",
+  "inputs": "for each of the 298 candidates a of BASE2_298: predicted conditional mean m_a and upper quantile q_a (level alpha=0.9) for each target; the default d(s) = the candidate BASE=h, h = the heuristic's global action",
+  "ordering": "T90 -> T100 -> future unmet -> future hazard-edge unmet (established; unchanged)",
+  "operates_on": {
+    "objective": "conditional means (expected outcome), because the question is which action is best on average for states that look like this one",
+    "safety_floor": "upper quantiles (conservative bounds), because harm must be controlled under the hidden compliance / timing spread the model cannot see",
+    "abstention": "interval width and support distance"
+  },
+  "steps": [
+    "1. Masking: skip T90 when T90_reached_before_decision; drop behaviorally duplicate candidates (keep lowest id).",
+    "2. Safety floor: A(s) = {a : q_a,k <= m_d,k + delta_k for every criterion k}; d(s) always in A(s).",
+    "3. Objective: tolerance-lexicographic over A(s) on means: keep a with m_a,T90 <= min + delta_T90, then T100 within delta_T100, then unmet within delta_U, then minimal hazard unmet.",
+    "4. Switch rule: recommend a* != d(s) only if a* beats d(s) by more than delta on the first criterion where they differ by more than delta; otherwise d(s).",
+    "5. Abstain -> d(s) if: state outside training support (nearest training input farther than the 99th percentile of training nearest-neighbour distances); any feature invalid; model failure; or (q_a*,T100 - m_a*,T100) > the 95th percentile of that width on validation."
+  ],
+  "tolerances": {
+    "delta_T90": 0.5,
+    "delta_T100": 0.5,
+    "delta_U": "0.5 x validation MAE of the model on future_unmet (fixed after validation)",
+    "delta_H": "0.5 x validation MAE on future_hazard_edge_unmet",
+    "justification": "T90/T100 are integer ticks, so a half tick separates distinct values; unmet tolerances cannot be justified before validation error is known (disclosed)."
+  },
+  "never_uses": [
+    "future information",
+    "t_h",
+    "p",
+    "compliance",
+    "Q_A/Q_B_at_H",
+    "template id"
+  ],
+  "caveat": "d(s) is the GLOBAL_DEADBAND heuristic, which itself reads Q_A_at_H/Q_B_at_H (class D). See decision D2."
+}

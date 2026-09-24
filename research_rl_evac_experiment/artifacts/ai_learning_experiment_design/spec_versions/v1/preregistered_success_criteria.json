@@ -1,6 +1,6 @@
 {
-  "audit": "experiment_specification_v2_d1_d2",
-  "status": "FROZEN (v2, D1 and D2 applied); record this file's SHA-256 before Phase 3",
+  "audit": "final_experiment_specification_audit_v1",
+  "status": "FROZEN DRAFT -- final once decisions D1 and D2 are made; record this file's SHA-256 before Phase 3",
   "primary_test": "TEST_PRIMARY_JOINT (t_h in {4,8} x p in {0.6,0.85}, unseen seeds), all training templates",
   "statistics": "95% cluster-bootstrap CIs over trajectories, 2000 resamples; per test family, never pooled; pre-onset and post-onset reported separately.",
   "outcome_prediction": {
@@ -9,7 +9,7 @@
       "mean by candidate x decision tick",
       "exact-input lookup",
       "1-NN",
-      "default-outcome-as-prediction (label-free d(s)) (d(s)'s realized outcome for every candidate)"
+      "heuristic-outcome-as-prediction (d(s)'s realized outcome for every candidate)"
     ],
     "target_form": "conditional mean + conditional quantiles (0.1, 0.5, 0.9)",
     "criterion": "On the primary test, pinball loss (averaged over the three quantiles) on future_T100 and future_unmet is lower than the best baseline, with the paired-difference CI excluding 0; upper-quantile coverage within 0.9 +/- 0.05.",
@@ -24,8 +24,7 @@
   },
   "safety": {
     "criterion": "Harmful-recommendation rate: upper 95% CI bound <= 1% of decisions in every test family.",
-    "derivation": "1% is a safety requirement, not fitted to data. With zero observed harms the rule-of-three bound needs >= 300 independent deviating decisions; trajectory clustering raises this, which sets the TEST_PRIMARY_JOINT size (40 seeds x 4 cells x 6 templates = 960 trajectories).",
-    "harm_reference": "d(s) = BASE=l(s), the label-free default"
+    "derivation": "1% is a safety requirement, not fitted to data. With zero observed harms the rule-of-three bound needs >= 300 independent deviating decisions; trajectory clustering raises this, which sets the TEST_PRIMARY_JOINT size (40 seeds x 4 cells x 6 templates = 960 trajectories)."
   },
   "generalization": {
     "primary": "D_joint_timing_x_compliance",
@@ -39,8 +38,7 @@
     "criterion": "Prediction + recommendation + safety all pass on D."
   },
   "closed_loop": {
-    "criterion": "Safety: P4 strictly worse than P2 (label-free default) in <= 1% of paired episodes (upper CI). Usefulness: NO threshold is justified yet -- the minimum meaningful gain will be set from the Phase-1 pilot (spread between P2 and P5) BEFORE Phase 3 and appended here with its hash.",
-    "reference_arm": "P2b hidden-label heuristic: reported for context, never a gate"
+    "criterion": "Safety: P4 strictly worse than P2 in <= 1% of paired episodes (upper CI). Usefulness: NO threshold is justified yet -- the minimum meaningful gain will be set from the Phase-1 pilot (spread between P2 and P5) BEFORE Phase 3 and appended here with its hash."
   },
   "not_required": [
     "beating the heuristic",
@@ -100,16 +98,5 @@
         "Any result obtained with a feature classified D, E, F or G does not count."
       ]
     }
-  },
-  "spec_version": "v2",
-  "decisions_applied": [
-    "D1",
-    "D2"
-  ],
-  "supersedes": {
-    "version": "v1",
-    "v1_marker": "final_experiment_specification_audit_v1",
-    "v1_sha256": "69042e0d3e3d239bad2920104efb1be47e93c393ed7c328fd8e28759664a3d9e",
-    "archived_copy": "spec_versions/v1/preregistered_success_criteria.json"
   }
 }

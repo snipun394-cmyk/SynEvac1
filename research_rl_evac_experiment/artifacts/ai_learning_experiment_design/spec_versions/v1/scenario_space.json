@@ -1,5 +1,5 @@
 {
-  "audit": "experiment_specification_v2_d1_d2",
+  "audit": "final_experiment_specification_audit_v1",
   "dimensions": {
     "A_occupant_distribution": {
       "parameter": "distribution over R1..R4 summing to 40 (simulator.reset; _initial_zone_assignment)",
@@ -107,7 +107,7 @@
       "reason": "reset places occupants only in R1..R4",
       "indirect_sources": [
         "later decision ticks (5, 10, 15, ...)",
-        "epsilon-perturbed pre-decision history (epsilon=0.5, a uniformly random GLOBAL action at each pre-decision tick) around the label-free default SYMMETRIC_SPLIT_DEADBAND_margin0"
+        "epsilon-perturbed pre-decision history (epsilon=0.5, a uniformly random GLOBAL action at each pre-decision tick)"
       ]
     },
     "F_behavioral_parameters": {
@@ -135,16 +135,5 @@
     "vector_independent_of_t_h": true,
     "mean_disagreement_between_different_keys": 0.425,
     "consequence": "With one key and one seed, the p=0.5 compliant set is a subset of the p=0.9 set and the vector is identical across every t_h. Reusing a (key, seed) across a training cell and a test cell would give nearly the same hidden compliance on both sides of the split. Keys must include the split role and seed ranges must be disjoint by role."
-  },
-  "spec_version": "v2",
-  "decisions_applied": [
-    "D1",
-    "D2"
-  ],
-  "supersedes": {
-    "version": "v1",
-    "v1_marker": "final_experiment_specification_audit_v1",
-    "v1_sha256": "85c7948ed1a9b12fa8876371e594a23530b47d574a7110adb19f5f6811670a6c",
-    "archived_copy": "spec_versions/v1/scenario_space.json"
   }
 }

@@ -1,7 +1,7 @@
 {
-  "audit": "final_experiment_specification_audit_v1",
+  "audit": "experiment_specification_v2_d1_d2",
   "status": "DESIGN ONLY",
-  "inputs": "for each of the 298 candidates a of BASE2_298: predicted conditional mean m_a and upper quantile q_a (level alpha=0.9) for each target; the default d(s) = the candidate BASE=h, h = the heuristic's global action",
+  "inputs": "for each of the 298 candidates a of BASE2_298: predicted conditional mean m_a and upper quantile q_a (level alpha=0.9) for each target; the default d(s) = the candidate BASE=h, h = the label-free default's action l(s) (SYMMETRIC_SPLIT_DEADBAND_margin0)",
   "ordering": "T90 -> T100 -> future unmet -> future hazard-edge unmet (established; unchanged)",
   "operates_on": {
     "objective": "conditional means (expected outcome), because the question is which action is best on average for states that look like this one",
@@ -23,12 +23,47 @@
     "justification": "T90/T100 are integer ticks, so a half tick separates distinct values; unmet tolerances cannot be justified before validation error is known (disclosed)."
   },
   "never_uses": [
-    "future information",
-    "t_h",
-    "p",
-    "compliance",
     "Q_A/Q_B_at_H",
-    "template id"
+    "compliance",
+    "future information",
+    "p",
+    "t_h",
+    "template id",
+    "the hidden-label GLOBAL_DEADBAND heuristic (reference arm P2b only)"
   ],
-  "caveat": "d(s) is the GLOBAL_DEADBAND heuristic, which itself reads Q_A_at_H/Q_B_at_H (class D). See decision D2."
+  "default_and_fallbacks": {
+    "default": "d(s) = BASE=l(s), l = SYMMETRIC_SPLIT_DEADBAND_margin0",
+    "selector_fallback": "d(s)",
+    "abstention_fallback": "d(s)",
+    "out_of_distribution_fallback": "d(s)",
+    "safety_floor_reference": "d(s)",
+    "label_free_default": {
+      "policy_id": "SYMMETRIC_SPLIT_DEADBAND_margin0",
+      "module": "scripts/ai_learning_label_free_default.py::label_free_default_action",
+      "definition": "deadband_heuristic_action(rule input with Q_A = Q_B = waiting_H_total / 2, margin 0); PARITY by default; FAVOR_B once the hazard has actually started (residual H->CE1 capacity 2/6) and at least one person waits at the hub; never FAVOR_A",
+      "inputs": "exactly the 26 admissible features (the 27-D rule input is rebuilt from them)",
+      "never_reads": [
+        "Q_A_at_H",
+        "Q_B_at_H",
+        "hidden compliance",
+        "target_exit",
+        "future information",
+        "t_h",
+        "p"
+      ],
+      "evidence": "LABEL_FREE_DEFAULT_AUDIT.md: ties the hidden-label heuristic in 230/230 existing episodes",
+      "policy_hash": "2614f9af3d4a43e61b008e863b51212acb4b50d64a859e223253758785066f85"
+    }
+  },
+  "spec_version": "v2",
+  "decisions_applied": [
+    "D1",
+    "D2"
+  ],
+  "supersedes": {
+    "version": "v1",
+    "v1_marker": "final_experiment_specification_audit_v1",
+    "v1_sha256": "d7f024a9715df638edbe2e828b5311d4b6cd6d866b4aca9fefb26a86148ab2bf",
+    "archived_copy": "spec_versions/v1/selector_design.json"
+  }
 }

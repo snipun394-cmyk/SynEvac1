@@ -1,5 +1,5 @@
 {
-  "audit": "experiment_specification_v2_d1_d2",
+  "audit": "final_experiment_specification_audit_v1",
   "unit": "trajectory. Every decision state and every candidate row of a trajectory share its split; no seed, compliance key or (key, seed) pair is shared between splits.",
   "axes": {
     "t_h": {
@@ -174,23 +174,33 @@
   ],
   "validation_use": "hyperparameters, quantile calibration, selector tolerances; never touched by test data",
   "final_go_no_go": {
-    "classification": "READY FOR PHASE 1 PILOT",
-    "resolved": [
-      "D1 (approved)",
-      "D2 (decided: SYMMETRIC_SPLIT_DEADBAND_margin0)"
+    "classification": "REQUIRES ONE MORE DESIGN DECISION",
+    "open_decisions": [
+      {
+        "id": "D1",
+        "area": "target semantics",
+        "question": "future_hazard_edge_unmet_demand: onset-gated (t >= t_h, 0 without hazard) or all ticks for every scenario?",
+        "recommendation": "onset-gated: matches the metric's stated purpose (congestion caused by the degraded edge); pre-onset H_CE1 overflow is already counted in future_unmet_demand",
+        "why_not_decided_silently": "it changes the meaning of the 4th ranking criterion relative to every prior experiment"
+      },
+      {
+        "id": "D2",
+        "area": "action semantics / default policy",
+        "question": "The continuation policy and the fallback d(s) are the GLOBAL_DEADBAND heuristic, which reads Q_A_at_H/Q_B_at_H (hidden labels, class D). Accept it as the simulated building's existing controller (inside label generation and as fallback), or require a label-free default first?",
+        "recommendation": "accept for label generation and as fallback, disclosed: the model's own inputs stay admissible, and P2 carries the same privilege, so comparisons stay paired. A label-free default would be a new controller, which is out of scope",
+        "why_not_decided_silently": "it determines whether the AI-assisted system as evaluated is fully perception-honest"
+      }
     ],
-    "previous": "REQUIRES ONE MORE DESIGN DECISION"
-  },
-  "pilot_role": "PILOT: seeds 190000-190239, keys 'AILX_v1|PILOT|<template>'; discarded after Phase 2",
-  "spec_version": "v2",
-  "decisions_applied": [
-    "D1",
-    "D2"
-  ],
-  "supersedes": {
-    "version": "v1",
-    "v1_marker": "final_experiment_specification_audit_v1",
-    "v1_sha256": "d26d70c31f443ac5a23938e3aecda3ebf980137d5a7ef75b07eb87f4a58dd10f",
-    "archived_copy": "spec_versions/v1/split_specification.json"
+    "resolved": [
+      "candidate set: absolute BASE2_298 (298 fixed slots), selected by an explicit rule; it removes the three-way semantic conflict in the existing code",
+      "continuation policy: frozen heuristic, identical across candidates",
+      "future_T90 / future_T100 / future_unmet definitions (post-decision, post-relabel measurement verified against the simulator's tick_log)",
+      "features: the 26 admissible features, no trend features",
+      "pre-decision state generation: heuristic with epsilon=0.5 random global actions (diversity count)",
+      "split unit and roles: trajectory; joint timing x compliance primary test; role-keyed compliance vectors",
+      "target form: conditional mean + quantiles",
+      "candidate sufficiency on existing states: BASE2_298 matches the unrestricted best in 100.0% (mean T100 regret 0.0 ticks)"
+    ],
+    "after_decisions": "With D1 and D2 answered, the specification is complete and the next step is Phase 1 (pilot, 240 trajectories), not the full dataset."
   }
 }

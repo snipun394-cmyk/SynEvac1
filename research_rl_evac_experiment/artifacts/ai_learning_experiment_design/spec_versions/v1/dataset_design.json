@@ -1,5 +1,5 @@
 {
-  "audit": "experiment_specification_v2_d1_d2",
+  "audit": "final_experiment_specification_audit_v1",
   "factors": {
     "templates_train_and_test": [
       "D0_sym",
@@ -33,7 +33,7 @@
       0.85,
       0.95
     ],
-    "pre_decision_policy": "SYMMETRIC_SPLIT_DEADBAND_margin0 (label-free default), epsilon-perturbed (epsilon=0.5: a uniformly random GLOBAL action at each pre-decision tick) with a seeded RNG keyed on (seed, p, t_h); history stored per row",
+    "pre_decision_policy": "frozen heuristic, epsilon-perturbed (epsilon=0.5: a uniformly random GLOBAL action at each pre-decision tick) with a seeded RNG keyed on (seed, p, t_h); the history is stored per row. Caveat: off the deployed state distribution by design; closed-loop evaluation measures the deployed one.",
     "decision_ticks": "every decision tick (multiple of 5) while n_active > 0"
   },
   "crossing": "Full factorial: every template x every t_h x every p (minus UNUSED_BUFFER cells). t_h and p are never tied to a template.",
@@ -165,92 +165,7 @@
   "phases": {
     "PHASE_1_PILOT": {
       "size": "all 8 templates x t_h {none, 3, 5, 7, 9} x p {0.5, 0.7, 0.9} x 2 seeds = 240 trajectories (~796 decision states, ~237446 candidate rows, ~29489 unique rollouts)",
-      "also": "for 40 pilot states, roll out the UNRESTRICTED absolute space too (sufficiency re-check)",
-      "exact_specification": {
-        "role": "PILOT",
-        "purpose": "validate the data-generation process only; discarded afterwards, never used for training or testing",
-        "templates": {
-          "D0_sym": {
-            "R1": 10,
-            "R2": 10,
-            "R3": 10,
-            "R4": 10
-          },
-          "D1_east_heavy": {
-            "R1": 5,
-            "R2": 5,
-            "R3": 15,
-            "R4": 15
-          },
-          "D2_west_heavy": {
-            "R1": 15,
-            "R2": 15,
-            "R3": 5,
-            "R4": 5
-          },
-          "D3_first_room_heavy": {
-            "R1": 15,
-            "R2": 5,
-            "R3": 15,
-            "R4": 5
-          },
-          "D4_second_room_heavy": {
-            "R1": 5,
-            "R2": 15,
-            "R3": 5,
-            "R4": 15
-          },
-          "D5_R1_concentrated": {
-            "R1": 25,
-            "R2": 5,
-            "R3": 5,
-            "R4": 5
-          },
-          "Z1_R4_concentrated": {
-            "R1": 5,
-            "R2": 5,
-            "R3": 5,
-            "R4": 25
-          },
-          "Z2_mixed": {
-            "R1": 7,
-            "R2": 13,
-            "R3": 13,
-            "R4": 7
-          }
-        },
-        "t_h_levels": [
-          "none",
-          "3",
-          "5",
-          "7",
-          "9"
-        ],
-        "p_levels": [
-          0.5,
-          0.7,
-          0.9
-        ],
-        "replicates_per_cell": 2,
-        "n_trajectories": 240,
-        "trajectory_order": "index = enumerate over template (TEMPLATE_ORDER) -> t_h level -> p level -> replicate (0, 1)",
-        "seed_rule": "seed = 190000 + trajectory index (0..239): unique per trajectory, inside the PILOT range, disjoint from every full-dataset role range",
-        "compliance": "generate_compliance_vector('AILX_v1|PILOT|' + template, seed, p=p)",
-        "t_h_none_value": 181,
-        "pre_decision_policy": {
-          "policy": "SYMMETRIC_SPLIT_DEADBAND_margin0",
-          "epsilon": 0.5,
-          "rng": "numpy.random.default_rng([seed, int(round(p * 1000)), t_h_int, 7])",
-          "draw_order": "at each decision tick: u = rng.random(); if u < 0.5: a = int(rng.integers(0, 3)) else a = label_free_default(x); a is issued as a global action at that tick"
-        },
-        "decision_states": "every decision tick t (multiple of 5) with n_active > 0, captured BEFORE that tick's action",
-        "candidate_set": "BASE2_298 (candidate_action_set.json, unchanged); all 298 rows stored per state; one rollout per behavioral-equivalence class (hash of the resulting label map), copied to its members",
-        "continuation": "SYMMETRIC_SPLIT_DEADBAND_margin0",
-        "unmet_measurement": "after each tick's relabel, before its admission",
-        "storage": "artifacts/ai_learning_experiment_design/pilot/pilot_rows.csv.gz",
-        "g3_recheck_states": "the 40 pilot states with the most non-empty eligible zones; ties by trajectory index, then tick",
-        "g3_unrestricted_space": "every absolute assignment {UNTOUCHED, FAVOR_A, PARITY, FAVOR_B} over the non-empty eligible zones, same continuation and targets"
-      }
+      "also": "for 40 pilot states, roll out the UNRESTRICTED absolute space too (sufficiency re-check)"
     },
     "PHASE_2_AUDIT": "re-run the pre-training audit checks and the go/no-go criteria in diversity_requirements.json",
     "PHASE_3_FULL": "5544 trajectories as above, only if Phase 2 passes"
@@ -320,33 +235,5 @@
       "mismatches": [],
       "all_match": true
     }
-  },
-  "continuation": {
-    "policy_id": "SYMMETRIC_SPLIT_DEADBAND_margin0",
-    "module": "scripts/ai_learning_label_free_default.py::label_free_default_action",
-    "definition": "deadband_heuristic_action(rule input with Q_A = Q_B = waiting_H_total / 2, margin 0); PARITY by default; FAVOR_B once the hazard has actually started (residual H->CE1 capacity 2/6) and at least one person waits at the hub; never FAVOR_A",
-    "inputs": "exactly the 26 admissible features (the 27-D rule input is rebuilt from them)",
-    "never_reads": [
-      "Q_A_at_H",
-      "Q_B_at_H",
-      "hidden compliance",
-      "target_exit",
-      "future information",
-      "t_h",
-      "p"
-    ],
-    "evidence": "LABEL_FREE_DEFAULT_AUDIT.md: ties the hidden-label heuristic in 230/230 existing episodes",
-    "policy_hash": "2614f9af3d4a43e61b008e863b51212acb4b50d64a859e223253758785066f85"
-  },
-  "spec_version": "v2",
-  "decisions_applied": [
-    "D1",
-    "D2"
-  ],
-  "supersedes": {
-    "version": "v1",
-    "v1_marker": "final_experiment_specification_audit_v1",
-    "v1_sha256": "b8fbf10b706f01da98e0831d0fa36b16eb83f1175dc9deaebbf31c48e57b91d0",
-    "archived_copy": "spec_versions/v1/dataset_design.json"
   }
 }
