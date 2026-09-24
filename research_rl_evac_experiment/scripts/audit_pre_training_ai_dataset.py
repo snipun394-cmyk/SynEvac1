@@ -1626,9 +1626,20 @@ def run(pairwise_stride: int = 1) -> dict:
     return ctx
 
 
+SUPERSEDING_MARKER = "final_experiment_specification_audit_v1"
+
+
 def write_outputs(ctx: dict, out_dir: str = OUT_DIR) -> list:
+    """Skips any deliverable that a later audit has superseded (it carries
+    SUPERSEDING_MARKER), so re-running this audit never clobbers it."""
     created: set = set()
     for name in OUTPUT_FILES:
+        path = os.path.join(out_dir, name)
+        if os.path.isfile(path):
+            with open(path, encoding="utf-8") as f:
+                if SUPERSEDING_MARKER in f.read():
+                    print(f"  skipping {name}: superseded by the final experiment specification")
+                    continue
         _safe_write(name, ctx["outputs"][name], created, out_dir=out_dir)
     return sorted(created)
 

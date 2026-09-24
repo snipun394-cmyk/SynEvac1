@@ -1,0 +1,139 @@
+{
+  "audit": "final_experiment_specification_audit_v1",
+  "dimensions": {
+    "A_occupant_distribution": {
+      "parameter": "distribution over R1..R4 summing to 40 (simulator.reset; _initial_zone_assignment)",
+      "current_range": "3 templates used (10/10/10/10, 5/5/15/15); the robust-generalization audit also used 12/8/12/8, 16/4/16/4, 4/16/4/16",
+      "physically_meaningful": "any non-negative split of 40 across the four rooms",
+      "changes_observable_state": true,
+      "changes_outcomes": true,
+      "useful_diversity": "HIGH: the only dimension that changes tick-0 inputs",
+      "confounding": "occupant ids are assigned R1-first and baseline exits are id-parity based, so mirror-image templates are not exactly symmetric; disclosed, not a leak",
+      "chosen": {
+        "D0_sym": {
+          "R1": 10,
+          "R2": 10,
+          "R3": 10,
+          "R4": 10
+        },
+        "D1_east_heavy": {
+          "R1": 5,
+          "R2": 5,
+          "R3": 15,
+          "R4": 15
+        },
+        "D2_west_heavy": {
+          "R1": 15,
+          "R2": 15,
+          "R3": 5,
+          "R4": 5
+        },
+        "D3_first_room_heavy": {
+          "R1": 15,
+          "R2": 5,
+          "R3": 15,
+          "R4": 5
+        },
+        "D4_second_room_heavy": {
+          "R1": 5,
+          "R2": 15,
+          "R3": 5,
+          "R4": 15
+        },
+        "D5_R1_concentrated": {
+          "R1": 25,
+          "R2": 5,
+          "R3": 5,
+          "R4": 5
+        },
+        "Z1_R4_concentrated": {
+          "R1": 5,
+          "R2": 5,
+          "R3": 5,
+          "R4": 25
+        },
+        "Z2_mixed": {
+          "R1": 7,
+          "R2": 13,
+          "R3": 13,
+          "R4": 7
+        }
+      }
+    },
+    "B_compliance_probability": {
+      "parameter": "compliance.generate_compliance_vector(key, seed, p=...)",
+      "current_range": "0.9 only (0.75 in the timing matrix)",
+      "physically_meaningful": "0.5 to 0.95 (prior validated range)",
+      "changes_observable_state": "only indirectly and only after hub admissions (corridor counts); never at t=0",
+      "changes_outcomes": true,
+      "useful_diversity": "HIGH for outcomes, LOW for inputs",
+      "confounding": "With one key and one seed, the p=0.5 compliant set is a subset of the p=0.9 set and the vector is identical across every t_h. Reusing a (key, seed) across a training cell and a test cell would give nearly the same hidden compliance on both sides of the split. Keys must include the split role and seed ranges must be disjoint by role.",
+      "chosen": [
+        0.5,
+        0.7,
+        0.9,
+        0.8,
+        0.6,
+        0.85,
+        0.95
+      ]
+    },
+    "C_hazard_onset": {
+      "parameter": "t_h passed to simulator.reset",
+      "current_range": "none, 5, 7 (3, 6, 7, 10 in the timing matrix)",
+      "physically_meaningful": "3..10 or none; onsets after about tick 13 fall after evacuation ends and are equivalent to none",
+      "changes_observable_state": "only after onset (residual capacity), never before",
+      "changes_outcomes": true,
+      "useful_diversity": "HIGH for outcomes; post-onset inputs only",
+      "confounding": "must be crossed with distribution and p (full factorial), never tied to a template",
+      "chosen": [
+        "none",
+        "3",
+        "5",
+        "7",
+        "9",
+        "6",
+        "4",
+        "8",
+        "10"
+      ]
+    },
+    "D_hazard_location": {
+      "supported": false,
+      "reason": "topology.cap_h_ce1/edge_capacity hard-code H_CE1; varying it requires a simulator change (forbidden). Fixed and disclosed."
+    },
+    "E_initial_congestion": {
+      "supported_directly": false,
+      "reason": "reset places occupants only in R1..R4",
+      "indirect_sources": [
+        "later decision ticks (5, 10, 15, ...)",
+        "epsilon-perturbed pre-decision history (epsilon=0.5, a uniformly random GLOBAL action at each pre-decision tick)"
+      ]
+    },
+    "F_behavioral_parameters": {
+      "supported": [
+        "compliance probability (B)"
+      ],
+      "fixed": [
+        "baseline exit by id parity",
+        "commitment on hub admission"
+      ],
+      "reason": "no other behavior parameter exists without a simulator change"
+    },
+    "G_other": {
+      "fixed": [
+        "N_OCCUPANTS=40 (asserted)",
+        "capacities/traversal times (topology constants)",
+        "DECISION_INTERVAL=5",
+        "MAX_STEPS=180"
+      ],
+      "reason": "module constants; changing them changes the simulator model"
+    }
+  },
+  "compliance_vector_behavior": {
+    "vectors_nested_across_p_for_same_key_and_seed": true,
+    "vector_independent_of_t_h": true,
+    "mean_disagreement_between_different_keys": 0.425,
+    "consequence": "With one key and one seed, the p=0.5 compliant set is a subset of the p=0.9 set and the vector is identical across every t_h. Reusing a (key, seed) across a training cell and a test cell would give nearly the same hidden compliance on both sides of the split. Keys must include the split role and seed ranges must be disjoint by role."
+  }
+}

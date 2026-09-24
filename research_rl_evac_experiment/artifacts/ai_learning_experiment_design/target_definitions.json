@@ -1,0 +1,52 @@
+{
+  "audit": "final_experiment_specification_audit_v1",
+  "decision_time": "t_d: the decision tick (multiple of 5). The observation is computed at the end of tick t_d-1 (sim.t == t_d) before any relabel; the candidate is applied at the start of tick t_d.",
+  "horizon": "From tick t_d until the episode ends (all occupants evacuated, or MAX_STEPS=180).",
+  "continuation": "Every later decision tick: the frozen GLOBAL_DEADBAND heuristic (margin 0.75) applied globally.",
+  "targets": {
+    "future_T90": {
+      "definition": "T90_abs - t_d, where T90_abs = compute_metrics(sim.evacuated).T90 (exit tick of the ceil(0.9*40)=36th evacuee). If >= 36 occupants had exited before t_d: 0, with flag T90_reached_before_decision=True, and the criterion is constant across candidates, so the selector skips it and the loss masks it. If T90 is undefined: +inf (never observed).",
+      "unit": "ticks",
+      "source": "metrics.compute_metrics (unchanged)"
+    },
+    "future_T100": {
+      "definition": "T100_abs - t_d. T100_abs = last exit tick, or MAX_STEPS with T100_censored=True. A decision state requires n_active > 0, so T100 is never reached before t_d.",
+      "unit": "ticks"
+    },
+    "future_unmet_demand": {
+      "definition": "sum over ticks t in [t_d, end) of sum over all 10 edges of max(0, candidates_e(t) - capacity_e(t)), measured AFTER tick t's relabel (if t is a decision tick) and BEFORE its admission, i.e. on exactly the queue that admission sees. Pre-decision history is excluded.",
+      "unit": "occupant-ticks",
+      "implementation_without_simulator_change": "apply the relabel with actions.apply_action / apply_differential_action, then call timing_experiment.diagnostic_all_edges_unmet, then sim._run_one_tick(None). Equivalent to _run_one_tick(action) because relabeling is its first step after the pure-function hazard update."
+    },
+    "future_hazard_edge_unmet_demand": {
+      "definition_recommended": "sum over t in [max(t_d, t_h), end) of max(0, H_CE1 branch-A candidates(t) - cap_H_CE1(t)), measured the same way; 0 when no hazard is scheduled or it never starts before the end.",
+      "alternative": "the same sum over ALL ticks t >= t_d for EVERY scenario (onset-agnostic).",
+      "status": "REQUIRES USER DECISION (D1): both definitions remove the prior label's future-information problem; they change the meaning of the 4th ranking criterion differently.",
+      "unit": "occupant-ticks"
+    }
+  },
+  "verification": {
+    "realized_measurement_matches_simulator_tick_log": {
+      "hazard_all_ticks_matches_tick_log": 19615,
+      "hazard_onset_matches_tick_log": 19615,
+      "n": 19615
+    },
+    "meaning": "For every unique rollout of the sufficiency analysis, the post-relabel H_CE1 overflow summed by the proposed measurement equals the simulator's own tick_log h_ce1_unmet exactly (all ticks, and onset-gated)."
+  },
+  "stored_per_row": [
+    "future_T90",
+    "T90_reached_before_decision",
+    "future_T100",
+    "T100_censored",
+    "future_unmet_demand",
+    "future_hazard_edge_unmet_demand (both definitions until D1 is decided)",
+    "T90_abs",
+    "T100_abs (for comparability with prior experiments)"
+  ],
+  "changes_vs_existing_labels": [
+    "pre-decision unmet removed (fixes T1)",
+    "hazard-edge unmet no longer keyed on a scheduled-but-future hazard (fixes T2)",
+    "unmet measured post-relabel, matching the simulator (fixes T3)",
+    "one absolute candidate semantics (fixes T4, T5)"
+  ]
+}

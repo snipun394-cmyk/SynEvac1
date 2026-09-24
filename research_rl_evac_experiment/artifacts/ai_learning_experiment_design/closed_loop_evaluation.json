@@ -1,0 +1,30 @@
+{
+  "audit": "final_experiment_specification_audit_v1",
+  "status": "DESIGN ONLY; run after training, on TEST_PRIMARY_JOINT (primary) and each diagnostic family",
+  "policies": {
+    "P1_no_intervention": "never relabel",
+    "P2_capacity_aware_heuristic": "GLOBAL_DEADBAND (margin 0.75) at every decision",
+    "P3_frozen_deterministic_safety_controller": "observable_robust_differential.py (MD5 98b570ba7d7d451c82acf919113db2e5), executed under DifferentialRLGymEnv's global-then-override semantics (the semantics its actions 102/6 were audited under). It matches only the exact S2/S3 tick-0 observations, so on the new templates it reduces to the heuristic; reported for continuity.",
+    "P4_ai_assisted": "selector_design over the trained model at every decision; d(s)=P2",
+    "P5_full_information_oracle": "at every decision, the BASE2_298 candidate with the best TRUE one-step outcome (heuristic continuation); an upper reference, not achievable"
+  },
+  "protocol": "Common random numbers: identical (template, t_h, p, compliance key, seed) for every policy; full episodes; paired comparisons against P2.",
+  "metrics": [
+    "T90",
+    "T100",
+    "total unmet demand (episode)",
+    "hazard-edge unmet demand (episode, D1 definition)",
+    "harmful recommendation rate (decisions where P4 deviated from d(s) and the one-step counterfactual was worse than d(s))",
+    "recommendation coverage (share of decisions where P4 deviates from d(s))",
+    "abstention / fallback rate",
+    "switch count"
+  ],
+  "primary_endpoint": "Episode-level paired lexicographic comparison P4 vs P2: share of episodes strictly worse (safety) with share strictly better reported alongside.",
+  "secondary": [
+    "paired T100 difference",
+    "paired T90 difference",
+    "paired unmet differences",
+    "gap to P5"
+  ],
+  "caveat": "Training labels assume heuristic continuation (one-step counterfactual, Q^heuristic). Applying the selector at every decision is a policy-improvement step whose lexicographic, non-additive objective is not covered by the policy-improvement theorem, so closed-loop gains must be measured, not assumed."
+}

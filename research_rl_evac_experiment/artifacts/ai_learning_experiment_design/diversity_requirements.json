@@ -1,0 +1,217 @@
+{
+  "audit": "final_experiment_specification_audit_v1",
+  "existing_dataset_baseline": {
+    "states": 450,
+    "distinct_admissible_inputs": 11
+  },
+  "design_time_count": {
+    "epsilon_0.0": {
+      "n_trajectories": 1416,
+      "n_decision_states": 4348,
+      "n_distinct_admissible_inputs": 66,
+      "distinct_share": 0.0152,
+      "n_states_tick_ge_10": 1516,
+      "n_distinct_inputs_tick_ge_10": 46,
+      "distinct_share_tick_ge_10": 0.0303,
+      "distinct_inputs_vs_seeds_per_cell": {
+        "1": 62,
+        "2": 64,
+        "3": 66
+      },
+      "distinct_inputs_by_role": {
+        "DIAG_EXTRAPOLATION": 35,
+        "DIAG_TEMPLATE_ZERO_SHOT": 30,
+        "TEST_HELDOUT_COMPLIANCE": 41,
+        "TEST_HELDOUT_TIMING": 39,
+        "TEST_PRIMARY_JOINT": 34,
+        "TRAIN": 41,
+        "VALIDATION": 39
+      },
+      "distinct_inputs_by_template": {
+        "D0_sym": 19,
+        "D1_east_heavy": 20,
+        "D2_west_heavy": 20,
+        "D3_first_room_heavy": 16,
+        "D4_second_room_heavy": 19,
+        "D5_R1_concentrated": 22,
+        "Z1_R4_concentrated": 19,
+        "Z2_mixed": 12
+      },
+      "distinct_inputs_by_tick": {
+        "0": 8,
+        "5": 12,
+        "10": 42,
+        "15": 4
+      },
+      "share_primary_test_inputs_also_seen_in_train": 0.8824,
+      "decision_states_per_trajectory": {
+        "min": 3,
+        "max": 4,
+        "mean": 3.07
+      },
+      "multiplicity_histogram_top": {
+        "1": 1,
+        "2": 2,
+        "3": 2,
+        "4": 2,
+        "6": 3,
+        "7": 2,
+        "8": 1,
+        "10": 1,
+        "14": 1,
+        "15": 2,
+        "18": 1,
+        "20": 1
+      },
+      "n_states_with_T90_already_reached": 100
+    },
+    "epsilon_0.3": {
+      "n_trajectories": 1416,
+      "n_decision_states": 4571,
+      "n_distinct_admissible_inputs": 427,
+      "distinct_share": 0.0934,
+      "n_states_tick_ge_10": 1739,
+      "n_distinct_inputs_tick_ge_10": 407,
+      "distinct_share_tick_ge_10": 0.234,
+      "distinct_inputs_vs_seeds_per_cell": {
+        "1": 203,
+        "2": 344,
+        "3": 427
+      },
+      "distinct_inputs_by_role": {
+        "DIAG_EXTRAPOLATION": 120,
+        "DIAG_TEMPLATE_ZERO_SHOT": 144,
+        "TEST_HELDOUT_COMPLIANCE": 110,
+        "TEST_HELDOUT_TIMING": 75,
+        "TEST_PRIMARY_JOINT": 67,
+        "TRAIN": 121,
+        "VALIDATION": 112
+      },
+      "distinct_inputs_by_template": {
+        "D0_sym": 80,
+        "D1_east_heavy": 89,
+        "D2_west_heavy": 88,
+        "D3_first_room_heavy": 78,
+        "D4_second_room_heavy": 80,
+        "D5_R1_concentrated": 90,
+        "Z1_R4_concentrated": 84,
+        "Z2_mixed": 74
+      },
+      "distinct_inputs_by_tick": {
+        "0": 8,
+        "5": 12,
+        "10": 356,
+        "15": 50,
+        "20": 1
+      },
+      "share_primary_test_inputs_also_seen_in_train": 0.5224,
+      "decision_states_per_trajectory": {
+        "min": 3,
+        "max": 5,
+        "mean": 3.23
+      },
+      "multiplicity_histogram_top": {
+        "1": 258,
+        "2": 59,
+        "3": 16,
+        "4": 14,
+        "5": 9,
+        "6": 3,
+        "7": 7,
+        "8": 2,
+        "9": 2,
+        "10": 1,
+        "11": 3,
+        "12": 2
+      },
+      "n_states_with_T90_already_reached": 223
+    },
+    "epsilon_0.5": {
+      "n_trajectories": 1416,
+      "n_decision_states": 4699,
+      "n_distinct_admissible_inputs": 604,
+      "distinct_share": 0.1285,
+      "n_states_tick_ge_10": 1867,
+      "n_distinct_inputs_tick_ge_10": 584,
+      "distinct_share_tick_ge_10": 0.3128,
+      "distinct_inputs_vs_seeds_per_cell": {
+        "1": 263,
+        "2": 467,
+        "3": 604
+      },
+      "distinct_inputs_by_role": {
+        "DIAG_EXTRAPOLATION": 162,
+        "DIAG_TEMPLATE_ZERO_SHOT": 203,
+        "TEST_HELDOUT_COMPLIANCE": 144,
+        "TEST_HELDOUT_TIMING": 87,
+        "TEST_PRIMARY_JOINT": 88,
+        "TRAIN": 192,
+        "VALIDATION": 125
+      },
+      "distinct_inputs_by_template": {
+        "D0_sym": 109,
+        "D1_east_heavy": 125,
+        "D2_west_heavy": 123,
+        "D3_first_room_heavy": 112,
+        "D4_second_room_heavy": 109,
+        "D5_R1_concentrated": 122,
+        "Z1_R4_concentrated": 116,
+        "Z2_mixed": 105
+      },
+      "distinct_inputs_by_tick": {
+        "0": 8,
+        "5": 12,
+        "10": 524,
+        "15": 59,
+        "20": 1
+      },
+      "share_primary_test_inputs_also_seen_in_train": 0.5,
+      "decision_states_per_trajectory": {
+        "min": 3,
+        "max": 5,
+        "mean": 3.32
+      },
+      "multiplicity_histogram_top": {
+        "1": 392,
+        "2": 75,
+        "3": 31,
+        "4": 17,
+        "5": 9,
+        "6": 8,
+        "7": 8,
+        "8": 7,
+        "9": 2,
+        "10": 2,
+        "11": 2,
+        "13": 1
+      },
+      "n_states_with_T90_already_reached": 285
+    },
+    "seconds": 2.7,
+    "note": "DESIGN-TIME COUNT, not the pilot: pre-decision reference trajectories only, 3 seeds per non-buffer cell, no candidate rollouts, no targets, nothing persisted but these counts.",
+    "epsilon_selection": {
+      "rule": "smallest epsilon > 0 whose decision states at tick >= 10 are >= 25% distinct admissible inputs; else the largest counted",
+      "chosen": 0.5
+    }
+  },
+  "expected": {
+    "distinct_inputs_heuristic_only": 66,
+    "distinct_inputs_with_epsilon": 604,
+    "distinct_share_with_epsilon": 0.1285,
+    "state_action_combinations_per_state": 298,
+    "unique_rollouts_per_state_mean": 37.01,
+    "target_variance": "NOT estimable without candidate rollouts; measured in the pilot. Prior data: T100 std about 1 tick, post-decision total unmet std about 22 occupant-ticks.",
+    "repeated_states": "see multiplicity_histogram_top; tick-0 states are identical across t_h, p and seed within a template by construction (8 distinct tick-0 inputs in total)."
+  },
+  "irreducible_structure": "At t=0 (and before onset / before any hub admission) the input is identical across t_h, p and seed within a template. For those states the learnable target is the conditional outcome distribution under the TRAINING mixture of t_h and p; the joint hold-out tests robustness to a shift in that mixture, not input generalization. Every result must be reported separately for pre-onset and post-onset states.",
+  "go_no_go_after_pilot": {
+    "G1_distinct_inputs": "for decision ticks >= 10: distinct admissible inputs >= 25% of those pilot states and >= 10 per template. Ticks 0 and 5 are template-determined by construction (one or two inputs per template) and are exempt; they are handled by the distributional target.",
+    "G2_target_spread": "in >= 50% of pilot states, candidates produce >= 3 distinct outcome vectors (otherwise the ranking task is near-trivial)",
+    "G3_candidate_sufficiency": "BASE2_298 best equals the unrestricted-absolute best in >= 95% of the 40 re-checked pilot states (chosen to include states with >= 5 non-empty zones), and mean T100 regret <= 0.1 tick",
+    "G4_label_integrity": "replay reproduces every pilot row exactly; measurement check matches tick_log 100%",
+    "G5_leakage": "action-independence and temporal-leak checks pass on pilot data (admissible features unchanged by any candidate relabel; no feature recovers t_h before onset)",
+    "G6_identifiability": "irreducible share (admissible + candidate) for T100 below 0.6 on post-onset states; if above, the model target must be distributional only",
+    "G7_coverage": "every non-buffer cell of the pilot grid has >= 2 complete trajectories",
+    "rule": "All of G1-G7 must pass to proceed to Phase 3; any failure returns to design, not to training."
+  }
+}

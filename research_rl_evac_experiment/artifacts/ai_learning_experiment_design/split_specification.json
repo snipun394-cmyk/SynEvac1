@@ -1,0 +1,206 @@
+{
+  "audit": "final_experiment_specification_audit_v1",
+  "unit": "trajectory. Every decision state and every candidate row of a trajectory share its split; no seed, compliance key or (key, seed) pair is shared between splits.",
+  "axes": {
+    "t_h": {
+      "train": [
+        "none",
+        "3",
+        "5",
+        "7",
+        "9"
+      ],
+      "validation": [
+        "6"
+      ],
+      "test": [
+        "4",
+        "8"
+      ],
+      "extrapolation": [
+        "10"
+      ]
+    },
+    "p": {
+      "train": [
+        0.5,
+        0.7,
+        0.9
+      ],
+      "validation": [
+        0.8
+      ],
+      "test": [
+        0.6,
+        0.85
+      ],
+      "extrapolation": [
+        0.95
+      ]
+    },
+    "templates": {
+      "train_and_test": [
+        "D0_sym",
+        "D1_east_heavy",
+        "D2_west_heavy",
+        "D3_first_room_heavy",
+        "D4_second_room_heavy",
+        "D5_R1_concentrated"
+      ],
+      "zero_shot": [
+        "Z1_R4_concentrated",
+        "Z2_mixed"
+      ]
+    }
+  },
+  "matrix": {
+    "t_h=none": {
+      "p=0.5": "TRAIN",
+      "p=0.7": "TRAIN",
+      "p=0.9": "TRAIN",
+      "p=0.8": "VALIDATION",
+      "p=0.6": "TEST_HELDOUT_COMPLIANCE",
+      "p=0.85": "TEST_HELDOUT_COMPLIANCE",
+      "p=0.95": "DIAG_EXTRAPOLATION"
+    },
+    "t_h=3": {
+      "p=0.5": "TRAIN",
+      "p=0.7": "TRAIN",
+      "p=0.9": "TRAIN",
+      "p=0.8": "VALIDATION",
+      "p=0.6": "TEST_HELDOUT_COMPLIANCE",
+      "p=0.85": "TEST_HELDOUT_COMPLIANCE",
+      "p=0.95": "DIAG_EXTRAPOLATION"
+    },
+    "t_h=5": {
+      "p=0.5": "TRAIN",
+      "p=0.7": "TRAIN",
+      "p=0.9": "TRAIN",
+      "p=0.8": "VALIDATION",
+      "p=0.6": "TEST_HELDOUT_COMPLIANCE",
+      "p=0.85": "TEST_HELDOUT_COMPLIANCE",
+      "p=0.95": "DIAG_EXTRAPOLATION"
+    },
+    "t_h=7": {
+      "p=0.5": "TRAIN",
+      "p=0.7": "TRAIN",
+      "p=0.9": "TRAIN",
+      "p=0.8": "VALIDATION",
+      "p=0.6": "TEST_HELDOUT_COMPLIANCE",
+      "p=0.85": "TEST_HELDOUT_COMPLIANCE",
+      "p=0.95": "DIAG_EXTRAPOLATION"
+    },
+    "t_h=9": {
+      "p=0.5": "TRAIN",
+      "p=0.7": "TRAIN",
+      "p=0.9": "TRAIN",
+      "p=0.8": "VALIDATION",
+      "p=0.6": "TEST_HELDOUT_COMPLIANCE",
+      "p=0.85": "TEST_HELDOUT_COMPLIANCE",
+      "p=0.95": "DIAG_EXTRAPOLATION"
+    },
+    "t_h=6": {
+      "p=0.5": "VALIDATION",
+      "p=0.7": "VALIDATION",
+      "p=0.9": "VALIDATION",
+      "p=0.8": "VALIDATION",
+      "p=0.6": "UNUSED_BUFFER",
+      "p=0.85": "UNUSED_BUFFER",
+      "p=0.95": "DIAG_EXTRAPOLATION"
+    },
+    "t_h=4": {
+      "p=0.5": "TEST_HELDOUT_TIMING",
+      "p=0.7": "TEST_HELDOUT_TIMING",
+      "p=0.9": "TEST_HELDOUT_TIMING",
+      "p=0.8": "UNUSED_BUFFER",
+      "p=0.6": "TEST_PRIMARY_JOINT",
+      "p=0.85": "TEST_PRIMARY_JOINT",
+      "p=0.95": "DIAG_EXTRAPOLATION"
+    },
+    "t_h=8": {
+      "p=0.5": "TEST_HELDOUT_TIMING",
+      "p=0.7": "TEST_HELDOUT_TIMING",
+      "p=0.9": "TEST_HELDOUT_TIMING",
+      "p=0.8": "UNUSED_BUFFER",
+      "p=0.6": "TEST_PRIMARY_JOINT",
+      "p=0.85": "TEST_PRIMARY_JOINT",
+      "p=0.95": "DIAG_EXTRAPOLATION"
+    },
+    "t_h=10": {
+      "p=0.5": "DIAG_EXTRAPOLATION",
+      "p=0.7": "DIAG_EXTRAPOLATION",
+      "p=0.9": "DIAG_EXTRAPOLATION",
+      "p=0.8": "DIAG_EXTRAPOLATION",
+      "p=0.6": "DIAG_EXTRAPOLATION",
+      "p=0.85": "DIAG_EXTRAPOLATION",
+      "p=0.95": "DIAG_EXTRAPOLATION"
+    }
+  },
+  "tests": {
+    "A_heldout_seed": {
+      "role": "diagnostic",
+      "shared": "templates, t_h, p",
+      "unseen": "seeds (TRAIN cells, separate seed range 125000-125999)"
+    },
+    "B_heldout_timing": {
+      "role": "diagnostic",
+      "shared": "templates, p",
+      "unseen": "t_h in {4, 8}"
+    },
+    "C_heldout_compliance": {
+      "role": "diagnostic",
+      "shared": "templates, t_h",
+      "unseen": "p in {0.6, 0.85}"
+    },
+    "D_joint_timing_x_compliance": {
+      "role": "PRIMARY",
+      "shared": "templates",
+      "unseen": "t_h in {4, 8} AND p in {0.6, 0.85} AND seeds"
+    },
+    "E_template_zero_shot": {
+      "role": "diagnostic, expected hard, never a gate",
+      "shared": "t_h and p levels",
+      "unseen": "templates ['Z1_R4_concentrated', 'Z2_mixed']"
+    },
+    "F_extrapolation": {
+      "role": "diagnostic",
+      "unseen": "t_h=10 or p=0.95 (outside the training range)"
+    }
+  },
+  "report_strata": [
+    "pre-onset vs post-onset",
+    "t=0 vs t>0",
+    "template"
+  ],
+  "validation_use": "hyperparameters, quantile calibration, selector tolerances; never touched by test data",
+  "final_go_no_go": {
+    "classification": "REQUIRES ONE MORE DESIGN DECISION",
+    "open_decisions": [
+      {
+        "id": "D1",
+        "area": "target semantics",
+        "question": "future_hazard_edge_unmet_demand: onset-gated (t >= t_h, 0 without hazard) or all ticks for every scenario?",
+        "recommendation": "onset-gated: matches the metric's stated purpose (congestion caused by the degraded edge); pre-onset H_CE1 overflow is already counted in future_unmet_demand",
+        "why_not_decided_silently": "it changes the meaning of the 4th ranking criterion relative to every prior experiment"
+      },
+      {
+        "id": "D2",
+        "area": "action semantics / default policy",
+        "question": "The continuation policy and the fallback d(s) are the GLOBAL_DEADBAND heuristic, which reads Q_A_at_H/Q_B_at_H (hidden labels, class D). Accept it as the simulated building's existing controller (inside label generation and as fallback), or require a label-free default first?",
+        "recommendation": "accept for label generation and as fallback, disclosed: the model's own inputs stay admissible, and P2 carries the same privilege, so comparisons stay paired. A label-free default would be a new controller, which is out of scope",
+        "why_not_decided_silently": "it determines whether the AI-assisted system as evaluated is fully perception-honest"
+      }
+    ],
+    "resolved": [
+      "candidate set: absolute BASE2_298 (298 fixed slots), selected by an explicit rule; it removes the three-way semantic conflict in the existing code",
+      "continuation policy: frozen heuristic, identical across candidates",
+      "future_T90 / future_T100 / future_unmet definitions (post-decision, post-relabel measurement verified against the simulator's tick_log)",
+      "features: the 26 admissible features, no trend features",
+      "pre-decision state generation: heuristic with epsilon=0.5 random global actions (diversity count)",
+      "split unit and roles: trajectory; joint timing x compliance primary test; role-keyed compliance vectors",
+      "target form: conditional mean + quantiles",
+      "candidate sufficiency on existing states: BASE2_298 matches the unrestricted best in 100.0% (mean T100 regret 0.0 ticks)"
+    ],
+    "after_decisions": "With D1 and D2 answered, the specification is complete and the next step is Phase 1 (pilot, 240 trajectories), not the full dataset."
+  }
+}
