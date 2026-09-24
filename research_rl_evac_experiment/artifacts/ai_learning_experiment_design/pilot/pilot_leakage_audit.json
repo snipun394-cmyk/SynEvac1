@@ -1,0 +1,40 @@
+{
+  "audit": "ai_learning_pilot_audit_v1",
+  "feature_columns_exact": true,
+  "forbidden_feature_columns": [],
+  "metadata_columns_not_features": [
+    "t_h",
+    "p",
+    "seed",
+    "compliance_key",
+    "template",
+    "distribution",
+    "pre_decision_*",
+    "state_fingerprint",
+    "hazard_started",
+    "default_action"
+  ],
+  "counts": {
+    "states": 796,
+    "features_identical_across_candidates": 796,
+    "residual_ok": 796,
+    "replay_features_match": 796,
+    "replay_fingerprint_match": 796,
+    "class_relabels_checked": 19319,
+    "features_unchanged_by_relabel": 19319,
+    "pre_onset_states": 288,
+    "pre_onset_features_identical_without_hazard": 288
+  },
+  "tick0_inputs_per_template": {
+    "D0_sym": 1,
+    "D1_east_heavy": 1,
+    "D2_west_heavy": 1,
+    "D3_first_room_heavy": 1,
+    "D4_second_room_heavy": 1,
+    "D5_R1_concentrated": 1,
+    "Z1_R4_concentrated": 1,
+    "Z2_mixed": 1
+  },
+  "tick0_input_independent_of_t_h_and_p": true,
+  "passed": true
+}

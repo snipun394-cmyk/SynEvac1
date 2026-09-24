@@ -1,0 +1,77 @@
+{
+  "audit": "ai_learning_pilot_audit_v1",
+  "pilot_cells": 120,
+  "trajectories_per_cell": {
+    "2": 120
+  },
+  "all_cells_complete": true,
+  "timing_x_compliance_counts": {
+    "t_h=3|p=0.5": 16,
+    "t_h=3|p=0.7": 16,
+    "t_h=3|p=0.9": 16,
+    "t_h=5|p=0.5": 16,
+    "t_h=5|p=0.7": 16,
+    "t_h=5|p=0.9": 16,
+    "t_h=7|p=0.5": 16,
+    "t_h=7|p=0.7": 16,
+    "t_h=7|p=0.9": 16,
+    "t_h=9|p=0.5": 16,
+    "t_h=9|p=0.7": 16,
+    "t_h=9|p=0.9": 16,
+    "t_h=none|p=0.5": 16,
+    "t_h=none|p=0.7": 16,
+    "t_h=none|p=0.9": 16
+  },
+  "pilot_role": {
+    "role": "PILOT",
+    "note": "all pilot t_h and p values are TRAIN-role levels by the frozen design; the pilot is discarded after Phase 2, so it cannot leak into any full-dataset split",
+    "t_h_levels": [
+      "none",
+      "3",
+      "5",
+      "7",
+      "9"
+    ],
+    "p_levels": [
+      0.5,
+      0.7,
+      0.9
+    ],
+    "includes_zero_shot_templates": [
+      "Z1_R4_concentrated",
+      "Z2_mixed"
+    ]
+  },
+  "association": {
+    "template_vs_t_h_cramers_v": 0.0,
+    "template_vs_p_cramers_v": 0.0,
+    "t_h_vs_p_cramers_v": 0.0
+  },
+  "seeds": {
+    "unique": true,
+    "min": 190000,
+    "max": 190239,
+    "inside_pilot_range": true
+  },
+  "layout_separation": "every template has all 15 (t_h, p) cells; layout never determines timing or compliance",
+  "accidental_overlap": {
+    "seed_overlap_with_full_roles": [],
+    "compliance_key_namespace": "AILX_v1|PILOT|<template>; full-dataset keys use their role name"
+  },
+  "primary_test_constructible": {
+    "n_primary_joint_cells": 4,
+    "primary_cells": [
+      "t_h=4|p=0.6",
+      "t_h=4|p=0.85",
+      "t_h=8|p=0.6",
+      "t_h=8|p=0.85"
+    ],
+    "test_t_h_disjoint_from_train": true,
+    "test_p_disjoint_from_train": true,
+    "every_template_crosses_every_level": true,
+    "seed_ranges_disjoint": true,
+    "seed_range_overlaps": [],
+    "compliance_keys_role_specific": true,
+    "passed": true
+  }
+}

@@ -1,0 +1,154 @@
+{
+  "audit": "ai_learning_pilot_audit_v1",
+  "n_trajectories": 240,
+  "n_decision_states": 796,
+  "n_unique_feature_vectors": 183,
+  "distinct_share": 0.2299,
+  "n_unique_state_candidate_pairs": 54534,
+  "unique_states_by_tick": {
+    "0": {
+      "states": 240,
+      "unique": 8
+    },
+    "5": {
+      "states": 240,
+      "unique": 12
+    },
+    "10": {
+      "states": 240,
+      "unique": 129
+    },
+    "15": {
+      "states": 71,
+      "unique": 30
+    },
+    "20": {
+      "states": 5,
+      "unique": 4
+    }
+  },
+  "unique_states_by_template": {
+    "D0_sym": 34,
+    "D1_east_heavy": 31,
+    "D2_west_heavy": 27,
+    "D3_first_room_heavy": 36,
+    "D4_second_room_heavy": 37,
+    "D5_R1_concentrated": 31,
+    "Z1_R4_concentrated": 29,
+    "Z2_mixed": 36
+  },
+  "tick_ge_10": {
+    "states": 316,
+    "unique": 163,
+    "share": 0.5158,
+    "unique_by_template": {
+      "D0_sym": 31,
+      "D1_east_heavy": 28,
+      "D2_west_heavy": 24,
+      "D3_first_room_heavy": 33,
+      "D4_second_room_heavy": 34,
+      "D5_R1_concentrated": 28,
+      "Z1_R4_concentrated": 26,
+      "Z2_mixed": 33
+    }
+  },
+  "repeated_state_fraction": 0.7701,
+  "repeated_trajectory_fraction": 0.3833,
+  "feature_entropy_bits": {
+    "waiting_R1": 1.5331,
+    "waiting_R2": 1.4108,
+    "waiting_C1": 0.4611,
+    "waiting_R3": 1.4108,
+    "waiting_R4": 1.5331,
+    "waiting_C2": 0.4611,
+    "waiting_CE1": 1.4945,
+    "waiting_CE2": 1.4556,
+    "in_transit_R1_C1": 0.2316,
+    "in_transit_R2_C1": -0.0,
+    "in_transit_C1_H_1tick": 1.3539,
+    "in_transit_C1_H_2tick": 1.1012,
+    "in_transit_R3_C2": -0.0,
+    "in_transit_R4_C2": 0.2316,
+    "in_transit_C2_H_1tick": 1.3539,
+    "in_transit_C2_H_2tick": 1.1012,
+    "in_transit_H_CE1_1tick": 1.1945,
+    "in_transit_H_CE1_2tick": 0.919,
+    "in_transit_H_CE2_1tick": 1.3253,
+    "in_transit_H_CE2_2tick": 1.0157,
+    "in_transit_CE1_EXITA": 1.4882,
+    "in_transit_CE2_EXITB": 1.2878,
+    "residual_cap_H_CE1_normalized": 0.9947,
+    "normalized_time": 1.9215,
+    "normalized_remaining": 2.3269,
+    "waiting_H_total": 2.2049
+  },
+  "mean_feature_entropy_bits": 1.1466,
+  "conditional_outcome_variance": {
+    "future_T90": {
+      "given_state": {
+        "n_rows": 237208,
+        "n_groups": 183,
+        "irreducible_share": 0.0298
+      },
+      "given_state_and_candidate": {
+        "n_rows": 237208,
+        "n_groups": 54534,
+        "irreducible_share": 0.0179
+      }
+    },
+    "future_T100": {
+      "given_state": {
+        "n_rows": 237208,
+        "n_groups": 183,
+        "irreducible_share": 0.0384
+      },
+      "given_state_and_candidate": {
+        "n_rows": 237208,
+        "n_groups": 54534,
+        "irreducible_share": 0.0247
+      }
+    },
+    "future_unmet": {
+      "given_state": {
+        "n_rows": 237208,
+        "n_groups": 183,
+        "irreducible_share": 0.1928
+      },
+      "given_state_and_candidate": {
+        "n_rows": 237208,
+        "n_groups": 54534,
+        "irreducible_share": 0.1275
+      }
+    },
+    "future_hazard_unmet": {
+      "given_state": {
+        "n_rows": 237208,
+        "n_groups": 183,
+        "irreducible_share": 0.4272
+      },
+      "given_state_and_candidate": {
+        "n_rows": 237208,
+        "n_groups": 54534,
+        "irreducible_share": 0.2039
+      }
+    }
+  },
+  "old_dataset": {
+    "states": 450,
+    "distinct_inputs": 11,
+    "distinct_share": 0.0244,
+    "distinct_input_action_pairs": 140,
+    "mean_feature_entropy_bits": 0.8828,
+    "T100_irreducible_share_plain": 0.4599,
+    "note": "old = the 450-state differential-targeting dataset (hidden-heuristic continuation, old targets); distinct counts recomputed here by replay"
+  },
+  "vs_old": {
+    "unique_inputs_ratio": 16.64,
+    "distinct_share_ratio": 9.42,
+    "state_candidate_pairs_ratio": 389.53,
+    "mean_entropy_old_vs_pilot": [
+      0.8828,
+      1.1466
+    ]
+  }
+}

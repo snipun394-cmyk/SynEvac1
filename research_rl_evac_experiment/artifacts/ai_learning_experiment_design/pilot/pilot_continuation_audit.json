@@ -1,0 +1,58 @@
+{
+  "audit": "ai_learning_pilot_audit_v1",
+  "continuation_policy": "SYMMETRIC_SPLIT_DEADBAND_margin0",
+  "current_policy_hash": "2614f9af3d4a43e61b008e863b51212acb4b50d64a859e223253758785066f85",
+  "hashes_in_rows": [
+    [
+      "SYMMETRIC_SPLIT_DEADBAND_margin0",
+      "2614f9af3d4a43e61b008e863b51212acb4b50d64a859e223253758785066f85"
+    ]
+  ],
+  "every_row_has_current_hash": true,
+  "forbidden_tokens_in_generation_source": {
+    "run_ai_learning_pilot.py": [],
+    "ai_learning_label_free_default.py": []
+  },
+  "hidden_heuristic_booby_trap": {
+    "regeneration_completed_with_hidden_heuristic_disabled": true,
+    "entry_points_disabled": [
+      "audit_selective_guidance_control.HEURISTIC",
+      "DeadbandCapacityAwareHeuristic.__call__/.predict",
+      "capacity_aware_heuristic.heuristic_action"
+    ]
+  },
+  "continuation_calls_generation": {
+    "calls": 41137,
+    "input_len_26": 41137
+  },
+  "continuation_calls_regeneration": {
+    "calls": 41137,
+    "input_len_26": 41137
+  },
+  "all_calls_26_features": true,
+  "q_values_enter_continuation": false,
+  "q_values_note": "the default's only input is the 26-feature vector; waiting_H_total is len(zone_waiting['H'])",
+  "reference_arm_P2b_in_pilot": false,
+  "candidate_semantics": {
+    "states": 796,
+    "default_equals_label_free_rule": 796,
+    "default_equals_closed_form": 796,
+    "class_reps_checked": 5216,
+    "fast_label_map_equals_apply": 5216,
+    "default_states_checked": 199,
+    "default_candidate_equals_global_apply": 199
+  },
+  "regeneration": {
+    "identical_rows": true,
+    "regenerated_sha256": "1bd30ef7d286568da10f96ba5ddfbdebd682dd3fcefd8acc7f9b7e1b5fd3c335",
+    "recorded_sha256": "1bd30ef7d286568da10f96ba5ddfbdebd682dd3fcefd8acc7f9b7e1b5fd3c335",
+    "regeneration_checks": {
+      "n_classes": 19319,
+      "same_start": 19319,
+      "hazard_tick_log": 19319
+    },
+    "seconds": 21.8
+  },
+  "label_free_passed": true,
+  "semantics_passed": true
+}

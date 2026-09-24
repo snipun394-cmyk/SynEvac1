@@ -1,0 +1,744 @@
+{
+  "audit": "ai_learning_pilot_audit_v1",
+  "counts": {
+    "rows": 237208,
+    "no_hazard_rows": 42912,
+    "no_hazard_rows_hazard_target_zero": 42912,
+    "T100_semantics_ok": 237208,
+    "T90_semantics_ok": 237208,
+    "T90_reached_rows": 14006,
+    "censored_rows": 0
+  },
+  "hazard_zero_when_no_hazard": true,
+  "hazard_zero_when_episode_ends_before_onset": true,
+  "T100_semantics_all_rows": true,
+  "T90_semantics_all_rows": true,
+  "pre_decision_unmet_excluded": {
+    "states_checked": 556,
+    "decomposition_exact": 556,
+    "passed": true,
+    "method": "replay recorded history to t_d (pre-decision unmet), roll out the default candidate with the label-free continuation; the stored pre-decision unmet and future unmet must reproduce exactly"
+  },
+  "distinct_target_vectors_per_state": {
+    "min": 1,
+    "median": 3.0,
+    "max": 61,
+    "states_with_at_least_3": 516,
+    "share_with_at_least_3": 0.6482
+  },
+  "share_of_candidates_tied_with_default": {
+    "mean": 0.4676,
+    "median": 0.3322
+  },
+  "n_equivalence_classes_per_state": {
+    "mean": 24.27
+  },
+  "continuation_same_for_all_candidates": true,
+  "g3_unrestricted_recheck": {
+    "n_states": 40,
+    "matches": 40,
+    "share": 1.0,
+    "mean_T100_regret": 0.0,
+    "max_T100_regret": 0.0,
+    "nonempty_zone_counts": {
+      "4": 40
+    },
+    "states": [
+      {
+        "state": "PILOT-000|t0",
+        "n_nonempty": 4,
+        "unrestricted_classes": 81,
+        "base2_best": [
+          11,
+          12,
+          48,
+          0
+        ],
+        "unrestricted_best": [
+          11,
+          12,
+          48,
+          0
+        ]
+      },
+      {
+        "state": "PILOT-001|t0",
+        "n_nonempty": 4,
+        "unrestricted_classes": 81,
+        "base2_best": [
+          11,
+          12,
+          48,
+          0
+        ],
+        "unrestricted_best": [
+          11,
+          12,
+          48,
+          0
+        ]
+      },
+      {
+        "state": "PILOT-002|t0",
+        "n_nonempty": 4,
+        "unrestricted_classes": 81,
+        "base2_best": [
+          11,
+          12,
+          48,
+          0
+        ],
+        "unrestricted_best": [
+          11,
+          12,
+          48,
+          0
+        ]
+      },
+      {
+        "state": "PILOT-003|t0",
+        "n_nonempty": 4,
+        "unrestricted_classes": 81,
+        "base2_best": [
+          11,
+          12,
+          48,
+          0
+        ],
+        "unrestricted_best": [
+          11,
+          12,
+          48,
+          0
+        ]
+      },
+      {
+        "state": "PILOT-004|t0",
+        "n_nonempty": 4,
+        "unrestricted_classes": 81,
+        "base2_best": [
+          11,
+          12,
+          48,
+          0
+        ],
+        "unrestricted_best": [
+          11,
+          12,
+          48,
+          0
+        ]
+      },
+      {
+        "state": "PILOT-005|t0",
+        "n_nonempty": 4,
+        "unrestricted_classes": 81,
+        "base2_best": [
+          11,
+          12,
+          48,
+          0
+        ],
+        "unrestricted_best": [
+          11,
+          12,
+          48,
+          0
+        ]
+      },
+      {
+        "state": "PILOT-006|t0",
+        "n_nonempty": 4,
+        "unrestricted_classes": 81,
+        "base2_best": [
+          13,
+          13,
+          80,
+          8
+        ],
+        "unrestricted_best": [
+          13,
+          13,
+          80,
+          8
+        ]
+      },
+      {
+        "state": "PILOT-007|t0",
+        "n_nonempty": 4,
+        "unrestricted_classes": 81,
+        "base2_best": [
+          13,
+          13,
+          80,
+          11
+        ],
+        "unrestricted_best": [
+          13,
+          13,
+          80,
+          11
+        ]
+      },
+      {
+        "state": "PILOT-008|t0",
+        "n_nonempty": 4,
+        "unrestricted_classes": 81,
+        "base2_best": [
+          13,
+          13,
+          80,
+          12
+        ],
+        "unrestricted_best": [
+          13,
+          13,
+          80,
+          12
+        ]
+      },
+      {
+        "state": "PILOT-009|t0",
+        "n_nonempty": 4,
+        "unrestricted_classes": 81,
+        "base2_best": [
+          13,
+          13,
+          80,
+          10
+        ],
+        "unrestricted_best": [
+          13,
+          13,
+          80,
+          10
+        ]
+      },
+      {
+        "state": "PILOT-010|t0",
+        "n_nonempty": 4,
+        "unrestricted_classes": 81,
+        "base2_best": [
+          13,
+          13,
+          80,
+          9
+        ],
+        "unrestricted_best": [
+          13,
+          13,
+          80,
+          9
+        ]
+      },
+      {
+        "state": "PILOT-011|t0",
+        "n_nonempty": 4,
+        "unrestricted_classes": 81,
+        "base2_best": [
+          13,
+          14,
+          85,
+          7
+        ],
+        "unrestricted_best": [
+          13,
+          14,
+          85,
+          7
+        ]
+      },
+      {
+        "state": "PILOT-012|t0",
+        "n_nonempty": 4,
+        "unrestricted_classes": 81,
+        "base2_best": [
+          13,
+          14,
+          81,
+          19
+        ],
+        "unrestricted_best": [
+          13,
+          14,
+          81,
+          19
+        ]
+      },
+      {
+        "state": "PILOT-013|t0",
+        "n_nonempty": 4,
+        "unrestricted_classes": 81,
+        "base2_best": [
+          13,
+          13,
+          80,
+          14
+        ],
+        "unrestricted_best": [
+          13,
+          13,
+          80,
+          14
+        ]
+      },
+      {
+        "state": "PILOT-014|t0",
+        "n_nonempty": 4,
+        "unrestricted_classes": 81,
+        "base2_best": [
+          13,
+          14,
+          85,
+          8
+        ],
+        "unrestricted_best": [
+          13,
+          14,
+          85,
+          8
+        ]
+      },
+      {
+        "state": "PILOT-015|t0",
+        "n_nonempty": 4,
+        "unrestricted_classes": 81,
+        "base2_best": [
+          13,
+          13,
+          80,
+          10
+        ],
+        "unrestricted_best": [
+          13,
+          13,
+          80,
+          10
+        ]
+      },
+      {
+        "state": "PILOT-016|t0",
+        "n_nonempty": 4,
+        "unrestricted_classes": 81,
+        "base2_best": [
+          13,
+          14,
+          85,
+          7
+        ],
+        "unrestricted_best": [
+          13,
+          14,
+          85,
+          7
+        ]
+      },
+      {
+        "state": "PILOT-017|t0",
+        "n_nonempty": 4,
+        "unrestricted_classes": 81,
+        "base2_best": [
+          13,
+          13,
+          80,
+          8
+        ],
+        "unrestricted_best": [
+          13,
+          13,
+          80,
+          8
+        ]
+      },
+      {
+        "state": "PILOT-018|t0",
+        "n_nonempty": 4,
+        "unrestricted_classes": 54,
+        "base2_best": [
+          12,
+          12,
+          52,
+          2
+        ],
+        "unrestricted_best": [
+          12,
+          12,
+          52,
+          2
+        ]
+      },
+      {
+        "state": "PILOT-019|t0",
+        "n_nonempty": 4,
+        "unrestricted_classes": 54,
+        "base2_best": [
+          12,
+          12,
+          52,
+          2
+        ],
+        "unrestricted_best": [
+          12,
+          12,
+          52,
+          2
+        ]
+      },
+      {
+        "state": "PILOT-020|t0",
+        "n_nonempty": 4,
+        "unrestricted_classes": 81,
+        "base2_best": [
+          12,
+          12,
+          52,
+          2
+        ],
+        "unrestricted_best": [
+          12,
+          12,
+          52,
+          2
+        ]
+      },
+      {
+        "state": "PILOT-021|t0",
+        "n_nonempty": 4,
+        "unrestricted_classes": 81,
+        "base2_best": [
+          12,
+          12,
+          52,
+          2
+        ],
+        "unrestricted_best": [
+          12,
+          12,
+          52,
+          2
+        ]
+      },
+      {
+        "state": "PILOT-022|t0",
+        "n_nonempty": 4,
+        "unrestricted_classes": 81,
+        "base2_best": [
+          12,
+          12,
+          52,
+          2
+        ],
+        "unrestricted_best": [
+          12,
+          12,
+          52,
+          2
+        ]
+      },
+      {
+        "state": "PILOT-023|t0",
+        "n_nonempty": 4,
+        "unrestricted_classes": 81,
+        "base2_best": [
+          12,
+          12,
+          52,
+          2
+        ],
+        "unrestricted_best": [
+          12,
+          12,
+          52,
+          2
+        ]
+      },
+      {
+        "state": "PILOT-024|t0",
+        "n_nonempty": 4,
+        "unrestricted_classes": 81,
+        "base2_best": [
+          11,
+          12,
+          48,
+          0
+        ],
+        "unrestricted_best": [
+          11,
+          12,
+          48,
+          0
+        ]
+      },
+      {
+        "state": "PILOT-025|t0",
+        "n_nonempty": 4,
+        "unrestricted_classes": 81,
+        "base2_best": [
+          11,
+          12,
+          48,
+          0
+        ],
+        "unrestricted_best": [
+          11,
+          12,
+          48,
+          0
+        ]
+      },
+      {
+        "state": "PILOT-026|t0",
+        "n_nonempty": 4,
+        "unrestricted_classes": 81,
+        "base2_best": [
+          11,
+          12,
+          48,
+          0
+        ],
+        "unrestricted_best": [
+          11,
+          12,
+          48,
+          0
+        ]
+      },
+      {
+        "state": "PILOT-027|t0",
+        "n_nonempty": 4,
+        "unrestricted_classes": 81,
+        "base2_best": [
+          11,
+          12,
+          48,
+          0
+        ],
+        "unrestricted_best": [
+          11,
+          12,
+          48,
+          0
+        ]
+      },
+      {
+        "state": "PILOT-028|t0",
+        "n_nonempty": 4,
+        "unrestricted_classes": 81,
+        "base2_best": [
+          11,
+          12,
+          48,
+          0
+        ],
+        "unrestricted_best": [
+          11,
+          12,
+          48,
+          0
+        ]
+      },
+      {
+        "state": "PILOT-029|t0",
+        "n_nonempty": 4,
+        "unrestricted_classes": 81,
+        "base2_best": [
+          11,
+          12,
+          48,
+          0
+        ],
+        "unrestricted_best": [
+          11,
+          12,
+          48,
+          0
+        ]
+      },
+      {
+        "state": "PILOT-030|t0",
+        "n_nonempty": 4,
+        "unrestricted_classes": 54,
+        "base2_best": [
+          12,
+          12,
+          50,
+          0
+        ],
+        "unrestricted_best": [
+          12,
+          12,
+          50,
+          0
+        ]
+      },
+      {
+        "state": "PILOT-031|t0",
+        "n_nonempty": 4,
+        "unrestricted_classes": 81,
+        "base2_best": [
+          12,
+          12,
+          50,
+          0
+        ],
+        "unrestricted_best": [
+          12,
+          12,
+          50,
+          0
+        ]
+      },
+      {
+        "state": "PILOT-032|t0",
+        "n_nonempty": 4,
+        "unrestricted_classes": 54,
+        "base2_best": [
+          12,
+          12,
+          50,
+          0
+        ],
+        "unrestricted_best": [
+          12,
+          12,
+          50,
+          0
+        ]
+      },
+      {
+        "state": "PILOT-033|t0",
+        "n_nonempty": 4,
+        "unrestricted_classes": 81,
+        "base2_best": [
+          12,
+          12,
+          50,
+          0
+        ],
+        "unrestricted_best": [
+          12,
+          12,
+          50,
+          0
+        ]
+      },
+      {
+        "state": "PILOT-034|t0",
+        "n_nonempty": 4,
+        "unrestricted_classes": 81,
+        "base2_best": [
+          12,
+          12,
+          50,
+          0
+        ],
+        "unrestricted_best": [
+          12,
+          12,
+          50,
+          0
+        ]
+      },
+      {
+        "state": "PILOT-035|t0",
+        "n_nonempty": 4,
+        "unrestricted_classes": 81,
+        "base2_best": [
+          12,
+          12,
+          50,
+          0
+        ],
+        "unrestricted_best": [
+          12,
+          12,
+          50,
+          0
+        ]
+      },
+      {
+        "state": "PILOT-036|t0",
+        "n_nonempty": 4,
+        "unrestricted_classes": 27,
+        "base2_best": [
+          13,
+          13,
+          80,
+          8
+        ],
+        "unrestricted_best": [
+          13,
+          13,
+          80,
+          8
+        ]
+      },
+      {
+        "state": "PILOT-037|t0",
+        "n_nonempty": 4,
+        "unrestricted_classes": 54,
+        "base2_best": [
+          13,
+          14,
+          81,
+          7
+        ],
+        "unrestricted_best": [
+          13,
+          14,
+          81,
+          7
+        ]
+      },
+      {
+        "state": "PILOT-038|t0",
+        "n_nonempty": 4,
+        "unrestricted_classes": 81,
+        "base2_best": [
+          13,
+          14,
+          90,
+          7
+        ],
+        "unrestricted_best": [
+          13,
+          14,
+          90,
+          7
+        ]
+      },
+      {
+        "state": "PILOT-039|t0",
+        "n_nonempty": 4,
+        "unrestricted_classes": 81,
+        "base2_best": [
+          13,
+          13,
+          80,
+          6
+        ],
+        "unrestricted_best": [
+          13,
+          13,
+          80,
+          6
+        ]
+      }
+    ],
+    "seconds": 2.6
+  },
+  "g6": {
+    "post_onset_states": 364,
+    "post_onset_rows": 108472,
+    "rows_in_multi_trajectory_groups": 80758,
+    "coverage": 0.7445,
+    "T100_irreducible_share": 0.0165,
+    "evaluable": true,
+    "passed": true,
+    "plain_formula_all_post_rows": {
+      "n_rows": 108472,
+      "n_groups": 42614,
+      "irreducible_share": 0.0138
+    }
+  }
+}
