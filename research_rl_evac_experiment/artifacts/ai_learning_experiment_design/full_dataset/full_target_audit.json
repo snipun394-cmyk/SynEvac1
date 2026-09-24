@@ -1,0 +1,723 @@
+{
+  "audit": "ai_learning_full_dataset_audit_v1",
+  "passed": true,
+  "counts": {
+    "rows": 5524324,
+    "T90_reached_rows": 319158,
+    "no_hazard_rows": 601364
+  },
+  "violations": {},
+  "pre_decision_unmet_excluded": {
+    "states_checked": 12994,
+    "exact": 12994
+  },
+  "hazard_tick_log": "457592/457592",
+  "identical_start": "457592/457592",
+  "target_variation": {
+    "states_with_ge2_outcome_vectors": 13655,
+    "states_with_ge3_outcome_vectors": 12143,
+    "share_ge2": 0.7366,
+    "share_ge3": 0.655,
+    "tied_with_default_mean": 0.4627,
+    "classes_per_state_mean": 24.68
+  },
+  "g3_unrestricted_recheck": {
+    "n_states": 40,
+    "matches": 40,
+    "share": 1.0,
+    "mean_T100_regret": 0.0,
+    "max_T100_regret": 0.0,
+    "nonempty_zone_counts": {
+      "4": 40
+    },
+    "states": [
+      {
+        "state": "DIAG_EXTRAPOLATION-D0_sym-t_h=10|p=0.5-r0|t0",
+        "n_nonempty": 4,
+        "classes": 54,
+        "base2_best": [
+          11,
+          12,
+          48,
+          0
+        ],
+        "unrestricted_best": [
+          11,
+          12,
+          48,
+          0
+        ]
+      },
+      {
+        "state": "DIAG_EXTRAPOLATION-D0_sym-t_h=10|p=0.5-r1|t0",
+        "n_nonempty": 4,
+        "classes": 81,
+        "base2_best": [
+          11,
+          12,
+          48,
+          0
+        ],
+        "unrestricted_best": [
+          11,
+          12,
+          48,
+          0
+        ]
+      },
+      {
+        "state": "DIAG_EXTRAPOLATION-D0_sym-t_h=10|p=0.5-r2|t0",
+        "n_nonempty": 4,
+        "classes": 81,
+        "base2_best": [
+          11,
+          12,
+          48,
+          0
+        ],
+        "unrestricted_best": [
+          11,
+          12,
+          48,
+          0
+        ]
+      },
+      {
+        "state": "DIAG_EXTRAPOLATION-D0_sym-t_h=10|p=0.5-r3|t0",
+        "n_nonempty": 4,
+        "classes": 81,
+        "base2_best": [
+          11,
+          12,
+          48,
+          0
+        ],
+        "unrestricted_best": [
+          11,
+          12,
+          48,
+          0
+        ]
+      },
+      {
+        "state": "DIAG_EXTRAPOLATION-D0_sym-t_h=10|p=0.5-r4|t0",
+        "n_nonempty": 4,
+        "classes": 81,
+        "base2_best": [
+          11,
+          12,
+          48,
+          0
+        ],
+        "unrestricted_best": [
+          11,
+          12,
+          48,
+          0
+        ]
+      },
+      {
+        "state": "DIAG_EXTRAPOLATION-D0_sym-t_h=10|p=0.6-r0|t0",
+        "n_nonempty": 4,
+        "classes": 81,
+        "base2_best": [
+          11,
+          12,
+          48,
+          0
+        ],
+        "unrestricted_best": [
+          11,
+          12,
+          48,
+          0
+        ]
+      },
+      {
+        "state": "DIAG_EXTRAPOLATION-D0_sym-t_h=10|p=0.6-r1|t0",
+        "n_nonempty": 4,
+        "classes": 81,
+        "base2_best": [
+          11,
+          12,
+          48,
+          0
+        ],
+        "unrestricted_best": [
+          11,
+          12,
+          48,
+          0
+        ]
+      },
+      {
+        "state": "DIAG_EXTRAPOLATION-D0_sym-t_h=10|p=0.6-r2|t0",
+        "n_nonempty": 4,
+        "classes": 81,
+        "base2_best": [
+          11,
+          12,
+          48,
+          0
+        ],
+        "unrestricted_best": [
+          11,
+          12,
+          48,
+          0
+        ]
+      },
+      {
+        "state": "DIAG_EXTRAPOLATION-D0_sym-t_h=10|p=0.6-r3|t0",
+        "n_nonempty": 4,
+        "classes": 81,
+        "base2_best": [
+          11,
+          12,
+          48,
+          0
+        ],
+        "unrestricted_best": [
+          11,
+          12,
+          48,
+          0
+        ]
+      },
+      {
+        "state": "DIAG_EXTRAPOLATION-D0_sym-t_h=10|p=0.6-r4|t0",
+        "n_nonempty": 4,
+        "classes": 81,
+        "base2_best": [
+          11,
+          12,
+          48,
+          0
+        ],
+        "unrestricted_best": [
+          11,
+          12,
+          48,
+          0
+        ]
+      },
+      {
+        "state": "DIAG_EXTRAPOLATION-D0_sym-t_h=10|p=0.7-r0|t0",
+        "n_nonempty": 4,
+        "classes": 81,
+        "base2_best": [
+          11,
+          12,
+          48,
+          0
+        ],
+        "unrestricted_best": [
+          11,
+          12,
+          48,
+          0
+        ]
+      },
+      {
+        "state": "DIAG_EXTRAPOLATION-D0_sym-t_h=10|p=0.7-r1|t0",
+        "n_nonempty": 4,
+        "classes": 81,
+        "base2_best": [
+          11,
+          12,
+          48,
+          0
+        ],
+        "unrestricted_best": [
+          11,
+          12,
+          48,
+          0
+        ]
+      },
+      {
+        "state": "DIAG_EXTRAPOLATION-D0_sym-t_h=10|p=0.7-r2|t0",
+        "n_nonempty": 4,
+        "classes": 81,
+        "base2_best": [
+          11,
+          12,
+          48,
+          0
+        ],
+        "unrestricted_best": [
+          11,
+          12,
+          48,
+          0
+        ]
+      },
+      {
+        "state": "DIAG_EXTRAPOLATION-D0_sym-t_h=10|p=0.7-r3|t0",
+        "n_nonempty": 4,
+        "classes": 81,
+        "base2_best": [
+          11,
+          12,
+          48,
+          0
+        ],
+        "unrestricted_best": [
+          11,
+          12,
+          48,
+          0
+        ]
+      },
+      {
+        "state": "DIAG_EXTRAPOLATION-D0_sym-t_h=10|p=0.7-r4|t0",
+        "n_nonempty": 4,
+        "classes": 81,
+        "base2_best": [
+          11,
+          12,
+          48,
+          0
+        ],
+        "unrestricted_best": [
+          11,
+          12,
+          48,
+          0
+        ]
+      },
+      {
+        "state": "DIAG_EXTRAPOLATION-D0_sym-t_h=10|p=0.8-r0|t0",
+        "n_nonempty": 4,
+        "classes": 81,
+        "base2_best": [
+          11,
+          12,
+          48,
+          0
+        ],
+        "unrestricted_best": [
+          11,
+          12,
+          48,
+          0
+        ]
+      },
+      {
+        "state": "DIAG_EXTRAPOLATION-D0_sym-t_h=10|p=0.8-r1|t0",
+        "n_nonempty": 4,
+        "classes": 81,
+        "base2_best": [
+          11,
+          12,
+          48,
+          0
+        ],
+        "unrestricted_best": [
+          11,
+          12,
+          48,
+          0
+        ]
+      },
+      {
+        "state": "DIAG_EXTRAPOLATION-D0_sym-t_h=10|p=0.8-r2|t0",
+        "n_nonempty": 4,
+        "classes": 81,
+        "base2_best": [
+          11,
+          12,
+          48,
+          0
+        ],
+        "unrestricted_best": [
+          11,
+          12,
+          48,
+          0
+        ]
+      },
+      {
+        "state": "DIAG_EXTRAPOLATION-D0_sym-t_h=10|p=0.8-r3|t0",
+        "n_nonempty": 4,
+        "classes": 81,
+        "base2_best": [
+          11,
+          12,
+          48,
+          0
+        ],
+        "unrestricted_best": [
+          11,
+          12,
+          48,
+          0
+        ]
+      },
+      {
+        "state": "DIAG_EXTRAPOLATION-D0_sym-t_h=10|p=0.8-r4|t0",
+        "n_nonempty": 4,
+        "classes": 81,
+        "base2_best": [
+          11,
+          12,
+          48,
+          0
+        ],
+        "unrestricted_best": [
+          11,
+          12,
+          48,
+          0
+        ]
+      },
+      {
+        "state": "DIAG_EXTRAPOLATION-D0_sym-t_h=10|p=0.85-r0|t0",
+        "n_nonempty": 4,
+        "classes": 54,
+        "base2_best": [
+          11,
+          12,
+          48,
+          0
+        ],
+        "unrestricted_best": [
+          11,
+          12,
+          48,
+          0
+        ]
+      },
+      {
+        "state": "DIAG_EXTRAPOLATION-D0_sym-t_h=10|p=0.85-r1|t0",
+        "n_nonempty": 4,
+        "classes": 81,
+        "base2_best": [
+          11,
+          12,
+          48,
+          0
+        ],
+        "unrestricted_best": [
+          11,
+          12,
+          48,
+          0
+        ]
+      },
+      {
+        "state": "DIAG_EXTRAPOLATION-D0_sym-t_h=10|p=0.85-r2|t0",
+        "n_nonempty": 4,
+        "classes": 81,
+        "base2_best": [
+          11,
+          12,
+          48,
+          0
+        ],
+        "unrestricted_best": [
+          11,
+          12,
+          48,
+          0
+        ]
+      },
+      {
+        "state": "DIAG_EXTRAPOLATION-D0_sym-t_h=10|p=0.85-r3|t0",
+        "n_nonempty": 4,
+        "classes": 81,
+        "base2_best": [
+          11,
+          12,
+          48,
+          0
+        ],
+        "unrestricted_best": [
+          11,
+          12,
+          48,
+          0
+        ]
+      },
+      {
+        "state": "DIAG_EXTRAPOLATION-D0_sym-t_h=10|p=0.85-r4|t0",
+        "n_nonempty": 4,
+        "classes": 81,
+        "base2_best": [
+          11,
+          12,
+          48,
+          0
+        ],
+        "unrestricted_best": [
+          11,
+          12,
+          48,
+          0
+        ]
+      },
+      {
+        "state": "DIAG_EXTRAPOLATION-D0_sym-t_h=10|p=0.9-r0|t0",
+        "n_nonempty": 4,
+        "classes": 81,
+        "base2_best": [
+          11,
+          12,
+          48,
+          0
+        ],
+        "unrestricted_best": [
+          11,
+          12,
+          48,
+          0
+        ]
+      },
+      {
+        "state": "DIAG_EXTRAPOLATION-D0_sym-t_h=10|p=0.9-r1|t0",
+        "n_nonempty": 4,
+        "classes": 81,
+        "base2_best": [
+          11,
+          12,
+          48,
+          0
+        ],
+        "unrestricted_best": [
+          11,
+          12,
+          48,
+          0
+        ]
+      },
+      {
+        "state": "DIAG_EXTRAPOLATION-D0_sym-t_h=10|p=0.9-r2|t0",
+        "n_nonempty": 4,
+        "classes": 81,
+        "base2_best": [
+          11,
+          12,
+          48,
+          0
+        ],
+        "unrestricted_best": [
+          11,
+          12,
+          48,
+          0
+        ]
+      },
+      {
+        "state": "DIAG_EXTRAPOLATION-D0_sym-t_h=10|p=0.9-r3|t0",
+        "n_nonempty": 4,
+        "classes": 81,
+        "base2_best": [
+          11,
+          12,
+          48,
+          0
+        ],
+        "unrestricted_best": [
+          11,
+          12,
+          48,
+          0
+        ]
+      },
+      {
+        "state": "DIAG_EXTRAPOLATION-D0_sym-t_h=10|p=0.9-r4|t0",
+        "n_nonempty": 4,
+        "classes": 81,
+        "base2_best": [
+          11,
+          12,
+          48,
+          0
+        ],
+        "unrestricted_best": [
+          11,
+          12,
+          48,
+          0
+        ]
+      },
+      {
+        "state": "DIAG_EXTRAPOLATION-D0_sym-t_h=10|p=0.95-r0|t0",
+        "n_nonempty": 4,
+        "classes": 81,
+        "base2_best": [
+          11,
+          12,
+          48,
+          0
+        ],
+        "unrestricted_best": [
+          11,
+          12,
+          48,
+          0
+        ]
+      },
+      {
+        "state": "DIAG_EXTRAPOLATION-D0_sym-t_h=10|p=0.95-r1|t0",
+        "n_nonempty": 4,
+        "classes": 81,
+        "base2_best": [
+          11,
+          12,
+          48,
+          0
+        ],
+        "unrestricted_best": [
+          11,
+          12,
+          48,
+          0
+        ]
+      },
+      {
+        "state": "DIAG_EXTRAPOLATION-D0_sym-t_h=10|p=0.95-r2|t0",
+        "n_nonempty": 4,
+        "classes": 81,
+        "base2_best": [
+          11,
+          12,
+          48,
+          0
+        ],
+        "unrestricted_best": [
+          11,
+          12,
+          48,
+          0
+        ]
+      },
+      {
+        "state": "DIAG_EXTRAPOLATION-D0_sym-t_h=10|p=0.95-r3|t0",
+        "n_nonempty": 4,
+        "classes": 81,
+        "base2_best": [
+          11,
+          12,
+          48,
+          0
+        ],
+        "unrestricted_best": [
+          11,
+          12,
+          48,
+          0
+        ]
+      },
+      {
+        "state": "DIAG_EXTRAPOLATION-D0_sym-t_h=10|p=0.95-r4|t0",
+        "n_nonempty": 4,
+        "classes": 81,
+        "base2_best": [
+          11,
+          12,
+          48,
+          0
+        ],
+        "unrestricted_best": [
+          11,
+          12,
+          48,
+          0
+        ]
+      },
+      {
+        "state": "DIAG_EXTRAPOLATION-D0_sym-t_h=3|p=0.95-r0|t0",
+        "n_nonempty": 4,
+        "classes": 81,
+        "base2_best": [
+          13,
+          13,
+          80,
+          9
+        ],
+        "unrestricted_best": [
+          13,
+          13,
+          80,
+          9
+        ]
+      },
+      {
+        "state": "DIAG_EXTRAPOLATION-D0_sym-t_h=3|p=0.95-r1|t0",
+        "n_nonempty": 4,
+        "classes": 81,
+        "base2_best": [
+          13,
+          14,
+          85,
+          8
+        ],
+        "unrestricted_best": [
+          13,
+          14,
+          85,
+          8
+        ]
+      },
+      {
+        "state": "DIAG_EXTRAPOLATION-D0_sym-t_h=3|p=0.95-r2|t0",
+        "n_nonempty": 4,
+        "classes": 81,
+        "base2_best": [
+          13,
+          14,
+          90,
+          8
+        ],
+        "unrestricted_best": [
+          13,
+          14,
+          90,
+          8
+        ]
+      },
+      {
+        "state": "DIAG_EXTRAPOLATION-D0_sym-t_h=3|p=0.95-r3|t0",
+        "n_nonempty": 4,
+        "classes": 81,
+        "base2_best": [
+          13,
+          14,
+          90,
+          7
+        ],
+        "unrestricted_best": [
+          13,
+          14,
+          90,
+          7
+        ]
+      },
+      {
+        "state": "DIAG_EXTRAPOLATION-D0_sym-t_h=3|p=0.95-r4|t0",
+        "n_nonempty": 4,
+        "classes": 81,
+        "base2_best": [
+          13,
+          14,
+          85,
+          8
+        ],
+        "unrestricted_best": [
+          13,
+          14,
+          85,
+          8
+        ]
+      }
+    ]
+  },
+  "g6": {
+    "post_onset_rows": 2662928,
+    "coverage": 0.9336,
+    "T100_irreducible_share": 0.0148,
+    "evaluable": true,
+    "passed": true
+  }
+}

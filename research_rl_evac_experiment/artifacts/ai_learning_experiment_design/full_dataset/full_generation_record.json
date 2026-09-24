@@ -1,0 +1,204 @@
+{
+  "marker": "ai_learning_full_generation_v1",
+  "status": "COMPLETE",
+  "phase": "PHASE 3 FULL DATASET",
+  "user_decisions": {
+    "seed_rule": {
+      "decision": "unique seed per trajectory (user decision after the pilot)",
+      "rule": "seed = role range start + running index within the role (as in the pilot; satisfies X7) -- TRAIN would use 100000-101799, beyond its documented 100000-100999 range",
+      "documented_deviation": "TRAIN seeds extend from the documented 100000-100999 to 100000-101799 to give 1,800 unique TRAIN seeds; non-overlap with every other role range, the PILOT range and the Test A range 125000-125999 is preserved and verified",
+      "no_seed_reused": true
+    },
+    "test_A": {
+      "decision": "separate later batch: the 5,544-trajectory main dataset only; no Test A trajectories here",
+      "reserved_range": "125000-125999 (untouched by this run)"
+    },
+    "unchanged": [
+      "Spec v2 files",
+      "BASE2_298",
+      "26 admissible features",
+      "target definitions (D1)",
+      "label-free continuation",
+      "split structure",
+      "G1-G7 / X1-X10 thresholds and definitions"
+    ]
+  },
+  "criteria_application_declared_before_generation": {
+    "G1_G6_X1_X10": "applied with identical definitions and thresholds to all 5,544 trajectories",
+    "G7": "the only pilot-specific constant: 'every pilot cell has 2 complete trajectories' is evaluated as 'every allocated (role, template, t_h, p) cell has its frozen number of complete trajectories' (dataset_design.json)",
+    "X7_association": "evaluated LITERALLY over all 5,544 trajectories (template vs t_h and template vs p, Cramer's V must be 0). Known from the frozen allocation alone, before generation: V = 0.0399 (t_h) and 0.0477 (p) because the two zero-shot templates get 3 trajectories per non-buffer cell while the six main templates are role-weighted; over the six main templates V = 0. Reported, not redefined.",
+    "quantiles": "Spec v2 stores exact per-rollout targets; conditional quantiles are model outputs defined for training, not stored targets, so no quantile columns are generated"
+  },
+  "spec_v2_hashes_verified": {
+    "FINAL_EXPERIMENT_SPECIFICATION.md": "3c0078aaab8b79971d7bd0a4ab485d7b0dc4081af3f7412920490f4acda4e6c5",
+    "candidate_action_set.json": "78dee3c225735b4ee78c108eeb0e3aa72627a9da8410055182ed9c64e4ca7e3c",
+    "target_definitions.json": "58470bd589dfbebc865e01d82d7e8a394274d390a8d4b8ed5c54b99711eaae5a",
+    "final_feature_manifest.json": "67f54855bd58207df2e929d7c6f7f50753b77fa05cb29dfc49977989c1f21910",
+    "scenario_space.json": "472066595635be487a9f592ca770dd96beb2312bc62bfa31ece0457c28af3ae3",
+    "dataset_design.json": "4eb14cc48a86947def844f5c5e25567e536f59ee71bd75bad3d1208619d395f1",
+    "diversity_requirements.json": "a0bd57866b25da7c5f225c1633e6fdf518b3d95b6f96b431867e25abcf2d9052",
+    "split_specification.json": "f611493374a0a18527e12a105a0dbb429a4ef4689c2e3f2a6c3175d8eb7cd68a",
+    "selector_design.json": "8a41c7777458d8363f4343981b08555207d2f95dfa32327c0b9fa55562de9c48",
+    "closed_loop_evaluation.json": "a81de9f7de6a5e424be11c7394034c2219e0c0a71b9179c502fc68e3862c9bc1",
+    "preregistered_success_criteria.json": "3ec6fdb6dfe107d35809a5dc3508d1cf2e257ede5218990321a1f342863107f2"
+  },
+  "allocation": {
+    "TRAIN": 1800,
+    "VALIDATION": 540,
+    "TEST_PRIMARY_JOINT": 960,
+    "TEST_HELDOUT_TIMING": 540,
+    "TEST_HELDOUT_COMPLIANCE": 900,
+    "DIAG_EXTRAPOLATION": 450,
+    "DIAG_TEMPLATE_ZERO_SHOT": 354
+  },
+  "n_trajectories_planned": 5544,
+  "seed_report": {
+    "per_role": {
+      "TRAIN": {
+        "n": 1800,
+        "min": 100000,
+        "max": 101799,
+        "inside_documented_range": false,
+        "unique_seeds": true,
+        "max_trajectories_sharing_key_and_seed": 1
+      },
+      "VALIDATION": {
+        "n": 540,
+        "min": 110000,
+        "max": 110539,
+        "inside_documented_range": true,
+        "unique_seeds": true,
+        "max_trajectories_sharing_key_and_seed": 1
+      },
+      "TEST_PRIMARY_JOINT": {
+        "n": 960,
+        "min": 120000,
+        "max": 120959,
+        "inside_documented_range": true,
+        "unique_seeds": true,
+        "max_trajectories_sharing_key_and_seed": 1
+      },
+      "TEST_HELDOUT_TIMING": {
+        "n": 540,
+        "min": 130000,
+        "max": 130539,
+        "inside_documented_range": true,
+        "unique_seeds": true,
+        "max_trajectories_sharing_key_and_seed": 1
+      },
+      "TEST_HELDOUT_COMPLIANCE": {
+        "n": 900,
+        "min": 140000,
+        "max": 140899,
+        "inside_documented_range": true,
+        "unique_seeds": true,
+        "max_trajectories_sharing_key_and_seed": 1
+      },
+      "DIAG_EXTRAPOLATION": {
+        "n": 450,
+        "min": 150000,
+        "max": 150449,
+        "inside_documented_range": true,
+        "unique_seeds": true,
+        "max_trajectories_sharing_key_and_seed": 1
+      },
+      "DIAG_TEMPLATE_ZERO_SHOT": {
+        "n": 354,
+        "min": 160000,
+        "max": 160353,
+        "inside_documented_range": true,
+        "unique_seeds": true,
+        "max_trajectories_sharing_key_and_seed": 1
+      }
+    },
+    "cross_role_seed_overlap": {}
+  },
+  "started": "2026-09-24T18:08:41",
+  "rows_file": "full_ai_learning_rows.csv.gz",
+  "rows_uncompressed_sha256": "ce8e1fe4b3dab22b5e0c10c6a0340852d9dd649b0c3e765a78dc9f67ac109c26",
+  "rows_file_sha256": "36aa757f6f2414713d7f5625f562298df2e72baf97a61969a69c0e3ecb967179",
+  "header": [
+    "trajectory_id",
+    "split_role",
+    "template",
+    "distribution",
+    "cell",
+    "t_h",
+    "p",
+    "seed",
+    "replicate",
+    "compliance_key",
+    "epsilon",
+    "decision_tick",
+    "pre_decision_action_history",
+    "pre_decision_perturbed",
+    "pre_decision_unmet",
+    "state_fingerprint",
+    "n_nonempty_eligible_zones",
+    "hazard_started",
+    "waiting_R1",
+    "waiting_R2",
+    "waiting_C1",
+    "waiting_R3",
+    "waiting_R4",
+    "waiting_C2",
+    "waiting_CE1",
+    "waiting_CE2",
+    "in_transit_R1_C1",
+    "in_transit_R2_C1",
+    "in_transit_C1_H_1tick",
+    "in_transit_C1_H_2tick",
+    "in_transit_R3_C2",
+    "in_transit_R4_C2",
+    "in_transit_C2_H_1tick",
+    "in_transit_C2_H_2tick",
+    "in_transit_H_CE1_1tick",
+    "in_transit_H_CE1_2tick",
+    "in_transit_H_CE2_1tick",
+    "in_transit_H_CE2_2tick",
+    "in_transit_CE1_EXITA",
+    "in_transit_CE2_EXITB",
+    "residual_cap_H_CE1_normalized",
+    "normalized_time",
+    "normalized_remaining",
+    "waiting_H_total",
+    "candidate_id",
+    "candidate_name",
+    "equivalence_class",
+    "is_default_candidate",
+    "default_action",
+    "future_T90",
+    "T90_reached_before_decision",
+    "future_T100",
+    "T100_censored",
+    "future_unmet",
+    "future_hazard_unmet",
+    "T90_abs",
+    "T100_abs",
+    "continuation_policy",
+    "continuation_hash",
+    "spec_version",
+    "spec_dataset_design_sha256",
+    "seed_rule"
+  ],
+  "n_columns": 62,
+  "n_trajectories": 5544,
+  "n_decision_states": 18538,
+  "n_rows": 5524324,
+  "generation_checks": {
+    "n_classes": 457592,
+    "same_start": 457592,
+    "hazard_tick_log": 457592
+  },
+  "continuation_calls": {
+    "calls": 979785,
+    "input_len_26": 979785
+  },
+  "provenance": {
+    "policy_id": "SYMMETRIC_SPLIT_DEADBAND_margin0",
+    "policy_hash": "2614f9af3d4a43e61b008e863b51212acb4b50d64a859e223253758785066f85",
+    "dataset_design_sha256": "4eb14cc48a86947def844f5c5e25567e536f59ee71bd75bad3d1208619d395f1"
+  },
+  "seconds": 511.3,
+  "finished": "2026-09-24T18:17:13"
+}

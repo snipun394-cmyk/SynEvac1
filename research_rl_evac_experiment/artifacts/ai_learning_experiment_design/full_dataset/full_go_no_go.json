@@ -1,0 +1,165 @@
+{
+  "audit": "ai_learning_full_dataset_audit_v1",
+  "criteria_source": "diversity_requirements.json (spec v2), unchanged",
+  "application_declared_before_generation": {
+    "G1_G6_X1_X10": "applied with identical definitions and thresholds to all 5,544 trajectories",
+    "G7": "the only pilot-specific constant: 'every pilot cell has 2 complete trajectories' is evaluated as 'every allocated (role, template, t_h, p) cell has its frozen number of complete trajectories' (dataset_design.json)",
+    "X7_association": "evaluated LITERALLY over all 5,544 trajectories (template vs t_h and template vs p, Cramer's V must be 0). Known from the frozen allocation alone, before generation: V = 0.0399 (t_h) and 0.0477 (p) because the two zero-shot templates get 3 trajectories per non-buffer cell while the six main templates are role-weighted; over the six main templates V = 0. Reported, not redefined.",
+    "quantiles": "Spec v2 stores exact per-rollout targets; conditional quantiles are model outputs defined for training, not stored targets, so no quantile columns are generated"
+  },
+  "results": {
+    "G1": {
+      "passed": false,
+      "value": {
+        "share": 0.1838,
+        "min_unique_per_template": 118
+      }
+    },
+    "G2": {
+      "passed": true,
+      "value": 0.655
+    },
+    "G3": {
+      "passed": true,
+      "value": {
+        "share": 1.0,
+        "mean_T100_regret": 0.0,
+        "nonempty": {
+          "4": 40
+        }
+      }
+    },
+    "G4": {
+      "passed": true,
+      "value": {
+        "identical_rows": true,
+        "hazard_tick_log": "457592/457592"
+      }
+    },
+    "G5": {
+      "passed": true,
+      "value": "see full_leakage_audit.json"
+    },
+    "G6": {
+      "passed": true,
+      "value": {
+        "share": 0.0148,
+        "coverage": 0.9336
+      }
+    },
+    "G7": {
+      "passed": true,
+      "value": {
+        "cells": 472,
+        "trajectories": 5544
+      }
+    },
+    "X1": {
+      "passed": true,
+      "value": {
+        "states_checked": 12994,
+        "exact": 12994
+      }
+    },
+    "X2": {
+      "passed": true,
+      "value": "= G5"
+    },
+    "X3": {
+      "passed": true,
+      "value": "457592/457592"
+    },
+    "X4": {
+      "passed": true,
+      "value": {
+        "primary_trajectories": 960,
+        "held_out": {
+          "primary_trajectories": 960,
+          "primary_t_h_values": [
+            "4",
+            "8"
+          ],
+          "primary_p_values": [
+            0.6,
+            0.85
+          ],
+          "primary_t_h_absent_from_train": true,
+          "primary_p_absent_from_train": true,
+          "zero_shot_templates_only_in_zero_shot_role": true,
+          "compliance_keys_role_specific": true,
+          "trajectory_in_exactly_one_role": true
+        },
+        "overlaps": []
+      }
+    },
+    "X5": {
+      "passed": false,
+      "value": {
+        "unique_inputs": 1389,
+        "distinct_share": 0.0749,
+        "pairs": 413922
+      }
+    },
+    "X6": {
+      "passed": true,
+      "value": "= G2"
+    },
+    "X7": {
+      "passed": false,
+      "value": {
+        "association_all_trajectories": {
+          "template_vs_t_h": 0.0399,
+          "template_vs_p": 0.0477
+        },
+        "association_six_main_templates": {
+          "template_vs_t_h": 0.0,
+          "template_vs_p": 0.0
+        },
+        "seeds_unique": true,
+        "perturbation_rate": 0.5145,
+        "censored_rows": 0
+      }
+    },
+    "X8": {
+      "passed": true,
+      "value": "= X1 decomposition"
+    },
+    "X9": {
+      "passed": true,
+      "value": {
+        "default_equals_rule": 18538,
+        "default_equals_closed_form": 18538,
+        "label_map_checked": 112995,
+        "fast_label_map_equals_apply": 112995,
+        "default_states_checked": 4635,
+        "default_candidate_equals_global_apply": 4635
+      }
+    },
+    "X10": {
+      "passed": true,
+      "value": {
+        "booby_trap": true,
+        "tokens": {
+          "run_ai_learning_full_dataset.py": [],
+          "run_ai_learning_pilot.py": [],
+          "ai_learning_label_free_default.py": []
+        }
+      }
+    }
+  },
+  "failed": [
+    "G1",
+    "X5",
+    "X7"
+  ],
+  "decision": "FULL DATASET NO-GO",
+  "deviations_from_spec_v2": [
+    "TRAIN seeds extend from the documented 100000-100999 to 100000-101799 to give 1,800 unique TRAIN seeds; non-overlap with every other role range, the PILOT range and the Test A range 125000-125999 is preserved and verified"
+  ],
+  "not_done": [
+    "no model trained",
+    "no selector",
+    "no closed-loop evaluation",
+    "no Test A batch"
+  ]
+}

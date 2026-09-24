@@ -1,0 +1,46 @@
+{
+  "audit": "ai_learning_full_dataset_audit_v1",
+  "label_free_passed": true,
+  "semantics_passed": true,
+  "row_provenance_values": [
+    [
+      "SYMMETRIC_SPLIT_DEADBAND_margin0",
+      "2614f9af3d4a43e61b008e863b51212acb4b50d64a859e223253758785066f85",
+      "v2",
+      "unique_per_trajectory",
+      5524324
+    ]
+  ],
+  "expected": [
+    "SYMMETRIC_SPLIT_DEADBAND_margin0",
+    "2614f9af3d4a43e61b008e863b51212acb4b50d64a859e223253758785066f85",
+    "v2",
+    "unique_per_trajectory"
+  ],
+  "forbidden_tokens_in_generation_source": {
+    "run_ai_learning_full_dataset.py": [],
+    "run_ai_learning_pilot.py": [],
+    "ai_learning_label_free_default.py": []
+  },
+  "continuation_calls_generation": {
+    "calls": 979785,
+    "input_len_26": 979785
+  },
+  "regeneration": {
+    "completed_with_hidden_heuristic_disabled": true,
+    "regenerated_sha256": "ce8e1fe4b3dab22b5e0c10c6a0340852d9dd649b0c3e765a78dc9f67ac109c26",
+    "recorded_sha256": "ce8e1fe4b3dab22b5e0c10c6a0340852d9dd649b0c3e765a78dc9f67ac109c26",
+    "identical_rows": true,
+    "checks": {
+      "n_classes": 457592,
+      "same_start": 457592,
+      "hazard_tick_log": 457592
+    },
+    "continuation_calls": {
+      "calls": 979785,
+      "input_len_26": 979785
+    },
+    "seconds": 471.5
+  },
+  "hidden_heuristic_reference_arm_in_dataset": false
+}

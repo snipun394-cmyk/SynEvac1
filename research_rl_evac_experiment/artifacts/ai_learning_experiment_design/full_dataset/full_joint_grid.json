@@ -1,0 +1,258 @@
+{
+  "audit": "ai_learning_full_dataset_audit_v1",
+  "n_trajectories_expected": 5544,
+  "n_trajectories_present": 5544,
+  "missing_trajectories": [],
+  "allocation_by_role": {
+    "TRAIN": 1800,
+    "VALIDATION": 540,
+    "TEST_PRIMARY_JOINT": 960,
+    "TEST_HELDOUT_TIMING": 540,
+    "TEST_HELDOUT_COMPLIANCE": 900,
+    "DIAG_EXTRAPOLATION": 450,
+    "DIAG_TEMPLATE_ZERO_SHOT": 354
+  },
+  "all_cells_complete": true,
+  "n_cells": 472,
+  "timing_x_compliance_by_role": {
+    "TRAIN": {
+      "t_h=3|p=0.5": 120,
+      "t_h=3|p=0.7": 120,
+      "t_h=3|p=0.9": 120,
+      "t_h=5|p=0.5": 120,
+      "t_h=5|p=0.7": 120,
+      "t_h=5|p=0.9": 120,
+      "t_h=7|p=0.5": 120,
+      "t_h=7|p=0.7": 120,
+      "t_h=7|p=0.9": 120,
+      "t_h=9|p=0.5": 120,
+      "t_h=9|p=0.7": 120,
+      "t_h=9|p=0.9": 120,
+      "t_h=none|p=0.5": 120,
+      "t_h=none|p=0.7": 120,
+      "t_h=none|p=0.9": 120
+    },
+    "VALIDATION": {
+      "t_h=3|p=0.8": 60,
+      "t_h=5|p=0.8": 60,
+      "t_h=6|p=0.5": 60,
+      "t_h=6|p=0.7": 60,
+      "t_h=6|p=0.8": 60,
+      "t_h=6|p=0.9": 60,
+      "t_h=7|p=0.8": 60,
+      "t_h=9|p=0.8": 60,
+      "t_h=none|p=0.8": 60
+    },
+    "TEST_PRIMARY_JOINT": {
+      "t_h=4|p=0.6": 240,
+      "t_h=4|p=0.85": 240,
+      "t_h=8|p=0.6": 240,
+      "t_h=8|p=0.85": 240
+    },
+    "TEST_HELDOUT_TIMING": {
+      "t_h=4|p=0.5": 90,
+      "t_h=4|p=0.7": 90,
+      "t_h=4|p=0.9": 90,
+      "t_h=8|p=0.5": 90,
+      "t_h=8|p=0.7": 90,
+      "t_h=8|p=0.9": 90
+    },
+    "TEST_HELDOUT_COMPLIANCE": {
+      "t_h=3|p=0.6": 90,
+      "t_h=3|p=0.85": 90,
+      "t_h=5|p=0.6": 90,
+      "t_h=5|p=0.85": 90,
+      "t_h=7|p=0.6": 90,
+      "t_h=7|p=0.85": 90,
+      "t_h=9|p=0.6": 90,
+      "t_h=9|p=0.85": 90,
+      "t_h=none|p=0.6": 90,
+      "t_h=none|p=0.85": 90
+    },
+    "DIAG_EXTRAPOLATION": {
+      "t_h=10|p=0.5": 30,
+      "t_h=10|p=0.6": 30,
+      "t_h=10|p=0.7": 30,
+      "t_h=10|p=0.8": 30,
+      "t_h=10|p=0.85": 30,
+      "t_h=10|p=0.9": 30,
+      "t_h=10|p=0.95": 30,
+      "t_h=3|p=0.95": 30,
+      "t_h=4|p=0.95": 30,
+      "t_h=5|p=0.95": 30,
+      "t_h=6|p=0.95": 30,
+      "t_h=7|p=0.95": 30,
+      "t_h=8|p=0.95": 30,
+      "t_h=9|p=0.95": 30,
+      "t_h=none|p=0.95": 30
+    },
+    "DIAG_TEMPLATE_ZERO_SHOT": {
+      "t_h=10|p=0.5": 6,
+      "t_h=10|p=0.6": 6,
+      "t_h=10|p=0.7": 6,
+      "t_h=10|p=0.8": 6,
+      "t_h=10|p=0.85": 6,
+      "t_h=10|p=0.9": 6,
+      "t_h=10|p=0.95": 6,
+      "t_h=3|p=0.5": 6,
+      "t_h=3|p=0.6": 6,
+      "t_h=3|p=0.7": 6,
+      "t_h=3|p=0.8": 6,
+      "t_h=3|p=0.85": 6,
+      "t_h=3|p=0.9": 6,
+      "t_h=3|p=0.95": 6,
+      "t_h=4|p=0.5": 6,
+      "t_h=4|p=0.6": 6,
+      "t_h=4|p=0.7": 6,
+      "t_h=4|p=0.85": 6,
+      "t_h=4|p=0.9": 6,
+      "t_h=4|p=0.95": 6,
+      "t_h=5|p=0.5": 6,
+      "t_h=5|p=0.6": 6,
+      "t_h=5|p=0.7": 6,
+      "t_h=5|p=0.8": 6,
+      "t_h=5|p=0.85": 6,
+      "t_h=5|p=0.9": 6,
+      "t_h=5|p=0.95": 6,
+      "t_h=6|p=0.5": 6,
+      "t_h=6|p=0.7": 6,
+      "t_h=6|p=0.8": 6,
+      "t_h=6|p=0.9": 6,
+      "t_h=6|p=0.95": 6,
+      "t_h=7|p=0.5": 6,
+      "t_h=7|p=0.6": 6,
+      "t_h=7|p=0.7": 6,
+      "t_h=7|p=0.8": 6,
+      "t_h=7|p=0.85": 6,
+      "t_h=7|p=0.9": 6,
+      "t_h=7|p=0.95": 6,
+      "t_h=8|p=0.5": 6,
+      "t_h=8|p=0.6": 6,
+      "t_h=8|p=0.7": 6,
+      "t_h=8|p=0.85": 6,
+      "t_h=8|p=0.9": 6,
+      "t_h=8|p=0.95": 6,
+      "t_h=9|p=0.5": 6,
+      "t_h=9|p=0.6": 6,
+      "t_h=9|p=0.7": 6,
+      "t_h=9|p=0.8": 6,
+      "t_h=9|p=0.85": 6,
+      "t_h=9|p=0.9": 6,
+      "t_h=9|p=0.95": 6,
+      "t_h=none|p=0.5": 6,
+      "t_h=none|p=0.6": 6,
+      "t_h=none|p=0.7": 6,
+      "t_h=none|p=0.8": 6,
+      "t_h=none|p=0.85": 6,
+      "t_h=none|p=0.9": 6,
+      "t_h=none|p=0.95": 6
+    }
+  },
+  "seeds": {
+    "n": 5544,
+    "unique": 5544,
+    "all_unique": true,
+    "by_role": {
+      "TRAIN": {
+        "n": 1800,
+        "min": 100000,
+        "max": 101799,
+        "inside_effective_range": true
+      },
+      "VALIDATION": {
+        "n": 540,
+        "min": 110000,
+        "max": 110539,
+        "inside_effective_range": true
+      },
+      "TEST_PRIMARY_JOINT": {
+        "n": 960,
+        "min": 120000,
+        "max": 120959,
+        "inside_effective_range": true
+      },
+      "TEST_HELDOUT_TIMING": {
+        "n": 540,
+        "min": 130000,
+        "max": 130539,
+        "inside_effective_range": true
+      },
+      "TEST_HELDOUT_COMPLIANCE": {
+        "n": 900,
+        "min": 140000,
+        "max": 140899,
+        "inside_effective_range": true
+      },
+      "DIAG_EXTRAPOLATION": {
+        "n": 450,
+        "min": 150000,
+        "max": 150449,
+        "inside_effective_range": true
+      },
+      "DIAG_TEMPLATE_ZERO_SHOT": {
+        "n": 354,
+        "min": 160000,
+        "max": 160353,
+        "inside_effective_range": true
+      }
+    },
+    "effective_ranges": {
+      "TRAIN": "100000-101799",
+      "VALIDATION": "110000-110999",
+      "TEST_PRIMARY_JOINT": "120000-120999",
+      "TEST_HELDOUT_TIMING": "130000-130999",
+      "TEST_HELDOUT_COMPLIANCE": "140000-140999",
+      "DIAG_EXTRAPOLATION": "150000-150999",
+      "DIAG_TEMPLATE_ZERO_SHOT": "160000-160999",
+      "PILOT": "190000-190999",
+      "TEST_A_RESERVED": "125000-125999"
+    },
+    "documented_TRAIN_range": "100000-100999",
+    "range_overlaps": [],
+    "pilot_seeds_reused": false,
+    "test_A_range_untouched": true
+  },
+  "held_out": {
+    "primary_trajectories": 960,
+    "primary_t_h_values": [
+      "4",
+      "8"
+    ],
+    "primary_p_values": [
+      0.6,
+      0.85
+    ],
+    "primary_t_h_absent_from_train": true,
+    "primary_p_absent_from_train": true,
+    "zero_shot_templates_only_in_zero_shot_role": true,
+    "compliance_keys_role_specific": true,
+    "trajectory_in_exactly_one_role": true
+  },
+  "association": {
+    "all_trajectories": {
+      "template_vs_t_h": 0.0399,
+      "template_vs_p": 0.0477
+    },
+    "six_main_templates": {
+      "template_vs_t_h": 0.0,
+      "template_vs_p": 0.0
+    },
+    "every_template_has_every_t_h_and_p_level": true
+  },
+  "primary_test_constructible_design": {
+    "n_primary_joint_cells": 4,
+    "primary_cells": [
+      "t_h=4|p=0.6",
+      "t_h=4|p=0.85",
+      "t_h=8|p=0.6",
+      "t_h=8|p=0.85"
+    ],
+    "test_t_h_disjoint_from_train": true,
+    "test_p_disjoint_from_train": true,
+    "every_template_crosses_every_level": true,
+    "seed_ranges_disjoint": true,
+    "seed_range_overlaps": [],
+    "compliance_keys_role_specific": true,
+    "passed": true
+  }
+}

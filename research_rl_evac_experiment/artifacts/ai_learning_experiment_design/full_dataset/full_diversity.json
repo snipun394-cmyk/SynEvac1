@@ -1,0 +1,137 @@
+{
+  "audit": "ai_learning_full_dataset_audit_v1",
+  "n_trajectories": 5544,
+  "n_decision_states": 18538,
+  "n_candidate_rows": 5524324,
+  "n_unique_feature_vectors": 1389,
+  "distinct_share": 0.0749,
+  "n_unique_state_candidate_pairs": 413922,
+  "unique_pairs_note": "every state carries all 298 candidates, so unique (input, candidate) pairs = unique inputs x 298",
+  "unique_states_by_tick": {
+    "0": {
+      "states": 5544,
+      "unique": 8
+    },
+    "5": {
+      "states": 5544,
+      "unique": 12
+    },
+    "10": {
+      "states": 5544,
+      "unique": 1234
+    },
+    "15": {
+      "states": 1833,
+      "unique": 122
+    },
+    "20": {
+      "states": 73,
+      "unique": 13
+    }
+  },
+  "unique_states_by_template": {
+    "D0_sym": 291,
+    "D1_east_heavy": 362,
+    "D2_west_heavy": 353,
+    "D3_first_room_heavy": 323,
+    "D4_second_room_heavy": 292,
+    "D5_R1_concentrated": 406,
+    "Z1_R4_concentrated": 121,
+    "Z2_mixed": 124
+  },
+  "unique_states_by_role": {
+    "DIAG_EXTRAPOLATION": 251,
+    "DIAG_TEMPLATE_ZERO_SHOT": 228,
+    "TEST_HELDOUT_COMPLIANCE": 455,
+    "TEST_HELDOUT_TIMING": 260,
+    "TEST_PRIMARY_JOINT": 399,
+    "TRAIN": 702,
+    "VALIDATION": 323
+  },
+  "tick_ge_10": {
+    "states": 7450,
+    "unique": 1369,
+    "share": 0.1838,
+    "unique_by_template": {
+      "D0_sym": 288,
+      "D1_east_heavy": 359,
+      "D2_west_heavy": 350,
+      "D3_first_room_heavy": 320,
+      "D4_second_room_heavy": 289,
+      "D5_R1_concentrated": 403,
+      "Z1_R4_concentrated": 118,
+      "Z2_mixed": 121
+    }
+  },
+  "repeated_state_fraction": 0.9251,
+  "repeated_trajectory_fraction": 0.6863,
+  "feature_entropy_bits": {
+    "waiting_R1": 1.4929,
+    "waiting_R2": 1.359,
+    "waiting_C1": 0.5408,
+    "waiting_R3": 1.359,
+    "waiting_R4": 1.4102,
+    "waiting_C2": 0.3492,
+    "waiting_CE1": 1.4955,
+    "waiting_CE2": 1.403,
+    "in_transit_R1_C1": 0.272,
+    "in_transit_R2_C1": -0.0,
+    "in_transit_C1_H_1tick": 1.3274,
+    "in_transit_C1_H_2tick": 1.1407,
+    "in_transit_R3_C2": -0.0,
+    "in_transit_R4_C2": 0.0778,
+    "in_transit_C2_H_1tick": 1.3537,
+    "in_transit_C2_H_2tick": 1.0412,
+    "in_transit_H_CE1_1tick": 1.1639,
+    "in_transit_H_CE1_2tick": 0.9659,
+    "in_transit_H_CE2_1tick": 1.3324,
+    "in_transit_H_CE2_2tick": 0.9169,
+    "in_transit_CE1_EXITA": 1.5396,
+    "in_transit_CE2_EXITB": 1.3325,
+    "residual_cap_H_CE1_normalized": 0.9991,
+    "normalized_time": 1.924,
+    "normalized_remaining": 2.3892,
+    "waiting_H_total": 2.2444
+  },
+  "mean_feature_entropy_bits": 1.1319,
+  "conditional_outcome_variance": {
+    "future_T90": {
+      "given_state": 0.0331,
+      "given_state_and_candidate": 0.0209
+    },
+    "future_T100": {
+      "given_state": 0.0399,
+      "given_state_and_candidate": 0.0254
+    },
+    "future_unmet": {
+      "given_state": 0.2071,
+      "given_state_and_candidate": 0.1413
+    },
+    "future_hazard_unmet": {
+      "given_state": 0.4828,
+      "given_state_and_candidate": 0.2547
+    }
+  },
+  "target_variation": {
+    "states_with_ge2_outcome_vectors": 13655,
+    "states_with_ge3_outcome_vectors": 12143,
+    "share_ge2": 0.7366,
+    "share_ge3": 0.655,
+    "tied_with_default_mean": 0.4627,
+    "classes_per_state_mean": 24.68
+  },
+  "old_dataset": {
+    "states": 450,
+    "distinct_inputs": 11,
+    "distinct_share": 0.0244,
+    "distinct_input_action_pairs": 140,
+    "mean_feature_entropy_bits": 0.8828,
+    "T100_irreducible_share_plain": 0.4599,
+    "note": "old = the 450-state differential-targeting dataset (hidden-heuristic continuation, old targets); distinct counts recomputed here by replay"
+  },
+  "pilot_reference": {
+    "unique_inputs": 183,
+    "distinct_share": 0.2299,
+    "pairs": 54534
+  }
+}

@@ -1,10 +1,9 @@
 """PHASE 3: full AI-learning dataset generator (frozen specification v2).
 
-NOT YET RUN FOR REAL. The frozen v2 specification does not fix a per-
-trajectory seed rule for the full dataset, and the two possible readings
-conflict with other frozen items (see SEED_RULES). The rule must therefore
-be passed explicitly (`--seed-rule`); there is no default. Without it the
-script refuses to generate.
+The frozen v2 specification did not fix a per-trajectory seed rule for the
+full dataset; the user decided it after the pilot: unique seed per
+trajectory (USER_DECISIONS). The rule is still passed explicitly
+(`--seed-rule`), and only the approved rule may write the dataset.
 
 Everything else is read from the frozen v2 files, whose hashes are verified
 against spec_version_record.json before anything is generated (mismatch =
@@ -246,6 +245,90 @@ def generate(seed_rule: str, limit_per_role: int | None = None, sink=None) -> di
                 provenance=prov, seed_rule=seed_rule)
 
 
+GENERATION_RECORD = "full_generation_record.json"
+APPROVED_SEED_RULE = "unique_per_trajectory"
+
+USER_DECISIONS = dict(
+    seed_rule=dict(
+        decision="unique seed per trajectory (user decision after the pilot)",
+        rule=SEED_RULES["unique_per_trajectory"],
+        documented_deviation="TRAIN seeds extend from the documented 100000-100999 to 100000-101799 to give 1,800 "
+                             "unique TRAIN seeds; non-overlap with every other role range, the PILOT range and the "
+                             "Test A range 125000-125999 is preserved and verified",
+        no_seed_reused=True),
+    test_A=dict(decision="separate later batch: the 5,544-trajectory main dataset only; no Test A trajectories here",
+                reserved_range="125000-125999 (untouched by this run)"),
+    unchanged=["Spec v2 files", "BASE2_298", "26 admissible features", "target definitions (D1)",
+               "label-free continuation", "split structure", "G1-G7 / X1-X10 thresholds and definitions"],
+)
+
+# Declared BEFORE generation (no full-dataset data exists when this is written).
+CRITERIA_APPLICATION = dict(
+    G1_G6_X1_X10="applied with identical definitions and thresholds to all 5,544 trajectories",
+    G7="the only pilot-specific constant: 'every pilot cell has 2 complete trajectories' is evaluated as 'every "
+       "allocated (role, template, t_h, p) cell has its frozen number of complete trajectories' (dataset_design.json)",
+    X7_association="evaluated LITERALLY over all 5,544 trajectories (template vs t_h and template vs p, Cramer's V "
+                   "must be 0). Known from the frozen allocation alone, before generation: V = 0.0399 (t_h) and "
+                   "0.0477 (p) because the two zero-shot templates get 3 trajectories per non-buffer cell while the "
+                   "six main templates are role-weighted; over the six main templates V = 0. Reported, not redefined.",
+    quantiles="Spec v2 stores exact per-rollout targets; conditional quantiles are model outputs defined for "
+              "training, not stored targets, so no quantile columns are generated",
+)
+
+
+def write_full(seed_rule: str) -> dict:
+    if seed_rule != APPROVED_SEED_RULE:
+        raise InvariantError(f"only the approved seed rule {APPROVED_SEED_RULE!r} may write the full dataset")
+    os.makedirs(FULL_DIR, exist_ok=True)
+    rows_path = os.path.join(FULL_DIR, ROWS_FILE)
+    rec_path = os.path.join(FULL_DIR, GENERATION_RECORD)
+    if os.path.exists(rows_path):
+        raise FileExistsError(f"{rows_path} exists; the full dataset is generated once")
+    spec_hashes = verify_spec_v2()
+    trajs = full_trajectories(seed_rule)
+    pre = dict(marker="ai_learning_full_generation_v1", status="STARTED", phase="PHASE 3 FULL DATASET",
+               user_decisions=USER_DECISIONS, criteria_application_declared_before_generation=CRITERIA_APPLICATION,
+               spec_v2_hashes_verified=spec_hashes, allocation=dict(Counter(t["split_role"] for t in trajs)),
+               n_trajectories_planned=len(trajs), seed_report=seed_rule_report(trajs),
+               started=time.strftime("%Y-%m-%dT%H:%M:%S"))
+    with open(rec_path, "w", encoding="utf-8") as f:
+        json.dump(pre, f, indent=2, default=paths._json_default)
+    sha = hashlib.sha256()
+    gz = gzip.GzipFile(rows_path, "wb", mtime=0)
+    try:
+        def emit(text: str):
+            b = text.encode("utf-8")
+            sha.update(b)
+            gz.write(b)
+        buf = io.StringIO()
+        csv.writer(buf, lineterminator="\n").writerow(HEADER)
+        emit(buf.getvalue())
+
+        def sink(rows):
+            b = io.StringIO()
+            w = csv.writer(b, lineterminator="\n")
+            for r in rows:
+                w.writerow(r)
+            emit(b.getvalue())
+        try:
+            res = generate(seed_rule, sink=sink)
+        except Exception as e:
+            pre.update(status="STOPPED ON INVARIANT FAILURE", error=f"{type(e).__name__}: {e}")
+            with open(rec_path, "w", encoding="utf-8") as f:
+                json.dump(pre, f, indent=2, default=paths._json_default)
+            raise
+    finally:
+        gz.close()
+    pre.update(status="COMPLETE", rows_file=ROWS_FILE, rows_uncompressed_sha256=sha.hexdigest(),
+               rows_file_sha256=paths.sha256_file(rows_path), header=HEADER, n_columns=len(HEADER),
+               n_trajectories=res["n_trajectories"], n_decision_states=res["n_states"], n_rows=res["n_rows"],
+               generation_checks=res["checks"], continuation_calls=res["continuation_calls"],
+               provenance=res["provenance"], seconds=res["seconds"], finished=time.strftime("%Y-%m-%dT%H:%M:%S"))
+    with open(rec_path, "w", encoding="utf-8") as f:
+        json.dump(pre, f, indent=2, default=paths._json_default)
+    return pre
+
+
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--seed-rule", required=True, choices=sorted(SEED_RULES))
@@ -256,4 +339,6 @@ if __name__ == "__main__":
         r = generate(a.seed_rule, limit_per_role=a.smoke_per_role)
         print(json.dumps({k: v for k, v in r.items() if k != "spec_hashes"}, indent=1, default=str))
         sys.exit(0)
-    raise SystemExit("full generation is intentionally not enabled until the seed-rule decision is made")
+    rec = write_full(a.seed_rule)
+    print(f"trajectories {rec['n_trajectories']}, states {rec['n_decision_states']}, rows {rec['n_rows']}, "
+          f"checks {rec['generation_checks']}, {rec['seconds']}s")
