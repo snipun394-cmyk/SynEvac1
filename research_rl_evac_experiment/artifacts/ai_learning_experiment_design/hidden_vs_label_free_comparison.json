@@ -1,0 +1,599 @@
+{
+  "audit": "label_free_default_audit_v1",
+  "episodes": {
+    "note": "Full episodes from each existing tick-0 configuration (S1/S2/S3 x 50 eval seeds at p=0.9; timing matrix t_h in {3,6,7,10} x 20 seeds at p=0.75), each run entirely under one policy. Outcome keys use D1 (onset-gated) hazard-edge unmet. 'worse' = lexicographically worse on (T90, T100, unmet, hazard unmet).",
+    "per_policy": {
+      "HIDDEN_GLOBAL_DEADBAND (reference only)": {
+        "n_episodes": 230,
+        "vs_hidden_heuristic": {
+          "tie": 230
+        },
+        "vs_no_intervention": {
+          "tie": 140,
+          "better": 90
+        },
+        "mean_T100_delta_vs_hidden": 0.0,
+        "mean_hazard_unmet_delta_vs_hidden": 0.0,
+        "max_T100_delta_vs_hidden": 0.0,
+        "any_censored": false,
+        "per_family": {
+          "S1": {
+            "mean_T90": 11.0,
+            "mean_T100": 12.0,
+            "mean_unmet": 48.0,
+            "mean_hazard_unmet": 0.0,
+            "vs_hidden_heuristic": {
+              "tie": 50
+            }
+          },
+          "S2": {
+            "mean_T90": 12.0,
+            "mean_T100": 14.0,
+            "mean_unmet": 58.0,
+            "mean_hazard_unmet": 12.0,
+            "vs_hidden_heuristic": {
+              "tie": 50
+            }
+          },
+          "S3": {
+            "mean_T90": 13.0,
+            "mean_T100": 14.0,
+            "mean_unmet": 86.3,
+            "mean_hazard_unmet": 12.56,
+            "vs_hidden_heuristic": {
+              "tie": 50
+            }
+          },
+          "timing_th10_p0.75": {
+            "mean_T90": 11.0,
+            "mean_T100": 12.0,
+            "mean_unmet": 48.0,
+            "mean_hazard_unmet": 0.0,
+            "vs_hidden_heuristic": {
+              "tie": 20
+            }
+          },
+          "timing_th3_p0.75": {
+            "mean_T90": 13.0,
+            "mean_T100": 14.0,
+            "mean_unmet": 83.5,
+            "mean_hazard_unmet": 20.5,
+            "vs_hidden_heuristic": {
+              "tie": 20
+            }
+          },
+          "timing_th6_p0.75": {
+            "mean_T90": 14.0,
+            "mean_T100": 14.25,
+            "mean_unmet": 74.35,
+            "mean_hazard_unmet": 32.35,
+            "vs_hidden_heuristic": {
+              "tie": 20
+            }
+          },
+          "timing_th7_p0.75": {
+            "mean_T90": 12.0,
+            "mean_T100": 14.0,
+            "mean_unmet": 58.0,
+            "mean_hazard_unmet": 12.0,
+            "vs_hidden_heuristic": {
+              "tie": 20
+            }
+          }
+        }
+      },
+      "NO_INTERVENTION": {
+        "n_episodes": 230,
+        "vs_hidden_heuristic": {
+          "tie": 140,
+          "worse": 90
+        },
+        "vs_no_intervention": {
+          "tie": 230
+        },
+        "mean_T100_delta_vs_hidden": 1.3696,
+        "mean_hazard_unmet_delta_vs_hidden": 17.37,
+        "max_T100_delta_vs_hidden": 4.0,
+        "any_censored": false,
+        "per_family": {
+          "S1": {
+            "mean_T90": 11.0,
+            "mean_T100": 12.0,
+            "mean_unmet": 48.0,
+            "mean_hazard_unmet": 0.0,
+            "vs_hidden_heuristic": {
+              "tie": 50
+            }
+          },
+          "S2": {
+            "mean_T90": 12.0,
+            "mean_T100": 14.0,
+            "mean_unmet": 58.0,
+            "mean_hazard_unmet": 12.0,
+            "vs_hidden_heuristic": {
+              "tie": 50
+            }
+          },
+          "S3": {
+            "mean_T90": 16.0,
+            "mean_T100": 18.0,
+            "mean_unmet": 115.0,
+            "mean_hazard_unmet": 68.0,
+            "vs_hidden_heuristic": {
+              "worse": 50
+            }
+          },
+          "timing_th10_p0.75": {
+            "mean_T90": 11.0,
+            "mean_T100": 12.0,
+            "mean_unmet": 48.0,
+            "mean_hazard_unmet": 0.0,
+            "vs_hidden_heuristic": {
+              "tie": 20
+            }
+          },
+          "timing_th3_p0.75": {
+            "mean_T90": 16.0,
+            "mean_T100": 18.0,
+            "mean_unmet": 114.0,
+            "mean_hazard_unmet": 76.0,
+            "vs_hidden_heuristic": {
+              "worse": 20
+            }
+          },
+          "timing_th6_p0.75": {
+            "mean_T90": 14.0,
+            "mean_T100": 16.0,
+            "mean_unmet": 80.0,
+            "mean_hazard_unmet": 38.0,
+            "vs_hidden_heuristic": {
+              "worse": 20
+            }
+          },
+          "timing_th7_p0.75": {
+            "mean_T90": 12.0,
+            "mean_T100": 14.0,
+            "mean_unmet": 58.0,
+            "mean_hazard_unmet": 12.0,
+            "vs_hidden_heuristic": {
+              "tie": 20
+            }
+          }
+        }
+      },
+      "CONSTANT_PARITY (baseline.py)": {
+        "n_episodes": 230,
+        "vs_hidden_heuristic": {
+          "tie": 140,
+          "worse": 90
+        },
+        "vs_no_intervention": {
+          "tie": 230
+        },
+        "mean_T100_delta_vs_hidden": 1.3696,
+        "mean_hazard_unmet_delta_vs_hidden": 17.37,
+        "max_T100_delta_vs_hidden": 4.0,
+        "any_censored": false,
+        "per_family": {
+          "S1": {
+            "mean_T90": 11.0,
+            "mean_T100": 12.0,
+            "mean_unmet": 48.0,
+            "mean_hazard_unmet": 0.0,
+            "vs_hidden_heuristic": {
+              "tie": 50
+            }
+          },
+          "S2": {
+            "mean_T90": 12.0,
+            "mean_T100": 14.0,
+            "mean_unmet": 58.0,
+            "mean_hazard_unmet": 12.0,
+            "vs_hidden_heuristic": {
+              "tie": 50
+            }
+          },
+          "S3": {
+            "mean_T90": 16.0,
+            "mean_T100": 18.0,
+            "mean_unmet": 115.0,
+            "mean_hazard_unmet": 68.0,
+            "vs_hidden_heuristic": {
+              "worse": 50
+            }
+          },
+          "timing_th10_p0.75": {
+            "mean_T90": 11.0,
+            "mean_T100": 12.0,
+            "mean_unmet": 48.0,
+            "mean_hazard_unmet": 0.0,
+            "vs_hidden_heuristic": {
+              "tie": 20
+            }
+          },
+          "timing_th3_p0.75": {
+            "mean_T90": 16.0,
+            "mean_T100": 18.0,
+            "mean_unmet": 114.0,
+            "mean_hazard_unmet": 76.0,
+            "vs_hidden_heuristic": {
+              "worse": 20
+            }
+          },
+          "timing_th6_p0.75": {
+            "mean_T90": 14.0,
+            "mean_T100": 16.0,
+            "mean_unmet": 80.0,
+            "mean_hazard_unmet": 38.0,
+            "vs_hidden_heuristic": {
+              "worse": 20
+            }
+          },
+          "timing_th7_p0.75": {
+            "mean_T90": 12.0,
+            "mean_T100": 14.0,
+            "mean_unmet": 58.0,
+            "mean_hazard_unmet": 12.0,
+            "vs_hidden_heuristic": {
+              "tie": 20
+            }
+          }
+        }
+      },
+      "CONSTANT_FAVOR_A": {
+        "n_episodes": 230,
+        "vs_hidden_heuristic": {
+          "worse": 230
+        },
+        "vs_no_intervention": {
+          "worse": 230
+        },
+        "mean_T100_delta_vs_hidden": 8.3,
+        "mean_hazard_unmet_delta_vs_hidden": 136.33,
+        "max_T100_delta_vs_hidden": 14.0,
+        "any_censored": false,
+        "per_family": {
+          "S1": {
+            "mean_T90": 14.0,
+            "mean_T100": 14.88,
+            "mean_unmet": 104.68,
+            "mean_hazard_unmet": 0.0,
+            "vs_hidden_heuristic": {
+              "worse": 50
+            }
+          },
+          "S2": {
+            "mean_T90": 21.26,
+            "mean_T100": 23.26,
+            "mean_unmet": 217.62,
+            "mean_hazard_unmet": 157.7,
+            "vs_hidden_heuristic": {
+              "worse": 50
+            }
+          },
+          "S3": {
+            "mean_T90": 25.1,
+            "mean_T100": 27.1,
+            "mean_unmet": 339.56,
+            "mean_hazard_unmet": 295.56,
+            "vs_hidden_heuristic": {
+              "worse": 50
+            }
+          },
+          "timing_th10_p0.75": {
+            "mean_T90": 13.65,
+            "mean_T100": 15.65,
+            "mean_unmet": 91.3,
+            "mean_hazard_unmet": 3.55,
+            "vs_hidden_heuristic": {
+              "worse": 20
+            }
+          },
+          "timing_th3_p0.75": {
+            "mean_T90": 23.65,
+            "mean_T100": 25.65,
+            "mean_unmet": 287.8,
+            "mean_hazard_unmet": 255.8,
+            "vs_hidden_heuristic": {
+              "worse": 20
+            }
+          },
+          "timing_th6_p0.75": {
+            "mean_T90": 21.65,
+            "mean_T100": 23.65,
+            "mean_unmet": 224.5,
+            "mean_hazard_unmet": 184.15,
+            "vs_hidden_heuristic": {
+              "worse": 20
+            }
+          },
+          "timing_th7_p0.75": {
+            "mean_T90": 19.65,
+            "mean_T100": 21.65,
+            "mean_unmet": 173.2,
+            "mean_hazard_unmet": 117.4,
+            "vs_hidden_heuristic": {
+              "worse": 20
+            }
+          }
+        }
+      },
+      "CONSTANT_FAVOR_B": {
+        "n_episodes": 230,
+        "vs_hidden_heuristic": {
+          "worse": 216,
+          "better": 14
+        },
+        "vs_no_intervention": {
+          "worse": 140,
+          "better": 90
+        },
+        "mean_T100_delta_vs_hidden": 1.1957,
+        "mean_hazard_unmet_delta_vs_hidden": -10.743,
+        "max_T100_delta_vs_hidden": 3.0,
+        "any_censored": false,
+        "per_family": {
+          "S1": {
+            "mean_T90": 14.0,
+            "mean_T100": 14.88,
+            "mean_unmet": 103.12,
+            "mean_hazard_unmet": 0.0,
+            "vs_hidden_heuristic": {
+              "worse": 50
+            }
+          },
+          "S2": {
+            "mean_T90": 13.98,
+            "mean_T100": 14.76,
+            "mean_unmet": 102.12,
+            "mean_hazard_unmet": 0.0,
+            "vs_hidden_heuristic": {
+              "worse": 50
+            }
+          },
+          "S3": {
+            "mean_T90": 14.0,
+            "mean_T100": 14.92,
+            "mean_unmet": 104.76,
+            "mean_hazard_unmet": 0.0,
+            "vs_hidden_heuristic": {
+              "worse": 50
+            }
+          },
+          "timing_th10_p0.75": {
+            "mean_T90": 13.5,
+            "mean_T100": 14.15,
+            "mean_unmet": 86.8,
+            "mean_hazard_unmet": 0.0,
+            "vs_hidden_heuristic": {
+              "worse": 20
+            }
+          },
+          "timing_th3_p0.75": {
+            "mean_T90": 13.5,
+            "mean_T100": 14.15,
+            "mean_unmet": 89.0,
+            "mean_hazard_unmet": 2.2,
+            "vs_hidden_heuristic": {
+              "worse": 16,
+              "better": 4
+            }
+          },
+          "timing_th6_p0.75": {
+            "mean_T90": 13.5,
+            "mean_T100": 14.15,
+            "mean_unmet": 87.25,
+            "mean_hazard_unmet": 0.45,
+            "vs_hidden_heuristic": {
+              "better": 10,
+              "worse": 10
+            }
+          },
+          "timing_th7_p0.75": {
+            "mean_T90": 13.5,
+            "mean_T100": 14.15,
+            "mean_unmet": 86.85,
+            "mean_hazard_unmet": 0.05,
+            "vs_hidden_heuristic": {
+              "worse": 20
+            }
+          }
+        }
+      },
+      "SYMMETRIC_SPLIT_DEADBAND (margin 0.75)": {
+        "n_episodes": 230,
+        "vs_hidden_heuristic": {
+          "tie": 217,
+          "worse": 13
+        },
+        "vs_no_intervention": {
+          "tie": 140,
+          "better": 90
+        },
+        "mean_T100_delta_vs_hidden": 0.0565,
+        "mean_hazard_unmet_delta_vs_hidden": 0.083,
+        "max_T100_delta_vs_hidden": 1.0,
+        "any_censored": false,
+        "per_family": {
+          "S1": {
+            "mean_T90": 11.0,
+            "mean_T100": 12.0,
+            "mean_unmet": 48.0,
+            "mean_hazard_unmet": 0.0,
+            "vs_hidden_heuristic": {
+              "tie": 50
+            }
+          },
+          "S2": {
+            "mean_T90": 12.0,
+            "mean_T100": 14.0,
+            "mean_unmet": 58.0,
+            "mean_hazard_unmet": 12.0,
+            "vs_hidden_heuristic": {
+              "tie": 50
+            }
+          },
+          "S3": {
+            "mean_T90": 13.0,
+            "mean_T100": 14.02,
+            "mean_unmet": 86.32,
+            "mean_hazard_unmet": 12.58,
+            "vs_hidden_heuristic": {
+              "tie": 49,
+              "worse": 1
+            }
+          },
+          "timing_th10_p0.75": {
+            "mean_T90": 11.0,
+            "mean_T100": 12.0,
+            "mean_unmet": 48.0,
+            "mean_hazard_unmet": 0.0,
+            "vs_hidden_heuristic": {
+              "tie": 20
+            }
+          },
+          "timing_th3_p0.75": {
+            "mean_T90": 13.0,
+            "mean_T100": 14.6,
+            "mean_unmet": 84.4,
+            "mean_hazard_unmet": 21.4,
+            "vs_hidden_heuristic": {
+              "worse": 12,
+              "tie": 8
+            }
+          },
+          "timing_th6_p0.75": {
+            "mean_T90": 14.0,
+            "mean_T100": 14.25,
+            "mean_unmet": 74.35,
+            "mean_hazard_unmet": 32.35,
+            "vs_hidden_heuristic": {
+              "tie": 20
+            }
+          },
+          "timing_th7_p0.75": {
+            "mean_T90": 12.0,
+            "mean_T100": 14.0,
+            "mean_unmet": 58.0,
+            "mean_hazard_unmet": 12.0,
+            "vs_hidden_heuristic": {
+              "tie": 20
+            }
+          }
+        }
+      },
+      "SYMMETRIC_SPLIT_DEADBAND (margin 0)": {
+        "n_episodes": 230,
+        "vs_hidden_heuristic": {
+          "tie": 230
+        },
+        "vs_no_intervention": {
+          "tie": 140,
+          "better": 90
+        },
+        "mean_T100_delta_vs_hidden": 0.0,
+        "mean_hazard_unmet_delta_vs_hidden": 0.0,
+        "max_T100_delta_vs_hidden": 0.0,
+        "any_censored": false,
+        "per_family": {
+          "S1": {
+            "mean_T90": 11.0,
+            "mean_T100": 12.0,
+            "mean_unmet": 48.0,
+            "mean_hazard_unmet": 0.0,
+            "vs_hidden_heuristic": {
+              "tie": 50
+            }
+          },
+          "S2": {
+            "mean_T90": 12.0,
+            "mean_T100": 14.0,
+            "mean_unmet": 58.0,
+            "mean_hazard_unmet": 12.0,
+            "vs_hidden_heuristic": {
+              "tie": 50
+            }
+          },
+          "S3": {
+            "mean_T90": 13.0,
+            "mean_T100": 14.0,
+            "mean_unmet": 86.3,
+            "mean_hazard_unmet": 12.56,
+            "vs_hidden_heuristic": {
+              "tie": 50
+            }
+          },
+          "timing_th10_p0.75": {
+            "mean_T90": 11.0,
+            "mean_T100": 12.0,
+            "mean_unmet": 48.0,
+            "mean_hazard_unmet": 0.0,
+            "vs_hidden_heuristic": {
+              "tie": 20
+            }
+          },
+          "timing_th3_p0.75": {
+            "mean_T90": 13.0,
+            "mean_T100": 14.0,
+            "mean_unmet": 83.5,
+            "mean_hazard_unmet": 20.5,
+            "vs_hidden_heuristic": {
+              "tie": 20
+            }
+          },
+          "timing_th6_p0.75": {
+            "mean_T90": 14.0,
+            "mean_T100": 14.25,
+            "mean_unmet": 74.35,
+            "mean_hazard_unmet": 32.35,
+            "vs_hidden_heuristic": {
+              "tie": 20
+            }
+          },
+          "timing_th7_p0.75": {
+            "mean_T90": 12.0,
+            "mean_T100": 14.0,
+            "mean_unmet": 58.0,
+            "mean_hazard_unmet": 12.0,
+            "vs_hidden_heuristic": {
+              "tie": 20
+            }
+          }
+        }
+      }
+    }
+  },
+  "action_agreement": {
+    "note": "On the 530 existing decision states (reached by the hidden heuristic): does each label-free policy pick the same global action as the hidden heuristic? NO_INTERVENTION never 'agrees' since it issues no action.",
+    "per_policy": {
+      "NO_INTERVENTION": {
+        "post_onset|differ": 150,
+        "pre_onset_or_no_hazard|differ": 380
+      },
+      "CONSTANT_PARITY (baseline.py)": {
+        "post_onset|agree": 37,
+        "post_onset|differ": 113,
+        "pre_onset_or_no_hazard|agree": 380
+      },
+      "CONSTANT_FAVOR_A": {
+        "post_onset|differ": 150,
+        "pre_onset_or_no_hazard|differ": 380
+      },
+      "CONSTANT_FAVOR_B": {
+        "post_onset|agree": 113,
+        "post_onset|differ": 37,
+        "pre_onset_or_no_hazard|differ": 380
+      },
+      "SYMMETRIC_SPLIT_DEADBAND (margin 0.75)": {
+        "post_onset|agree": 87,
+        "post_onset|differ": 63,
+        "pre_onset_or_no_hazard|agree": 380
+      },
+      "SYMMETRIC_SPLIT_DEADBAND (margin 0)": {
+        "post_onset|agree": 113,
+        "post_onset|differ": 37,
+        "pre_onset_or_no_hazard|agree": 380
+      }
+    }
+  }
+}

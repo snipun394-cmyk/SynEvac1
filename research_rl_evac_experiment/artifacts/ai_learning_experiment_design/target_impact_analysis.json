@@ -1,0 +1,122 @@
+{
+  "audit": "label_free_default_audit_v1",
+  "frozen_spec_files_modified": false,
+  "changes": {
+    "candidate_action_set_BASE2_298": {
+      "change": false,
+      "why": "all three BASE globals and NO_INTERVENTION remain; the default d(s)=BASE=l(s) is always in the set"
+    },
+    "target_definitions": {
+      "change": true,
+      "what": [
+        "continuation: GLOBAL_DEADBAND -> SYMMETRIC_SPLIT_DEADBAND (margin 0) at every later decision (identical for all candidates)",
+        "future_hazard_edge_unmet_demand: onset-gated definition (D1) is final; the alternative is removed",
+        "stored_per_row: only the D1 hazard definition"
+      ]
+    },
+    "feature_manifest_26": {
+      "change": false,
+      "why": "the default reads only admissible features; the model inputs were already label-free"
+    },
+    "scenario_grid": {
+      "change": false,
+      "why": "templates, t_h and p levels do not depend on the default"
+    },
+    "pre_decision_state_generation": {
+      "change": true,
+      "what": "epsilon-perturbed SYMMETRIC_SPLIT_DEADBAND (margin 0) instead of the hidden heuristic, so the training state distribution matches the deployed default",
+      "diversity_recount": {
+        "epsilon_0.0": {
+          "n_decision_states": 4352,
+          "n_distinct_admissible_inputs": 67,
+          "distinct_share_tick_ge_10": 0.0309
+        },
+        "epsilon_0.3": {
+          "n_decision_states": 4561,
+          "n_distinct_admissible_inputs": 429,
+          "distinct_share_tick_ge_10": 0.2366
+        },
+        "epsilon_0.5": {
+          "n_decision_states": 4685,
+          "n_distinct_admissible_inputs": 596,
+          "distinct_share_tick_ge_10": 0.3108
+        }
+      }
+    },
+    "split": {
+      "change": false,
+      "why": "split roles, seed ranges and keys do not depend on the default"
+    },
+    "selector": {
+      "change": true,
+      "what": "d(s) = BASE=l(s) with l = SYMMETRIC_SPLIT_DEADBAND (margin 0); the caveat about Q_A/Q_B in selector_design.json no longer applies"
+    },
+    "success_criteria": {
+      "change": true,
+      "what": [
+        "harm is measured against the label-free default",
+        "closed loop: P2 = label-free default (primary comparator); the hidden-label heuristic becomes a reference arm P2b, reported, never a gate"
+      ]
+    },
+    "closed_loop_evaluation": {
+      "change": true,
+      "what": "add P2b (hidden heuristic, reference); P4 falls back to the label-free default"
+    },
+    "pilot_size": {
+      "change": false,
+      "why": "240 trajectories; revisit only if the recount's tick>=10 distinct share falls below the 25% gate"
+    }
+  },
+  "target_semantics_before": "consequence of candidate a now, then the hidden-label heuristic (Q^hidden(s, a))",
+  "target_semantics_after": "consequence of candidate a now, then SYMMETRIC_SPLIT_DEADBAND (margin 0) at every later decision (Q^label-free(s, a))",
+  "measured_change": {
+    "label_free_continuation": "SYMMETRIC_SPLIT_DEADBAND (margin 0)",
+    "n_states": 530,
+    "n_unique_candidate_rollouts_per_continuation": 19615,
+    "seconds": 55.4,
+    "share_candidates_with_identical_target_vector": 0.6438,
+    "target_delta_label_free_minus_hidden": {
+      "future_T90": {
+        "mean": -0.0025,
+        "mean_abs": 0.2211,
+        "min": -3.0,
+        "max": 2.0,
+        "share_zero": 0.8054
+      },
+      "future_T100": {
+        "mean": -0.0162,
+        "mean_abs": 0.2391,
+        "min": -3.0,
+        "max": 2.0,
+        "share_zero": 0.7865
+      },
+      "future_unmet": {
+        "mean": -2.2997,
+        "mean_abs": 3.6044,
+        "min": -60.0,
+        "max": 33.0,
+        "share_zero": 0.6542
+      },
+      "future_hazard_unmet": {
+        "mean": -1.0886,
+        "mean_abs": 4.0395,
+        "min": -81.0,
+        "max": 20.0,
+        "share_zero": 0.7728
+      }
+    },
+    "oracle_best_class_identical": 0.6245,
+    "oracle_best_classes_overlap": 0.8509,
+    "within_state_rank_correlation": {
+      "n_states": 394,
+      "mean": 0.9081,
+      "min": 0.4
+    },
+    "default_action_differs_from_hidden_heuristic": 0.0698,
+    "default_candidate_T100_shift": {
+      "mean": 0.0,
+      "max": 0.0
+    }
+  },
+  "apply_how": "A later, explicitly requested step regenerates the frozen specification files; this audit writes none of them."
+}

@@ -1,0 +1,190 @@
+{
+  "audit": "label_free_default_audit_v1",
+  "candidates": [
+    {
+      "name": "capacity_aware_heuristic.CapacityAwareHeuristic / deadband_heuristic.DeadbandCapacityAwareHeuristic (GLOBAL_DEADBAND)",
+      "inputs": [
+        "Q_A_at_H",
+        "Q_B_at_H",
+        "residual_cap_H_CE1_normalized",
+        "CAP_B constant"
+      ],
+      "hidden_dependencies": [
+        "Q_A_at_H",
+        "Q_B_at_H (hidden target_exit labels)"
+      ],
+      "semantics": "Discrete(3) global action",
+      "deterministic": true,
+      "tested": true,
+      "used_elsewhere": "the continuation / default in every prior experiment",
+      "label_free": false,
+      "verdict": "REFERENCE ONLY (D2)"
+    },
+    {
+      "name": "branch_aware_deadband_heuristic",
+      "inputs": [
+        "as GLOBAL_DEADBAND"
+      ],
+      "hidden_dependencies": [
+        "Q_A_at_H",
+        "Q_B_at_H"
+      ],
+      "semantics": "Discrete(3)",
+      "deterministic": true,
+      "tested": true,
+      "used_elsewhere": "E1 validation",
+      "label_free": false,
+      "verdict": "disqualified"
+    },
+    {
+      "name": "arbitration_engine / hybrid_controller / policy_selector",
+      "inputs": [
+        "GLOBAL_DEADBAND output and/or Q_A, Q_B, clearance features, PPO output"
+      ],
+      "hidden_dependencies": [
+        "Q_A_at_H",
+        "Q_B_at_H"
+      ],
+      "semantics": "Discrete(3)",
+      "deterministic": "yes (given PPO)",
+      "tested": true,
+      "used_elsewhere": "hybrid / arbitration experiments",
+      "label_free": false,
+      "verdict": "disqualified"
+    },
+    {
+      "name": "observable_robust_differential.py (frozen controller)",
+      "inputs": [
+        "exact match on the full 27-D observation incl. Q_A/Q_B; else action 0 = GLOBAL_DEADBAND"
+      ],
+      "hidden_dependencies": [
+        "Q_A_at_H",
+        "Q_B_at_H"
+      ],
+      "semantics": "Discrete(211)",
+      "deterministic": true,
+      "tested": true,
+      "used_elsewhere": "robust-control experiments",
+      "label_free": false,
+      "verdict": "disqualified (and frozen)"
+    },
+    {
+      "name": "PPO checkpoints (frozen RL branch)",
+      "inputs": [
+        "27-D observation incl. Q_A/Q_B"
+      ],
+      "hidden_dependencies": [
+        "Q_A_at_H",
+        "Q_B_at_H"
+      ],
+      "semantics": "Discrete(3)/(211)",
+      "deterministic": "with deterministic=True",
+      "tested": true,
+      "used_elsewhere": "RL experiments",
+      "label_free": false,
+      "verdict": "disqualified (and frozen)"
+    },
+    {
+      "name": "NO_INTERVENTION (never relabel)",
+      "inputs": [],
+      "hidden_dependencies": [],
+      "semantics": "no relabel at any decision",
+      "deterministic": true,
+      "tested": true,
+      "used_elsewhere": "the NO_INTERVENTION arm of every counterfactual audit",
+      "label_free": true,
+      "verdict": "evaluated",
+      "target_meaning_change": "a candidate's labels then persist for the rest of the episode (no later decision overwrites them): the label measures a PERMANENT reassignment, not a one-decision deviation"
+    },
+    {
+      "name": "CONSTANT_PARITY (baseline.baseline_action)",
+      "inputs": [],
+      "hidden_dependencies": [],
+      "semantics": "PARITY at every decision",
+      "deterministic": true,
+      "tested": true,
+      "used_elsewhere": "the pre-registered M4/M5 capacity-blind baseline",
+      "label_free": true,
+      "verdict": "evaluated",
+      "target_meaning_change": "one-decision deviation from a capacity-blind default; never reacts to the hazard"
+    },
+    {
+      "name": "CONSTANT_FAVOR_A / CONSTANT_FAVOR_B",
+      "inputs": [],
+      "hidden_dependencies": [],
+      "semantics": "fixed global action",
+      "deterministic": true,
+      "tested": "as integer policies in timing experiments",
+      "used_elsewhere": "timing experiments",
+      "label_free": true,
+      "verdict": "evaluated for completeness"
+    },
+    {
+      "name": "SYMMETRIC_SPLIT_DEADBAND (analysis-only definition, NOT implemented as a module)",
+      "inputs": [
+        "waiting_H_total (admissible, = Q_A+Q_B)",
+        "residual_cap_H_CE1_normalized (admissible)",
+        "CAP_B constant"
+      ],
+      "hidden_dependencies": [],
+      "computation": "deadband_heuristic_action(obs with Q_A = Q_B = waiting_H_total / 2, margin m), i.e. the existing rule, unmodified, on a label-free input. Closed form: PARITY unless the hazard has occurred (residual cap = 2/6) AND waiting_H_total > 6m (m=0: >= 1; m=0.75: >= 5), then FAVOR_B. Never FAVOR_A. m=0 equals capacity_aware_heuristic's original parameter-free rule.",
+      "why_even_split": "a fixed prior equal to the parity rule's own split; it does not estimate labels or compliance from any data",
+      "semantics": "Discrete(3) global action",
+      "deterministic": true,
+      "tested": "no (new definition)",
+      "used_elsewhere": "no",
+      "label_free": true,
+      "verdict": "evaluated (minimal new definition)",
+      "target_meaning_change": "one-decision deviation from a hazard-reactive, label-free default"
+    }
+  ],
+  "selection": {
+    "rule": "fixed before computing: fewest paired episodes lexicographically worse than the hidden-label heuristic (the previously accepted default); ties go to the simpler / existing policy in the order ['NO_INTERVENTION', 'CONSTANT_PARITY (baseline.py)', 'CONSTANT_FAVOR_A', 'CONSTANT_FAVOR_B', 'SYMMETRIC_SPLIT_DEADBAND (margin 0)', 'SYMMETRIC_SPLIT_DEADBAND (margin 0.75)']",
+    "table": [
+      {
+        "policy": "NO_INTERVENTION",
+        "existing": true,
+        "episodes_worse_than_hidden": 90,
+        "episodes_worse_than_no_intervention": 0,
+        "max_T100_delta_vs_hidden": 4.0
+      },
+      {
+        "policy": "CONSTANT_PARITY (baseline.py)",
+        "existing": true,
+        "episodes_worse_than_hidden": 90,
+        "episodes_worse_than_no_intervention": 0,
+        "max_T100_delta_vs_hidden": 4.0
+      },
+      {
+        "policy": "CONSTANT_FAVOR_A",
+        "existing": true,
+        "episodes_worse_than_hidden": 230,
+        "episodes_worse_than_no_intervention": 230,
+        "max_T100_delta_vs_hidden": 14.0
+      },
+      {
+        "policy": "CONSTANT_FAVOR_B",
+        "existing": true,
+        "episodes_worse_than_hidden": 216,
+        "episodes_worse_than_no_intervention": 140,
+        "max_T100_delta_vs_hidden": 3.0
+      },
+      {
+        "policy": "SYMMETRIC_SPLIT_DEADBAND (margin 0)",
+        "existing": false,
+        "episodes_worse_than_hidden": 0,
+        "episodes_worse_than_no_intervention": 0,
+        "max_T100_delta_vs_hidden": 0.0
+      },
+      {
+        "policy": "SYMMETRIC_SPLIT_DEADBAND (margin 0.75)",
+        "existing": false,
+        "episodes_worse_than_hidden": 13,
+        "episodes_worse_than_no_intervention": 0,
+        "max_T100_delta_vs_hidden": 1.0
+      }
+    ],
+    "chosen": "SYMMETRIC_SPLIT_DEADBAND (margin 0)",
+    "classification": "B. YES -- minimal new policy definition required"
+  }
+}
