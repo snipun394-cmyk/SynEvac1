@@ -1,0 +1,212 @@
+{
+  "audit": "amendment_A1_evaluation_v1",
+  "amendment": "A1",
+  "evaluated_utc": "2026-09-24T18:59:34Z",
+  "results": {
+    "G1-A1": {
+      "passed": true,
+      "clause_1": {
+        "passed": true,
+        "n": 2000,
+        "reference": 0.5158,
+        "p_value": 0.7831,
+        "mc_se_p": 0.0092,
+        "mean": 0.5344,
+        "median": 0.5346,
+        "percentiles": {
+          "2.5": 0.4893,
+          "5": 0.4953,
+          "95": 0.5714,
+          "97.5": 0.5789
+        },
+        "share_of_resamples_at_or_above_reference": 0.783
+      },
+      "clause_2": {
+        "passed": true,
+        "per_layout": {
+          "D0_sym": 288,
+          "D1_east_heavy": 359,
+          "D2_west_heavy": 350,
+          "D3_first_room_heavy": 320,
+          "D4_second_room_heavy": 289,
+          "D5_R1_concentrated": 403,
+          "Z1_R4_concentrated": 118,
+          "Z2_mixed": 121
+        }
+      }
+    },
+    "X5-A1": {
+      "passed": true,
+      "clause_1": {
+        "passed": true,
+        "n": 2000,
+        "reference": 0.2299,
+        "p_value": 0.8066,
+        "mc_se_p": 0.0088,
+        "mean": 0.2385,
+        "median": 0.2387,
+        "percentiles": {
+          "2.5": 0.2195,
+          "5": 0.2224,
+          "95": 0.254,
+          "97.5": 0.2572
+        },
+        "share_of_resamples_at_or_above_reference": 0.8065
+      },
+      "clause_2": {
+        "passed": true,
+        "distinct_inputs": 1389
+      },
+      "clause_3": {
+        "passed": true,
+        "pairs": 413922
+      }
+    },
+    "X7-A1": {
+      "passed": true,
+      "clauses": {
+        "timing": true,
+        "compliance": true,
+        "seeds_unique": true,
+        "perturbation": true,
+        "no_censored": true
+      },
+      "stratified_test": {
+        "permutations": 10000,
+        "T_obs_timing": 0.0,
+        "T_obs_compliance": 0.0,
+        "p_timing": 1.0,
+        "p_compliance": 1.0,
+        "per_stratum": {
+          "TRAIN": {
+            "n": 1800,
+            "layouts": 6,
+            "chi2_timing": 0.0,
+            "chi2_compliance": 0.0,
+            "cramers_v_timing": 0.0,
+            "cramers_v_compliance": 0.0
+          },
+          "VALIDATION": {
+            "n": 540,
+            "layouts": 6,
+            "chi2_timing": 0.0,
+            "chi2_compliance": 0.0,
+            "cramers_v_timing": 0.0,
+            "cramers_v_compliance": 0.0
+          },
+          "TEST_PRIMARY_JOINT": {
+            "n": 960,
+            "layouts": 6,
+            "chi2_timing": 0.0,
+            "chi2_compliance": 0.0,
+            "cramers_v_timing": 0.0,
+            "cramers_v_compliance": 0.0
+          },
+          "TEST_HELDOUT_TIMING": {
+            "n": 540,
+            "layouts": 6,
+            "chi2_timing": 0.0,
+            "chi2_compliance": 0.0,
+            "cramers_v_timing": 0.0,
+            "cramers_v_compliance": 0.0
+          },
+          "TEST_HELDOUT_COMPLIANCE": {
+            "n": 900,
+            "layouts": 6,
+            "chi2_timing": 0.0,
+            "chi2_compliance": 0.0,
+            "cramers_v_timing": 0.0,
+            "cramers_v_compliance": 0.0
+          },
+          "DIAG_EXTRAPOLATION": {
+            "n": 450,
+            "layouts": 6,
+            "chi2_timing": 0.0,
+            "chi2_compliance": 0.0,
+            "cramers_v_timing": 0.0,
+            "cramers_v_compliance": 0.0
+          },
+          "DIAG_TEMPLATE_ZERO_SHOT": {
+            "n": 354,
+            "layouts": 2,
+            "chi2_timing": 0.0,
+            "chi2_compliance": 0.0,
+            "cramers_v_timing": 0.0,
+            "cramers_v_compliance": 0.0
+          }
+        },
+        "pooled_main_strata": {
+          "timing": 0.0,
+          "compliance": 0.0
+        },
+        "pooled_zero_shot_stratum": {
+          "timing": 0.0,
+          "compliance": 0.0
+        },
+        "float_tolerance": 1e-09
+      },
+      "seeds": {
+        "n": 5544,
+        "unique": 5544
+      },
+      "perturbation_rate": 0.5145,
+      "censored_rows": 0
+    }
+  },
+  "unchanged_criteria_original_results": {
+    "G2": true,
+    "G3": true,
+    "G4": true,
+    "G5": true,
+    "G6": true,
+    "G7": true,
+    "X1": true,
+    "X2": true,
+    "X3": true,
+    "X4": true,
+    "X6": true,
+    "X8": true,
+    "X9": true,
+    "X10": true
+  },
+  "a1_status": "DATASET ACCEPTED UNDER AMENDMENT A1",
+  "provenance": {
+    "original_spec_v2_status": "FULL DATASET NO-GO (unchanged, permanent)",
+    "original_G1_X5_X7": "FAIL (unchanged, permanent)",
+    "nature_of_A1": "post-hoc acceptance-criteria amendment, created after inspecting the frozen dataset and before any model training; it does not retroactively change the original result",
+    "dataset_byte_identical": true,
+    "spec_v2_hashes_unchanged": true,
+    "a1_file_unchanged": true,
+    "model_results_informed_execution": false,
+    "hashes": {
+      "spec_version_record.json": "b0e761dfa665c1ac0b899a1e16abe5ea884a9589f392abf8487bfcd52597c1e2",
+      "diversity_requirements.json": "a0bd57866b25da7c5f225c1633e6fdf518b3d95b6f96b431867e25abcf2d9052",
+      "dataset_design.json": "4eb14cc48a86947def844f5c5e25567e536f59ee71bd75bad3d1208619d395f1",
+      "split_specification.json": "f611493374a0a18527e12a105a0dbb429a4ef4689c2e3f2a6c3175d8eb7cd68a",
+      "target_definitions.json": "58470bd589dfbebc865e01d82d7e8a394274d390a8d4b8ed5c54b99711eaae5a",
+      "candidate_action_set.json": "78dee3c225735b4ee78c108eeb0e3aa72627a9da8410055182ed9c64e4ca7e3c",
+      "final_feature_manifest.json": "67f54855bd58207df2e929d7c6f7f50753b77fa05cb29dfc49977989c1f21910",
+      "full_dataset/full_ai_learning_rows.csv.gz": "36aa757f6f2414713d7f5625f562298df2e72baf97a61969a69c0e3ecb967179",
+      "full_dataset/full_generation_record.json": "5a39842efa2cc4d71dfb3ce1f7adfcba09d20f5a016080374de4f67be0b2fbd4",
+      "full_dataset/full_go_no_go.json": "b16d6b9659a7e78520f65ab918782ab4e4ed3ff756a46d866467b20228349998",
+      "pilot/pilot_rows.csv.gz": "df6e5092af310640c47583fd6fcb27e641db730344cc558c71ee8d4518cb4298",
+      "amendments/amendment_A1_acceptance_criteria.json": "cde5917771a0577ef491d643355fd9e85351f8c86347feabf2035bdb919af026",
+      "amendments/AMENDMENT_A1_ACCEPTANCE_CRITERIA.md": "b7bf957f4ed85a1305654017a72da6f44d3d375672f4f2c8e72f3c88354c6f21"
+    },
+    "x7_multiplicity": "the two X7-A1 endpoints (layout x timing, layout x compliance) are treated as separately prespecified acceptance tests, each at alpha = 0.05, with no family-wise-error correction",
+    "implementation_notes": [
+      "X7-A1 permutation comparisons T_b >= T_obs use a floating-point tolerance of 1e-09 (a balanced table can evaluate to rounding noise instead of exactly 0)",
+      "X7-A1 perturbation rate recomputed as in the original full audit: pre-decision perturbation flags of each trajectory's last recorded decision state",
+      "all parameters read from and asserted against the committed A1 record; A1 not modified"
+    ]
+  },
+  "counts": {
+    "g1_x5_resamples": 2000,
+    "x7_permutations": 10000,
+    "seeds": {
+      "g1_x5": 5544240,
+      "x7": 5544007
+    }
+  },
+  "seconds": 41.2
+}
