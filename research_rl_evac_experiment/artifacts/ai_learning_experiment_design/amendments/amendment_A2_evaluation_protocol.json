@@ -1,0 +1,131 @@
+{
+  "amendment": "A2",
+  "title": "Pre-training evaluation-protocol amendment A2 (Issues 1-6)",
+  "status": "PROPOSED -- awaiting approval; nothing run or evaluated",
+  "created_utc": "2026-09-24T21:07:08Z",
+  "provenance": {
+    "post_hoc": true,
+    "created_before_P2_P5_reference_run": true,
+    "created_before_model_training": true,
+    "model_results_informed_amendment": false,
+    "dataset_changed": false,
+    "original_wording_unchanged": "Spec v2 files (preregistered_success_criteria.json, closed_loop_evaluation.json, selector_design.json, final_feature_manifest.json) are unchanged; A2 supersedes the listed clauses for evaluation purposes only and does not rewrite them",
+    "spec_v2_and_A1_results_unchanged": "Original Spec v2 NO-GO, original G1/X5/X7 FAIL and the A1 evaluation result are unchanged",
+    "preregistration_gap": "The Spec v2 commitment to set the closed-loop usefulness threshold 'from the Phase-1 pilot (spread between P2 and P5) BEFORE Phase 3' was never completed: no P2/P5 closed-loop run exists in any record, and the original wording specifies no metric, mapping, statistic or rule for a non-positive spread. A2 closes that gap post hoc, before any P2/P5 run and before training.",
+    "parent_hashes": {
+      "preregistered_success_criteria.json": "3ec6fdb6dfe107d35809a5dc3508d1cf2e257ede5218990321a1f342863107f2",
+      "closed_loop_evaluation.json": "a81de9f7de6a5e424be11c7394034c2219e0c0a71b9179c502fc68e3862c9bc1",
+      "selector_design.json": "8a41c7777458d8363f4343981b08555207d2f95dfa32327c0b9fa55562de9c48",
+      "final_feature_manifest.json": "67f54855bd58207df2e929d7c6f7f50753b77fa05cb29dfc49977989c1f21910",
+      "candidate_action_set.json": "78dee3c225735b4ee78c108eeb0e3aa72627a9da8410055182ed9c64e4ca7e3c",
+      "spec_version_record.json": "b0e761dfa665c1ac0b899a1e16abe5ea884a9589f392abf8487bfcd52597c1e2",
+      "amendment_A1_acceptance_criteria.json": "cde5917771a0577ef491d643355fd9e85351f8c86347feabf2035bdb919af026",
+      "amendment_A1_evaluation.json": "51575d64c51ea11f4c0a6efa9a11b57583b59c28abdc45a6e5f3c4ddbac1ff9a",
+      "full_ai_learning_rows.csv.gz": "36aa757f6f2414713d7f5625f562298df2e72baf97a61969a69c0e3ecb967179"
+    },
+    "git_parent_commit": "74de2ac"
+  },
+  "common_conventions": {
+    "lexicographic_key": "key(a, s) = (future_T90, future_T100, future_unmet, future_hazard_unmet) of candidate a at state s from the frozen labels; smaller is better; compared as exact integer tuples (the frozen established order T90 -> T100 -> unmet -> hazard-edge unmet)",
+    "default": "d(s) = candidate 'BASE=l(s)', l = SYMMETRIC_SPLIT_DEADBAND_margin0 (label-free)",
+    "bootstrap": "two-sided 95% percentile intervals, 2,000 resamples, resampling whole trajectories (for closed-loop runs: whole paired episodes, one per configuration)",
+    "bootstrap_seeds": {"issue1_P4_usefulness": 5544101, "issue2_recommendation": 5544102, "issue4_safety": 5544103, "issue3_prediction_paired_CI": 5544104, "issue1_reference_delta_descriptive_CI": 5544105},
+    "seed_note": "seeds are fixed identifiers for reproducibility, chosen before any run; they carry no substantive choice"
+  },
+  "issues": {
+    "1_closed_loop_usefulness": {
+      "original": "Safety: P4 strictly worse than P2 (label-free default) in <= 1% of paired episodes (upper CI). Usefulness: NO threshold is justified yet -- the minimum meaningful gain will be set from the Phase-1 pilot (spread between P2 and P5) BEFORE Phase 3 and appended here with its hash.",
+      "problem": "No P2/P5 pilot result exists; the wording fixes no metric, mapping, statistic, or rule for a small or non-positive spread.",
+      "decision": "M-C (user decision): metric = paired mean T100 difference; the spread decides assessability; the threshold is the frozen 0.5-tick meaningful-difference resolution; no fraction of the spread is used.",
+      "reference_run": {
+        "configurations": "the 240 discarded pilot configurations exactly as frozen in dataset_design.json -> phases.PHASE_1_PILOT.exact_specification: 8 layouts x t_h {none, 3, 5, 7, 9} x p {0.5, 0.7, 0.9} x 2; seeds 190000-190239 (unique per configuration); compliance generate_compliance_vector('AILX_v1|PILOT|<layout>', seed, p). Outside every TRAIN/VALIDATION/TEST split; no primary-test configuration used.",
+        "episodes": "full episodes from reset, no epsilon perturbation, common random numbers (identical configuration and compliance vector for P2 and P5)",
+        "P2": "label-free default action issued globally at every decision tick",
+        "P5": "at every decision tick of its own episode, every BASE2_298 candidate is rolled out with the frozen dataset rollout (run_ai_learning_pilot.rollout: candidate now, label-free continuation afterwards) and the candidate with the lexicographically smallest key is applied; ties: d(s) if tied-optimal, else the lowest candidate id",
+        "per_episode_metric": "T100 = compute_metrics(sim.evacuated).T100 (absolute, from t=0; MAX_STEPS if censored, censoring reported)",
+        "no_model": true,
+        "record": "the run's outputs and their SHA-256 are appended to A2 as the completion of the original commitment"
+      },
+      "reference_gap": "Delta = mean over the 240 configurations of (T100_P2 - T100_P5), point estimate; a 95% bootstrap CI is reported descriptively only",
+      "feasibility_rule": "Delta >= 0.5 tick: usefulness assessable. Delta < 0.5 tick: usefulness NOT ASSESSABLE; P4's gain reported descriptively, neither PASS nor FAIL.",
+      "p4_endpoint": "on the TEST_PRIMARY_JOINT configurations (960; closed-loop, no epsilon, common random numbers for P2 and P4): gain = mean over configurations of (T100_P2 - T100_P4)",
+      "pass_rule": "if assessable: PASS iff the lower bound of the two-sided 95% bootstrap CI of the gain (2,000 resamples over paired episodes, seed 5544101) >= 0.5 tick; the lower bound is the confirmatory statistic; no point-estimate-only rule",
+      "interpretation": "P2/P5 establishes whether the available closed-loop reference gap reaches the frozen 0.5-tick meaningful-difference resolution; P4 must show a statistically supported improvement of at least that size. P4 is not required to capture any fixed fraction of the P2->P5 gap.",
+      "threshold_provenance": "0.5 tick = selector_design.json tolerances.delta_T100 ('T90/T100 are integer ticks, so a half tick separates distinct values'), reused as the episode-level meaningful-difference resolution by user decision M-C",
+      "safety_unchanged": "P4 strictly worse than P2 (label-free default) in <= 1% of paired episodes, upper 95% CI bound; independent of usefulness",
+      "caveat": "Delta is measured on pilot configurations (8 layouts, training-level t_h and p); P4 is evaluated on the primary test (6 main layouts, held-out t_h and p). The population difference is inherent to Option B and is recorded."
+    },
+    "2_recommendation": {
+      "original": "Outcome-equivalence rate greater than d(s)'s own, CI excluding 0, on states where some candidate strictly beats d(s). Exact oracle-action match: diagnostic only.",
+      "problem": "On states where some candidate strictly beats d(s), d(s) is never oracle-equivalent, so its rate is 0 by construction and the criterion collapses to 'rate > 0'.",
+      "unit_of_analysis": "decision state (each test family separately; primary = TEST_PRIMARY_JOINT)",
+      "improvable_state": "state s with min_a key(a, s) < key(d(s), s) (strict, exact integer comparison)",
+      "selector_success": "evaluation-side outcome equivalence: key(selected(s), s) == min_a key(a, s)",
+      "primary_metric": "oracle-behavior capture rate = (# improvable states with selector success) / (# improvable states)",
+      "semantics_boundary": {
+        "evaluation_side_outcome_equivalence": "equality of the realized frozen target 4-vectors; used ONLY to score recommendations after the fact; never a selector input",
+        "observable_candidate_semantics": "two candidates are observably identical in state s iff their assignments agree on every eligible zone whose waiting count in the 26 admissible features is > 0 (waiting_R1, waiting_R2, waiting_C1, waiting_R3, waiting_R4, waiting_C2, waiting_H_total); computable at decision time; used only for the secondary diagnostic below and never to remove candidates",
+        "never_used": ["hidden compliance", "Q_A_at_H / Q_B_at_H", "hidden exit labels", "equivalence_class", "realized outcomes as selector inputs"]
+      },
+      "reference_rates_reported": {
+        "default": "d(s)'s capture rate on improvable states (= 0 by construction; stated, not a competitor)",
+        "random_candidate": "expected capture of a uniformly random candidate = mean over improvable states of (# candidates with the oracle key / 298), computed from labels"
+      },
+      "secondary_diagnostics": ["capture rate over all states", "T100 and unmet regret vs the oracle key", "observable-semantic match: selected candidate observably identical to some oracle-optimal candidate", "exact oracle-candidate match"],
+      "threshold": {
+        "absolute_numeric_threshold": "NOT DEFENSIBLE without an arbitrary choice: no numeric threshold exists in the preregistration, and the only stated anchor (the default's own rate) is 0 by construction. FLAGGED; not chosen.",
+        "proposed_least_arbitrary_criterion": "comparative, mirroring the frozen prediction criterion ('lower than the best baseline, paired CI excluding 0'): the learned selector's capture rate must exceed the capture rate of the identical frozen selector driven by the best preregistered non-learning baseline predictor, with the paired state-level difference's 95% bootstrap CI (trajectory-clustered, 2,000 resamples, seed 5544102) lower bound > 0",
+        "best_baseline_rule": "among the preregistered baselines able to provide conditional means and quantiles -- mean by candidate; mean by candidate x decision tick; exact-input lookup (falling back to candidate x tick when the input is unseen in TRAIN); 1-NN (ties averaged) -- the one with the lowest VALIDATION primary prediction loss (issue 3 convention); its quantiles are the empirical TRAIN quantiles of its own grouping; selected on VALIDATION only, before any test data is scored",
+        "excluded_baseline": "default-outcome-as-prediction (it always selects d(s) and equals the default reference)",
+        "status": "post-hoc pre-training proposal; requires explicit approval"
+      }
+    },
+    "3_prediction_loss_weighting": {
+      "original": "On the primary test, pinball loss (averaged over the three quantiles) on future_T100 and future_unmet is lower than the best baseline, with the paired-difference CI excluding 0; upper-quantile coverage within 0.9 +/- 0.05.",
+      "problem": "91.7% of rows are behavioral duplicates and no weighting was specified.",
+      "unit_of_analysis": "candidate row (decision state x candidate)",
+      "primary_convention": "equal weight per candidate row for every primary prediction metric (pinball loss for quantiles 0.1/0.5/0.9 on future_T100 and future_unmet, and quantile coverage), for the model and every baseline alike",
+      "equal_state_weight": "every decision state has exactly 298 candidate rows (verified: 5,524,324 = 18,538 x 298), so equal row weight gives every decision state the same total weight, 298 rows",
+      "paired_CI": "difference in row-weighted loss between model and best baseline; bootstrap over trajectories (all rows of a resampled trajectory move together), 2,000 resamples, seed 5544104",
+      "training_loss": "the training objective also uses equal row weights; weighting by equivalence_class, hidden compliance or candidate frequency is prohibited",
+      "secondary_diagnostics": "behavior-level metrics (one row per realized-outcome class, or per observable-semantic class) may be reported; they never replace the primary metric",
+      "T90_rows": "rows with T90 reached before the decision (future_T90 = 0 for every candidate of the state) are kept; T90 is not a primary prediction metric"
+    },
+    "4_safety_denominator": {
+      "original": "Harmful-recommendation rate: upper 95% CI bound <= 1% of decisions in every test family. Derivation: ... the rule-of-three bound needs >= 300 independent deviating decisions ...",
+      "problem": "denominator ambiguous (all decisions vs deviating decisions); candidate rows must not count as independent decisions",
+      "unit_of_analysis": "decision state; exactly one selector recommendation per state",
+      "eligible_state": "every evaluation decision state of the family whose 298 candidate labels are all present and finite (all 18,538 states meet this by the verified integrity invariants)",
+      "masked_states": "none expected; any state with a missing or non-finite candidate label is excluded and counted separately. T90-reached states stay eligible (T90 is constant across their candidates).",
+      "harm": "state s is harmful iff key(selected(s), s) > key(d(s), s) under the frozen lexicographic order (one-step counterfactual from the same state)",
+      "abstention_fallback": "a recommendation of d(s) (abstention, fallback, or no switch) is counted in the denominator and is never harmful; a different candidate whose key equals d(s)'s is not harmful",
+      "duplicates": "the 298 candidate rows of a state never count as separate decisions; only the one selected recommendation is scored",
+      "harm_rate": "(# eligible states with harm) / (# eligible states in the family)",
+      "criterion": "upper bound of the two-sided 95% bootstrap CI (trajectory-clustered, 2,000 resamples, seed 5544103) <= 1%, in every test family",
+      "minimum_sample_size": "the >= 300 figure is a minimum requirement on the number of eligible states per test family for the safety criterion to be evaluable; it is not the denominator. Current eligible counts: TEST_PRIMARY_JOINT 3,256; TEST_HELDOUT_TIMING 1,841; TEST_HELDOUT_COMPLIANCE 2,989; DIAG_EXTRAPOLATION 1,442; DIAG_TEMPLATE_ZERO_SHOT 1,180 (all >= 300).",
+      "secondary": "number and share of deviating recommendations (selected != d(s)) and harm rate among deviating states"
+    },
+    "5_selector_semantics": {
+      "original": "selector_design.json step 1: 'Masking: skip T90 when T90_reached_before_decision; drop behaviorally duplicate candidates (keep lowest id).'",
+      "problem": "behavioral duplicates are determined by label maps that depend on hidden compliance and exit labels",
+      "amended_step_1": "Masking: skip T90 when T90 has been reached, decided observably as normalized_remaining <= 4/40 (i.e. at least 36 of 40 occupants evacuated). No candidate is removed.",
+      "candidates": "all 298 BASE2_298 candidates are scored independently from (26 features, candidate descriptor) and stay available",
+      "prohibited": ["removing candidates via hidden compliance, hidden exits, equivalence_class, realized outcomes", "any use of simulator state beyond the 26 features"],
+      "ties": "identical predictions tie naturally; after the frozen tolerance-lexicographic filtering and safety floor (selector_design.json steps 2-5, unchanged), the remaining tie is resolved deterministically: d(s) if it is in the final set, otherwise the lowest candidate id (ids frozen in candidate_action_set.json)",
+      "observable_grouping": "not used by the primary selector; any later optimization may use only observable candidate semantics (issue 2) and needs a separate approval"
+    },
+    "6_model_input_whitelist": {
+      "whitelist_state_features": ["waiting_R1", "waiting_R2", "waiting_C1", "waiting_R3", "waiting_R4", "waiting_C2", "waiting_CE1", "waiting_CE2", "in_transit_R1_C1", "in_transit_R2_C1", "in_transit_C1_H_1tick", "in_transit_C1_H_2tick", "in_transit_R3_C2", "in_transit_R4_C2", "in_transit_C2_H_1tick", "in_transit_C2_H_2tick", "in_transit_H_CE1_1tick", "in_transit_H_CE1_2tick", "in_transit_H_CE2_1tick", "in_transit_H_CE2_2tick", "in_transit_CE1_EXITA", "in_transit_CE2_EXITB", "residual_cap_H_CE1_normalized", "normalized_time", "normalized_remaining", "waiting_H_total"],
+      "whitelist_candidate_descriptor": "28 columns cand_<zone>_<value> for zone in (R1, R2, C1, R3, R4, C2, H) and value in (UNTOUCHED, FAVOR_A, PARITY, FAVOR_B), in that order, derived only from candidate_id via candidate_action_set.json",
+      "exact_input": "the 26 state features in the order above, followed by the 28 descriptor columns: 54 columns",
+      "runtime_assertion": "before every fit and every predict: assert list(model_input_columns) == WHITELIST (exact names and order), else raise; any extra, missing or reordered column aborts",
+      "explicitly_excluded": ["t_h", "p", "seed", "compliance_key", "cell", "template", "distribution", "replicate", "split_role", "trajectory_id", "decision_tick", "epsilon", "pre_decision_action_history", "pre_decision_perturbed", "pre_decision_unmet", "state_fingerprint", "n_nonempty_eligible_zones", "hazard_started", "equivalence_class", "is_default_candidate", "default_action", "candidate_id (raw)", "candidate_name", "hidden compliance", "Q_A_at_H", "Q_B_at_H", "oracle labels", "all future targets", "T90_abs", "T100_abs", "T90_reached_before_decision", "T100_censored", "continuation_*", "spec_*", "seed_rule"]
+    }
+  },
+  "preserved_limitations": {
+    "A": "60% of decision states are at ticks 0 and 5 and fixed by the occupant layout (20 distinct inputs across 11,088 states).",
+    "B": "G3 candidate sufficiency never tested beyond 4 non-empty eligible zones.",
+    "C": "Diagnostic generalization family A (held-out seeds) requires the separately deferred Test A batch."
+  },
+  "not_done": ["P2/P5 reference run not executed", "no model trained", "no baseline fitted", "no selector built", "no dataset change", "Spec v2 and A1 unchanged"]
+}
