@@ -1,0 +1,83 @@
+{
+  "record": "Amendment A2 -- clarification C2 (Issue 2 remaining protocol decisions)",
+  "type": "post-hoc pre-training clarification of approved amendment A2; completes C1",
+  "created_utc": "2026-09-25T07:39:23Z",
+  "linked_to": {
+    "amendment_A2_evaluation_protocol.json": "ab9aeb7a6e5c9349b4017a1fa51cbebc9809afda9f55c52e49a7a768be0b299a",
+    "AMENDMENT_A2_EVALUATION_PROTOCOL.md": "3bb3f92428fa3162acb8cebc9325388f9d6d18d4b0aedd0b050baefb85733fc2",
+    "amendment_A2_approval.json": "e85a80b2721561b6cf046292ff0229cf4a8b07130b6c22a4b5c49aa2f3126dfe",
+    "amendment_A2_clarification_C1.json": "795f55560ef7f18e61f91759c910eac7ab04641b7d92cda5e4385f9ca647405c",
+    "amendment_A2_reference_run.json": "881116373723ebed7ab00c4ac441daa72bb69f729cadd4795fdbe50cff4e958f",
+    "selector_design.json": "8a41c7777458d8363f4343981b08555207d2f95dfa32327c0b9fa55562de9c48",
+    "full_ai_learning_rows.csv.gz": "36aa757f6f2414713d7f5625f562298df2e72baf97a61969a69c0e3ecb967179",
+    "relationship": "A2 (approved, byte-identical) -> C1 (Issue 2 decisions, byte-identical) -> C2 (this file: resolves C1's OPEN-1..OPEN-5). Precedence: C2 governs the five points below; C1 and A2 govern everything else."
+  },
+  "provenance": {
+    "created_before": ["model training", "any predictor fit", "any VALIDATION evaluation", "baseline selection", "selector construction", "any PRIMARY TEST evaluation", "P4"],
+    "nothing_fitted_evaluated_selected_or_built": true,
+    "model_results_informed": false,
+    "outcome_data_inspected": false
+  },
+  "notation": {
+    "rows": "candidate rows (decision state x candidate); every state has exactly 298 rows (Issue 3)",
+    "VALIDATION_rows": "all candidate rows of VALIDATION-role trajectories (1,845 states x 298)",
+    "pinball": "rho_q(y, yhat) = max(q (y - yhat), (q - 1)(y - yhat))",
+    "Q": "{0.1, 0.5, 0.9}"
+  },
+  "decisions": {
+    "OPEN-1_zero_variance_features": {
+      "rule": "any admissible state feature with zero variance in TRAIN (TRAIN population SD = 0 over TRAIN decision states) is excluded from every state-space distance",
+      "excluded": ["in_transit_R2_C1", "in_transit_R3_C2", "in_transit_R4_C2"],
+      "distance_features": "the remaining 23 admissible state features (26 minus the three above)",
+      "scaling": "for each retained feature j: mu_j and sigma_j = mean and population SD (ddof = 0) over TRAIN decision states (one value per state, equal state weight); z_j(s) = (x_j(s) - mu_j) / sigma_j for every split; frozen once computed from TRAIN",
+      "distance": "d(s, s') = sqrt( sum over the 23 retained j of (z_j(s) - z_j(s'))^2 ); candidate descriptor excluded",
+      "sd_1_substitution": "not used",
+      "scope": "applies to the 1-NN baseline and to the selector OOD distance. It does NOT change the model input whitelist (all 26 features stay model inputs) and does NOT change the exact-input lookup baseline, which matches on all 26 raw features (a state whose excluded feature is non-zero is simply 'unseen in TRAIN' and falls back to candidate x tick)"
+    },
+    "OPEN-2_baseline_selection_score": {
+      "per_target_loss": "for baseline b and target k in {future_T100, future_unmet}: L_k(b) = mean over VALIDATION rows r and over q in Q of rho_q(y_k(r), yhat_{b,k,q}(r)) (equal row weight, equal quantile weight)",
+      "validation_scale": "S_k = population SD (ddof = 0) of y_k over all VALIDATION rows (equal row weight); a property of the frozen VALIDATION labels only, identical for every baseline",
+      "normalized_loss": "N_k(b) = L_k(b) / S_k",
+      "selection_score": "score(b) = (N_future_T100(b) + N_future_unmet(b)) / 2",
+      "selection": "the baseline with the smallest score among the four frozen baselines; exact ties (to 12 significant digits) broken by the frozen list order: mean by candidate, mean by candidate x tick, exact-input lookup, 1-NN",
+      "not_used": ["recommendation/capture rate", "lexicographic T100 -> unmet ordering (remains the downstream recommendation/evaluation order)", "any PRIMARY TEST quantity"]
+    },
+    "OPEN-3_MAE_point_prediction": {
+      "rule": "validation MAE uses the conditional MEAN prediction m_{b,k}(r): MAE_k(b) = mean over VALIDATION rows r of |y_k(r) - m_{b,k}(r)| (equal row weight)",
+      "baseline_selector_tolerances": "delta_U = 0.5 x MAE_future_unmet(selected baseline); delta_H = 0.5 x MAE_future_hazard_unmet(selected baseline); delta_T90 = delta_T100 = 0.5 tick",
+      "learned_model": "the learned selector's delta_U/delta_H use the learned model's own conditional-mean VALIDATION MAE by the same formula",
+      "quantiles": "quantile outputs stay separate and never redefine the MAE point prediction",
+      "record_before_primary_test": "the selected baseline's MAE values and resulting tolerances are recorded before any PRIMARY TEST evaluation"
+    },
+    "OPEN-4_selector_OOD_distance": {
+      "metric": "exactly the OPEN-1 distance: 23 retained admissible features, TRAIN-only mu/sigma, Euclidean, no candidate descriptor",
+      "reference_set": "TRAIN decision states (one point per state; equal state weight, consistent with Issue 3)",
+      "threshold": "tau = 99th percentile (NumPy 'linear') of { min over TRAIN states s' != s of d(s, s') : s in TRAIN }, i.e. each TRAIN state's leave-one-out nearest-neighbour distance (another TRAIN state with an identical input gives 0)",
+      "rule": "abstain -> d(s) when min over TRAIN states s' of d(s, s') > tau",
+      "source": "the '99th percentile of training nearest-neighbour distances' is frozen in selector_design.json step 5; C2 fixes only the unit (TRAIN decision states, leave-one-out) and the metric. Computed from TRAIN only; identical for the learned and the baseline selector; never derived from PRIMARY TEST or from any predictor",
+      "interval_width_rule": "the other step-5 abstention rule ((q_hi - m) on T100 of the chosen candidate > the 95th percentile of that width on VALIDATION) uses each selector's own predictor, the width over all VALIDATION rows with equal row weight, and NumPy 'linear' percentiles"
+    },
+    "OPEN-5_quantile_interpolation": {
+      "rule": "every empirical quantile or percentile in this protocol uses NumPy linear interpolation: numpy.quantile(values, q, method='linear') (NumPy's default, the convention already used in A1)",
+      "applies_to": ["baseline quantile predictions (empirical TRAIN quantiles within each baseline's grouping)", "the OOD threshold tau", "the interval-width abstention threshold", "all bootstrap percentile intervals"]
+    }
+  },
+  "issue_2_completeness_checklist": {
+    "eligible_baseline_set": "FROZEN (A2; C1): mean by candidate; mean by candidate x tick; exact-input lookup with candidate x tick fallback; 1-NN ties averaged",
+    "selection_criterion": "FROZEN (C1): lowest VALIDATION primary prediction loss",
+    "selection_score_aggregation": "FROZEN (C2 OPEN-2)",
+    "one_nn_distance_and_scaling": "FROZEN (C1 + C2 OPEN-1)",
+    "zero_variance_features": "FROZEN (C2 OPEN-1)",
+    "baseline_quantiles": "FROZEN (A2: empirical TRAIN quantiles of the baseline's grouping; C2 OPEN-5 method)",
+    "baseline_selector_tolerances": "FROZEN (C1 + C2 OPEN-3)",
+    "MAE_point_prediction": "FROZEN (C2 OPEN-3)",
+    "selector_OOD_distance_and_threshold": "FROZEN (C2 OPEN-4)",
+    "interval_width_abstention": "FROZEN (C2 OPEN-4)",
+    "comparative_criterion": "FROZEN (A2): learned-selector capture rate minus baseline-selector capture rate on improvable PRIMARY TEST states, paired 95% trajectory-clustered bootstrap, 2,000 resamples, seed 5544102, lower bound > 0",
+    "no_primary_test_in_selection": "CONFIRMED: selection, tolerances, OOD threshold and quantiles use TRAIN and VALIDATION only",
+    "no_learned_model_in_baseline_selector": "CONFIRMED",
+    "p2_p5_reference_immutable": "CONFIRMED (record 1adbc88)",
+    "remaining_ambiguities": "none identified",
+    "issue_2_fully_specified": true
+  }
+}
