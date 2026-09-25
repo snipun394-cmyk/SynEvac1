@@ -1,0 +1,13 @@
+{
+  "record": "approval of amendment A2",
+  "amendment": "A2",
+  "status": "APPROVED AND FROZEN",
+  "approved_scope": "all of A2 (Issues 1-6), including the Issue 2 comparative recommendation criterion",
+  "recorded_utc": "2026-09-25T07:05:02Z",
+  "approved_files": {
+    "amendment_A2_evaluation_protocol.json": "ab9aeb7a6e5c9349b4017a1fa51cbebc9809afda9f55c52e49a7a768be0b299a",
+    "AMENDMENT_A2_EVALUATION_PROTOCOL.md": "3bb3f92428fa3162acb8cebc9325388f9d6d18d4b0aedd0b050baefb85733fc2"
+  },
+  "recorded_before": ["P2/P5 reference run", "any model training", "any baseline fitting", "any primary-test evaluation"],
+  "note": "A2 files are not modified by this record. The P2/P5 reference-run outputs and their hashes are recorded in a separate file (amendment_A2_reference_run.json), completing the original Spec v2 commitment without editing A2."
+}
