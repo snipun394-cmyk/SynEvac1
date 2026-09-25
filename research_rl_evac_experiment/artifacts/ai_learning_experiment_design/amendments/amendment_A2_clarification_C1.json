@@ -1,0 +1,53 @@
+{
+  "record": "Amendment A2 -- clarification C1 (Issue 2 baseline procedure)",
+  "type": "post-hoc pre-training clarification of approved amendment A2",
+  "created_utc": "2026-09-25T07:31:00Z",
+  "linked_to": {
+    "amendment_A2_evaluation_protocol.json": "ab9aeb7a6e5c9349b4017a1fa51cbebc9809afda9f55c52e49a7a768be0b299a",
+    "AMENDMENT_A2_EVALUATION_PROTOCOL.md": "3bb3f92428fa3162acb8cebc9325388f9d6d18d4b0aedd0b050baefb85733fc2",
+    "amendment_A2_approval.json": "approval commit 5eebb24",
+    "why_separate_file": "amendment_A2_approval.json certifies A2's exact bytes; editing A2 in place would break that approval record, so the clarification is a linked addendum and A2 remains byte-identical"
+  },
+  "provenance": {
+    "created_before": ["model training", "any predictor fit", "any VALIDATION evaluation", "baseline selection", "selector construction", "any PRIMARY TEST evaluation", "P4"],
+    "model_results_informed": false,
+    "data_inspected_for_this_clarification": "distinct-value counts of the 26 admissible features within TRAIN (to check standardization feasibility); no scaling parameter, loss, or prediction was computed"
+  },
+  "user_decisions_recorded": {
+    "baseline_selection": "the non-learning baseline with the lowest VALIDATION primary prediction loss (frozen A2 criterion); NOT the recommendation/capture rate",
+    "eligible_baselines": ["mean by candidate", "mean by candidate x decision tick (tick = round(normalized_time x 180))", "exact-input lookup, falling back to candidate x tick when the 26-feature input is unseen in TRAIN", "1-NN, ties averaged"],
+    "one_nn": {
+      "space": "the 26 admissible state features only; the candidate descriptor is NOT part of the distance",
+      "scaling": "per-feature mean and standard deviation computed on TRAIN only, frozen, and applied to TRAIN, VALIDATION and PRIMARY TEST",
+      "distance": "ordinary Euclidean distance in the standardized 26-dimensional space",
+      "prediction": "candidate-conditioned: for candidate c at query state s, the TRAIN state(s) at the minimum distance are retrieved and their observed targets for candidate c are used; ties at the minimum distance are averaged",
+      "prohibited": ["raw unscaled distance", "test-derived scaling", "hidden compliance", "candidate outcomes", "equivalence_class", "seed or scenario metadata"]
+    },
+    "baseline_selector_tolerances": "derived from the selected baseline's own VALIDATION prediction error, never from the learned model. A2 / selector_design.json specify target-specific formulas, preserved exactly: delta_U = 0.5 x the baseline's VALIDATION MAE on future_unmet; delta_H = 0.5 x the baseline's VALIDATION MAE on future_hazard_unmet; delta_T90 = delta_T100 = 0.5 tick (unchanged). The selected baseline's validation MAEs and the resulting tolerances are to be recorded before any PRIMARY TEST evaluation."
+  },
+  "p2_p5_reference_frozen": {
+    "delta": 0.5583,
+    "assessable": "YES (Delta >= 0.5, point-estimate rule as frozen in A2)",
+    "ci95": [0.471, 0.65],
+    "note": "the CI is descriptive and is not the assessability rule; the 0.5-tick P4 threshold is unchanged; the P2/P5 result is not used to tune anything",
+    "record_sha256": "881116373723ebed7ab00c4ac441daa72bb69f729cadd4795fdbe50cff4e958f",
+    "commit": "1adbc88"
+  },
+  "resolution_checklist": {
+    "baseline_selection_rule_chosen": "YES -- lowest VALIDATION primary prediction loss",
+    "one_nn_distance_specified": "YES in principle -- but see OPEN-1 (zero-variance features)",
+    "train_only_scaling_enforced": "YES by rule -- scaling parameters come from TRAIN only",
+    "baseline_tolerances_from_baseline_validation_MAE": "YES -- target-specific, from the baseline's own VALIDATION error",
+    "no_primary_test_information_in_baseline_selection": "YES -- selection and tolerances use TRAIN (fitting) and VALIDATION (selection, MAE) only",
+    "no_learned_model_information_in_baseline_selector": "YES -- the baseline selector's tolerances and quantiles depend only on the baseline",
+    "p2_p5_result_immutable": "YES -- frozen record 1adbc88, not reinterpreted"
+  },
+  "open_points_blocking_full_specification": {
+    "OPEN-1_zero_variance_features": "Three admissible features are constant within TRAIN: in_transit_R2_C1, in_transit_R3_C2, in_transit_R4_C2 (TRAIN standard deviation = 0). TRAIN-only standardization divides by zero for them. A rule is needed, e.g. (a) exclude zero-variance TRAIN features from the 1-NN distance, or (b) leave them unscaled (std := 1). The choice changes 1-NN distances on VALIDATION/TEST states where these features are non-zero.",
+    "OPEN-2_selection_loss_aggregation": "The primary prediction loss is defined per target (row-weighted mean pinball loss at q = 0.1/0.5/0.9 on future_T100 and on future_unmet). Selecting ONE baseline needs a single score: e.g. (a) the mean of the two per-target losses (unmet, on a larger scale, dominates), (b) the mean of the two losses each divided by the corresponding VALIDATION target standard deviation, or (c) lexicographic, T100 first. Not specified anywhere.",
+    "OPEN-3_MAE_point_prediction": "'validation MAE' is unspecified as to which point prediction: the conditional mean (what the selector's objective uses) or the median quantile.",
+    "OPEN-4_selector_OOD_distance": "selector_design.json step 5 abstains when 'the nearest training input is farther than the 99th percentile of training nearest-neighbour distances' without defining the distance; it applies to both the learned and the baseline selector. Reusing the frozen 1-NN metric (standardized Euclidean over the 26 features, TRAIN scaling) is the obvious candidate but is not stated.",
+    "OPEN-5_empirical_quantile_method": "empirical TRAIN quantiles (baseline q_hi and quantile predictions) need an interpolation convention (numpy 'linear', as used in A1, or another)."
+  },
+  "issue_2_fully_specified": false
+}
