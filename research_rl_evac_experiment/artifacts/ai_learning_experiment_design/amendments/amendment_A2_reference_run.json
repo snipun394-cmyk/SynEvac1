@@ -1,0 +1,6829 @@
+{
+  "record": "Amendment A2, Issue 1: model-free P2/P5 closed-loop reference run",
+  "run_utc": "2026-09-25T07:06:41Z",
+  "a2_approval_commit": "5eebb24",
+  "configurations": {
+    "n_episodes_per_policy": 240,
+    "seeds": "190000-190239",
+    "layouts": 8,
+    "t_h": [
+      "none",
+      "3",
+      "5",
+      "7",
+      "9"
+    ],
+    "p": [
+      0.5,
+      0.7,
+      0.9
+    ],
+    "epsilon": 0,
+    "outside_every_split": true,
+    "primary_test_used": false
+  },
+  "results": {
+    "mean_T100_P2": 13.4,
+    "mean_T100_P5": 12.8417,
+    "delta": 0.5583,
+    "delta_bootstrap_95ci": [
+      0.4708,
+      0.65
+    ],
+    "bootstrap": {
+      "resamples": 2000,
+      "seed": 5544105,
+      "unit": "paired episode (one per configuration)"
+    },
+    "delta_ge_0_5": true,
+    "usefulness_assessable": "YES",
+    "P4_criterion_if_assessable": "lower bound of the 95% CI of mean(T100_P2 - T100_P4) on TEST_PRIMARY_JOINT >= 0.5 tick (not run)",
+    "per_episode_T100_difference": {
+      "P5_better": 104,
+      "tie": 136,
+      "P5_worse": 0,
+      "min": 0.0,
+      "max": 2.0
+    },
+    "lexicographic_episode_comparison": {
+      "tie": 94,
+      "P5_better": 146
+    },
+    "descriptive": {
+      "mean_T90_P2": 12.4458,
+      "mean_T90_P5": 12.35,
+      "mean_unmet_P2": 66.8958,
+      "mean_unmet_P5": 64.4125,
+      "mean_hazard_unmet_P2": 10.3917,
+      "mean_hazard_unmet_P5": 4.6667,
+      "P5_decisions": 724,
+      "P5_deviations_from_default": 173
+    },
+    "censored_episodes": {
+      "P2": 0,
+      "P5": 0
+    }
+  },
+  "integrity": {
+    "paired_start_equal": "240/240",
+    "one_step_rollouts": 19208,
+    "one_step_same_start": 19208,
+    "one_step_hazard_tick_log": 19208,
+    "continuation": {
+      "policy": "SYMMETRIC_SPLIT_DEADBAND_margin0",
+      "policy_hash": "2614f9af3d4a43e61b008e863b51212acb4b50d64a859e223253758785066f85",
+      "calls": 41221,
+      "calls_with_26_features": 41221
+    },
+    "hidden_heuristic_disabled_for_whole_run": true,
+    "hidden_heuristic_called": false,
+    "protected_files_unchanged": true,
+    "protected_hashes": {
+      "FINAL_EXPERIMENT_SPECIFICATION.md": "3c0078aaab8b79971d7bd0a4ab485d7b0dc4081af3f7412920490f4acda4e6c5",
+      "candidate_action_set.json": "78dee3c225735b4ee78c108eeb0e3aa72627a9da8410055182ed9c64e4ca7e3c",
+      "target_definitions.json": "58470bd589dfbebc865e01d82d7e8a394274d390a8d4b8ed5c54b99711eaae5a",
+      "final_feature_manifest.json": "67f54855bd58207df2e929d7c6f7f50753b77fa05cb29dfc49977989c1f21910",
+      "scenario_space.json": "472066595635be487a9f592ca770dd96beb2312bc62bfa31ece0457c28af3ae3",
+      "dataset_design.json": "4eb14cc48a86947def844f5c5e25567e536f59ee71bd75bad3d1208619d395f1",
+      "diversity_requirements.json": "a0bd57866b25da7c5f225c1633e6fdf518b3d95b6f96b431867e25abcf2d9052",
+      "split_specification.json": "f611493374a0a18527e12a105a0dbb429a4ef4689c2e3f2a6c3175d8eb7cd68a",
+      "selector_design.json": "8a41c7777458d8363f4343981b08555207d2f95dfa32327c0b9fa55562de9c48",
+      "closed_loop_evaluation.json": "a81de9f7de6a5e424be11c7394034c2219e0c0a71b9179c502fc68e3862c9bc1",
+      "preregistered_success_criteria.json": "3ec6fdb6dfe107d35809a5dc3508d1cf2e257ede5218990321a1f342863107f2",
+      "spec_version_record.json": "b0e761dfa665c1ac0b899a1e16abe5ea884a9589f392abf8487bfcd52597c1e2",
+      "full_dataset/full_ai_learning_rows.csv.gz": "36aa757f6f2414713d7f5625f562298df2e72baf97a61969a69c0e3ecb967179",
+      "full_dataset/full_generation_record.json": "5a39842efa2cc4d71dfb3ce1f7adfcba09d20f5a016080374de4f67be0b2fbd4",
+      "full_dataset/full_go_no_go.json": "b16d6b9659a7e78520f65ab918782ab4e4ed3ff756a46d866467b20228349998",
+      "pilot/pilot_rows.csv.gz": "df6e5092af310640c47583fd6fcb27e641db730344cc558c71ee8d4518cb4298",
+      "amendments/amendment_A1_acceptance_criteria.json": "cde5917771a0577ef491d643355fd9e85351f8c86347feabf2035bdb919af026",
+      "amendments/amendment_A1_evaluation.json": "51575d64c51ea11f4c0a6efa9a11b57583b59c28abdc45a6e5f3c4ddbac1ff9a",
+      "amendments/amendment_A2_evaluation_protocol.json": "ab9aeb7a6e5c9349b4017a1fa51cbebc9809afda9f55c52e49a7a768be0b299a",
+      "amendments/AMENDMENT_A2_EVALUATION_PROTOCOL.md": "3bb3f92428fa3162acb8cebc9325388f9d6d18d4b0aedd0b050baefb85733fc2",
+      "amendments/amendment_A2_approval.json": "e85a80b2721561b6cf046292ff0229cf4a8b07130b6c22a4b5c49aa2f3126dfe"
+    },
+    "script_sha256": "8dd79aff272a90eac05ce8ac87688fe4425d81b0e2549dfb6dd278588e2ef41a"
+  },
+  "episodes": [
+    {
+      "trajectory_id": "PILOT-000",
+      "seed": 190000,
+      "layout": "D0_sym",
+      "t_h": "none",
+      "p": 0.5,
+      "P2": {
+        "start_fingerprint": "e191556410f385931f6d9f9660d814f8a6a73781ebf59e3a9f2913dd0d85e406",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 11,
+        "unmet": 48,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "e191556410f385931f6d9f9660d814f8a6a73781ebf59e3a9f2913dd0d85e406",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 11,
+        "unmet": 48,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-001",
+      "seed": 190001,
+      "layout": "D0_sym",
+      "t_h": "none",
+      "p": 0.5,
+      "P2": {
+        "start_fingerprint": "cce774744b8f6f9aa4adbd39084e194f2c1f5fe8c3dbace625cb798051899eae",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 11,
+        "unmet": 48,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "cce774744b8f6f9aa4adbd39084e194f2c1f5fe8c3dbace625cb798051899eae",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 11,
+        "unmet": 48,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-002",
+      "seed": 190002,
+      "layout": "D0_sym",
+      "t_h": "none",
+      "p": 0.7,
+      "P2": {
+        "start_fingerprint": "c737450d16778637642b89f362cd9c4f0c84bcbf507a645bb8afa3a7a96eeb49",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 11,
+        "unmet": 48,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "c737450d16778637642b89f362cd9c4f0c84bcbf507a645bb8afa3a7a96eeb49",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 11,
+        "unmet": 48,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-003",
+      "seed": 190003,
+      "layout": "D0_sym",
+      "t_h": "none",
+      "p": 0.7,
+      "P2": {
+        "start_fingerprint": "7e43e3025aaf0ba82d49a599c0d544b8442426652e02db7143a92fb26d5ae23d",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 11,
+        "unmet": 48,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "7e43e3025aaf0ba82d49a599c0d544b8442426652e02db7143a92fb26d5ae23d",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 11,
+        "unmet": 48,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-004",
+      "seed": 190004,
+      "layout": "D0_sym",
+      "t_h": "none",
+      "p": 0.9,
+      "P2": {
+        "start_fingerprint": "c1eae10d628dffb37157d46095dfc6e3df732d81e1e16338dd6eeda1063c5c9c",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 11,
+        "unmet": 48,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "c1eae10d628dffb37157d46095dfc6e3df732d81e1e16338dd6eeda1063c5c9c",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 11,
+        "unmet": 48,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-005",
+      "seed": 190005,
+      "layout": "D0_sym",
+      "t_h": "none",
+      "p": 0.9,
+      "P2": {
+        "start_fingerprint": "ce5ac63472ab8321dd1b9fd3a760fae1e62a89343116306d11dedc22b3b0a3f9",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 11,
+        "unmet": 48,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "ce5ac63472ab8321dd1b9fd3a760fae1e62a89343116306d11dedc22b3b0a3f9",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 11,
+        "unmet": 48,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-006",
+      "seed": 190006,
+      "layout": "D0_sym",
+      "t_h": "3",
+      "p": 0.5,
+      "P2": {
+        "start_fingerprint": "a103fbe69249dd4c11378c6a5abf75afbd68ca22275c6c80557713dc247f482b",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 82,
+        "hazard_unmet": 16,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "a103fbe69249dd4c11378c6a5abf75afbd68ca22275c6c80557713dc247f482b",
+        "T100": 13,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 80,
+        "hazard_unmet": 8,
+        "decisions": 3,
+        "deviations_from_default": 1
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-007",
+      "seed": 190007,
+      "layout": "D0_sym",
+      "t_h": "3",
+      "p": 0.5,
+      "P2": {
+        "start_fingerprint": "d01785ca9ad2454188724e3f0f93e915c3787017dd77ec1e7fac20c518f7b3e9",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 83,
+        "hazard_unmet": 21,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "d01785ca9ad2454188724e3f0f93e915c3787017dd77ec1e7fac20c518f7b3e9",
+        "T100": 13,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 80,
+        "hazard_unmet": 11,
+        "decisions": 3,
+        "deviations_from_default": 1
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-008",
+      "seed": 190008,
+      "layout": "D0_sym",
+      "t_h": "3",
+      "p": 0.7,
+      "P2": {
+        "start_fingerprint": "260bce12ab3e9295fc2d43f3e15e711187d81751b11db495a87254ac50eb3004",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 84,
+        "hazard_unmet": 26,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "260bce12ab3e9295fc2d43f3e15e711187d81751b11db495a87254ac50eb3004",
+        "T100": 13,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 80,
+        "hazard_unmet": 12,
+        "decisions": 3,
+        "deviations_from_default": 1
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-009",
+      "seed": 190009,
+      "layout": "D0_sym",
+      "t_h": "3",
+      "p": 0.7,
+      "P2": {
+        "start_fingerprint": "87a2a8ac6fb582c4c3940ed4723e931844f95ac625a337c6d0b1414750e9fcb8",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 84,
+        "hazard_unmet": 26,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "87a2a8ac6fb582c4c3940ed4723e931844f95ac625a337c6d0b1414750e9fcb8",
+        "T100": 13,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 80,
+        "hazard_unmet": 10,
+        "decisions": 3,
+        "deviations_from_default": 1
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-010",
+      "seed": 190010,
+      "layout": "D0_sym",
+      "t_h": "3",
+      "p": 0.9,
+      "P2": {
+        "start_fingerprint": "40ebc654b7aded4a11b6e7bcd548a0de0c37019fa3055f26473040395574b71c",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 83,
+        "hazard_unmet": 21,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "40ebc654b7aded4a11b6e7bcd548a0de0c37019fa3055f26473040395574b71c",
+        "T100": 13,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 80,
+        "hazard_unmet": 9,
+        "decisions": 3,
+        "deviations_from_default": 1
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-011",
+      "seed": 190011,
+      "layout": "D0_sym",
+      "t_h": "3",
+      "p": 0.9,
+      "P2": {
+        "start_fingerprint": "a725906c7be4aea5d0898058e77a4e01a06a291b3543ab8c610d2dfeedf451de",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 86,
+        "hazard_unmet": 16,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "a725906c7be4aea5d0898058e77a4e01a06a291b3543ab8c610d2dfeedf451de",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 84,
+        "hazard_unmet": 27,
+        "decisions": 3,
+        "deviations_from_default": 2
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-012",
+      "seed": 190012,
+      "layout": "D0_sym",
+      "t_h": "5",
+      "p": 0.5,
+      "P2": {
+        "start_fingerprint": "174daca4446130a41934c68eaec8b5aa7fa58b7b7080e5315f21782851e4a836",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 14,
+        "unmet": 88,
+        "hazard_unmet": 41,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "174daca4446130a41934c68eaec8b5aa7fa58b7b7080e5315f21782851e4a836",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 81,
+        "hazard_unmet": 19,
+        "decisions": 3,
+        "deviations_from_default": 1
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-013",
+      "seed": 190013,
+      "layout": "D0_sym",
+      "t_h": "5",
+      "p": 0.5,
+      "P2": {
+        "start_fingerprint": "9fdbd0df05a139336cc91b5dbb3598f46fb67ed1f0c8f3456b7b4009380e87de",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 14,
+        "unmet": 85,
+        "hazard_unmet": 31,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "9fdbd0df05a139336cc91b5dbb3598f46fb67ed1f0c8f3456b7b4009380e87de",
+        "T100": 13,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 80,
+        "hazard_unmet": 14,
+        "decisions": 3,
+        "deviations_from_default": 1
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-014",
+      "seed": 190014,
+      "layout": "D0_sym",
+      "t_h": "5",
+      "p": 0.7,
+      "P2": {
+        "start_fingerprint": "af0238d5715ac3eddd812f8083dd7d6b4d5ecd2b40b5e0e760e8effd24c4b681",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 86,
+        "hazard_unmet": 16,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "af0238d5715ac3eddd812f8083dd7d6b4d5ecd2b40b5e0e760e8effd24c4b681",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 85,
+        "hazard_unmet": 8,
+        "decisions": 3,
+        "deviations_from_default": 1
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-015",
+      "seed": 190015,
+      "layout": "D0_sym",
+      "t_h": "5",
+      "p": 0.7,
+      "P2": {
+        "start_fingerprint": "b14b28e65c3c7dd481825a3622cdfb642467961a5a1df01ecebec4eccf24469a",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 83,
+        "hazard_unmet": 21,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "b14b28e65c3c7dd481825a3622cdfb642467961a5a1df01ecebec4eccf24469a",
+        "T100": 13,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 80,
+        "hazard_unmet": 10,
+        "decisions": 3,
+        "deviations_from_default": 1
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-016",
+      "seed": 190016,
+      "layout": "D0_sym",
+      "t_h": "5",
+      "p": 0.9,
+      "P2": {
+        "start_fingerprint": "187eda968b427062b71df47ece59fd10e2d639c565cd93b54a4d8090a1663a13",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 86,
+        "hazard_unmet": 16,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "187eda968b427062b71df47ece59fd10e2d639c565cd93b54a4d8090a1663a13",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 83,
+        "hazard_unmet": 22,
+        "decisions": 3,
+        "deviations_from_default": 2
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-017",
+      "seed": 190017,
+      "layout": "D0_sym",
+      "t_h": "5",
+      "p": 0.9,
+      "P2": {
+        "start_fingerprint": "bf8922aacdd304dd5cc380b3579ca90d97d93a439315b2f92e72152b73b8068e",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 82,
+        "hazard_unmet": 16,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "bf8922aacdd304dd5cc380b3579ca90d97d93a439315b2f92e72152b73b8068e",
+        "T100": 13,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 80,
+        "hazard_unmet": 8,
+        "decisions": 3,
+        "deviations_from_default": 1
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-018",
+      "seed": 190018,
+      "layout": "D0_sym",
+      "t_h": "7",
+      "p": 0.5,
+      "P2": {
+        "start_fingerprint": "f458230a2e493e9906f18829babfcf8a133ac16fbede4332b84c3330c1c92487",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 12,
+        "unmet": 58,
+        "hazard_unmet": 12,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "f458230a2e493e9906f18829babfcf8a133ac16fbede4332b84c3330c1c92487",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 12,
+        "unmet": 52,
+        "hazard_unmet": 2,
+        "decisions": 3,
+        "deviations_from_default": 1
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-019",
+      "seed": 190019,
+      "layout": "D0_sym",
+      "t_h": "7",
+      "p": 0.5,
+      "P2": {
+        "start_fingerprint": "ffa6a3ce133eae22d30303cd0be2252966428190abdedc4bceb78240385009a6",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 12,
+        "unmet": 58,
+        "hazard_unmet": 12,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "ffa6a3ce133eae22d30303cd0be2252966428190abdedc4bceb78240385009a6",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 12,
+        "unmet": 52,
+        "hazard_unmet": 2,
+        "decisions": 3,
+        "deviations_from_default": 1
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-020",
+      "seed": 190020,
+      "layout": "D0_sym",
+      "t_h": "7",
+      "p": 0.7,
+      "P2": {
+        "start_fingerprint": "3c235c970a196b6574e9fb1d5fed6da3c3cbc5c719e85b1bc3b761ee51f46818",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 12,
+        "unmet": 58,
+        "hazard_unmet": 12,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "3c235c970a196b6574e9fb1d5fed6da3c3cbc5c719e85b1bc3b761ee51f46818",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 12,
+        "unmet": 52,
+        "hazard_unmet": 2,
+        "decisions": 3,
+        "deviations_from_default": 1
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-021",
+      "seed": 190021,
+      "layout": "D0_sym",
+      "t_h": "7",
+      "p": 0.7,
+      "P2": {
+        "start_fingerprint": "a5a08a559b82e6ccecdac95e37ef7ada522dbe5c292397a705949ff04f627880",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 12,
+        "unmet": 58,
+        "hazard_unmet": 12,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "a5a08a559b82e6ccecdac95e37ef7ada522dbe5c292397a705949ff04f627880",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 12,
+        "unmet": 52,
+        "hazard_unmet": 2,
+        "decisions": 3,
+        "deviations_from_default": 1
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-022",
+      "seed": 190022,
+      "layout": "D0_sym",
+      "t_h": "7",
+      "p": 0.9,
+      "P2": {
+        "start_fingerprint": "e2be6b640ef3e6240044d3665c30413608b961a9c2b1feb96ca40ead00db2344",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 12,
+        "unmet": 58,
+        "hazard_unmet": 12,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "e2be6b640ef3e6240044d3665c30413608b961a9c2b1feb96ca40ead00db2344",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 12,
+        "unmet": 52,
+        "hazard_unmet": 2,
+        "decisions": 3,
+        "deviations_from_default": 1
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-023",
+      "seed": 190023,
+      "layout": "D0_sym",
+      "t_h": "7",
+      "p": 0.9,
+      "P2": {
+        "start_fingerprint": "4f1ea41d2789ef5aab8dec729b3fd8a8a4c4151ba23de2935001a708c5b88254",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 12,
+        "unmet": 58,
+        "hazard_unmet": 12,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "4f1ea41d2789ef5aab8dec729b3fd8a8a4c4151ba23de2935001a708c5b88254",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 12,
+        "unmet": 52,
+        "hazard_unmet": 2,
+        "decisions": 3,
+        "deviations_from_default": 1
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-024",
+      "seed": 190024,
+      "layout": "D0_sym",
+      "t_h": "9",
+      "p": 0.5,
+      "P2": {
+        "start_fingerprint": "50165b90691f672da57ae7cf3c378e5764b17232df9e17ea901a875d4ad3352b",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 11,
+        "unmet": 48,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "50165b90691f672da57ae7cf3c378e5764b17232df9e17ea901a875d4ad3352b",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 11,
+        "unmet": 48,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-025",
+      "seed": 190025,
+      "layout": "D0_sym",
+      "t_h": "9",
+      "p": 0.5,
+      "P2": {
+        "start_fingerprint": "2d6051af17fea9870b86d114932d4eb3aebd630c337ef8109205acc408ad8ee2",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 11,
+        "unmet": 48,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "2d6051af17fea9870b86d114932d4eb3aebd630c337ef8109205acc408ad8ee2",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 11,
+        "unmet": 48,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-026",
+      "seed": 190026,
+      "layout": "D0_sym",
+      "t_h": "9",
+      "p": 0.7,
+      "P2": {
+        "start_fingerprint": "77b72cb384fb7dc059288f73a10b6a0232afd806e3878fc902f5c9043e027534",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 11,
+        "unmet": 48,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "77b72cb384fb7dc059288f73a10b6a0232afd806e3878fc902f5c9043e027534",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 11,
+        "unmet": 48,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-027",
+      "seed": 190027,
+      "layout": "D0_sym",
+      "t_h": "9",
+      "p": 0.7,
+      "P2": {
+        "start_fingerprint": "f29906199b8bed1d908892933b8d7e909d167dee9df87bd3ee4b0b74837bd937",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 11,
+        "unmet": 48,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "f29906199b8bed1d908892933b8d7e909d167dee9df87bd3ee4b0b74837bd937",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 11,
+        "unmet": 48,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-028",
+      "seed": 190028,
+      "layout": "D0_sym",
+      "t_h": "9",
+      "p": 0.9,
+      "P2": {
+        "start_fingerprint": "da5a941c22d31c63293d82cc55fa793e27b48c269ef30c656b961954e10233ef",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 11,
+        "unmet": 48,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "da5a941c22d31c63293d82cc55fa793e27b48c269ef30c656b961954e10233ef",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 11,
+        "unmet": 48,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-029",
+      "seed": 190029,
+      "layout": "D0_sym",
+      "t_h": "9",
+      "p": 0.9,
+      "P2": {
+        "start_fingerprint": "900703c1c09f67e675126710abcd37286f81a24316e768ec380d648d323a26b6",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 11,
+        "unmet": 48,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "900703c1c09f67e675126710abcd37286f81a24316e768ec380d648d323a26b6",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 11,
+        "unmet": 48,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-030",
+      "seed": 190030,
+      "layout": "D1_east_heavy",
+      "t_h": "none",
+      "p": 0.5,
+      "P2": {
+        "start_fingerprint": "987cd19af59e48751cc59d9c438caf6e7dddd55936e90e22917e2875164e4b70",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 12,
+        "unmet": 50,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "987cd19af59e48751cc59d9c438caf6e7dddd55936e90e22917e2875164e4b70",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 12,
+        "unmet": 50,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-031",
+      "seed": 190031,
+      "layout": "D1_east_heavy",
+      "t_h": "none",
+      "p": 0.5,
+      "P2": {
+        "start_fingerprint": "bd8f015d241ca57b9ffd6b26341c67d2a455320280e4d5e0ad48ab9c8892f12e",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 12,
+        "unmet": 50,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "bd8f015d241ca57b9ffd6b26341c67d2a455320280e4d5e0ad48ab9c8892f12e",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 12,
+        "unmet": 50,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-032",
+      "seed": 190032,
+      "layout": "D1_east_heavy",
+      "t_h": "none",
+      "p": 0.7,
+      "P2": {
+        "start_fingerprint": "6e126bc5cf5a80bcffe1cdc29899bbb345746162af542cbfd7a68a92fd521904",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 12,
+        "unmet": 50,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "6e126bc5cf5a80bcffe1cdc29899bbb345746162af542cbfd7a68a92fd521904",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 12,
+        "unmet": 50,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-033",
+      "seed": 190033,
+      "layout": "D1_east_heavy",
+      "t_h": "none",
+      "p": 0.7,
+      "P2": {
+        "start_fingerprint": "02b33c3e4289f04b7e17f9c063f3cc83397d2953a30fe8d1178bc235929328cd",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 12,
+        "unmet": 50,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "02b33c3e4289f04b7e17f9c063f3cc83397d2953a30fe8d1178bc235929328cd",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 12,
+        "unmet": 50,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-034",
+      "seed": 190034,
+      "layout": "D1_east_heavy",
+      "t_h": "none",
+      "p": 0.9,
+      "P2": {
+        "start_fingerprint": "b8b9ae94c7c166e79b3ee1eb40e643b42256287aab60afdb5f60371c80861f21",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 12,
+        "unmet": 50,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "b8b9ae94c7c166e79b3ee1eb40e643b42256287aab60afdb5f60371c80861f21",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 12,
+        "unmet": 50,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-035",
+      "seed": 190035,
+      "layout": "D1_east_heavy",
+      "t_h": "none",
+      "p": 0.9,
+      "P2": {
+        "start_fingerprint": "7ec58b5f16dedd00f4cd7840b6f537762fc603b78cd4351082594739efadf459",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 12,
+        "unmet": 50,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "7ec58b5f16dedd00f4cd7840b6f537762fc603b78cd4351082594739efadf459",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 12,
+        "unmet": 50,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-036",
+      "seed": 190036,
+      "layout": "D1_east_heavy",
+      "t_h": "3",
+      "p": 0.5,
+      "P2": {
+        "start_fingerprint": "bc80a2d7f099d5a0fd47e27c0ca396521a3a6f9c06762884385ab27dc7d4c5d4",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 83,
+        "hazard_unmet": 19,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "bc80a2d7f099d5a0fd47e27c0ca396521a3a6f9c06762884385ab27dc7d4c5d4",
+        "T100": 13,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 80,
+        "hazard_unmet": 8,
+        "decisions": 3,
+        "deviations_from_default": 1
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-037",
+      "seed": 190037,
+      "layout": "D1_east_heavy",
+      "t_h": "3",
+      "p": 0.5,
+      "P2": {
+        "start_fingerprint": "f9fa5f31cb2de91f298490b2d8b391426a507d822bac052a540000ebe17c0999",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 14,
+        "unmet": 85,
+        "hazard_unmet": 26,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "f9fa5f31cb2de91f298490b2d8b391426a507d822bac052a540000ebe17c0999",
+        "T100": 13,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 80,
+        "hazard_unmet": 8,
+        "decisions": 3,
+        "deviations_from_default": 2
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-038",
+      "seed": 190038,
+      "layout": "D1_east_heavy",
+      "t_h": "3",
+      "p": 0.7,
+      "P2": {
+        "start_fingerprint": "27d6f4d529dc7d376459c08efa455ba7596d68e1cd875ce63eb50d3e1fd7f8cd",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 90,
+        "hazard_unmet": 14,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "27d6f4d529dc7d376459c08efa455ba7596d68e1cd875ce63eb50d3e1fd7f8cd",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 90,
+        "hazard_unmet": 7,
+        "decisions": 3,
+        "deviations_from_default": 1
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-039",
+      "seed": 190039,
+      "layout": "D1_east_heavy",
+      "t_h": "3",
+      "p": 0.7,
+      "P2": {
+        "start_fingerprint": "4e86a12c58f042c2728911cebfd838bb7fd81c2f79cf93bb20f83257ae6130b9",
+        "T100": 15,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 85,
+        "hazard_unmet": 22,
+        "decisions": 4,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "4e86a12c58f042c2728911cebfd838bb7fd81c2f79cf93bb20f83257ae6130b9",
+        "T100": 13,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 80,
+        "hazard_unmet": 6,
+        "decisions": 3,
+        "deviations_from_default": 1
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-040",
+      "seed": 190040,
+      "layout": "D1_east_heavy",
+      "t_h": "3",
+      "p": 0.9,
+      "P2": {
+        "start_fingerprint": "2728f972bd4f0708cdcde3945e83f8eb57336c4b8291fd8842283f1af93961ba",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 90,
+        "hazard_unmet": 14,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "2728f972bd4f0708cdcde3945e83f8eb57336c4b8291fd8842283f1af93961ba",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 90,
+        "hazard_unmet": 10,
+        "decisions": 3,
+        "deviations_from_default": 1
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-041",
+      "seed": 190041,
+      "layout": "D1_east_heavy",
+      "t_h": "3",
+      "p": 0.9,
+      "P2": {
+        "start_fingerprint": "b40b293c3237218e9148a40c5a9f467017b40ed05bbca7655c6ecb31e29e1f30",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 90,
+        "hazard_unmet": 12,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "b40b293c3237218e9148a40c5a9f467017b40ed05bbca7655c6ecb31e29e1f30",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 90,
+        "hazard_unmet": 8,
+        "decisions": 3,
+        "deviations_from_default": 1
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-042",
+      "seed": 190042,
+      "layout": "D1_east_heavy",
+      "t_h": "5",
+      "p": 0.5,
+      "P2": {
+        "start_fingerprint": "d5a46f659b1982dea6c13ecc8bde0dee2b4a6418b8cf2426243cd5e1fb6789ea",
+        "T100": 15,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 86,
+        "hazard_unmet": 26,
+        "decisions": 4,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "d5a46f659b1982dea6c13ecc8bde0dee2b4a6418b8cf2426243cd5e1fb6789ea",
+        "T100": 15,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 84,
+        "hazard_unmet": 21,
+        "decisions": 4,
+        "deviations_from_default": 1
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-043",
+      "seed": 190043,
+      "layout": "D1_east_heavy",
+      "t_h": "5",
+      "p": 0.5,
+      "P2": {
+        "start_fingerprint": "154b33dcaa13065c2da3d6c350560ffdca68a8f638576bd10bc1305c2531173a",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 83,
+        "hazard_unmet": 19,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "154b33dcaa13065c2da3d6c350560ffdca68a8f638576bd10bc1305c2531173a",
+        "T100": 13,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 80,
+        "hazard_unmet": 7,
+        "decisions": 3,
+        "deviations_from_default": 1
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-044",
+      "seed": 190044,
+      "layout": "D1_east_heavy",
+      "t_h": "5",
+      "p": 0.7,
+      "P2": {
+        "start_fingerprint": "358f2a40f56b556c562d1fe5d780b8cac7800509bbc4398c4056ba24dd8cb3c4",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 83,
+        "hazard_unmet": 19,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "358f2a40f56b556c562d1fe5d780b8cac7800509bbc4398c4056ba24dd8cb3c4",
+        "T100": 13,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 80,
+        "hazard_unmet": 9,
+        "decisions": 3,
+        "deviations_from_default": 1
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-045",
+      "seed": 190045,
+      "layout": "D1_east_heavy",
+      "t_h": "5",
+      "p": 0.7,
+      "P2": {
+        "start_fingerprint": "60577cf48d5784c971b0aeea530b31025fe88c242d043d26f689d5e2808e8aef",
+        "T100": 15,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 86,
+        "hazard_unmet": 20,
+        "decisions": 4,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "60577cf48d5784c971b0aeea530b31025fe88c242d043d26f689d5e2808e8aef",
+        "T100": 13,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 80,
+        "hazard_unmet": 4,
+        "decisions": 3,
+        "deviations_from_default": 1
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-046",
+      "seed": 190046,
+      "layout": "D1_east_heavy",
+      "t_h": "5",
+      "p": 0.9,
+      "P2": {
+        "start_fingerprint": "5f169ff95de8369956d15262647d8c99d7772a60430d7f2b3cc214a20aab83ff",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 90,
+        "hazard_unmet": 14,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "5f169ff95de8369956d15262647d8c99d7772a60430d7f2b3cc214a20aab83ff",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 90,
+        "hazard_unmet": 6,
+        "decisions": 3,
+        "deviations_from_default": 1
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-047",
+      "seed": 190047,
+      "layout": "D1_east_heavy",
+      "t_h": "5",
+      "p": 0.9,
+      "P2": {
+        "start_fingerprint": "8c0b79f45d3ac96585f1ebc9d284fbd75ae9cb408bc69116e738ef7d1d9e27d1",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 90,
+        "hazard_unmet": 12,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "8c0b79f45d3ac96585f1ebc9d284fbd75ae9cb408bc69116e738ef7d1d9e27d1",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 90,
+        "hazard_unmet": 8,
+        "decisions": 3,
+        "deviations_from_default": 1
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-048",
+      "seed": 190048,
+      "layout": "D1_east_heavy",
+      "t_h": "7",
+      "p": 0.5,
+      "P2": {
+        "start_fingerprint": "a2126aeda4fed281e809f7a664793380eaf26043ac44b77b961088d6f8cecdb2",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 12,
+        "unmet": 59,
+        "hazard_unmet": 9,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "a2126aeda4fed281e809f7a664793380eaf26043ac44b77b961088d6f8cecdb2",
+        "T100": 13,
+        "T100_censored": false,
+        "T90": 12,
+        "unmet": 53,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 2
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-049",
+      "seed": 190049,
+      "layout": "D1_east_heavy",
+      "t_h": "7",
+      "p": 0.5,
+      "P2": {
+        "start_fingerprint": "c2fb464a4364ddf3f8958fc651ddffe59d3321a27861fad1e23d8ba20f207960",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 12,
+        "unmet": 59,
+        "hazard_unmet": 9,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "c2fb464a4364ddf3f8958fc651ddffe59d3321a27861fad1e23d8ba20f207960",
+        "T100": 13,
+        "T100_censored": false,
+        "T90": 12,
+        "unmet": 54,
+        "hazard_unmet": 4,
+        "decisions": 3,
+        "deviations_from_default": 2
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-050",
+      "seed": 190050,
+      "layout": "D1_east_heavy",
+      "t_h": "7",
+      "p": 0.7,
+      "P2": {
+        "start_fingerprint": "b53dad1b9ff6eee4c5b562644f766474aed1c88f94dc71697a2faa1b276cf93f",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 12,
+        "unmet": 59,
+        "hazard_unmet": 9,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "b53dad1b9ff6eee4c5b562644f766474aed1c88f94dc71697a2faa1b276cf93f",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 12,
+        "unmet": 52,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 2
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-051",
+      "seed": 190051,
+      "layout": "D1_east_heavy",
+      "t_h": "7",
+      "p": 0.7,
+      "P2": {
+        "start_fingerprint": "d40274eea685836a1b19c5a3b7430d47a3df382a9708d84e1fc101c65f217d6f",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 12,
+        "unmet": 59,
+        "hazard_unmet": 9,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "d40274eea685836a1b19c5a3b7430d47a3df382a9708d84e1fc101c65f217d6f",
+        "T100": 13,
+        "T100_censored": false,
+        "T90": 12,
+        "unmet": 53,
+        "hazard_unmet": 1,
+        "decisions": 3,
+        "deviations_from_default": 2
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-052",
+      "seed": 190052,
+      "layout": "D1_east_heavy",
+      "t_h": "7",
+      "p": 0.9,
+      "P2": {
+        "start_fingerprint": "2378f95cf79061236d7fa254f8263263a9a3308be67fba1ed11b62b61f0ccd94",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 12,
+        "unmet": 59,
+        "hazard_unmet": 9,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "2378f95cf79061236d7fa254f8263263a9a3308be67fba1ed11b62b61f0ccd94",
+        "T100": 13,
+        "T100_censored": false,
+        "T90": 12,
+        "unmet": 53,
+        "hazard_unmet": 1,
+        "decisions": 3,
+        "deviations_from_default": 1
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-053",
+      "seed": 190053,
+      "layout": "D1_east_heavy",
+      "t_h": "7",
+      "p": 0.9,
+      "P2": {
+        "start_fingerprint": "c47a74d14adba06972f9c5a5fa8ee1e9f9169ceeddc8664e7913a9f55b861005",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 12,
+        "unmet": 59,
+        "hazard_unmet": 9,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "c47a74d14adba06972f9c5a5fa8ee1e9f9169ceeddc8664e7913a9f55b861005",
+        "T100": 13,
+        "T100_censored": false,
+        "T90": 12,
+        "unmet": 53,
+        "hazard_unmet": 1,
+        "decisions": 3,
+        "deviations_from_default": 1
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-054",
+      "seed": 190054,
+      "layout": "D1_east_heavy",
+      "t_h": "9",
+      "p": 0.5,
+      "P2": {
+        "start_fingerprint": "1479b0c33bdee1db2f11523351d1e266ee8fb85003b42a2951875b5b186ebe66",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 12,
+        "unmet": 50,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "1479b0c33bdee1db2f11523351d1e266ee8fb85003b42a2951875b5b186ebe66",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 12,
+        "unmet": 50,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-055",
+      "seed": 190055,
+      "layout": "D1_east_heavy",
+      "t_h": "9",
+      "p": 0.5,
+      "P2": {
+        "start_fingerprint": "611ad9d9e0612738047a287e06b682b3062c9159db42b1e0ebd4e22090c76527",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 12,
+        "unmet": 50,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "611ad9d9e0612738047a287e06b682b3062c9159db42b1e0ebd4e22090c76527",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 12,
+        "unmet": 50,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-056",
+      "seed": 190056,
+      "layout": "D1_east_heavy",
+      "t_h": "9",
+      "p": 0.7,
+      "P2": {
+        "start_fingerprint": "d1ac2b8e9d6ee8d3bbc17843f609567798ed1a7ffd3a196176ad09870e4a72e0",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 12,
+        "unmet": 50,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "d1ac2b8e9d6ee8d3bbc17843f609567798ed1a7ffd3a196176ad09870e4a72e0",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 12,
+        "unmet": 50,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-057",
+      "seed": 190057,
+      "layout": "D1_east_heavy",
+      "t_h": "9",
+      "p": 0.7,
+      "P2": {
+        "start_fingerprint": "b5a9e99fdaa9d4ecd390adb816a9b165df8671add62968836d92aaf37e4f3e79",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 12,
+        "unmet": 50,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "b5a9e99fdaa9d4ecd390adb816a9b165df8671add62968836d92aaf37e4f3e79",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 12,
+        "unmet": 50,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-058",
+      "seed": 190058,
+      "layout": "D1_east_heavy",
+      "t_h": "9",
+      "p": 0.9,
+      "P2": {
+        "start_fingerprint": "32bcf890509de4318c7989b2ada0a8eee26b83c78f970121b285701ce1e73f1b",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 12,
+        "unmet": 50,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "32bcf890509de4318c7989b2ada0a8eee26b83c78f970121b285701ce1e73f1b",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 12,
+        "unmet": 50,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-059",
+      "seed": 190059,
+      "layout": "D1_east_heavy",
+      "t_h": "9",
+      "p": 0.9,
+      "P2": {
+        "start_fingerprint": "0501964499715bb3773a70f9ec85b7e2378ebc6de0bc90f9d2a0736c38ec9ffe",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 12,
+        "unmet": 50,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "0501964499715bb3773a70f9ec85b7e2378ebc6de0bc90f9d2a0736c38ec9ffe",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 12,
+        "unmet": 50,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-060",
+      "seed": 190060,
+      "layout": "D2_west_heavy",
+      "t_h": "none",
+      "p": 0.5,
+      "P2": {
+        "start_fingerprint": "55d8125eaf58a7656d27ba74b422ab603d48b91090f25d9cf85f9451605a0902",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 12,
+        "unmet": 50,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "55d8125eaf58a7656d27ba74b422ab603d48b91090f25d9cf85f9451605a0902",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 12,
+        "unmet": 50,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-061",
+      "seed": 190061,
+      "layout": "D2_west_heavy",
+      "t_h": "none",
+      "p": 0.5,
+      "P2": {
+        "start_fingerprint": "839de0b5ebed6587283e4fe6ed78029aa92fa11c101cc4a86977b3b6c605aa71",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 12,
+        "unmet": 50,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "839de0b5ebed6587283e4fe6ed78029aa92fa11c101cc4a86977b3b6c605aa71",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 12,
+        "unmet": 50,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-062",
+      "seed": 190062,
+      "layout": "D2_west_heavy",
+      "t_h": "none",
+      "p": 0.7,
+      "P2": {
+        "start_fingerprint": "b8c2a36e7d9ad63e0730bab5d6dde78b33dc3395373d8038ad2618b33823cdca",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 12,
+        "unmet": 50,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "b8c2a36e7d9ad63e0730bab5d6dde78b33dc3395373d8038ad2618b33823cdca",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 12,
+        "unmet": 50,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-063",
+      "seed": 190063,
+      "layout": "D2_west_heavy",
+      "t_h": "none",
+      "p": 0.7,
+      "P2": {
+        "start_fingerprint": "e9f608b4697dfcaf9c78c1405f5164bb70d389b2dec7534d5f4f85688b0d2659",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 12,
+        "unmet": 50,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "e9f608b4697dfcaf9c78c1405f5164bb70d389b2dec7534d5f4f85688b0d2659",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 12,
+        "unmet": 50,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-064",
+      "seed": 190064,
+      "layout": "D2_west_heavy",
+      "t_h": "none",
+      "p": 0.9,
+      "P2": {
+        "start_fingerprint": "1ab42143994b13938d67fb04b76f336829d658d7d40b8cb076ab56480788c4b1",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 12,
+        "unmet": 50,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "1ab42143994b13938d67fb04b76f336829d658d7d40b8cb076ab56480788c4b1",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 12,
+        "unmet": 50,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-065",
+      "seed": 190065,
+      "layout": "D2_west_heavy",
+      "t_h": "none",
+      "p": 0.9,
+      "P2": {
+        "start_fingerprint": "c4deb72e33aaf3d0433e402d81b3a9e9a2fec91f73ff7e2711ca8ebc05e24cd3",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 12,
+        "unmet": 50,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "c4deb72e33aaf3d0433e402d81b3a9e9a2fec91f73ff7e2711ca8ebc05e24cd3",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 12,
+        "unmet": 50,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-066",
+      "seed": 190066,
+      "layout": "D2_west_heavy",
+      "t_h": "3",
+      "p": 0.5,
+      "P2": {
+        "start_fingerprint": "91d2318b5c1be14dae1b49dfc250a21c24fcdb5bb06d6e784aec7f5e50c129a7",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 83,
+        "hazard_unmet": 19,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "91d2318b5c1be14dae1b49dfc250a21c24fcdb5bb06d6e784aec7f5e50c129a7",
+        "T100": 13,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 80,
+        "hazard_unmet": 9,
+        "decisions": 3,
+        "deviations_from_default": 1
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-067",
+      "seed": 190067,
+      "layout": "D2_west_heavy",
+      "t_h": "3",
+      "p": 0.5,
+      "P2": {
+        "start_fingerprint": "d6d99c1bddaab1708815ac7da2bcc1259fdd4d7d2eb05eeae95ead09847db6eb",
+        "T100": 15,
+        "T100_censored": false,
+        "T90": 14,
+        "unmet": 92,
+        "hazard_unmet": 43,
+        "decisions": 4,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "d6d99c1bddaab1708815ac7da2bcc1259fdd4d7d2eb05eeae95ead09847db6eb",
+        "T100": 15,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 86,
+        "hazard_unmet": 31,
+        "decisions": 4,
+        "deviations_from_default": 1
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-068",
+      "seed": 190068,
+      "layout": "D2_west_heavy",
+      "t_h": "3",
+      "p": 0.7,
+      "P2": {
+        "start_fingerprint": "ea84b70d145ced59ba3077336f38e8ea842de512ccb4b23be5646de0e8e2cf2c",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 86,
+        "hazard_unmet": 14,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "ea84b70d145ced59ba3077336f38e8ea842de512ccb4b23be5646de0e8e2cf2c",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 85,
+        "hazard_unmet": 10,
+        "decisions": 3,
+        "deviations_from_default": 1
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-069",
+      "seed": 190069,
+      "layout": "D2_west_heavy",
+      "t_h": "3",
+      "p": 0.7,
+      "P2": {
+        "start_fingerprint": "aa11739a25af81f34c4d7a3a99a53405dd3d95bb39d47fa16e9a595e456c8d3e",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 83,
+        "hazard_unmet": 22,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "aa11739a25af81f34c4d7a3a99a53405dd3d95bb39d47fa16e9a595e456c8d3e",
+        "T100": 13,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 80,
+        "hazard_unmet": 11,
+        "decisions": 3,
+        "deviations_from_default": 1
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-070",
+      "seed": 190070,
+      "layout": "D2_west_heavy",
+      "t_h": "3",
+      "p": 0.9,
+      "P2": {
+        "start_fingerprint": "d9ce21594ef24f36dae4e7874bf4e6a52b561c5cb27389e1b0edda52f0b3037d",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 90,
+        "hazard_unmet": 14,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "d9ce21594ef24f36dae4e7874bf4e6a52b561c5cb27389e1b0edda52f0b3037d",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 90,
+        "hazard_unmet": 6,
+        "decisions": 3,
+        "deviations_from_default": 1
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-071",
+      "seed": 190071,
+      "layout": "D2_west_heavy",
+      "t_h": "3",
+      "p": 0.9,
+      "P2": {
+        "start_fingerprint": "2e105196a680a2505d51b06f210ed2702defd6877aa6fc0bca6cdcd29f6b6069",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 81,
+        "hazard_unmet": 12,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "2e105196a680a2505d51b06f210ed2702defd6877aa6fc0bca6cdcd29f6b6069",
+        "T100": 13,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 80,
+        "hazard_unmet": 8,
+        "decisions": 3,
+        "deviations_from_default": 1
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-072",
+      "seed": 190072,
+      "layout": "D2_west_heavy",
+      "t_h": "5",
+      "p": 0.5,
+      "P2": {
+        "start_fingerprint": "329437976459115c9fd97276a24a76062df7250ff90374e55f28d3ff2f2f89f9",
+        "T100": 15,
+        "T100_censored": false,
+        "T90": 14,
+        "unmet": 87,
+        "hazard_unmet": 28,
+        "decisions": 4,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "329437976459115c9fd97276a24a76062df7250ff90374e55f28d3ff2f2f89f9",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 81,
+        "hazard_unmet": 11,
+        "decisions": 3,
+        "deviations_from_default": 1
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-073",
+      "seed": 190073,
+      "layout": "D2_west_heavy",
+      "t_h": "5",
+      "p": 0.5,
+      "P2": {
+        "start_fingerprint": "a9744654d4bb42c79ea2874fe1d5047e87cbc60e4a681bbf66731c1879e79d79",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 81,
+        "hazard_unmet": 12,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "a9744654d4bb42c79ea2874fe1d5047e87cbc60e4a681bbf66731c1879e79d79",
+        "T100": 13,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 80,
+        "hazard_unmet": 8,
+        "decisions": 3,
+        "deviations_from_default": 1
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-074",
+      "seed": 190074,
+      "layout": "D2_west_heavy",
+      "t_h": "5",
+      "p": 0.7,
+      "P2": {
+        "start_fingerprint": "f94d350b89e3c5fa8e5bc1229a842a92c0f812739c815a64c4db31ef84e6e1af",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 83,
+        "hazard_unmet": 16,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "f94d350b89e3c5fa8e5bc1229a842a92c0f812739c815a64c4db31ef84e6e1af",
+        "T100": 13,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 80,
+        "hazard_unmet": 5,
+        "decisions": 3,
+        "deviations_from_default": 1
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-075",
+      "seed": 190075,
+      "layout": "D2_west_heavy",
+      "t_h": "5",
+      "p": 0.7,
+      "P2": {
+        "start_fingerprint": "31393c6d8c8c3de350d5fe8f110618f0d9cd3ba73f977b21a7bdc3f12edd7848",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 83,
+        "hazard_unmet": 19,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "31393c6d8c8c3de350d5fe8f110618f0d9cd3ba73f977b21a7bdc3f12edd7848",
+        "T100": 13,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 80,
+        "hazard_unmet": 9,
+        "decisions": 3,
+        "deviations_from_default": 1
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-076",
+      "seed": 190076,
+      "layout": "D2_west_heavy",
+      "t_h": "5",
+      "p": 0.9,
+      "P2": {
+        "start_fingerprint": "d5ee05be3ed2d959fcef83d789e2efb3f611bb2443a4965219c08df38bf6f838",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 86,
+        "hazard_unmet": 14,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "d5ee05be3ed2d959fcef83d789e2efb3f611bb2443a4965219c08df38bf6f838",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 85,
+        "hazard_unmet": 7,
+        "decisions": 3,
+        "deviations_from_default": 1
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-077",
+      "seed": 190077,
+      "layout": "D2_west_heavy",
+      "t_h": "5",
+      "p": 0.9,
+      "P2": {
+        "start_fingerprint": "3699509f8b158d39faa11f9f776e0a5e6465c72d474fc0c04ca2ee5afefe24cc",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 90,
+        "hazard_unmet": 12,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "3699509f8b158d39faa11f9f776e0a5e6465c72d474fc0c04ca2ee5afefe24cc",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 90,
+        "hazard_unmet": 8,
+        "decisions": 3,
+        "deviations_from_default": 1
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-078",
+      "seed": 190078,
+      "layout": "D2_west_heavy",
+      "t_h": "7",
+      "p": 0.5,
+      "P2": {
+        "start_fingerprint": "ba129b0189445b00b5cb9a4369713c8932f4d3fa6729304b96dd6f904dc40056",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 12,
+        "unmet": 59,
+        "hazard_unmet": 9,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "ba129b0189445b00b5cb9a4369713c8932f4d3fa6729304b96dd6f904dc40056",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 12,
+        "unmet": 52,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 2
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-079",
+      "seed": 190079,
+      "layout": "D2_west_heavy",
+      "t_h": "7",
+      "p": 0.5,
+      "P2": {
+        "start_fingerprint": "12ba8179114a4abfff442af2ae29a6d4195c45df0ba3bb8acb2f9fa361d232f9",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 12,
+        "unmet": 59,
+        "hazard_unmet": 9,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "12ba8179114a4abfff442af2ae29a6d4195c45df0ba3bb8acb2f9fa361d232f9",
+        "T100": 13,
+        "T100_censored": false,
+        "T90": 12,
+        "unmet": 53,
+        "hazard_unmet": 3,
+        "decisions": 3,
+        "deviations_from_default": 2
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-080",
+      "seed": 190080,
+      "layout": "D2_west_heavy",
+      "t_h": "7",
+      "p": 0.7,
+      "P2": {
+        "start_fingerprint": "dda20840c2ba468dc2bc95f5beec890e294e726de9f80f8b8abb31b5a2faf246",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 12,
+        "unmet": 59,
+        "hazard_unmet": 9,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "dda20840c2ba468dc2bc95f5beec890e294e726de9f80f8b8abb31b5a2faf246",
+        "T100": 13,
+        "T100_censored": false,
+        "T90": 12,
+        "unmet": 54,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 2
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-081",
+      "seed": 190081,
+      "layout": "D2_west_heavy",
+      "t_h": "7",
+      "p": 0.7,
+      "P2": {
+        "start_fingerprint": "bcf3b054fb0ad85f449f10fde8e71582eba775787e68ad64bfe96184e529e411",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 12,
+        "unmet": 59,
+        "hazard_unmet": 9,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "bcf3b054fb0ad85f449f10fde8e71582eba775787e68ad64bfe96184e529e411",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 12,
+        "unmet": 52,
+        "hazard_unmet": 1,
+        "decisions": 3,
+        "deviations_from_default": 2
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-082",
+      "seed": 190082,
+      "layout": "D2_west_heavy",
+      "t_h": "7",
+      "p": 0.9,
+      "P2": {
+        "start_fingerprint": "f64298737ce83cc9ff82f8f8d4fc3e991db248ebed507e98720ccaf22b05cc34",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 12,
+        "unmet": 59,
+        "hazard_unmet": 9,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "f64298737ce83cc9ff82f8f8d4fc3e991db248ebed507e98720ccaf22b05cc34",
+        "T100": 13,
+        "T100_censored": false,
+        "T90": 12,
+        "unmet": 53,
+        "hazard_unmet": 1,
+        "decisions": 3,
+        "deviations_from_default": 1
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-083",
+      "seed": 190083,
+      "layout": "D2_west_heavy",
+      "t_h": "7",
+      "p": 0.9,
+      "P2": {
+        "start_fingerprint": "d6ebe7b8273e37ee244514a18440303f5e222b176b951e961b7557f27415deb7",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 12,
+        "unmet": 59,
+        "hazard_unmet": 9,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "d6ebe7b8273e37ee244514a18440303f5e222b176b951e961b7557f27415deb7",
+        "T100": 13,
+        "T100_censored": false,
+        "T90": 12,
+        "unmet": 53,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 2
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-084",
+      "seed": 190084,
+      "layout": "D2_west_heavy",
+      "t_h": "9",
+      "p": 0.5,
+      "P2": {
+        "start_fingerprint": "a04ac1ea4cf47c926371b1004c2294860de628d87c399327abed55594cb77f44",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 12,
+        "unmet": 50,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "a04ac1ea4cf47c926371b1004c2294860de628d87c399327abed55594cb77f44",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 12,
+        "unmet": 50,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-085",
+      "seed": 190085,
+      "layout": "D2_west_heavy",
+      "t_h": "9",
+      "p": 0.5,
+      "P2": {
+        "start_fingerprint": "39828d067328e57a3fe7a824ccf135a966f8078d8291459a510e489c27a3cb48",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 12,
+        "unmet": 50,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "39828d067328e57a3fe7a824ccf135a966f8078d8291459a510e489c27a3cb48",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 12,
+        "unmet": 50,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-086",
+      "seed": 190086,
+      "layout": "D2_west_heavy",
+      "t_h": "9",
+      "p": 0.7,
+      "P2": {
+        "start_fingerprint": "000b66a658cd98d05375f65481a52806d4c193771ecb8b07023356720e6f126c",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 12,
+        "unmet": 50,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "000b66a658cd98d05375f65481a52806d4c193771ecb8b07023356720e6f126c",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 12,
+        "unmet": 50,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-087",
+      "seed": 190087,
+      "layout": "D2_west_heavy",
+      "t_h": "9",
+      "p": 0.7,
+      "P2": {
+        "start_fingerprint": "c2a4adf4949958283e60dfe1d933c08da84f0c5e64e1f1781a75ad13fc2b076a",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 12,
+        "unmet": 50,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "c2a4adf4949958283e60dfe1d933c08da84f0c5e64e1f1781a75ad13fc2b076a",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 12,
+        "unmet": 50,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-088",
+      "seed": 190088,
+      "layout": "D2_west_heavy",
+      "t_h": "9",
+      "p": 0.9,
+      "P2": {
+        "start_fingerprint": "45ac49889bb706e1fdb66dd3ec0097c86636ae3bd53ecfba83c4b2da7bd878b5",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 12,
+        "unmet": 50,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "45ac49889bb706e1fdb66dd3ec0097c86636ae3bd53ecfba83c4b2da7bd878b5",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 12,
+        "unmet": 50,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-089",
+      "seed": 190089,
+      "layout": "D2_west_heavy",
+      "t_h": "9",
+      "p": 0.9,
+      "P2": {
+        "start_fingerprint": "3127ed68733e3bf299249f565e898fa12b1ca993a10920a434080027f622d52d",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 12,
+        "unmet": 50,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "3127ed68733e3bf299249f565e898fa12b1ca993a10920a434080027f622d52d",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 12,
+        "unmet": 50,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-090",
+      "seed": 190090,
+      "layout": "D3_first_room_heavy",
+      "t_h": "none",
+      "p": 0.5,
+      "P2": {
+        "start_fingerprint": "f6f28019a907827dd426bdbb755520105ae78ab2d37045403ab89c420df9ec29",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 11,
+        "unmet": 48,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "f6f28019a907827dd426bdbb755520105ae78ab2d37045403ab89c420df9ec29",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 11,
+        "unmet": 48,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-091",
+      "seed": 190091,
+      "layout": "D3_first_room_heavy",
+      "t_h": "none",
+      "p": 0.5,
+      "P2": {
+        "start_fingerprint": "42e98d0af5ef60d4dc72e323a2541a0f749df67183353cea35a15ba074884526",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 11,
+        "unmet": 48,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "42e98d0af5ef60d4dc72e323a2541a0f749df67183353cea35a15ba074884526",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 11,
+        "unmet": 48,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-092",
+      "seed": 190092,
+      "layout": "D3_first_room_heavy",
+      "t_h": "none",
+      "p": 0.7,
+      "P2": {
+        "start_fingerprint": "c96e6e1e68cb3fef4b04a12d2d0f2a78e38ef6099c5f30dba95946db11c18089",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 11,
+        "unmet": 48,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "c96e6e1e68cb3fef4b04a12d2d0f2a78e38ef6099c5f30dba95946db11c18089",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 11,
+        "unmet": 48,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-093",
+      "seed": 190093,
+      "layout": "D3_first_room_heavy",
+      "t_h": "none",
+      "p": 0.7,
+      "P2": {
+        "start_fingerprint": "2cf79b5acbdf6999d7e053c9292c2260de778d87d0c77f6e80337dd0b15f1adc",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 11,
+        "unmet": 48,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "2cf79b5acbdf6999d7e053c9292c2260de778d87d0c77f6e80337dd0b15f1adc",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 11,
+        "unmet": 48,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-094",
+      "seed": 190094,
+      "layout": "D3_first_room_heavy",
+      "t_h": "none",
+      "p": 0.9,
+      "P2": {
+        "start_fingerprint": "4129b58d24e2cf9190a49064b2ccd54d6d2b26aa50e8d4d47df24d812298f71f",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 11,
+        "unmet": 48,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "4129b58d24e2cf9190a49064b2ccd54d6d2b26aa50e8d4d47df24d812298f71f",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 11,
+        "unmet": 48,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-095",
+      "seed": 190095,
+      "layout": "D3_first_room_heavy",
+      "t_h": "none",
+      "p": 0.9,
+      "P2": {
+        "start_fingerprint": "0e7af757599ef498acf34b5cb0706fa5b052170851df3cfcd628d6dcc731d927",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 11,
+        "unmet": 48,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "0e7af757599ef498acf34b5cb0706fa5b052170851df3cfcd628d6dcc731d927",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 11,
+        "unmet": 48,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-096",
+      "seed": 190096,
+      "layout": "D3_first_room_heavy",
+      "t_h": "3",
+      "p": 0.5,
+      "P2": {
+        "start_fingerprint": "26d12711ae76dfff9408627735af98a8cea14f340d8c896270af0a80a1368675",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 84,
+        "hazard_unmet": 22,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "26d12711ae76dfff9408627735af98a8cea14f340d8c896270af0a80a1368675",
+        "T100": 13,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 80,
+        "hazard_unmet": 8,
+        "decisions": 3,
+        "deviations_from_default": 1
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-097",
+      "seed": 190097,
+      "layout": "D3_first_room_heavy",
+      "t_h": "3",
+      "p": 0.5,
+      "P2": {
+        "start_fingerprint": "28c22f44aa97e2a25878573a2b665fb09aa47fb8f23ed8148788326249c5605c",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 88,
+        "hazard_unmet": 22,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "28c22f44aa97e2a25878573a2b665fb09aa47fb8f23ed8148788326249c5605c",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 85,
+        "hazard_unmet": 8,
+        "decisions": 3,
+        "deviations_from_default": 1
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-098",
+      "seed": 190098,
+      "layout": "D3_first_room_heavy",
+      "t_h": "3",
+      "p": 0.7,
+      "P2": {
+        "start_fingerprint": "f3aa38eb0b5ed7e3c106971deced74d217c5e17d1cd46e244f628bfdac56f77f",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 84,
+        "hazard_unmet": 22,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "f3aa38eb0b5ed7e3c106971deced74d217c5e17d1cd46e244f628bfdac56f77f",
+        "T100": 13,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 80,
+        "hazard_unmet": 9,
+        "decisions": 3,
+        "deviations_from_default": 1
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-099",
+      "seed": 190099,
+      "layout": "D3_first_room_heavy",
+      "t_h": "3",
+      "p": 0.7,
+      "P2": {
+        "start_fingerprint": "f11adf6b57360f068479d16287d3218ce9dcbae627a5cb01e471530f27c82e5c",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 84,
+        "hazard_unmet": 22,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "f11adf6b57360f068479d16287d3218ce9dcbae627a5cb01e471530f27c82e5c",
+        "T100": 13,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 80,
+        "hazard_unmet": 8,
+        "decisions": 3,
+        "deviations_from_default": 1
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-100",
+      "seed": 190100,
+      "layout": "D3_first_room_heavy",
+      "t_h": "3",
+      "p": 0.9,
+      "P2": {
+        "start_fingerprint": "17f3e1f09b89970d5271c5dc4694198bae4b5070fc7f7eea7626b1d7eee7877a",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 92,
+        "hazard_unmet": 22,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "17f3e1f09b89970d5271c5dc4694198bae4b5070fc7f7eea7626b1d7eee7877a",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 83,
+        "hazard_unmet": 23,
+        "decisions": 3,
+        "deviations_from_default": 2
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-101",
+      "seed": 190101,
+      "layout": "D3_first_room_heavy",
+      "t_h": "3",
+      "p": 0.9,
+      "P2": {
+        "start_fingerprint": "68938489920477f1fbd61047203c340b20d090dc97580be754324ef048b0d753",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 88,
+        "hazard_unmet": 22,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "68938489920477f1fbd61047203c340b20d090dc97580be754324ef048b0d753",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 84,
+        "hazard_unmet": 29,
+        "decisions": 3,
+        "deviations_from_default": 2
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-102",
+      "seed": 190102,
+      "layout": "D3_first_room_heavy",
+      "t_h": "5",
+      "p": 0.5,
+      "P2": {
+        "start_fingerprint": "2fb8fd23795849da077402f91fc3f117a82e3b49f7979bbf362e3cbbb906034a",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 14,
+        "unmet": 88,
+        "hazard_unmet": 37,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "2fb8fd23795849da077402f91fc3f117a82e3b49f7979bbf362e3cbbb906034a",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 81,
+        "hazard_unmet": 17,
+        "decisions": 3,
+        "deviations_from_default": 1
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-103",
+      "seed": 190103,
+      "layout": "D3_first_room_heavy",
+      "t_h": "5",
+      "p": 0.5,
+      "P2": {
+        "start_fingerprint": "f825a681e59b4a91a35dc4aed209d13f0255b85bd3a1d042522ecc15dc77411e",
+        "T100": 15,
+        "T100_censored": false,
+        "T90": 14,
+        "unmet": 88,
+        "hazard_unmet": 34,
+        "decisions": 4,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "f825a681e59b4a91a35dc4aed209d13f0255b85bd3a1d042522ecc15dc77411e",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 81,
+        "hazard_unmet": 14,
+        "decisions": 3,
+        "deviations_from_default": 1
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-104",
+      "seed": 190104,
+      "layout": "D3_first_room_heavy",
+      "t_h": "5",
+      "p": 0.7,
+      "P2": {
+        "start_fingerprint": "d41587fe619d0e7850323f337e8ff849172c8b03198e7bc7e9eedab9b2f0f633",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 14,
+        "unmet": 85,
+        "hazard_unmet": 27,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "d41587fe619d0e7850323f337e8ff849172c8b03198e7bc7e9eedab9b2f0f633",
+        "T100": 13,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 80,
+        "hazard_unmet": 9,
+        "decisions": 3,
+        "deviations_from_default": 1
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-105",
+      "seed": 190105,
+      "layout": "D3_first_room_heavy",
+      "t_h": "5",
+      "p": 0.7,
+      "P2": {
+        "start_fingerprint": "2a9bba1b18a546b9a163c0058ce3ba485b18f6433773201eae41451a3a8d84d5",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 14,
+        "unmet": 85,
+        "hazard_unmet": 27,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "2a9bba1b18a546b9a163c0058ce3ba485b18f6433773201eae41451a3a8d84d5",
+        "T100": 13,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 80,
+        "hazard_unmet": 9,
+        "decisions": 3,
+        "deviations_from_default": 1
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-106",
+      "seed": 190106,
+      "layout": "D3_first_room_heavy",
+      "t_h": "5",
+      "p": 0.9,
+      "P2": {
+        "start_fingerprint": "5a816425a31b58175db09e5eb16eeede7c55e263d826cd0c0cac11aef22f16f5",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 88,
+        "hazard_unmet": 22,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "5a816425a31b58175db09e5eb16eeede7c55e263d826cd0c0cac11aef22f16f5",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 83,
+        "hazard_unmet": 23,
+        "decisions": 3,
+        "deviations_from_default": 2
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-107",
+      "seed": 190107,
+      "layout": "D3_first_room_heavy",
+      "t_h": "5",
+      "p": 0.9,
+      "P2": {
+        "start_fingerprint": "6550d66a319cf876ec05c8fe5e6faf3cbf81fc138775dd445b5b406cd53c4acb",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 14,
+        "unmet": 85,
+        "hazard_unmet": 27,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "6550d66a319cf876ec05c8fe5e6faf3cbf81fc138775dd445b5b406cd53c4acb",
+        "T100": 13,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 80,
+        "hazard_unmet": 10,
+        "decisions": 3,
+        "deviations_from_default": 1
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-108",
+      "seed": 190108,
+      "layout": "D3_first_room_heavy",
+      "t_h": "7",
+      "p": 0.5,
+      "P2": {
+        "start_fingerprint": "ac7cd6a6e157a6856c64f35a8993f76312b6f152f045f351b080201ae0ab4eb4",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 12,
+        "unmet": 58,
+        "hazard_unmet": 12,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "ac7cd6a6e157a6856c64f35a8993f76312b6f152f045f351b080201ae0ab4eb4",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 12,
+        "unmet": 52,
+        "hazard_unmet": 2,
+        "decisions": 3,
+        "deviations_from_default": 1
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-109",
+      "seed": 190109,
+      "layout": "D3_first_room_heavy",
+      "t_h": "7",
+      "p": 0.5,
+      "P2": {
+        "start_fingerprint": "aff6037ce15e50f20adb4aab29687fc4bb15dad98cd827b199b8b8ac5ee4576e",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 12,
+        "unmet": 58,
+        "hazard_unmet": 12,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "aff6037ce15e50f20adb4aab29687fc4bb15dad98cd827b199b8b8ac5ee4576e",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 12,
+        "unmet": 52,
+        "hazard_unmet": 2,
+        "decisions": 3,
+        "deviations_from_default": 1
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-110",
+      "seed": 190110,
+      "layout": "D3_first_room_heavy",
+      "t_h": "7",
+      "p": 0.7,
+      "P2": {
+        "start_fingerprint": "4db57036b712cabb99d73b831e2eb80d32633d09b06013f0f05fe8df5d5e0313",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 12,
+        "unmet": 58,
+        "hazard_unmet": 12,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "4db57036b712cabb99d73b831e2eb80d32633d09b06013f0f05fe8df5d5e0313",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 12,
+        "unmet": 52,
+        "hazard_unmet": 2,
+        "decisions": 3,
+        "deviations_from_default": 1
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-111",
+      "seed": 190111,
+      "layout": "D3_first_room_heavy",
+      "t_h": "7",
+      "p": 0.7,
+      "P2": {
+        "start_fingerprint": "01ddb120fd98248e0962ba837af1840676f35b5b539e7091f834ce41dc3647af",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 12,
+        "unmet": 58,
+        "hazard_unmet": 12,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "01ddb120fd98248e0962ba837af1840676f35b5b539e7091f834ce41dc3647af",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 12,
+        "unmet": 52,
+        "hazard_unmet": 2,
+        "decisions": 3,
+        "deviations_from_default": 1
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-112",
+      "seed": 190112,
+      "layout": "D3_first_room_heavy",
+      "t_h": "7",
+      "p": 0.9,
+      "P2": {
+        "start_fingerprint": "11de5aaba449a5133122bcfc7db1639f7333fb73f4d9205b7573432611e90a7f",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 12,
+        "unmet": 58,
+        "hazard_unmet": 12,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "11de5aaba449a5133122bcfc7db1639f7333fb73f4d9205b7573432611e90a7f",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 12,
+        "unmet": 52,
+        "hazard_unmet": 2,
+        "decisions": 3,
+        "deviations_from_default": 1
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-113",
+      "seed": 190113,
+      "layout": "D3_first_room_heavy",
+      "t_h": "7",
+      "p": 0.9,
+      "P2": {
+        "start_fingerprint": "6623983cc0de852eb266b822ec2e42aa516d47bbc7a0d073c65474c0074a0693",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 12,
+        "unmet": 58,
+        "hazard_unmet": 12,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "6623983cc0de852eb266b822ec2e42aa516d47bbc7a0d073c65474c0074a0693",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 12,
+        "unmet": 52,
+        "hazard_unmet": 2,
+        "decisions": 3,
+        "deviations_from_default": 1
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-114",
+      "seed": 190114,
+      "layout": "D3_first_room_heavy",
+      "t_h": "9",
+      "p": 0.5,
+      "P2": {
+        "start_fingerprint": "4cee4c5975e850590ed34ae1910d26f402e069fbfa6a1ef9544268a6f6646843",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 11,
+        "unmet": 48,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "4cee4c5975e850590ed34ae1910d26f402e069fbfa6a1ef9544268a6f6646843",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 11,
+        "unmet": 48,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-115",
+      "seed": 190115,
+      "layout": "D3_first_room_heavy",
+      "t_h": "9",
+      "p": 0.5,
+      "P2": {
+        "start_fingerprint": "591dd04fbcaa49c7efa1b932131ed46c73ea7ff7cb7c82333269f05071e2d1d5",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 11,
+        "unmet": 48,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "591dd04fbcaa49c7efa1b932131ed46c73ea7ff7cb7c82333269f05071e2d1d5",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 11,
+        "unmet": 48,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-116",
+      "seed": 190116,
+      "layout": "D3_first_room_heavy",
+      "t_h": "9",
+      "p": 0.7,
+      "P2": {
+        "start_fingerprint": "18348fdd9ef8ecc26ef7505ff2778eb5a4d334598c9603770424074bfca3b90f",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 11,
+        "unmet": 48,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "18348fdd9ef8ecc26ef7505ff2778eb5a4d334598c9603770424074bfca3b90f",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 11,
+        "unmet": 48,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-117",
+      "seed": 190117,
+      "layout": "D3_first_room_heavy",
+      "t_h": "9",
+      "p": 0.7,
+      "P2": {
+        "start_fingerprint": "1176d3e0b0dabe7266438cc7cce0fd07c14848646da91dbdd387f991d19a4587",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 11,
+        "unmet": 48,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "1176d3e0b0dabe7266438cc7cce0fd07c14848646da91dbdd387f991d19a4587",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 11,
+        "unmet": 48,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-118",
+      "seed": 190118,
+      "layout": "D3_first_room_heavy",
+      "t_h": "9",
+      "p": 0.9,
+      "P2": {
+        "start_fingerprint": "a11f7e74a72bef10d58743ceb796765bcf9db361ebabd890ac97da2d2da2ea8f",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 11,
+        "unmet": 48,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "a11f7e74a72bef10d58743ceb796765bcf9db361ebabd890ac97da2d2da2ea8f",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 11,
+        "unmet": 48,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-119",
+      "seed": 190119,
+      "layout": "D3_first_room_heavy",
+      "t_h": "9",
+      "p": 0.9,
+      "P2": {
+        "start_fingerprint": "590ac0e0ee070811622f66314ebc5c33fcfc83287844ff3e9a841bae68ff7aee",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 11,
+        "unmet": 48,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "590ac0e0ee070811622f66314ebc5c33fcfc83287844ff3e9a841bae68ff7aee",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 11,
+        "unmet": 48,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-120",
+      "seed": 190120,
+      "layout": "D4_second_room_heavy",
+      "t_h": "none",
+      "p": 0.5,
+      "P2": {
+        "start_fingerprint": "9cf77feb893984ad068e2a76a582a09fa7dc72cb96d4578778c0239b9d641693",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 11,
+        "unmet": 48,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "9cf77feb893984ad068e2a76a582a09fa7dc72cb96d4578778c0239b9d641693",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 11,
+        "unmet": 48,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-121",
+      "seed": 190121,
+      "layout": "D4_second_room_heavy",
+      "t_h": "none",
+      "p": 0.5,
+      "P2": {
+        "start_fingerprint": "297d76f5295b7bb9119d4a9bb81493024486f1292c759bfe327393590c21ec9f",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 11,
+        "unmet": 48,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "297d76f5295b7bb9119d4a9bb81493024486f1292c759bfe327393590c21ec9f",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 11,
+        "unmet": 48,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-122",
+      "seed": 190122,
+      "layout": "D4_second_room_heavy",
+      "t_h": "none",
+      "p": 0.7,
+      "P2": {
+        "start_fingerprint": "9d6bc1ac428b604f58fd562f5869d72da91ecb8cc05bf4b94ea451fb6c44272b",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 11,
+        "unmet": 48,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "9d6bc1ac428b604f58fd562f5869d72da91ecb8cc05bf4b94ea451fb6c44272b",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 11,
+        "unmet": 48,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-123",
+      "seed": 190123,
+      "layout": "D4_second_room_heavy",
+      "t_h": "none",
+      "p": 0.7,
+      "P2": {
+        "start_fingerprint": "d28809678fe5b3d0641c143de2d64bb8786fc91758fa40f40e3eb72923b1443b",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 11,
+        "unmet": 48,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "d28809678fe5b3d0641c143de2d64bb8786fc91758fa40f40e3eb72923b1443b",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 11,
+        "unmet": 48,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-124",
+      "seed": 190124,
+      "layout": "D4_second_room_heavy",
+      "t_h": "none",
+      "p": 0.9,
+      "P2": {
+        "start_fingerprint": "e715e3e7528cb70934ff541688403fffb424c49f354ae262d7293c5add920474",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 11,
+        "unmet": 48,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "e715e3e7528cb70934ff541688403fffb424c49f354ae262d7293c5add920474",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 11,
+        "unmet": 48,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-125",
+      "seed": 190125,
+      "layout": "D4_second_room_heavy",
+      "t_h": "none",
+      "p": 0.9,
+      "P2": {
+        "start_fingerprint": "2548210d170c25634139b6ca7ba1509b4d392ff70288d34ac99fd410accbea3e",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 11,
+        "unmet": 48,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "2548210d170c25634139b6ca7ba1509b4d392ff70288d34ac99fd410accbea3e",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 11,
+        "unmet": 48,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-126",
+      "seed": 190126,
+      "layout": "D4_second_room_heavy",
+      "t_h": "3",
+      "p": 0.5,
+      "P2": {
+        "start_fingerprint": "541b893ebe47a42341a2a04d46913254e878cda5d75a040e1ea21b468c53fbd5",
+        "T100": 15,
+        "T100_censored": false,
+        "T90": 14,
+        "unmet": 88,
+        "hazard_unmet": 36,
+        "decisions": 4,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "541b893ebe47a42341a2a04d46913254e878cda5d75a040e1ea21b468c53fbd5",
+        "T100": 13,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 80,
+        "hazard_unmet": 11,
+        "decisions": 3,
+        "deviations_from_default": 1
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-127",
+      "seed": 190127,
+      "layout": "D4_second_room_heavy",
+      "t_h": "3",
+      "p": 0.5,
+      "P2": {
+        "start_fingerprint": "02d445f400339ff75f22da899811c42ad9dab6305739b0d17485e87080676e0e",
+        "T100": 15,
+        "T100_censored": false,
+        "T90": 14,
+        "unmet": 96,
+        "hazard_unmet": 56,
+        "decisions": 4,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "02d445f400339ff75f22da899811c42ad9dab6305739b0d17485e87080676e0e",
+        "T100": 15,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 84,
+        "hazard_unmet": 29,
+        "decisions": 4,
+        "deviations_from_default": 1
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-128",
+      "seed": 190128,
+      "layout": "D4_second_room_heavy",
+      "t_h": "3",
+      "p": 0.7,
+      "P2": {
+        "start_fingerprint": "d9270e95a090c957464bad3e470dc863111bdd275896de4dadf18011729137f4",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 88,
+        "hazard_unmet": 24,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "d9270e95a090c957464bad3e470dc863111bdd275896de4dadf18011729137f4",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 85,
+        "hazard_unmet": 10,
+        "decisions": 3,
+        "deviations_from_default": 1
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-129",
+      "seed": 190129,
+      "layout": "D4_second_room_heavy",
+      "t_h": "3",
+      "p": 0.7,
+      "P2": {
+        "start_fingerprint": "df507b5c9bffe70624e732dc8a7a0ec6c2145482474999c27ab774ab003ed792",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 14,
+        "unmet": 85,
+        "hazard_unmet": 29,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "df507b5c9bffe70624e732dc8a7a0ec6c2145482474999c27ab774ab003ed792",
+        "T100": 13,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 80,
+        "hazard_unmet": 11,
+        "decisions": 3,
+        "deviations_from_default": 1
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-130",
+      "seed": 190130,
+      "layout": "D4_second_room_heavy",
+      "t_h": "3",
+      "p": 0.9,
+      "P2": {
+        "start_fingerprint": "d679cdf19ab2e3c20255b1430245c5b055e92a05dd39b0c2c181bbacb95a73b3",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 84,
+        "hazard_unmet": 24,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "d679cdf19ab2e3c20255b1430245c5b055e92a05dd39b0c2c181bbacb95a73b3",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 81,
+        "hazard_unmet": 6,
+        "decisions": 3,
+        "deviations_from_default": 1
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-131",
+      "seed": 190131,
+      "layout": "D4_second_room_heavy",
+      "t_h": "3",
+      "p": 0.9,
+      "P2": {
+        "start_fingerprint": "68a0282d15e49276cb00df59c9013a90499dab0d01d8d0707540a1d7a7369ce1",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 84,
+        "hazard_unmet": 24,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "68a0282d15e49276cb00df59c9013a90499dab0d01d8d0707540a1d7a7369ce1",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 81,
+        "hazard_unmet": 6,
+        "decisions": 3,
+        "deviations_from_default": 1
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-132",
+      "seed": 190132,
+      "layout": "D4_second_room_heavy",
+      "t_h": "5",
+      "p": 0.5,
+      "P2": {
+        "start_fingerprint": "820f858dcdb121fc30e067dcae391784dd14684b577051c4d91b29c82f502c55",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 88,
+        "hazard_unmet": 24,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "820f858dcdb121fc30e067dcae391784dd14684b577051c4d91b29c82f502c55",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 85,
+        "hazard_unmet": 10,
+        "decisions": 3,
+        "deviations_from_default": 1
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-133",
+      "seed": 190133,
+      "layout": "D4_second_room_heavy",
+      "t_h": "5",
+      "p": 0.5,
+      "P2": {
+        "start_fingerprint": "dddbabbf52fda09d72c6b94949e5f7966fd48cc798921d04c5a90f849fe544ad",
+        "T100": 15,
+        "T100_censored": false,
+        "T90": 14,
+        "unmet": 88,
+        "hazard_unmet": 36,
+        "decisions": 4,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "dddbabbf52fda09d72c6b94949e5f7966fd48cc798921d04c5a90f849fe544ad",
+        "T100": 13,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 80,
+        "hazard_unmet": 12,
+        "decisions": 3,
+        "deviations_from_default": 1
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-134",
+      "seed": 190134,
+      "layout": "D4_second_room_heavy",
+      "t_h": "5",
+      "p": 0.7,
+      "P2": {
+        "start_fingerprint": "384320639e3c09f2b4adde06e8e342dbbde659aeccc29364ddea3548ced0bda4",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 14,
+        "unmet": 85,
+        "hazard_unmet": 29,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "384320639e3c09f2b4adde06e8e342dbbde659aeccc29364ddea3548ced0bda4",
+        "T100": 13,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 80,
+        "hazard_unmet": 10,
+        "decisions": 3,
+        "deviations_from_default": 1
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-135",
+      "seed": 190135,
+      "layout": "D4_second_room_heavy",
+      "t_h": "5",
+      "p": 0.7,
+      "P2": {
+        "start_fingerprint": "373a386214cd094907997c43e81edb7aa7aab7b6079f729821f95d42995bcf3f",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 84,
+        "hazard_unmet": 24,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "373a386214cd094907997c43e81edb7aa7aab7b6079f729821f95d42995bcf3f",
+        "T100": 13,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 80,
+        "hazard_unmet": 9,
+        "decisions": 3,
+        "deviations_from_default": 1
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-136",
+      "seed": 190136,
+      "layout": "D4_second_room_heavy",
+      "t_h": "5",
+      "p": 0.9,
+      "P2": {
+        "start_fingerprint": "69f8335e39e03ab7085a44a14252064e7e62492eaac7a28d71a27553cbf908b6",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 84,
+        "hazard_unmet": 24,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "69f8335e39e03ab7085a44a14252064e7e62492eaac7a28d71a27553cbf908b6",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 81,
+        "hazard_unmet": 7,
+        "decisions": 3,
+        "deviations_from_default": 1
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-137",
+      "seed": 190137,
+      "layout": "D4_second_room_heavy",
+      "t_h": "5",
+      "p": 0.9,
+      "P2": {
+        "start_fingerprint": "4eb9391fa5c9cfe125b343ffc43736eaf8f4a9dfe08c5eef04a88734f2cdef0f",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 92,
+        "hazard_unmet": 24,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "4eb9391fa5c9cfe125b343ffc43736eaf8f4a9dfe08c5eef04a88734f2cdef0f",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 90,
+        "hazard_unmet": 15,
+        "decisions": 3,
+        "deviations_from_default": 1
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-138",
+      "seed": 190138,
+      "layout": "D4_second_room_heavy",
+      "t_h": "7",
+      "p": 0.5,
+      "P2": {
+        "start_fingerprint": "79743937457f6d781429561b3eeb57b66e783a318f37cd55c17f2de8b154632e",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 12,
+        "unmet": 58,
+        "hazard_unmet": 12,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "79743937457f6d781429561b3eeb57b66e783a318f37cd55c17f2de8b154632e",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 12,
+        "unmet": 52,
+        "hazard_unmet": 2,
+        "decisions": 3,
+        "deviations_from_default": 1
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-139",
+      "seed": 190139,
+      "layout": "D4_second_room_heavy",
+      "t_h": "7",
+      "p": 0.5,
+      "P2": {
+        "start_fingerprint": "2ccbba3b085ad7905a9e6542d451e880752b9a83c2343f08ca1a8c5449f3ebbe",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 12,
+        "unmet": 58,
+        "hazard_unmet": 12,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "2ccbba3b085ad7905a9e6542d451e880752b9a83c2343f08ca1a8c5449f3ebbe",
+        "T100": 13,
+        "T100_censored": false,
+        "T90": 12,
+        "unmet": 53,
+        "hazard_unmet": 1,
+        "decisions": 3,
+        "deviations_from_default": 1
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-140",
+      "seed": 190140,
+      "layout": "D4_second_room_heavy",
+      "t_h": "7",
+      "p": 0.7,
+      "P2": {
+        "start_fingerprint": "08df8dc1067a3f164c53a8de644a3e6d6df2d5510145b0e107e93a3d65377cef",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 12,
+        "unmet": 58,
+        "hazard_unmet": 12,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "08df8dc1067a3f164c53a8de644a3e6d6df2d5510145b0e107e93a3d65377cef",
+        "T100": 13,
+        "T100_censored": false,
+        "T90": 12,
+        "unmet": 53,
+        "hazard_unmet": 1,
+        "decisions": 3,
+        "deviations_from_default": 1
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-141",
+      "seed": 190141,
+      "layout": "D4_second_room_heavy",
+      "t_h": "7",
+      "p": 0.7,
+      "P2": {
+        "start_fingerprint": "afd7c6b845c4f12394fe912969edb46d231e46f9cdd96304fe814283f4c8bd7d",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 12,
+        "unmet": 58,
+        "hazard_unmet": 12,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "afd7c6b845c4f12394fe912969edb46d231e46f9cdd96304fe814283f4c8bd7d",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 12,
+        "unmet": 52,
+        "hazard_unmet": 2,
+        "decisions": 3,
+        "deviations_from_default": 1
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-142",
+      "seed": 190142,
+      "layout": "D4_second_room_heavy",
+      "t_h": "7",
+      "p": 0.9,
+      "P2": {
+        "start_fingerprint": "da026620c3747f614e2434358c7509517bdf900d4872b62e20eca8ce8de8ff22",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 12,
+        "unmet": 58,
+        "hazard_unmet": 12,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "da026620c3747f614e2434358c7509517bdf900d4872b62e20eca8ce8de8ff22",
+        "T100": 13,
+        "T100_censored": false,
+        "T90": 12,
+        "unmet": 53,
+        "hazard_unmet": 1,
+        "decisions": 3,
+        "deviations_from_default": 1
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-143",
+      "seed": 190143,
+      "layout": "D4_second_room_heavy",
+      "t_h": "7",
+      "p": 0.9,
+      "P2": {
+        "start_fingerprint": "84fe3ae302b7dc6fbc02347252e99b1ad1d8bb1008d68b140898f09488bc13a2",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 12,
+        "unmet": 58,
+        "hazard_unmet": 12,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "84fe3ae302b7dc6fbc02347252e99b1ad1d8bb1008d68b140898f09488bc13a2",
+        "T100": 13,
+        "T100_censored": false,
+        "T90": 12,
+        "unmet": 53,
+        "hazard_unmet": 1,
+        "decisions": 3,
+        "deviations_from_default": 1
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-144",
+      "seed": 190144,
+      "layout": "D4_second_room_heavy",
+      "t_h": "9",
+      "p": 0.5,
+      "P2": {
+        "start_fingerprint": "ba1c87a2666a8900dda76b4ca8050bb050df56a6caa34327edb121dd049cef02",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 11,
+        "unmet": 48,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "ba1c87a2666a8900dda76b4ca8050bb050df56a6caa34327edb121dd049cef02",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 11,
+        "unmet": 48,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-145",
+      "seed": 190145,
+      "layout": "D4_second_room_heavy",
+      "t_h": "9",
+      "p": 0.5,
+      "P2": {
+        "start_fingerprint": "e1faa49d86a4d551bcec280b9482f11301a2c139939da7264fb1c57b0f625d1b",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 11,
+        "unmet": 48,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "e1faa49d86a4d551bcec280b9482f11301a2c139939da7264fb1c57b0f625d1b",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 11,
+        "unmet": 48,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-146",
+      "seed": 190146,
+      "layout": "D4_second_room_heavy",
+      "t_h": "9",
+      "p": 0.7,
+      "P2": {
+        "start_fingerprint": "025b40c74b176a101937d6e5d95297bc0f8ab7fde40ffb8aa48df051713c3990",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 11,
+        "unmet": 48,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "025b40c74b176a101937d6e5d95297bc0f8ab7fde40ffb8aa48df051713c3990",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 11,
+        "unmet": 48,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-147",
+      "seed": 190147,
+      "layout": "D4_second_room_heavy",
+      "t_h": "9",
+      "p": 0.7,
+      "P2": {
+        "start_fingerprint": "d8e932904fb87bb1e4a8f193b5c58e59f3c6ca8bd14bc3d6acc7f18d17605b35",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 11,
+        "unmet": 48,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "d8e932904fb87bb1e4a8f193b5c58e59f3c6ca8bd14bc3d6acc7f18d17605b35",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 11,
+        "unmet": 48,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-148",
+      "seed": 190148,
+      "layout": "D4_second_room_heavy",
+      "t_h": "9",
+      "p": 0.9,
+      "P2": {
+        "start_fingerprint": "b92868302cc9aa44790b740f6974ebef90bac91dd566f4acec9135d3b29c9a71",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 11,
+        "unmet": 48,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "b92868302cc9aa44790b740f6974ebef90bac91dd566f4acec9135d3b29c9a71",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 11,
+        "unmet": 48,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-149",
+      "seed": 190149,
+      "layout": "D4_second_room_heavy",
+      "t_h": "9",
+      "p": 0.9,
+      "P2": {
+        "start_fingerprint": "7771b1cdb41a5e48c255ce5c0869b28316c922f32000bee3060baaae6ae740f4",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 11,
+        "unmet": 48,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "7771b1cdb41a5e48c255ce5c0869b28316c922f32000bee3060baaae6ae740f4",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 11,
+        "unmet": 48,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-150",
+      "seed": 190150,
+      "layout": "D5_R1_concentrated",
+      "t_h": "none",
+      "p": 0.5,
+      "P2": {
+        "start_fingerprint": "9a2a5c1f72e2e9c14e7a881943d9d83ac7b2984b4e290fd6cb8558225c18fcf9",
+        "T100": 13,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 59,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "9a2a5c1f72e2e9c14e7a881943d9d83ac7b2984b4e290fd6cb8558225c18fcf9",
+        "T100": 13,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 59,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-151",
+      "seed": 190151,
+      "layout": "D5_R1_concentrated",
+      "t_h": "none",
+      "p": 0.5,
+      "P2": {
+        "start_fingerprint": "cc05f302c029e4fa0c9cb6ca570d59f130223bd97866e752299f0387158fe780",
+        "T100": 13,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 59,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "cc05f302c029e4fa0c9cb6ca570d59f130223bd97866e752299f0387158fe780",
+        "T100": 13,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 59,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-152",
+      "seed": 190152,
+      "layout": "D5_R1_concentrated",
+      "t_h": "none",
+      "p": 0.7,
+      "P2": {
+        "start_fingerprint": "3950d283f8a9972498198ef6eb62557eb0104869d511bab7ab4e5378cf3d7c68",
+        "T100": 13,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 59,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "3950d283f8a9972498198ef6eb62557eb0104869d511bab7ab4e5378cf3d7c68",
+        "T100": 13,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 59,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-153",
+      "seed": 190153,
+      "layout": "D5_R1_concentrated",
+      "t_h": "none",
+      "p": 0.7,
+      "P2": {
+        "start_fingerprint": "49ebc92dd1bd17ad8c7a9a5ac9948a70ac811349a9ba5660318e38844700e7a9",
+        "T100": 13,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 59,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "49ebc92dd1bd17ad8c7a9a5ac9948a70ac811349a9ba5660318e38844700e7a9",
+        "T100": 13,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 59,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-154",
+      "seed": 190154,
+      "layout": "D5_R1_concentrated",
+      "t_h": "none",
+      "p": 0.9,
+      "P2": {
+        "start_fingerprint": "2a3889ae67f32aa8354089ae4d5ee3fc91648bbb7aeb303a3f023898acf88cd8",
+        "T100": 13,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 59,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "2a3889ae67f32aa8354089ae4d5ee3fc91648bbb7aeb303a3f023898acf88cd8",
+        "T100": 13,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 59,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-155",
+      "seed": 190155,
+      "layout": "D5_R1_concentrated",
+      "t_h": "none",
+      "p": 0.9,
+      "P2": {
+        "start_fingerprint": "1a1f80a2e232775334af38e52c75d78238afa51424eb81ac46f098c12d01f5ee",
+        "T100": 13,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 59,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "1a1f80a2e232775334af38e52c75d78238afa51424eb81ac46f098c12d01f5ee",
+        "T100": 13,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 59,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-156",
+      "seed": 190156,
+      "layout": "D5_R1_concentrated",
+      "t_h": "3",
+      "p": 0.5,
+      "P2": {
+        "start_fingerprint": "38355b093d7690f263ddd4ba78327b164148dc21bbb1b45be1f2fd01cd7654a8",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 83,
+        "hazard_unmet": 10,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "38355b093d7690f263ddd4ba78327b164148dc21bbb1b45be1f2fd01cd7654a8",
+        "T100": 13,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 80,
+        "hazard_unmet": 5,
+        "decisions": 3,
+        "deviations_from_default": 1
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-157",
+      "seed": 190157,
+      "layout": "D5_R1_concentrated",
+      "t_h": "3",
+      "p": 0.5,
+      "P2": {
+        "start_fingerprint": "876887bd831909c476f728d18fcb8b873eeb066a32faca86484f796d2ea82861",
+        "T100": 15,
+        "T100_censored": false,
+        "T90": 14,
+        "unmet": 91,
+        "hazard_unmet": 30,
+        "decisions": 4,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "876887bd831909c476f728d18fcb8b873eeb066a32faca86484f796d2ea82861",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 81,
+        "hazard_unmet": 12,
+        "decisions": 3,
+        "deviations_from_default": 1
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-158",
+      "seed": 190158,
+      "layout": "D5_R1_concentrated",
+      "t_h": "3",
+      "p": 0.7,
+      "P2": {
+        "start_fingerprint": "9abd34e37609f4aa50b87e0e218c3cdd34ec6d615835d1cc07d03c6b56ed6787",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 84,
+        "hazard_unmet": 15,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "9abd34e37609f4aa50b87e0e218c3cdd34ec6d615835d1cc07d03c6b56ed6787",
+        "T100": 13,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 80,
+        "hazard_unmet": 8,
+        "decisions": 3,
+        "deviations_from_default": 2
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-159",
+      "seed": 190159,
+      "layout": "D5_R1_concentrated",
+      "t_h": "3",
+      "p": 0.7,
+      "P2": {
+        "start_fingerprint": "616aaf5e773788ea67f3436173e459fdc2c26000481d546df42a88d3b67e8a8f",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 82,
+        "hazard_unmet": 8,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "616aaf5e773788ea67f3436173e459fdc2c26000481d546df42a88d3b67e8a8f",
+        "T100": 13,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 80,
+        "hazard_unmet": 9,
+        "decisions": 3,
+        "deviations_from_default": 1
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-160",
+      "seed": 190160,
+      "layout": "D5_R1_concentrated",
+      "t_h": "3",
+      "p": 0.9,
+      "P2": {
+        "start_fingerprint": "0713ad058d299c45d9f3ab6760b11afd3589f105ba87e6d32edbfdc1131000f8",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 90,
+        "hazard_unmet": 8,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "0713ad058d299c45d9f3ab6760b11afd3589f105ba87e6d32edbfdc1131000f8",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 90,
+        "hazard_unmet": 4,
+        "decisions": 3,
+        "deviations_from_default": 1
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-161",
+      "seed": 190161,
+      "layout": "D5_R1_concentrated",
+      "t_h": "3",
+      "p": 0.9,
+      "P2": {
+        "start_fingerprint": "9f7c6953b2eb81c3beab81194ae961b75bcbfcd7ca1c760be9de6437ada98169",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 82,
+        "hazard_unmet": 8,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "9f7c6953b2eb81c3beab81194ae961b75bcbfcd7ca1c760be9de6437ada98169",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 81,
+        "hazard_unmet": 4,
+        "decisions": 3,
+        "deviations_from_default": 1
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-162",
+      "seed": 190162,
+      "layout": "D5_R1_concentrated",
+      "t_h": "5",
+      "p": 0.5,
+      "P2": {
+        "start_fingerprint": "ebc13cf9bef2e97a178278d5e3656994cbf040212a66a22b23d73c147431f440",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 84,
+        "hazard_unmet": 18,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "ebc13cf9bef2e97a178278d5e3656994cbf040212a66a22b23d73c147431f440",
+        "T100": 13,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 80,
+        "hazard_unmet": 7,
+        "decisions": 3,
+        "deviations_from_default": 1
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-163",
+      "seed": 190163,
+      "layout": "D5_R1_concentrated",
+      "t_h": "5",
+      "p": 0.5,
+      "P2": {
+        "start_fingerprint": "73ca9ca2b0da2d950930e6d0800c1915142c0e69c11dfcebbe39407aae072c96",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 84,
+        "hazard_unmet": 18,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "73ca9ca2b0da2d950930e6d0800c1915142c0e69c11dfcebbe39407aae072c96",
+        "T100": 13,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 80,
+        "hazard_unmet": 9,
+        "decisions": 3,
+        "deviations_from_default": 1
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-164",
+      "seed": 190164,
+      "layout": "D5_R1_concentrated",
+      "t_h": "5",
+      "p": 0.7,
+      "P2": {
+        "start_fingerprint": "4fc4eba29aaa032de071ed548560f9ae73b5b77d0edaead83b7cf1918faa6db4",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 83,
+        "hazard_unmet": 13,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "4fc4eba29aaa032de071ed548560f9ae73b5b77d0edaead83b7cf1918faa6db4",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 82,
+        "hazard_unmet": 9,
+        "decisions": 3,
+        "deviations_from_default": 1
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-165",
+      "seed": 190165,
+      "layout": "D5_R1_concentrated",
+      "t_h": "5",
+      "p": 0.7,
+      "P2": {
+        "start_fingerprint": "df657d28df301123345a702ada204f31ca652289b8ad0ce31e473a2e8937ed90",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 84,
+        "hazard_unmet": 12,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "df657d28df301123345a702ada204f31ca652289b8ad0ce31e473a2e8937ed90",
+        "T100": 13,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 80,
+        "hazard_unmet": 3,
+        "decisions": 3,
+        "deviations_from_default": 1
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-166",
+      "seed": 190166,
+      "layout": "D5_R1_concentrated",
+      "t_h": "5",
+      "p": 0.9,
+      "P2": {
+        "start_fingerprint": "d5a48e5fc309e5404d45df16e7d26d58575a7c0d4f8e444599d71be5f56a3f43",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 86,
+        "hazard_unmet": 8,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "d5a48e5fc309e5404d45df16e7d26d58575a7c0d4f8e444599d71be5f56a3f43",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 85,
+        "hazard_unmet": 4,
+        "decisions": 3,
+        "deviations_from_default": 1
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-167",
+      "seed": 190167,
+      "layout": "D5_R1_concentrated",
+      "t_h": "5",
+      "p": 0.9,
+      "P2": {
+        "start_fingerprint": "508f4c2a7eb3cb4a41947e9fa2936d85ab99ffb5df1434143061bdbb01d1125b",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 90,
+        "hazard_unmet": 8,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "508f4c2a7eb3cb4a41947e9fa2936d85ab99ffb5df1434143061bdbb01d1125b",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 90,
+        "hazard_unmet": 4,
+        "decisions": 3,
+        "deviations_from_default": 1
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-168",
+      "seed": 190168,
+      "layout": "D5_R1_concentrated",
+      "t_h": "7",
+      "p": 0.5,
+      "P2": {
+        "start_fingerprint": "6c1e1d3bc709425c6b312f0cee1057cdc0f3ccd2ab33c7dbeea73d592b5147b8",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 63,
+        "hazard_unmet": 4,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "6c1e1d3bc709425c6b312f0cee1057cdc0f3ccd2ab33c7dbeea73d592b5147b8",
+        "T100": 13,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 60,
+        "hazard_unmet": 1,
+        "decisions": 3,
+        "deviations_from_default": 2
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-169",
+      "seed": 190169,
+      "layout": "D5_R1_concentrated",
+      "t_h": "7",
+      "p": 0.5,
+      "P2": {
+        "start_fingerprint": "72aa45c5ad55149cb8623acb3417c6289723141c8c6dce5fa98cb66d3869f8c7",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 63,
+        "hazard_unmet": 4,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "72aa45c5ad55149cb8623acb3417c6289723141c8c6dce5fa98cb66d3869f8c7",
+        "T100": 13,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 60,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 1
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-170",
+      "seed": 190170,
+      "layout": "D5_R1_concentrated",
+      "t_h": "7",
+      "p": 0.7,
+      "P2": {
+        "start_fingerprint": "0749a8ee9f9ab0111a8b7946201fc9c6b01f741fdeafac8518ea0e7ac28d1500",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 63,
+        "hazard_unmet": 4,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "0749a8ee9f9ab0111a8b7946201fc9c6b01f741fdeafac8518ea0e7ac28d1500",
+        "T100": 13,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 59,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 2
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-171",
+      "seed": 190171,
+      "layout": "D5_R1_concentrated",
+      "t_h": "7",
+      "p": 0.7,
+      "P2": {
+        "start_fingerprint": "bef67993f82b77f4a02100750aeabcd4f712f2086e7469a9bb8146a4df77fb6e",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 63,
+        "hazard_unmet": 4,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "bef67993f82b77f4a02100750aeabcd4f712f2086e7469a9bb8146a4df77fb6e",
+        "T100": 13,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 60,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 1
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-172",
+      "seed": 190172,
+      "layout": "D5_R1_concentrated",
+      "t_h": "7",
+      "p": 0.9,
+      "P2": {
+        "start_fingerprint": "a2988dc8e27af37dae9ff8f7926ed6cd443b5c7ce236f93a079c89e86de84254",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 63,
+        "hazard_unmet": 4,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "a2988dc8e27af37dae9ff8f7926ed6cd443b5c7ce236f93a079c89e86de84254",
+        "T100": 13,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 59,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 1
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-173",
+      "seed": 190173,
+      "layout": "D5_R1_concentrated",
+      "t_h": "7",
+      "p": 0.9,
+      "P2": {
+        "start_fingerprint": "0be60389247734d665cff8e81057a48eb112262d93544cc662e350f0d0b4efd3",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 63,
+        "hazard_unmet": 4,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "0be60389247734d665cff8e81057a48eb112262d93544cc662e350f0d0b4efd3",
+        "T100": 13,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 59,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 1
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-174",
+      "seed": 190174,
+      "layout": "D5_R1_concentrated",
+      "t_h": "9",
+      "p": 0.5,
+      "P2": {
+        "start_fingerprint": "5de4046baab3302e2d1b42e8952a3ab1cb6256842b3d4b34b6f8f61e48daa781",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 60,
+        "hazard_unmet": 1,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "5de4046baab3302e2d1b42e8952a3ab1cb6256842b3d4b34b6f8f61e48daa781",
+        "T100": 13,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 59,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 1
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-175",
+      "seed": 190175,
+      "layout": "D5_R1_concentrated",
+      "t_h": "9",
+      "p": 0.5,
+      "P2": {
+        "start_fingerprint": "eab18efbcdc8214c7ed7eabdf1a88a77fc96796db05793bdda7f2a2d99be3034",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 60,
+        "hazard_unmet": 1,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "eab18efbcdc8214c7ed7eabdf1a88a77fc96796db05793bdda7f2a2d99be3034",
+        "T100": 13,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 59,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 1
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-176",
+      "seed": 190176,
+      "layout": "D5_R1_concentrated",
+      "t_h": "9",
+      "p": 0.7,
+      "P2": {
+        "start_fingerprint": "7cbdaa7328e79aa3f12d3393322121a3a3380d118f6617b5d192e4b3d9ef735c",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 60,
+        "hazard_unmet": 1,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "7cbdaa7328e79aa3f12d3393322121a3a3380d118f6617b5d192e4b3d9ef735c",
+        "T100": 13,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 59,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 1
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-177",
+      "seed": 190177,
+      "layout": "D5_R1_concentrated",
+      "t_h": "9",
+      "p": 0.7,
+      "P2": {
+        "start_fingerprint": "0579f1fe7aea2f136ad2bd71f5f059ded8e4180ed953b8aa98cfde97d7b4c91a",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 60,
+        "hazard_unmet": 1,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "0579f1fe7aea2f136ad2bd71f5f059ded8e4180ed953b8aa98cfde97d7b4c91a",
+        "T100": 13,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 59,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 2
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-178",
+      "seed": 190178,
+      "layout": "D5_R1_concentrated",
+      "t_h": "9",
+      "p": 0.9,
+      "P2": {
+        "start_fingerprint": "ea4ea7f44684cc263ce056637fc84866502151cae2a421f38ac3fc42c4424b4b",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 60,
+        "hazard_unmet": 1,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "ea4ea7f44684cc263ce056637fc84866502151cae2a421f38ac3fc42c4424b4b",
+        "T100": 13,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 59,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 1
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-179",
+      "seed": 190179,
+      "layout": "D5_R1_concentrated",
+      "t_h": "9",
+      "p": 0.9,
+      "P2": {
+        "start_fingerprint": "5e972cb8b8565c7b89a047a4e771dbbec03de175f4c469d6344b36a74ec76dd0",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 60,
+        "hazard_unmet": 1,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "5e972cb8b8565c7b89a047a4e771dbbec03de175f4c469d6344b36a74ec76dd0",
+        "T100": 13,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 59,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 1
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-180",
+      "seed": 190180,
+      "layout": "Z1_R4_concentrated",
+      "t_h": "none",
+      "p": 0.5,
+      "P2": {
+        "start_fingerprint": "6b8a4707c7ec8ca10602fd96898a20e9148422372f3cc38c3943dc4fc927972d",
+        "T100": 13,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 59,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "6b8a4707c7ec8ca10602fd96898a20e9148422372f3cc38c3943dc4fc927972d",
+        "T100": 13,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 59,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-181",
+      "seed": 190181,
+      "layout": "Z1_R4_concentrated",
+      "t_h": "none",
+      "p": 0.5,
+      "P2": {
+        "start_fingerprint": "3b332dcc6746fd20fa745397945d040d503c3a322761ac08238889c851b8a08b",
+        "T100": 13,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 59,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "3b332dcc6746fd20fa745397945d040d503c3a322761ac08238889c851b8a08b",
+        "T100": 13,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 59,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-182",
+      "seed": 190182,
+      "layout": "Z1_R4_concentrated",
+      "t_h": "none",
+      "p": 0.7,
+      "P2": {
+        "start_fingerprint": "c02dddd72ab1e149cdd33df5fab2023950a7d2f9f95c02b497eaf3a971e3d5f1",
+        "T100": 13,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 59,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "c02dddd72ab1e149cdd33df5fab2023950a7d2f9f95c02b497eaf3a971e3d5f1",
+        "T100": 13,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 59,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-183",
+      "seed": 190183,
+      "layout": "Z1_R4_concentrated",
+      "t_h": "none",
+      "p": 0.7,
+      "P2": {
+        "start_fingerprint": "52ed198797bba3a22b9c07da14dd3567b6313d5b3d5d35e2dac4237113397c2d",
+        "T100": 13,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 59,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "52ed198797bba3a22b9c07da14dd3567b6313d5b3d5d35e2dac4237113397c2d",
+        "T100": 13,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 59,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-184",
+      "seed": 190184,
+      "layout": "Z1_R4_concentrated",
+      "t_h": "none",
+      "p": 0.9,
+      "P2": {
+        "start_fingerprint": "abfd33a28a4df24a181b55aeb878e64f72589884e25b94e7167f1e84b1d753c8",
+        "T100": 13,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 59,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "abfd33a28a4df24a181b55aeb878e64f72589884e25b94e7167f1e84b1d753c8",
+        "T100": 13,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 59,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-185",
+      "seed": 190185,
+      "layout": "Z1_R4_concentrated",
+      "t_h": "none",
+      "p": 0.9,
+      "P2": {
+        "start_fingerprint": "33b18a8a07f2c02dec6732909c759582db5464b70c76184fe4cc9e6f259452f3",
+        "T100": 13,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 59,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "33b18a8a07f2c02dec6732909c759582db5464b70c76184fe4cc9e6f259452f3",
+        "T100": 13,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 59,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-186",
+      "seed": 190186,
+      "layout": "Z1_R4_concentrated",
+      "t_h": "3",
+      "p": 0.5,
+      "P2": {
+        "start_fingerprint": "d959f99f99305137adc1e97da7b91a3ba39aea93628bb0b1c80f76c977204c0d",
+        "T100": 15,
+        "T100_censored": false,
+        "T90": 14,
+        "unmet": 90,
+        "hazard_unmet": 28,
+        "decisions": 4,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "d959f99f99305137adc1e97da7b91a3ba39aea93628bb0b1c80f76c977204c0d",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 83,
+        "hazard_unmet": 18,
+        "decisions": 3,
+        "deviations_from_default": 1
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-187",
+      "seed": 190187,
+      "layout": "Z1_R4_concentrated",
+      "t_h": "3",
+      "p": 0.5,
+      "P2": {
+        "start_fingerprint": "edb7ff602d27d113354b8f83d4d09b59981756094d1969d7ffe62bc5a69efaab",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 82,
+        "hazard_unmet": 13,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "edb7ff602d27d113354b8f83d4d09b59981756094d1969d7ffe62bc5a69efaab",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 82,
+        "hazard_unmet": 13,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-188",
+      "seed": 190188,
+      "layout": "Z1_R4_concentrated",
+      "t_h": "3",
+      "p": 0.7,
+      "P2": {
+        "start_fingerprint": "dd94a73c6ae955df7a5ef3cbb7ba4c181fe06b46848ba6a647ab6cad6962c05d",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 82,
+        "hazard_unmet": 10,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "dd94a73c6ae955df7a5ef3cbb7ba4c181fe06b46848ba6a647ab6cad6962c05d",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 82,
+        "hazard_unmet": 10,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-189",
+      "seed": 190189,
+      "layout": "Z1_R4_concentrated",
+      "t_h": "3",
+      "p": 0.7,
+      "P2": {
+        "start_fingerprint": "c6408b3fbd2d5499eb0fea959807264702ebf0d665f678d3328990b54faac25d",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 85,
+        "hazard_unmet": 8,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "c6408b3fbd2d5499eb0fea959807264702ebf0d665f678d3328990b54faac25d",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 85,
+        "hazard_unmet": 4,
+        "decisions": 3,
+        "deviations_from_default": 1
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-190",
+      "seed": 190190,
+      "layout": "Z1_R4_concentrated",
+      "t_h": "3",
+      "p": 0.9,
+      "P2": {
+        "start_fingerprint": "0ec2f95c4b7f9d045c803e4a58eacaf0a9382c10891cdfb8944233ab1c1cc076",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 85,
+        "hazard_unmet": 8,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "0ec2f95c4b7f9d045c803e4a58eacaf0a9382c10891cdfb8944233ab1c1cc076",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 85,
+        "hazard_unmet": 4,
+        "decisions": 3,
+        "deviations_from_default": 1
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-191",
+      "seed": 190191,
+      "layout": "Z1_R4_concentrated",
+      "t_h": "3",
+      "p": 0.9,
+      "P2": {
+        "start_fingerprint": "ae57c9f60af68add11979ae33ede1b14a9e04a1bfc78e65cd6098a1d504c6905",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 85,
+        "hazard_unmet": 8,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "ae57c9f60af68add11979ae33ede1b14a9e04a1bfc78e65cd6098a1d504c6905",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 85,
+        "hazard_unmet": 4,
+        "decisions": 3,
+        "deviations_from_default": 1
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-192",
+      "seed": 190192,
+      "layout": "Z1_R4_concentrated",
+      "t_h": "5",
+      "p": 0.5,
+      "P2": {
+        "start_fingerprint": "37fbeb17628bce3b45a3bc0750cda1ecddbfd1041c00271f1ba475b8218eac5e",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 83,
+        "hazard_unmet": 18,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "37fbeb17628bce3b45a3bc0750cda1ecddbfd1041c00271f1ba475b8218eac5e",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 83,
+        "hazard_unmet": 18,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-193",
+      "seed": 190193,
+      "layout": "Z1_R4_concentrated",
+      "t_h": "5",
+      "p": 0.5,
+      "P2": {
+        "start_fingerprint": "29f4c3fef3cc7cf8b710c39f733e2f906e8bb6c60079188398a06e57228c3ac1",
+        "T100": 16,
+        "T100_censored": false,
+        "T90": 14,
+        "unmet": 93,
+        "hazard_unmet": 28,
+        "decisions": 4,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "29f4c3fef3cc7cf8b710c39f733e2f906e8bb6c60079188398a06e57228c3ac1",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 82,
+        "hazard_unmet": 12,
+        "decisions": 3,
+        "deviations_from_default": 1
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-194",
+      "seed": 190194,
+      "layout": "Z1_R4_concentrated",
+      "t_h": "5",
+      "p": 0.7,
+      "P2": {
+        "start_fingerprint": "3b25a74d4caf4d252532c143e67a3f7d6045d4461df662b368ec9176b09b5360",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 82,
+        "hazard_unmet": 13,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "3b25a74d4caf4d252532c143e67a3f7d6045d4461df662b368ec9176b09b5360",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 81,
+        "hazard_unmet": 9,
+        "decisions": 3,
+        "deviations_from_default": 1
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-195",
+      "seed": 190195,
+      "layout": "Z1_R4_concentrated",
+      "t_h": "5",
+      "p": 0.7,
+      "P2": {
+        "start_fingerprint": "4ce4715aab1fe303d15bb896a7e05aef039a01be9ee13534d720e77656f76391",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 81,
+        "hazard_unmet": 8,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "4ce4715aab1fe303d15bb896a7e05aef039a01be9ee13534d720e77656f76391",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 81,
+        "hazard_unmet": 8,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-196",
+      "seed": 190196,
+      "layout": "Z1_R4_concentrated",
+      "t_h": "5",
+      "p": 0.9,
+      "P2": {
+        "start_fingerprint": "3fb3a564f5a55bd97dfdae04d74e55d939177eecd07bf268b9433deacdec5bd3",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 81,
+        "hazard_unmet": 8,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "3fb3a564f5a55bd97dfdae04d74e55d939177eecd07bf268b9433deacdec5bd3",
+        "T100": 13,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 80,
+        "hazard_unmet": 4,
+        "decisions": 3,
+        "deviations_from_default": 1
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-197",
+      "seed": 190197,
+      "layout": "Z1_R4_concentrated",
+      "t_h": "5",
+      "p": 0.9,
+      "P2": {
+        "start_fingerprint": "14d6b79bc2c7f46dfee583e171701d00a4ec27ea06a418f9b543ed76d6b228d8",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 91,
+        "hazard_unmet": 12,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "14d6b79bc2c7f46dfee583e171701d00a4ec27ea06a418f9b543ed76d6b228d8",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 90,
+        "hazard_unmet": 8,
+        "decisions": 3,
+        "deviations_from_default": 1
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-198",
+      "seed": 190198,
+      "layout": "Z1_R4_concentrated",
+      "t_h": "7",
+      "p": 0.5,
+      "P2": {
+        "start_fingerprint": "8f642ffcb92ff9bb9962f5d73bfafeed40399ef0f1b3aab50ea5015e34b37c25",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 64,
+        "hazard_unmet": 5,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "8f642ffcb92ff9bb9962f5d73bfafeed40399ef0f1b3aab50ea5015e34b37c25",
+        "T100": 13,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 59,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 2
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-199",
+      "seed": 190199,
+      "layout": "Z1_R4_concentrated",
+      "t_h": "7",
+      "p": 0.5,
+      "P2": {
+        "start_fingerprint": "380e6859a9e37f56777d67c201bd8375e20a4d8688d3e632c088a3435071cf43",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 64,
+        "hazard_unmet": 5,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "380e6859a9e37f56777d67c201bd8375e20a4d8688d3e632c088a3435071cf43",
+        "T100": 13,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 60,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 1
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-200",
+      "seed": 190200,
+      "layout": "Z1_R4_concentrated",
+      "t_h": "7",
+      "p": 0.7,
+      "P2": {
+        "start_fingerprint": "6197886964b3b0f3885ce2e5152b178ff0cd52bbe97d98b7125ea22e734b6c80",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 64,
+        "hazard_unmet": 5,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "6197886964b3b0f3885ce2e5152b178ff0cd52bbe97d98b7125ea22e734b6c80",
+        "T100": 13,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 59,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 2
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-201",
+      "seed": 190201,
+      "layout": "Z1_R4_concentrated",
+      "t_h": "7",
+      "p": 0.7,
+      "P2": {
+        "start_fingerprint": "172b43dbd242584ea381a8cdecd1285ca138215dadd1b6a538e8870e49713415",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 64,
+        "hazard_unmet": 5,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "172b43dbd242584ea381a8cdecd1285ca138215dadd1b6a538e8870e49713415",
+        "T100": 13,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 61,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 2
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-202",
+      "seed": 190202,
+      "layout": "Z1_R4_concentrated",
+      "t_h": "7",
+      "p": 0.9,
+      "P2": {
+        "start_fingerprint": "51b24453e4b6e3144bccc9ab33da0ffa331b573270316ecbda05fd7390be331d",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 64,
+        "hazard_unmet": 5,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "51b24453e4b6e3144bccc9ab33da0ffa331b573270316ecbda05fd7390be331d",
+        "T100": 13,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 61,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 2
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-203",
+      "seed": 190203,
+      "layout": "Z1_R4_concentrated",
+      "t_h": "7",
+      "p": 0.9,
+      "P2": {
+        "start_fingerprint": "c367f2ba50bed07e8a6d58cc94223e0b5b5a946d9ea44957e01b4878621ce6c2",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 64,
+        "hazard_unmet": 5,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "c367f2ba50bed07e8a6d58cc94223e0b5b5a946d9ea44957e01b4878621ce6c2",
+        "T100": 13,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 64,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 2
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-204",
+      "seed": 190204,
+      "layout": "Z1_R4_concentrated",
+      "t_h": "9",
+      "p": 0.5,
+      "P2": {
+        "start_fingerprint": "6a954e3a00f6d31a23b137eb5b6be1b8d4fac85e7e472279f0564e17f50d1fd3",
+        "T100": 13,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 59,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "6a954e3a00f6d31a23b137eb5b6be1b8d4fac85e7e472279f0564e17f50d1fd3",
+        "T100": 13,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 59,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-205",
+      "seed": 190205,
+      "layout": "Z1_R4_concentrated",
+      "t_h": "9",
+      "p": 0.5,
+      "P2": {
+        "start_fingerprint": "64631182613789d097673261af99c2c0beb15e4d5eed07d84861429795bfebf9",
+        "T100": 13,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 59,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "64631182613789d097673261af99c2c0beb15e4d5eed07d84861429795bfebf9",
+        "T100": 13,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 59,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-206",
+      "seed": 190206,
+      "layout": "Z1_R4_concentrated",
+      "t_h": "9",
+      "p": 0.7,
+      "P2": {
+        "start_fingerprint": "001a4337c72b86fe515f6529ea4a6d3e39214d33963556dc4d9b61309f9c7658",
+        "T100": 13,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 59,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "001a4337c72b86fe515f6529ea4a6d3e39214d33963556dc4d9b61309f9c7658",
+        "T100": 13,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 59,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-207",
+      "seed": 190207,
+      "layout": "Z1_R4_concentrated",
+      "t_h": "9",
+      "p": 0.7,
+      "P2": {
+        "start_fingerprint": "a0c0f5f96e6a8ce206196f5807f8940321262093a3e114f79a29c13f2b70bcda",
+        "T100": 13,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 59,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "a0c0f5f96e6a8ce206196f5807f8940321262093a3e114f79a29c13f2b70bcda",
+        "T100": 13,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 59,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-208",
+      "seed": 190208,
+      "layout": "Z1_R4_concentrated",
+      "t_h": "9",
+      "p": 0.9,
+      "P2": {
+        "start_fingerprint": "e1821f3dc4eb9d2f7bc2edd3fc6cbc6c912648e31b14f90b6be23195f31d24a7",
+        "T100": 13,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 59,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "e1821f3dc4eb9d2f7bc2edd3fc6cbc6c912648e31b14f90b6be23195f31d24a7",
+        "T100": 13,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 59,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-209",
+      "seed": 190209,
+      "layout": "Z1_R4_concentrated",
+      "t_h": "9",
+      "p": 0.9,
+      "P2": {
+        "start_fingerprint": "e37cf362b17816bf7709889c6d9e4332d495a4fa9e0cec5a2f5d202d4a0fa563",
+        "T100": 13,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 59,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "e37cf362b17816bf7709889c6d9e4332d495a4fa9e0cec5a2f5d202d4a0fa563",
+        "T100": 13,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 59,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-210",
+      "seed": 190210,
+      "layout": "Z2_mixed",
+      "t_h": "none",
+      "p": 0.5,
+      "P2": {
+        "start_fingerprint": "c9ed114d9b9082abe9a06b337a029efa247a561adef805d4a82493df495fdafe",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 11,
+        "unmet": 48,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "c9ed114d9b9082abe9a06b337a029efa247a561adef805d4a82493df495fdafe",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 11,
+        "unmet": 48,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-211",
+      "seed": 190211,
+      "layout": "Z2_mixed",
+      "t_h": "none",
+      "p": 0.5,
+      "P2": {
+        "start_fingerprint": "b83ca35dc5efe6ceffa844b7f6003e9ec0f80b74813b29ad2f240ea8dd1a7276",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 11,
+        "unmet": 48,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "b83ca35dc5efe6ceffa844b7f6003e9ec0f80b74813b29ad2f240ea8dd1a7276",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 11,
+        "unmet": 48,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-212",
+      "seed": 190212,
+      "layout": "Z2_mixed",
+      "t_h": "none",
+      "p": 0.7,
+      "P2": {
+        "start_fingerprint": "7fcc5cb79a024bf7dc370e9678603c0f8309cfebf5e30ec92aa18d2831018ea7",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 11,
+        "unmet": 48,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "7fcc5cb79a024bf7dc370e9678603c0f8309cfebf5e30ec92aa18d2831018ea7",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 11,
+        "unmet": 48,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-213",
+      "seed": 190213,
+      "layout": "Z2_mixed",
+      "t_h": "none",
+      "p": 0.7,
+      "P2": {
+        "start_fingerprint": "4c64ee8a88911c319782e8fd6b59abc6fd97ae007eb589ffee1212d30fe1cbe7",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 11,
+        "unmet": 48,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "4c64ee8a88911c319782e8fd6b59abc6fd97ae007eb589ffee1212d30fe1cbe7",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 11,
+        "unmet": 48,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-214",
+      "seed": 190214,
+      "layout": "Z2_mixed",
+      "t_h": "none",
+      "p": 0.9,
+      "P2": {
+        "start_fingerprint": "02bd8ca21bfd41b7c6869e0024aaea7863d969ac447032ccf1cc7704588bfee6",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 11,
+        "unmet": 48,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "02bd8ca21bfd41b7c6869e0024aaea7863d969ac447032ccf1cc7704588bfee6",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 11,
+        "unmet": 48,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-215",
+      "seed": 190215,
+      "layout": "Z2_mixed",
+      "t_h": "none",
+      "p": 0.9,
+      "P2": {
+        "start_fingerprint": "3831421c9988477a364297177422bc01fd8a006e93387207e0ce9126e230e085",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 11,
+        "unmet": 48,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "3831421c9988477a364297177422bc01fd8a006e93387207e0ce9126e230e085",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 11,
+        "unmet": 48,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-216",
+      "seed": 190216,
+      "layout": "Z2_mixed",
+      "t_h": "3",
+      "p": 0.5,
+      "P2": {
+        "start_fingerprint": "4d60ee52cb2dc427989e2e6d9e252698de70ffc35d1d6fed40dc6d004542f360",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 14,
+        "unmet": 85,
+        "hazard_unmet": 29,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "4d60ee52cb2dc427989e2e6d9e252698de70ffc35d1d6fed40dc6d004542f360",
+        "T100": 13,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 80,
+        "hazard_unmet": 11,
+        "decisions": 3,
+        "deviations_from_default": 1
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-217",
+      "seed": 190217,
+      "layout": "Z2_mixed",
+      "t_h": "3",
+      "p": 0.5,
+      "P2": {
+        "start_fingerprint": "a0769761c8f4d5ce843587293f597932a68b3288f5803839c6011674e5c8cd08",
+        "T100": 15,
+        "T100_censored": false,
+        "T90": 14,
+        "unmet": 88,
+        "hazard_unmet": 36,
+        "decisions": 4,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "a0769761c8f4d5ce843587293f597932a68b3288f5803839c6011674e5c8cd08",
+        "T100": 13,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 80,
+        "hazard_unmet": 11,
+        "decisions": 3,
+        "deviations_from_default": 1
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-218",
+      "seed": 190218,
+      "layout": "Z2_mixed",
+      "t_h": "3",
+      "p": 0.7,
+      "P2": {
+        "start_fingerprint": "410aef3e3a02cf1a90908d6bfec1ab890a36c8b15a9f3bd769b4dcad80f01ed4",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 92,
+        "hazard_unmet": 24,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "410aef3e3a02cf1a90908d6bfec1ab890a36c8b15a9f3bd769b4dcad80f01ed4",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 83,
+        "hazard_unmet": 24,
+        "decisions": 3,
+        "deviations_from_default": 2
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-219",
+      "seed": 190219,
+      "layout": "Z2_mixed",
+      "t_h": "3",
+      "p": 0.7,
+      "P2": {
+        "start_fingerprint": "832d5124e2ef89fc5c519d3bba44733ce1bf9c588ef7ee97e9ce01419e2bc1aa",
+        "T100": 15,
+        "T100_censored": false,
+        "T90": 14,
+        "unmet": 87,
+        "hazard_unmet": 35,
+        "decisions": 4,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "832d5124e2ef89fc5c519d3bba44733ce1bf9c588ef7ee97e9ce01419e2bc1aa",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 81,
+        "hazard_unmet": 16,
+        "decisions": 3,
+        "deviations_from_default": 1
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-220",
+      "seed": 190220,
+      "layout": "Z2_mixed",
+      "t_h": "3",
+      "p": 0.9,
+      "P2": {
+        "start_fingerprint": "9f7ccf75165461dfbddedb6993737b4190c572f4cf998377e23399b4e6d9bbe5",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 84,
+        "hazard_unmet": 24,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "9f7ccf75165461dfbddedb6993737b4190c572f4cf998377e23399b4e6d9bbe5",
+        "T100": 13,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 80,
+        "hazard_unmet": 9,
+        "decisions": 3,
+        "deviations_from_default": 1
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-221",
+      "seed": 190221,
+      "layout": "Z2_mixed",
+      "t_h": "3",
+      "p": 0.9,
+      "P2": {
+        "start_fingerprint": "73fd86985e4f0db59c516925e9a9f01cefa33606da5e28a120ebb8466871d9b9",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 88,
+        "hazard_unmet": 24,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "73fd86985e4f0db59c516925e9a9f01cefa33606da5e28a120ebb8466871d9b9",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 84,
+        "hazard_unmet": 29,
+        "decisions": 3,
+        "deviations_from_default": 2
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-222",
+      "seed": 190222,
+      "layout": "Z2_mixed",
+      "t_h": "5",
+      "p": 0.5,
+      "P2": {
+        "start_fingerprint": "4a0d835114467f81d0c94137927518ccd9159bb4c1b098e9dfe2063c83686dbd",
+        "T100": 15,
+        "T100_censored": false,
+        "T90": 14,
+        "unmet": 87,
+        "hazard_unmet": 35,
+        "decisions": 4,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "4a0d835114467f81d0c94137927518ccd9159bb4c1b098e9dfe2063c83686dbd",
+        "T100": 13,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 80,
+        "hazard_unmet": 11,
+        "decisions": 3,
+        "deviations_from_default": 1
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-223",
+      "seed": 190223,
+      "layout": "Z2_mixed",
+      "t_h": "5",
+      "p": 0.5,
+      "P2": {
+        "start_fingerprint": "d529f149a8f526c686f45f70c55bd94cd4899698dfed29593ce5e5c16eb9c6a5",
+        "T100": 16,
+        "T100_censored": false,
+        "T90": 14,
+        "unmet": 94,
+        "hazard_unmet": 48,
+        "decisions": 4,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "d529f149a8f526c686f45f70c55bd94cd4899698dfed29593ce5e5c16eb9c6a5",
+        "T100": 15,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 84,
+        "hazard_unmet": 25,
+        "decisions": 4,
+        "deviations_from_default": 1
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-224",
+      "seed": 190224,
+      "layout": "Z2_mixed",
+      "t_h": "5",
+      "p": 0.7,
+      "P2": {
+        "start_fingerprint": "b2163224b82a050428b73b45b2295e38e6145a97c898b0242134111cdc992d69",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 84,
+        "hazard_unmet": 24,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "b2163224b82a050428b73b45b2295e38e6145a97c898b0242134111cdc992d69",
+        "T100": 13,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 80,
+        "hazard_unmet": 9,
+        "decisions": 3,
+        "deviations_from_default": 1
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-225",
+      "seed": 190225,
+      "layout": "Z2_mixed",
+      "t_h": "5",
+      "p": 0.7,
+      "P2": {
+        "start_fingerprint": "2bf1a2b55186a431a755373e553d612b80a9ffef747007a5da5da08197d3e201",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 92,
+        "hazard_unmet": 24,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "2bf1a2b55186a431a755373e553d612b80a9ffef747007a5da5da08197d3e201",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 90,
+        "hazard_unmet": 10,
+        "decisions": 3,
+        "deviations_from_default": 1
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-226",
+      "seed": 190226,
+      "layout": "Z2_mixed",
+      "t_h": "5",
+      "p": 0.9,
+      "P2": {
+        "start_fingerprint": "3b0096cd205bddaa6662a3c36888cb8514b6474bc8622c0c56703b2c004257ce",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 88,
+        "hazard_unmet": 24,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "3b0096cd205bddaa6662a3c36888cb8514b6474bc8622c0c56703b2c004257ce",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 83,
+        "hazard_unmet": 23,
+        "decisions": 3,
+        "deviations_from_default": 2
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-227",
+      "seed": 190227,
+      "layout": "Z2_mixed",
+      "t_h": "5",
+      "p": 0.9,
+      "P2": {
+        "start_fingerprint": "ccb28d3b405e073ac529652a0f07819c0c86308249cb4b5c8220f286d2c51e69",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 92,
+        "hazard_unmet": 24,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "ccb28d3b405e073ac529652a0f07819c0c86308249cb4b5c8220f286d2c51e69",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 13,
+        "unmet": 90,
+        "hazard_unmet": 9,
+        "decisions": 3,
+        "deviations_from_default": 1
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-228",
+      "seed": 190228,
+      "layout": "Z2_mixed",
+      "t_h": "7",
+      "p": 0.5,
+      "P2": {
+        "start_fingerprint": "a4f9845b09227afa482a9930f4adb599172f9dbbf45db53f5ba624bcc56baed9",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 12,
+        "unmet": 58,
+        "hazard_unmet": 12,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "a4f9845b09227afa482a9930f4adb599172f9dbbf45db53f5ba624bcc56baed9",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 12,
+        "unmet": 52,
+        "hazard_unmet": 2,
+        "decisions": 3,
+        "deviations_from_default": 1
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-229",
+      "seed": 190229,
+      "layout": "Z2_mixed",
+      "t_h": "7",
+      "p": 0.5,
+      "P2": {
+        "start_fingerprint": "d68519633920dd6d59dca8dc0257f1611a2cec06852e81ad1f492944d5877087",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 12,
+        "unmet": 58,
+        "hazard_unmet": 12,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "d68519633920dd6d59dca8dc0257f1611a2cec06852e81ad1f492944d5877087",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 12,
+        "unmet": 52,
+        "hazard_unmet": 2,
+        "decisions": 3,
+        "deviations_from_default": 1
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-230",
+      "seed": 190230,
+      "layout": "Z2_mixed",
+      "t_h": "7",
+      "p": 0.7,
+      "P2": {
+        "start_fingerprint": "4569fbf848bfa9d76b58b68dc166426b0595359c21676a8b4f7a67e392dc4140",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 12,
+        "unmet": 58,
+        "hazard_unmet": 12,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "4569fbf848bfa9d76b58b68dc166426b0595359c21676a8b4f7a67e392dc4140",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 12,
+        "unmet": 52,
+        "hazard_unmet": 2,
+        "decisions": 3,
+        "deviations_from_default": 1
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-231",
+      "seed": 190231,
+      "layout": "Z2_mixed",
+      "t_h": "7",
+      "p": 0.7,
+      "P2": {
+        "start_fingerprint": "0a5ab43e4d361b4b9d728a98903f50e1dff468ad13738fd9200d4ab6ea87de10",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 12,
+        "unmet": 58,
+        "hazard_unmet": 12,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "0a5ab43e4d361b4b9d728a98903f50e1dff468ad13738fd9200d4ab6ea87de10",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 12,
+        "unmet": 52,
+        "hazard_unmet": 2,
+        "decisions": 3,
+        "deviations_from_default": 1
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-232",
+      "seed": 190232,
+      "layout": "Z2_mixed",
+      "t_h": "7",
+      "p": 0.9,
+      "P2": {
+        "start_fingerprint": "367469df6bef70e7d550b3e6afde75c2c761f36721b87a267be02f65a91cfd95",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 12,
+        "unmet": 58,
+        "hazard_unmet": 12,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "367469df6bef70e7d550b3e6afde75c2c761f36721b87a267be02f65a91cfd95",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 12,
+        "unmet": 52,
+        "hazard_unmet": 2,
+        "decisions": 3,
+        "deviations_from_default": 1
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-233",
+      "seed": 190233,
+      "layout": "Z2_mixed",
+      "t_h": "7",
+      "p": 0.9,
+      "P2": {
+        "start_fingerprint": "ee75074fed05d50cc12bc434d36f161a93bcb1c76857417e794cf937baa99648",
+        "T100": 14,
+        "T100_censored": false,
+        "T90": 12,
+        "unmet": 58,
+        "hazard_unmet": 12,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "ee75074fed05d50cc12bc434d36f161a93bcb1c76857417e794cf937baa99648",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 12,
+        "unmet": 52,
+        "hazard_unmet": 2,
+        "decisions": 3,
+        "deviations_from_default": 1
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-234",
+      "seed": 190234,
+      "layout": "Z2_mixed",
+      "t_h": "9",
+      "p": 0.5,
+      "P2": {
+        "start_fingerprint": "9d73f291eb23dd72c349244d5725cabf3306b341223bd179eec8b9b159203f55",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 11,
+        "unmet": 48,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "9d73f291eb23dd72c349244d5725cabf3306b341223bd179eec8b9b159203f55",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 11,
+        "unmet": 48,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-235",
+      "seed": 190235,
+      "layout": "Z2_mixed",
+      "t_h": "9",
+      "p": 0.5,
+      "P2": {
+        "start_fingerprint": "b4ca14214b9fc01042df69fbeebc3c225d40c02f7d6c2aa48da675d01bbeea67",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 11,
+        "unmet": 48,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "b4ca14214b9fc01042df69fbeebc3c225d40c02f7d6c2aa48da675d01bbeea67",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 11,
+        "unmet": 48,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-236",
+      "seed": 190236,
+      "layout": "Z2_mixed",
+      "t_h": "9",
+      "p": 0.7,
+      "P2": {
+        "start_fingerprint": "add0429ac44b4e81a2f0211398935e1f6a66cf68458a42189ba0996e279ac497",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 11,
+        "unmet": 48,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "add0429ac44b4e81a2f0211398935e1f6a66cf68458a42189ba0996e279ac497",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 11,
+        "unmet": 48,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-237",
+      "seed": 190237,
+      "layout": "Z2_mixed",
+      "t_h": "9",
+      "p": 0.7,
+      "P2": {
+        "start_fingerprint": "0b49795396a4e737c9f77ea6fbf79ee8fcf8689378f6315fee5c6c65374fa3c0",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 11,
+        "unmet": 48,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "0b49795396a4e737c9f77ea6fbf79ee8fcf8689378f6315fee5c6c65374fa3c0",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 11,
+        "unmet": 48,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-238",
+      "seed": 190238,
+      "layout": "Z2_mixed",
+      "t_h": "9",
+      "p": 0.9,
+      "P2": {
+        "start_fingerprint": "b966b18b7fc4cc05430a943752a29775514e20e5d90f4954fa59d50d169afe74",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 11,
+        "unmet": 48,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "b966b18b7fc4cc05430a943752a29775514e20e5d90f4954fa59d50d169afe74",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 11,
+        "unmet": 48,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "paired_start_equal": true
+    },
+    {
+      "trajectory_id": "PILOT-239",
+      "seed": 190239,
+      "layout": "Z2_mixed",
+      "t_h": "9",
+      "p": 0.9,
+      "P2": {
+        "start_fingerprint": "076f188af18294eda79f2215aa0bd9c16de6f282813b61ddf4d4c228abc2376a",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 11,
+        "unmet": 48,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "P5": {
+        "start_fingerprint": "076f188af18294eda79f2215aa0bd9c16de6f282813b61ddf4d4c228abc2376a",
+        "T100": 12,
+        "T100_censored": false,
+        "T90": 11,
+        "unmet": 48,
+        "hazard_unmet": 0,
+        "decisions": 3,
+        "deviations_from_default": 0
+      },
+      "paired_start_equal": true
+    }
+  ],
+  "seconds": 25.3
+}
