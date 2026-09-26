@@ -1,0 +1,70 @@
+{
+  "record": "DIAGNOSTIC ONLY: selector step attrition on VALIDATION (no protocol change)",
+  "learned": {
+    "states": 1845,
+    "safe_nondefault_any": 240,
+    "astar_nondefault": 203,
+    "switch_passed": 0,
+    "block_by_criterion": [
+      411318,
+      458885,
+      372575,
+      305993
+    ],
+    "nondefault_rows": 547965,
+    "no_floor_astar_nondefault": 1845,
+    "no_floor_switch": 540,
+    "no_floor_capture_improvable": 102,
+    "no_floor_harm": 198,
+    "safe_nondefault_count_percentiles": {
+      "50": 0.0,
+      "90": 99.0,
+      "99": 297.0,
+      "100": 297.0
+    },
+    "block_share_by_criterion": {
+      "future_T90": 0.7506282335550628,
+      "future_T100": 0.837434872665225,
+      "future_unmet": 0.6799248127161406,
+      "future_hazard_unmet": 0.5584170521839898
+    },
+    "share_states_safe_nondefault_any": 0.13008130081300814,
+    "counterfactual_note": "no_floor_* = the same selector with step 2 skipped; diagnostic of the mechanism only",
+    "no_floor_capture_rate_improvable": 0.13545816733067728,
+    "no_floor_harm_rate": 0.1073170731707317
+  },
+  "baseline": {
+    "states": 1845,
+    "safe_nondefault_any": 527,
+    "astar_nondefault": 0,
+    "switch_passed": 0,
+    "block_by_criterion": [
+      390832,
+      406368,
+      380075,
+      302096
+    ],
+    "nondefault_rows": 547965,
+    "no_floor_astar_nondefault": 793,
+    "no_floor_switch": 573,
+    "no_floor_capture_improvable": 87,
+    "no_floor_harm": 181,
+    "safe_nondefault_count_percentiles": {
+      "50": 0.0,
+      "90": 297.0,
+      "99": 297.0,
+      "100": 297.0
+    },
+    "block_share_by_criterion": {
+      "future_T90": 0.7132426341098428,
+      "future_T100": 0.7415948098874928,
+      "future_unmet": 0.6936118182730648,
+      "future_hazard_unmet": 0.5513052840966121
+    },
+    "share_states_safe_nondefault_any": 0.2856368563685637,
+    "counterfactual_note": "no_floor_* = the same selector with step 2 skipped; diagnostic of the mechanism only",
+    "no_floor_capture_rate_improvable": 0.11553784860557768,
+    "no_floor_harm_rate": 0.0981029810298103
+  },
+  "improvable_states": 753
+}
