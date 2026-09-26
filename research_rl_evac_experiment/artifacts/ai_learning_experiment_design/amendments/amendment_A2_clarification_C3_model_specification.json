@@ -1,0 +1,77 @@
+{
+  "record": "Amendment A2 -- clarification C3 (learned outcome-prediction model specification)",
+  "type": "post-hoc pre-training clarification; separate file, linked by hash; A2, C1 and C2 are not modified",
+  "created_utc": "2026-09-26T20:36:03Z",
+  "linked_to": {
+    "amendment_A2_evaluation_protocol.json": "ab9aeb7a6e5c9349b4017a1fa51cbebc9809afda9f55c52e49a7a768be0b299a",
+    "amendment_A2_clarification_C1.json": "795f55560ef7f18e61f91759c910eac7ab04641b7d92cda5e4385f9ca647405c",
+    "amendment_A2_clarification_C2.json": "49a42a6db8a70ea1f6830e1f0f8135bc8ee43549afaf3e58a02e634543afb2e5",
+    "issue2_validation_baseline_selection.json": "752cccd8df61d0b9eedfe8534e5ccd4afb398b578cc32bba2d48809ab6921905",
+    "full_ai_learning_rows.csv.gz": "36aa757f6f2414713d7f5625f562298df2e72baf97a61969a69c0e3ecb967179",
+    "relationship": "A2 -> C1 -> C2 -> C3. C3 adds the learned-model specification, which no earlier record contained; it changes nothing in A2, C1 or C2."
+  },
+  "provenance": {
+    "origin_of_model_family": "the pre-Spec design audit (proposed_experiment.json: 'Gradient-boosted regression trees') was never carried into Spec v1/v2; C3 makes it concrete by user decision",
+    "created_before": ["any training", "any fitting", "any prediction", "selector construction", "any PRIMARY TEST access"],
+    "training_fitting_prediction_performed": false,
+    "primary_test_accessed": false,
+    "note": "the effective configuration below was read from unfitted estimator objects (get_params); no estimator was fitted"
+  },
+  "environment": {"python": "3.14.0", "scikit_learn": "1.9.0", "numpy": "2.4.2"},
+  "model_family": "sklearn.ensemble.HistGradientBoostingRegressor",
+  "estimators": {
+    "count": 16,
+    "structure": "one independently fitted regressor per (target, prediction type)",
+    "targets": ["future_T90", "future_T100", "future_unmet", "future_hazard_unmet"],
+    "prediction_types": {
+      "mean": {"loss": "squared_error", "quantile": null},
+      "q0.1": {"loss": "quantile", "quantile": 0.1},
+      "q0.5": {"loss": "quantile", "quantile": 0.5},
+      "q0.9": {"loss": "quantile", "quantile": 0.9}
+    },
+    "naming": "<target>__<prediction type>, e.g. future_T100__q0.9"
+  },
+  "configuration": {
+    "count": 1,
+    "user_frozen": {"learning_rate": 0.05, "max_iter": 300, "max_leaf_nodes": 31, "min_samples_leaf": 20, "l2_regularization": 1.0, "early_stopping": false, "random_state": 5544201},
+    "complete_effective_parameters_scikit_learn_1_9_0": {
+      "categorical_features": "from_dtype", "early_stopping": false, "interaction_cst": null, "l2_regularization": 1.0,
+      "learning_rate": 0.05, "loss": "squared_error | quantile (per prediction type)", "max_bins": 255, "max_depth": null,
+      "max_features": 1.0, "max_iter": 300, "max_leaf_nodes": 31, "min_samples_leaf": 20, "monotonic_cst": null,
+      "n_iter_no_change": 10, "quantile": "null | 0.1 | 0.5 | 0.9 (per prediction type)", "random_state": 5544201,
+      "scoring": "loss", "tol": 1e-07, "validation_fraction": 0.1, "verbose": 0, "warm_start": false
+    },
+    "inactive_given_config": "n_iter_no_change, scoring, tol and validation_fraction have no effect because early_stopping = False; categorical_features='from_dtype' treats no feature as categorical because the input is a float64 NumPy array",
+    "no_search": "no hyperparameter or grid search; there is exactly one configuration, so there is NO configuration-selection step",
+    "c2_score_not_used_for_model_selection": "the C2 baseline-selection score governs only the four non-learning baselines; learned-model VALIDATION losses are reported descriptively"
+  },
+  "inputs": {
+    "n_columns": 54,
+    "dtype": "float64 NumPy array",
+    "order": ["waiting_R1", "waiting_R2", "waiting_C1", "waiting_R3", "waiting_R4", "waiting_C2", "waiting_CE1", "waiting_CE2", "in_transit_R1_C1", "in_transit_R2_C1", "in_transit_C1_H_1tick", "in_transit_C1_H_2tick", "in_transit_R3_C2", "in_transit_R4_C2", "in_transit_C2_H_1tick", "in_transit_C2_H_2tick", "in_transit_H_CE1_1tick", "in_transit_H_CE1_2tick", "in_transit_H_CE2_1tick", "in_transit_H_CE2_2tick", "in_transit_CE1_EXITA", "in_transit_CE2_EXITB", "residual_cap_H_CE1_normalized", "normalized_time", "normalized_remaining", "waiting_H_total", "cand_R1_UNTOUCHED", "cand_R1_FAVOR_A", "cand_R1_PARITY", "cand_R1_FAVOR_B", "cand_R2_UNTOUCHED", "cand_R2_FAVOR_A", "cand_R2_PARITY", "cand_R2_FAVOR_B", "cand_C1_UNTOUCHED", "cand_C1_FAVOR_A", "cand_C1_PARITY", "cand_C1_FAVOR_B", "cand_R3_UNTOUCHED", "cand_R3_FAVOR_A", "cand_R3_PARITY", "cand_R3_FAVOR_B", "cand_R4_UNTOUCHED", "cand_R4_FAVOR_A", "cand_R4_PARITY", "cand_R4_FAVOR_B", "cand_C2_UNTOUCHED", "cand_C2_FAVOR_A", "cand_C2_PARITY", "cand_C2_FAVOR_B", "cand_H_UNTOUCHED", "cand_H_FAVOR_A", "cand_H_PARITY", "cand_H_FAVOR_B"],
+    "descriptor_source": "candidate_action_set.json encoding for the candidate_id only",
+    "zero_variance_features": "in_transit_R2_C1, in_transit_R3_C2 and in_transit_R4_C2 remain model inputs unchanged (A2 whitelist); the C2 exclusion applies only to state-space distances (1-NN baseline and OOD)",
+    "preprocessing": "none (tree model; no scaling of model inputs)",
+    "runtime_assertion": "list(input_columns) == the 54-name order above, before every fit and predict (A2 Issue 6)"
+  },
+  "training_data": {
+    "rows": "all TRAIN candidate rows (5,985 states x 298), each with equal weight (A2 Issue 3; no sample_weight passed)",
+    "T90_rows": "rows with T90 reached before the decision are kept (A2 Issue 3)",
+    "validation_use": "VALIDATION is used only to report losses, MAE, coverage, quantile crossing and the selector comparison, and to set the learned selector's own tolerances and interval-width threshold (C2)"
+  },
+  "quantile_crossing": {
+    "raw_predictions": "q0.1, q0.5 and q0.9 are predicted independently and recorded raw",
+    "diagnostic": "the pre-correction crossing rate (share of rows where q0.1 > q0.5 or q0.5 > q0.9) is reported per target",
+    "rearrangement_for_selector": "for selector consumption only, the three values of each row are sorted ascending (q0.1 <= q0.5 <= q0.9); deterministic",
+    "mean_independent": "the conditional-mean prediction is never replaced by q0.5; MAE always uses the conditional mean"
+  },
+  "learned_selector_tolerances": {
+    "rule": "C2 exactly: delta_U = 0.5 x learned-model VALIDATION conditional-mean MAE on future_unmet; delta_H = 0.5 x learned-model VALIDATION conditional-mean MAE on future_hazard_unmet; delta_T90 = delta_T100 = 0.5 tick",
+    "not_used": "the exact-input baseline's delta_U = 5.055 and delta_H = 5.041 (frozen for the baseline selector only)",
+    "c2_amended": false
+  },
+  "reproducibility_after_training": {
+    "serialization": "each of the 16 fitted estimators is serialized with pickle (protocol 5) and its SHA-256 recorded, together with the environment versions above and the SHA-256 of the exact training input and target arrays",
+    "seed": 5544201
+  }
+}
