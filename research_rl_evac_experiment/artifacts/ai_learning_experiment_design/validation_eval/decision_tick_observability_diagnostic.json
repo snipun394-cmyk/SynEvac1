@@ -1,0 +1,1519 @@
+{
+  "record": "VALIDATION-only decision-tick observability diagnostic (NOT a selector, NOT a new experiment)",
+  "hidden_labels_use": "t_h, p, compliance_key, template, seed, hazard_started read for VALIDATION rows as diagnostic labels only; never model inputs",
+  "regime_definition": "hidden regime = (t_h, p); finer = (t_h, p, compliance_key)",
+  "inputs": {
+    "deltas": {
+      "T90": 0.5,
+      "T100": 0.5,
+      "U": 4.7078520264313,
+      "H": 4.765116208777272
+    },
+    "width_threshold": 1.7896855518441477,
+    "tau": 0.9354293229055866,
+    "unique_candidate_descriptors": 298,
+    "ticks": [
+      0,
+      5,
+      10,
+      15,
+      20
+    ],
+    "rows_parsed": {
+      "TRAIN": 1783530,
+      "VALIDATION": 549810
+    },
+    "other_roles_seen_only_as_split_role": {
+      "TEST_PRIMARY_JOINT": 970288,
+      "TEST_HELDOUT_TIMING": 548618,
+      "TEST_HELDOUT_COMPLIANCE": 890722,
+      "DIAG_EXTRAPOLATION": 429716,
+      "DIAG_TEMPLATE_ZERO_SHOT": 351640
+    },
+    "hidden_pass_other_roles_seen_only_as_split_role": {
+      "TRAIN": 1783530,
+      "TEST_PRIMARY_JOINT": 970288,
+      "TEST_HELDOUT_TIMING": 548618,
+      "TEST_HELDOUT_COMPLIANCE": 890722,
+      "DIAG_EXTRAPOLATION": 429716,
+      "DIAG_TEMPLATE_ZERO_SHOT": 351640
+    },
+    "bootstrap": "frozen cluster_boot, 2,000 resamples",
+    "seeds": {
+      "recommendation": 5544102,
+      "safety": 5544103
+    }
+  },
+  "per_tick": {
+    "0": {
+      "zero_harm_class_oracle_bound": {
+        "definition": "per observable class, the single non-default action never worse than default for ANY member and strictly better for the most members; label-based, in-sample upper bound for any deterministic observation-based policy with zero harm",
+        "classes_with_such_action": 4,
+        "of_classes": 6,
+        "states_strictly_improved": 244,
+        "states_captured": 14,
+        "improvable_states_at_tick": 430,
+        "classes_where_R1_floor_admits_that_action": 4,
+        "predicted_hazard_improvement_of_that_action": {
+          "5": 1.8439682480422204,
+          "25": 1.9502070983537954,
+          "50": 2.4964420134066794,
+          "75": 3.2953023558207817,
+          "95": 4.00784223179928
+        },
+        "delta_H": 4.765116208777272
+      },
+      "diversity": {
+        "states": 540,
+        "trajectories": 540,
+        "unique_observable_x26": 6,
+        "unique_54_inputs": 1788,
+        "distinct_prediction_matrices": 6,
+        "distinct_hidden_regimes_t_h_p": 9,
+        "distinct_hidden_regimes_t_h_p_compliance": 54,
+        "templates": 6,
+        "hazard_started_states": 0
+      },
+      "ambiguity": {
+        "classes": 6,
+        "classes_with_multiple_members": 6,
+        "classes_with_multiple_t_h_p_regimes": 6,
+        "share_classes_multi_regime": 1.0,
+        "states_in_multi_regime_classes": 540,
+        "share_states_in_multi_regime_classes": 1.0,
+        "classes_with_multiple_regime_or_compliance": 6,
+        "share_states_in_multi_regime_or_compliance_classes": 1.0,
+        "classes_where_true_outcomes_differ_across_members": 6,
+        "share_states_in_outcome_heterogeneous_classes": 1.0,
+        "classes_with_no_common_best_action": 6,
+        "share_states_in_classes_with_no_common_best_action": 1.0,
+        "share_states_regime_identified_by_observation": 0.0,
+        "regime_entropy_bits": 3.169925001442312,
+        "conditional_regime_entropy_given_observation_bits": 3.1699250014423117,
+        "share_of_regime_uncertainty_resolved": 1.1102230246251565e-16
+      },
+      "prediction": {
+        "future_T90": {
+          "mae": 0.8298735097954002,
+          "r2": 0.11071670979895909,
+          "outcome_sd": 1.024655294283047,
+          "within_state_candidate_sd_actual": 0.7823324514435506,
+          "within_state_candidate_sd_predicted": 0.39310532811647486,
+          "within_state_corr_pred_vs_actual": 0.641858642448995,
+          "q9_coverage_raw": 0.7333954760129257,
+          "q9_coverage_integer_read": 0.9914180959482973,
+          "direction_auc_pred_improvement_vs_realized_better": 0.888520982399212,
+          "nondefault_pairs_realized_better": 26451,
+          "nondefault_pairs_realized_worse": 48148
+        },
+        "future_T100": {
+          "mae": 0.8445785285320605,
+          "r2": 0.11343483807364985,
+          "outcome_sd": 1.0342269458716495,
+          "within_state_candidate_sd_actual": 0.7101979305924205,
+          "within_state_candidate_sd_predicted": 0.3761944225614596,
+          "within_state_corr_pred_vs_actual": 0.7095533630753607,
+          "q9_coverage_raw": 0.8445749440715884,
+          "q9_coverage_integer_read": 0.9928349490430027,
+          "direction_auc_pred_improvement_vs_realized_better": 0.9271892411299564,
+          "nondefault_pairs_realized_better": 24186,
+          "nondefault_pairs_realized_worse": 48322
+        },
+        "future_unmet": {
+          "mae": 13.579319411698616,
+          "r2": 0.18059714392697856,
+          "outcome_sd": 17.311767608009372,
+          "within_state_candidate_sd_actual": 11.574117273882681,
+          "within_state_candidate_sd_predicted": 5.7089288640822,
+          "within_state_corr_pred_vs_actual": 0.7811813025240125,
+          "q9_coverage_raw": 0.8931145911011683,
+          "q9_coverage_integer_read": null,
+          "direction_auc_pred_improvement_vs_realized_better": 0.8304214721869645,
+          "nondefault_pairs_realized_better": 40858,
+          "nondefault_pairs_realized_worse": 87659
+        },
+        "future_hazard_unmet": {
+          "mae": 12.745040778590845,
+          "r2": 0.2784930913556525,
+          "outcome_sd": 18.93212781219351,
+          "within_state_candidate_sd_actual": 14.389959358616823,
+          "within_state_candidate_sd_predicted": 8.023469751867074,
+          "within_state_corr_pred_vs_actual": 0.8575179297044361,
+          "q9_coverage_raw": 0.7708488690032315,
+          "q9_coverage_integer_read": null,
+          "direction_auc_pred_improvement_vs_realized_better": 0.9953972917462415,
+          "nondefault_pairs_realized_better": 54033,
+          "nondefault_pairs_realized_worse": 56946
+        }
+      },
+      "harm_separability": {
+        "auc_R1_floor_margin_vs_pair_harm": 0.8364006501468594,
+        "auc_frozen_floor_margin_vs_pair_harm": 0.8392226738238522,
+        "nondefault_pairs": 160380,
+        "harmful_pairs": 86352,
+        "better_pairs": 45775
+      },
+      "selectors": {
+        "frozen": {
+          "switches": 0,
+          "agreement_with_default": 1.0,
+          "capture": {
+            "count": 0,
+            "of_improvable": 430,
+            "rate": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "harm": {
+            "count": 0,
+            "rate": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "abstain_ood": 0,
+          "abstain_width": 0,
+          "ood_states": 0,
+          "safe_set_nondefault_states": 0,
+          "a_star_non_default_states": 0,
+          "pass_switch_rule_states": 0,
+          "a_star_predicted_improvement": {
+            "future_T90": {
+              "5": 0.0,
+              "25": 0.0,
+              "50": 0.0,
+              "75": 0.0,
+              "95": 0.0
+            },
+            "future_T100": {
+              "5": 0.0,
+              "25": 0.0,
+              "50": 0.0,
+              "75": 0.0,
+              "95": 0.0
+            },
+            "future_unmet": {
+              "5": 0.0,
+              "25": 0.0,
+              "50": 0.0,
+              "75": 0.0,
+              "95": 0.0
+            },
+            "future_hazard_unmet": {
+              "5": 0.0,
+              "25": 0.0,
+              "50": 0.0,
+              "75": 0.0,
+              "95": 0.0
+            }
+          }
+        },
+        "R1": {
+          "switches": 540,
+          "agreement_with_default": 0.0,
+          "capture": {
+            "count": 102,
+            "of_improvable": 430,
+            "rate": 0.2372093023255814,
+            "ci95": [
+              0.19766453092865052,
+              0.27791601823791184
+            ]
+          },
+          "harm": {
+            "count": 198,
+            "rate": 0.36666666666666664,
+            "ci95": [
+              0.32592592592592595,
+              0.40555555555555556
+            ]
+          },
+          "abstain_ood": 0,
+          "abstain_width": 0,
+          "ood_states": 0,
+          "safe_set_nondefault_states": 540,
+          "a_star_non_default_states": 540,
+          "pass_switch_rule_states": 540,
+          "a_star_predicted_improvement": {
+            "future_T90": {
+              "5": -0.41257020274415446,
+              "25": -0.3540166750099587,
+              "50": -0.17210558350506489,
+              "75": -0.09306711988400984,
+              "95": -0.08536804996558267
+            },
+            "future_T100": {
+              "5": -0.06950437426623779,
+              "25": -0.037351937696643134,
+              "50": -0.007061165897019883,
+              "75": 0.12905984780834423,
+              "95": 0.3974607264990446
+            },
+            "future_unmet": {
+              "5": -4.620012972567864,
+              "25": -4.1707338424057525,
+              "50": -3.5913549694791556,
+              "75": -2.1130584349744623,
+              "95": 0.39528306532581325
+            },
+            "future_hazard_unmet": {
+              "5": 5.330444548962977,
+              "25": 7.006480976667859,
+              "50": 7.799543451287468,
+              "75": 8.394968109685152,
+              "95": 10.310963413407237
+            }
+          }
+        }
+      },
+      "oracle_best_improvement_over_default": {
+        "future_T90": {
+          "5": 0.0,
+          "25": 0.0,
+          "50": 0.0,
+          "75": 2.0,
+          "95": 2.0
+        },
+        "future_T100": {
+          "5": 0.0,
+          "25": 0.0,
+          "50": 1.0,
+          "75": 1.0,
+          "95": 2.0
+        },
+        "future_unmet": {
+          "5": 0.0,
+          "25": 1.0,
+          "50": 6.0,
+          "75": 10.0,
+          "95": 14.0
+        },
+        "future_hazard_unmet": {
+          "5": 0.0,
+          "25": 8.0,
+          "50": 17.0,
+          "75": 24.0,
+          "95": 30.0
+        }
+      },
+      "improvement_of_a_best_action_in_improvable_states": {
+        "future_T90": {
+          "5": 0.0,
+          "25": 0.0,
+          "50": 1.0,
+          "75": 2.0,
+          "95": 2.0
+        },
+        "future_T100": {
+          "5": 0.0,
+          "25": 1.0,
+          "50": 1.0,
+          "75": 1.0,
+          "95": 2.0
+        },
+        "future_unmet": {
+          "5": 1.0,
+          "25": 4.0,
+          "50": 10.0,
+          "75": 11.0,
+          "95": 14.0
+        },
+        "future_hazard_unmet": {
+          "5": 4.0,
+          "25": 10.0,
+          "50": 18.0,
+          "75": 23.0,
+          "95": 26.0
+        }
+      },
+      "counterfactual_classes": {
+        "ambiguous_classes": 6,
+        "share_with_common_best_action": 0.0,
+        "share_with_fixed_non_default_action_never_worse_than_default": 1.0,
+        "share_with_fixed_action_never_worse_and_strictly_better_somewhere": 0.6666666666666666,
+        "share_where_R1_winner_is_safe_for_every_member": 0.0,
+        "cross_regime_member_pairs_with_next_tick_state": 21600,
+        "share_of_those_separated_at_next_tick": 0.3888888888888889,
+        "note": "members of a class have identical 54-column inputs, hence identical predictions"
+      }
+    },
+    "5": {
+      "zero_harm_class_oracle_bound": {
+        "definition": "per observable class, the single non-default action never worse than default for ANY member and strictly better for the most members; label-based, in-sample upper bound for any deterministic observation-based policy with zero harm",
+        "classes_with_such_action": 0,
+        "of_classes": 10,
+        "states_strictly_improved": 0,
+        "states_captured": 0,
+        "improvable_states_at_tick": 314,
+        "classes_where_R1_floor_admits_that_action": 0,
+        "predicted_hazard_improvement_of_that_action": null,
+        "delta_H": 4.765116208777272
+      },
+      "diversity": {
+        "states": 540,
+        "trajectories": 540,
+        "unique_observable_x26": 10,
+        "unique_54_inputs": 2980,
+        "distinct_prediction_matrices": 10,
+        "distinct_hidden_regimes_t_h_p": 9,
+        "distinct_hidden_regimes_t_h_p_compliance": 54,
+        "templates": 6,
+        "hazard_started_states": 120
+      },
+      "ambiguity": {
+        "classes": 10,
+        "classes_with_multiple_members": 10,
+        "classes_with_multiple_t_h_p_regimes": 10,
+        "share_classes_multi_regime": 1.0,
+        "states_in_multi_regime_classes": 540,
+        "share_states_in_multi_regime_classes": 1.0,
+        "classes_with_multiple_regime_or_compliance": 10,
+        "share_states_in_multi_regime_or_compliance_classes": 1.0,
+        "classes_where_true_outcomes_differ_across_members": 10,
+        "share_states_in_outcome_heterogeneous_classes": 1.0,
+        "classes_with_no_common_best_action": 10,
+        "share_states_in_classes_with_no_common_best_action": 1.0,
+        "share_states_regime_identified_by_observation": 0.0,
+        "regime_entropy_bits": 3.169925001442312,
+        "conditional_regime_entropy_given_observation_bits": 2.405720494933692,
+        "share_of_regime_uncertainty_resolved": 0.24107968048484052
+      },
+      "prediction": {
+        "future_T90": {
+          "mae": 0.9978783020033076,
+          "r2": -0.23100709842259404,
+          "outcome_sd": 1.1622532901722933,
+          "within_state_candidate_sd_actual": 0.6871675804701632,
+          "within_state_candidate_sd_predicted": 0.4315419972565259,
+          "within_state_corr_pred_vs_actual": 0.596641767135788,
+          "q9_coverage_raw": 0.6881058911260254,
+          "q9_coverage_integer_read": 0.8690032314193388,
+          "direction_auc_pred_improvement_vs_realized_better": 0.7581863395869074,
+          "nondefault_pairs_realized_better": 21426,
+          "nondefault_pairs_realized_worse": 58595
+        },
+        "future_T100": {
+          "mae": 1.0463568118856794,
+          "r2": -0.2326576417306374,
+          "outcome_sd": 1.1789982577062827,
+          "within_state_candidate_sd_actual": 0.6738399464223126,
+          "within_state_candidate_sd_predicted": 0.41456461931648436,
+          "within_state_corr_pred_vs_actual": 0.6693830499991296,
+          "q9_coverage_raw": 0.741144668158091,
+          "q9_coverage_integer_read": 0.9023489932885906,
+          "direction_auc_pred_improvement_vs_realized_better": 0.7534494041449536,
+          "nondefault_pairs_realized_better": 10658,
+          "nondefault_pairs_realized_worse": 66203
+        },
+        "future_unmet": {
+          "mae": 17.744552579981157,
+          "r2": 0.1422622254520608,
+          "outcome_sd": 26.769301042724525,
+          "within_state_candidate_sd_actual": 16.44332729806317,
+          "within_state_candidate_sd_predicted": 10.741758288200382,
+          "within_state_corr_pred_vs_actual": 0.787838448363556,
+          "q9_coverage_raw": 0.6636092468307233,
+          "q9_coverage_integer_read": null,
+          "direction_auc_pred_improvement_vs_realized_better": 0.7575950371380156,
+          "nondefault_pairs_realized_better": 14449,
+          "nondefault_pairs_realized_worse": 101575
+        },
+        "future_hazard_unmet": {
+          "mae": 18.888013220660294,
+          "r2": 0.09506676436154238,
+          "outcome_sd": 27.558519546126817,
+          "within_state_candidate_sd_actual": 15.849875178280046,
+          "within_state_candidate_sd_predicted": 11.24566806372365,
+          "within_state_corr_pred_vs_actual": 0.850407885108109,
+          "q9_coverage_raw": 0.5375901068854089,
+          "q9_coverage_integer_read": null,
+          "direction_auc_pred_improvement_vs_realized_better": 0.9993372319244888,
+          "nondefault_pairs_realized_better": 31511,
+          "nondefault_pairs_realized_worse": 63338
+        }
+      },
+      "harm_separability": {
+        "auc_R1_floor_margin_vs_pair_harm": 0.8730463304708462,
+        "auc_frozen_floor_margin_vs_pair_harm": 0.8858639215729938,
+        "nondefault_pairs": 160380,
+        "harmful_pairs": 86705,
+        "better_pairs": 30525
+      },
+      "selectors": {
+        "frozen": {
+          "switches": 0,
+          "agreement_with_default": 1.0,
+          "capture": {
+            "count": 0,
+            "of_improvable": 314,
+            "rate": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "harm": {
+            "count": 0,
+            "rate": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "abstain_ood": 0,
+          "abstain_width": 0,
+          "ood_states": 0,
+          "safe_set_nondefault_states": 0,
+          "a_star_non_default_states": 0,
+          "pass_switch_rule_states": 0,
+          "a_star_predicted_improvement": {
+            "future_T90": {
+              "5": 0.0,
+              "25": 0.0,
+              "50": 0.0,
+              "75": 0.0,
+              "95": 0.0
+            },
+            "future_T100": {
+              "5": 0.0,
+              "25": 0.0,
+              "50": 0.0,
+              "75": 0.0,
+              "95": 0.0
+            },
+            "future_unmet": {
+              "5": 0.0,
+              "25": 0.0,
+              "50": 0.0,
+              "75": 0.0,
+              "95": 0.0
+            },
+            "future_hazard_unmet": {
+              "5": 0.0,
+              "25": 0.0,
+              "50": 0.0,
+              "75": 0.0,
+              "95": 0.0
+            }
+          }
+        },
+        "R1": {
+          "switches": 0,
+          "agreement_with_default": 1.0,
+          "capture": {
+            "count": 0,
+            "of_improvable": 314,
+            "rate": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "harm": {
+            "count": 0,
+            "rate": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "abstain_ood": 0,
+          "abstain_width": 0,
+          "ood_states": 0,
+          "safe_set_nondefault_states": 540,
+          "a_star_non_default_states": 540,
+          "pass_switch_rule_states": 0,
+          "a_star_predicted_improvement": {
+            "future_T90": {
+              "5": -0.032563640868286114,
+              "25": -0.023787629779349118,
+              "50": -0.01239749349238295,
+              "75": -0.00012212555863033714,
+              "95": -0.00012212555863033714
+            },
+            "future_T100": {
+              "5": -0.01081705214154205,
+              "25": -0.0024099381792401786,
+              "50": 0.0,
+              "75": 0.07197525938486837,
+              "95": 0.2129002317618962
+            },
+            "future_unmet": {
+              "5": -0.17783786888301378,
+              "25": -0.0015099964262503818,
+              "50": 0.0,
+              "75": 0.5797974305694229,
+              "95": 0.6681647401896935
+            },
+            "future_hazard_unmet": {
+              "5": 0.012026372245443895,
+              "25": 0.01788082464985674,
+              "50": 0.16423679318618767,
+              "75": 1.0109740009586003,
+              "95": 1.1963503775952793
+            }
+          }
+        }
+      },
+      "oracle_best_improvement_over_default": {
+        "future_T90": {
+          "5": 0.0,
+          "25": 0.0,
+          "50": 0.0,
+          "75": 1.0,
+          "95": 1.0
+        },
+        "future_T100": {
+          "5": 0.0,
+          "25": 0.0,
+          "50": 0.0,
+          "75": 0.0,
+          "95": 1.0
+        },
+        "future_unmet": {
+          "5": 0.0,
+          "25": 0.0,
+          "50": 0.0,
+          "75": 4.0,
+          "95": 11.0
+        },
+        "future_hazard_unmet": {
+          "5": 0.0,
+          "25": 0.0,
+          "50": 2.0,
+          "75": 10.0,
+          "95": 16.0
+        }
+      },
+      "improvement_of_a_best_action_in_improvable_states": {
+        "future_T90": {
+          "5": 0.0,
+          "25": 0.0,
+          "50": 1.0,
+          "75": 1.0,
+          "95": 1.0
+        },
+        "future_T100": {
+          "5": 0.0,
+          "25": 0.0,
+          "50": 0.0,
+          "75": 1.0,
+          "95": 1.0
+        },
+        "future_unmet": {
+          "5": -14.0,
+          "25": -6.0,
+          "50": 2.0,
+          "75": 5.0,
+          "95": 14.0
+        },
+        "future_hazard_unmet": {
+          "5": -15.0,
+          "25": 4.0,
+          "50": 8.0,
+          "75": 10.75,
+          "95": 16.0
+        }
+      },
+      "counterfactual_classes": {
+        "ambiguous_classes": 10,
+        "share_with_common_best_action": 0.0,
+        "share_with_fixed_non_default_action_never_worse_than_default": 1.0,
+        "share_with_fixed_action_never_worse_and_strictly_better_somewhere": 0.0,
+        "share_where_R1_winner_is_safe_for_every_member": 0.7,
+        "cross_regime_member_pairs_with_next_tick_state": 17600,
+        "share_of_those_separated_at_next_tick": 0.9349431818181818,
+        "note": "members of a class have identical 54-column inputs, hence identical predictions"
+      }
+    },
+    "10": {
+      "zero_harm_class_oracle_bound": {
+        "definition": "per observable class, the single non-default action never worse than default for ANY member and strictly better for the most members; label-based, in-sample upper bound for any deterministic observation-based policy with zero harm",
+        "classes_with_such_action": 6,
+        "of_classes": 251,
+        "states_strictly_improved": 6,
+        "states_captured": 6,
+        "improvable_states_at_tick": 8,
+        "classes_where_R1_floor_admits_that_action": 0,
+        "predicted_hazard_improvement_of_that_action": {
+          "5": -15.259736440964463,
+          "25": -13.166499935238914,
+          "50": -7.789848405896707,
+          "75": -3.3198014920112393,
+          "95": -1.6234366106631746
+        },
+        "delta_H": 4.765116208777272
+      },
+      "diversity": {
+        "states": 540,
+        "trajectories": 540,
+        "unique_observable_x26": 251,
+        "unique_54_inputs": 74798,
+        "distinct_prediction_matrices": 251,
+        "distinct_hidden_regimes_t_h_p": 9,
+        "distinct_hidden_regimes_t_h_p_compliance": 54,
+        "templates": 6,
+        "hazard_started_states": 480
+      },
+      "ambiguity": {
+        "classes": 251,
+        "classes_with_multiple_members": 65,
+        "classes_with_multiple_t_h_p_regimes": 43,
+        "share_classes_multi_regime": 0.17131474103585656,
+        "states_in_multi_regime_classes": 254,
+        "share_states_in_multi_regime_classes": 0.4703703703703704,
+        "classes_with_multiple_regime_or_compliance": 59,
+        "share_states_in_multi_regime_or_compliance_classes": 0.6277777777777778,
+        "classes_where_true_outcomes_differ_across_members": 34,
+        "share_states_in_outcome_heterogeneous_classes": 0.3648148148148148,
+        "classes_with_no_common_best_action": 2,
+        "share_states_in_classes_with_no_common_best_action": 0.007407407407407408,
+        "share_states_regime_identified_by_observation": 0.5296296296296297,
+        "regime_entropy_bits": 3.169925001442312,
+        "conditional_regime_entropy_given_observation_bits": 0.7538979228969948,
+        "share_of_regime_uncertainty_resolved": 0.7621716846442828
+      },
+      "prediction": {
+        "future_T90": {
+          "mae": 0.10659577885815631,
+          "r2": 0.9776735804825846,
+          "outcome_sd": 1.694257896503387,
+          "within_state_candidate_sd_actual": 0.6439277300210196,
+          "within_state_candidate_sd_predicted": 0.6164604440761939,
+          "within_state_corr_pred_vs_actual": 0.9546443619798555,
+          "q9_coverage_raw": 0.7160949540144171,
+          "q9_coverage_integer_read": 0.9999813571961222,
+          "direction_auc_pred_improvement_vs_realized_better": 0.9269755504525192,
+          "nondefault_pairs_realized_better": 495,
+          "nondefault_pairs_realized_worse": 22209
+        },
+        "future_T100": {
+          "mae": 0.18572315647663298,
+          "r2": 0.9713371157150481,
+          "outcome_sd": 1.9484885192256947,
+          "within_state_candidate_sd_actual": 0.8722947653979372,
+          "within_state_candidate_sd_predicted": 0.7654427839162083,
+          "within_state_corr_pred_vs_actual": 0.9534900148052395,
+          "q9_coverage_raw": 0.8747638578175491,
+          "q9_coverage_integer_read": 1.0,
+          "direction_auc_pred_improvement_vs_realized_better": 0.9983948635634029,
+          "nondefault_pairs_realized_better": 198,
+          "nondefault_pairs_realized_worse": 61677
+        },
+        "future_unmet": {
+          "mae": 0.8172202520471582,
+          "r2": 0.9755578064166576,
+          "outcome_sd": 11.75846770502957,
+          "within_state_candidate_sd_actual": 6.823421258369884,
+          "within_state_candidate_sd_predicted": 6.420364765272523,
+          "within_state_corr_pred_vs_actual": 0.9792205021522683,
+          "q9_coverage_raw": 0.8890380313199105,
+          "q9_coverage_integer_read": null,
+          "direction_auc_pred_improvement_vs_realized_better": 0.7466326485365167,
+          "nondefault_pairs_realized_better": 495,
+          "nondefault_pairs_realized_worse": 62872
+        },
+        "future_hazard_unmet": {
+          "mae": 0.8999244200442982,
+          "r2": 0.9747391829388431,
+          "outcome_sd": 11.564485518437957,
+          "within_state_candidate_sd_actual": 8.031050156556075,
+          "within_state_candidate_sd_predicted": 7.779532074747772,
+          "within_state_corr_pred_vs_actual": 0.9828411826014611,
+          "q9_coverage_raw": 0.8685806611981108,
+          "q9_coverage_integer_read": null,
+          "direction_auc_pred_improvement_vs_realized_better": null,
+          "nondefault_pairs_realized_better": 0,
+          "nondefault_pairs_realized_worse": 63664
+        }
+      },
+      "harm_separability": {
+        "auc_R1_floor_margin_vs_pair_harm": 0.987608780931979,
+        "auc_frozen_floor_margin_vs_pair_harm": 0.8147076494860959,
+        "nondefault_pairs": 160380,
+        "harmful_pairs": 63070,
+        "better_pairs": 792
+      },
+      "selectors": {
+        "frozen": {
+          "switches": 0,
+          "agreement_with_default": 1.0,
+          "capture": {
+            "count": 0,
+            "of_improvable": 8,
+            "rate": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "harm": {
+            "count": 0,
+            "rate": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "abstain_ood": 0,
+          "abstain_width": 0,
+          "ood_states": 4,
+          "safe_set_nondefault_states": 103,
+          "a_star_non_default_states": 66,
+          "pass_switch_rule_states": 0,
+          "a_star_predicted_improvement": {
+            "future_T90": {
+              "5": -0.0020851944358630803,
+              "25": 0.0,
+              "50": 0.0,
+              "75": 0.0,
+              "95": 0.0
+            },
+            "future_T100": {
+              "5": -0.00014384366232533807,
+              "25": 0.0,
+              "50": 0.0,
+              "75": 0.0,
+              "95": 0.00030885138421554714
+            },
+            "future_unmet": {
+              "5": 0.0,
+              "25": 0.0,
+              "50": 0.0,
+              "75": 0.0,
+              "95": 0.01821110647388996
+            },
+            "future_hazard_unmet": {
+              "5": 0.0,
+              "25": 0.0,
+              "50": 0.0,
+              "75": 0.0,
+              "95": 0.061052218860839357
+            }
+          }
+        },
+        "R1": {
+          "switches": 0,
+          "agreement_with_default": 1.0,
+          "capture": {
+            "count": 0,
+            "of_improvable": 8,
+            "rate": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "harm": {
+            "count": 0,
+            "rate": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "abstain_ood": 0,
+          "abstain_width": 0,
+          "ood_states": 4,
+          "safe_set_nondefault_states": 540,
+          "a_star_non_default_states": 540,
+          "pass_switch_rule_states": 0,
+          "a_star_predicted_improvement": {
+            "future_T90": {
+              "5": -0.0037718724347648447,
+              "25": -0.0027522476916885807,
+              "50": -0.0015125257969508255,
+              "75": -0.00023660393450208872,
+              "95": 0.0005352394057371868
+            },
+            "future_T100": {
+              "5": -0.006544204937670717,
+              "25": -0.0032150536538146923,
+              "50": -0.00034832869664036537,
+              "75": -0.00014384366232533807,
+              "95": 0.004906028915768523
+            },
+            "future_unmet": {
+              "5": -0.009166823193603582,
+              "25": -0.0015099964262534904,
+              "50": 0.0,
+              "75": 0.01102011985284257,
+              "95": 0.02551887394615739
+            },
+            "future_hazard_unmet": {
+              "5": 0.006902346888223443,
+              "25": 0.010517183629523696,
+              "50": 0.048920374716898016,
+              "75": 0.09154215064773477,
+              "95": 0.4960975729264249
+            }
+          }
+        }
+      },
+      "oracle_best_improvement_over_default": {
+        "future_T90": {
+          "5": 0.0,
+          "25": 0.0,
+          "50": 0.0,
+          "75": 0.0,
+          "95": 0.0
+        },
+        "future_T100": {
+          "5": 0.0,
+          "25": 0.0,
+          "50": 0.0,
+          "75": 0.0,
+          "95": 0.0
+        },
+        "future_unmet": {
+          "5": 0.0,
+          "25": 0.0,
+          "50": 0.0,
+          "75": 0.0,
+          "95": 0.0
+        },
+        "future_hazard_unmet": {
+          "5": 0.0,
+          "25": 0.0,
+          "50": 0.0,
+          "75": 0.0,
+          "95": 0.0
+        }
+      },
+      "improvement_of_a_best_action_in_improvable_states": {
+        "future_T90": {
+          "5": 0.0,
+          "25": 0.0,
+          "50": 1.0,
+          "75": 1.0,
+          "95": 1.0
+        },
+        "future_T100": {
+          "5": -1.0,
+          "25": -1.0,
+          "50": -1.0,
+          "75": 0.25,
+          "95": 1.0
+        },
+        "future_unmet": {
+          "5": -1.0,
+          "25": -1.0,
+          "50": 0.5,
+          "75": 1.0,
+          "95": 1.0
+        },
+        "future_hazard_unmet": {
+          "5": -12.0,
+          "25": -7.5,
+          "50": -6.0,
+          "75": -4.5,
+          "95": 0.0
+        }
+      },
+      "counterfactual_classes": {
+        "ambiguous_classes": 43,
+        "share_with_common_best_action": 0.9767441860465116,
+        "share_with_fixed_non_default_action_never_worse_than_default": 1.0,
+        "share_with_fixed_action_never_worse_and_strictly_better_somewhere": 0.0,
+        "share_where_R1_winner_is_safe_for_every_member": 1.0,
+        "cross_regime_member_pairs_with_next_tick_state": 498,
+        "share_of_those_separated_at_next_tick": 0.46184738955823296,
+        "note": "members of a class have identical 54-column inputs, hence identical predictions"
+      }
+    },
+    "15": {
+      "zero_harm_class_oracle_bound": {
+        "definition": "per observable class, the single non-default action never worse than default for ANY member and strictly better for the most members; label-based, in-sample upper bound for any deterministic observation-based policy with zero harm",
+        "classes_with_such_action": 1,
+        "of_classes": 52,
+        "states_strictly_improved": 1,
+        "states_captured": 1,
+        "improvable_states_at_tick": 1,
+        "classes_where_R1_floor_admits_that_action": 0,
+        "predicted_hazard_improvement_of_that_action": {
+          "5": -4.116246296969154,
+          "25": -4.116246296969154,
+          "50": -4.116246296969154,
+          "75": -4.116246296969154,
+          "95": -4.116246296969154
+        },
+        "delta_H": 4.765116208777272
+      },
+      "diversity": {
+        "states": 221,
+        "trajectories": 221,
+        "unique_observable_x26": 52,
+        "unique_54_inputs": 15496,
+        "distinct_prediction_matrices": 50,
+        "distinct_hidden_regimes_t_h_p": 8,
+        "distinct_hidden_regimes_t_h_p_compliance": 46,
+        "templates": 6,
+        "hazard_started_states": 221
+      },
+      "ambiguity": {
+        "classes": 52,
+        "classes_with_multiple_members": 30,
+        "classes_with_multiple_t_h_p_regimes": 29,
+        "share_classes_multi_regime": 0.5576923076923077,
+        "states_in_multi_regime_classes": 197,
+        "share_states_in_multi_regime_classes": 0.8914027149321267,
+        "classes_with_multiple_regime_or_compliance": 29,
+        "share_states_in_multi_regime_or_compliance_classes": 0.8914027149321267,
+        "classes_where_true_outcomes_differ_across_members": 3,
+        "share_states_in_outcome_heterogeneous_classes": 0.04072398190045249,
+        "classes_with_no_common_best_action": 0,
+        "share_states_in_classes_with_no_common_best_action": 0.0,
+        "share_states_regime_identified_by_observation": 0.1085972850678733,
+        "regime_entropy_bits": 2.876686501874075,
+        "conditional_regime_entropy_given_observation_bits": 1.7728011730638318,
+        "share_of_regime_uncertainty_resolved": 0.3837350118238797
+      },
+      "prediction": {
+        "future_T90": {
+          "mae": 0.012684623194952543,
+          "r2": 0.9975405859088152,
+          "outcome_sd": 0.9581709451355772,
+          "within_state_candidate_sd_actual": 0.11002992507744597,
+          "within_state_candidate_sd_predicted": 0.11690279606448739,
+          "within_state_corr_pred_vs_actual": 0.995554276791225,
+          "q9_coverage_raw": 0.9878526526769716,
+          "q9_coverage_integer_read": 1.0,
+          "direction_auc_pred_improvement_vs_realized_better": null,
+          "nondefault_pairs_realized_better": 0,
+          "nondefault_pairs_realized_worse": 400
+        },
+        "future_T100": {
+          "mae": 0.029771048829394225,
+          "r2": 0.9930948420931321,
+          "outcome_sd": 1.4078517060975222,
+          "within_state_candidate_sd_actual": 0.21518048463516765,
+          "within_state_candidate_sd_predicted": 0.178182039349845,
+          "within_state_corr_pred_vs_actual": 0.9076965695975174,
+          "q9_coverage_raw": 0.9159099881563364,
+          "q9_coverage_integer_read": 1.0,
+          "direction_auc_pred_improvement_vs_realized_better": null,
+          "nondefault_pairs_realized_better": 0,
+          "nondefault_pairs_realized_worse": 1694
+        },
+        "future_unmet": {
+          "mae": 0.0710522063655978,
+          "r2": 0.966580983537597,
+          "outcome_sd": 1.8276884593725045,
+          "within_state_candidate_sd_actual": 1.1379301199524383,
+          "within_state_candidate_sd_predicted": 1.0151270132095727,
+          "within_state_corr_pred_vs_actual": 0.9751942334140941,
+          "q9_coverage_raw": 0.9969327948009353,
+          "q9_coverage_integer_read": null,
+          "direction_auc_pred_improvement_vs_realized_better": 0.27830451756832125,
+          "nondefault_pairs_realized_better": 99,
+          "nondefault_pairs_realized_worse": 1793
+        },
+        "future_hazard_unmet": {
+          "mae": 0.069680538163635,
+          "r2": 0.9683882046195965,
+          "outcome_sd": 1.8121682480733798,
+          "within_state_candidate_sd_actual": 1.2669099000933854,
+          "within_state_candidate_sd_predicted": 1.2298746184969185,
+          "within_state_corr_pred_vs_actual": 0.9836765617912977,
+          "q9_coverage_raw": 0.9894318078289653,
+          "q9_coverage_integer_read": null,
+          "direction_auc_pred_improvement_vs_realized_better": null,
+          "nondefault_pairs_realized_better": 0,
+          "nondefault_pairs_realized_worse": 1892
+        }
+      },
+      "harm_separability": {
+        "auc_R1_floor_margin_vs_pair_harm": 0.9983131332777018,
+        "auc_frozen_floor_margin_vs_pair_harm": 0.7205548963761467,
+        "nondefault_pairs": 65637,
+        "harmful_pairs": 1793,
+        "better_pairs": 99
+      },
+      "selectors": {
+        "frozen": {
+          "switches": 0,
+          "agreement_with_default": 1.0,
+          "capture": {
+            "count": 0,
+            "of_improvable": 1,
+            "rate": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "harm": {
+            "count": 0,
+            "rate": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "abstain_ood": 0,
+          "abstain_width": 0,
+          "ood_states": 0,
+          "safe_set_nondefault_states": 134,
+          "a_star_non_default_states": 134,
+          "pass_switch_rule_states": 0,
+          "a_star_predicted_improvement": {
+            "future_T90": {
+              "5": -0.0012620182648108037,
+              "25": -0.0012620182648108037,
+              "50": -0.0012620182648108037,
+              "75": 0.0,
+              "95": 0.0
+            },
+            "future_T100": {
+              "5": -0.004162682766981118,
+              "25": -0.004162682766981114,
+              "50": -0.0041626827669793975,
+              "75": 0.0,
+              "95": 0.0
+            },
+            "future_unmet": {
+              "5": 0.0,
+              "25": 0.0,
+              "50": 0.028819007076646454,
+              "75": 0.028819007076646454,
+              "95": 0.028819007076646454
+            },
+            "future_hazard_unmet": {
+              "5": 0.0,
+              "25": 0.0,
+              "50": 0.05191810710200693,
+              "75": 0.05191810710200693,
+              "95": 0.05191810710200693
+            }
+          }
+        },
+        "R1": {
+          "switches": 0,
+          "agreement_with_default": 1.0,
+          "capture": {
+            "count": 0,
+            "of_improvable": 1,
+            "rate": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "harm": {
+            "count": 0,
+            "rate": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "abstain_ood": 0,
+          "abstain_width": 0,
+          "ood_states": 0,
+          "safe_set_nondefault_states": 221,
+          "a_star_non_default_states": 221,
+          "pass_switch_rule_states": 0,
+          "a_star_predicted_improvement": {
+            "future_T90": {
+              "5": -0.0026306280311603203,
+              "25": -0.0012620182648108056,
+              "50": -0.0012620182648108037,
+              "75": -0.0012620182648108037,
+              "95": -0.0012620182648108037
+            },
+            "future_T100": {
+              "5": -0.004777919974777944,
+              "25": -0.004162682766981114,
+              "50": -0.004162682766979842,
+              "75": -0.0035752837291142476,
+              "95": -0.0011655905536800404
+            },
+            "future_unmet": {
+              "5": 0.01104596430280384,
+              "25": 0.028819007076646454,
+              "50": 0.028819007076646454,
+              "75": 0.028819007076646454,
+              "95": 0.028819007076646454
+            },
+            "future_hazard_unmet": {
+              "5": 0.01123427572693773,
+              "25": 0.05191810710200693,
+              "50": 0.05191810710200693,
+              "75": 0.05191810710200693,
+              "95": 0.05191810710200693
+            }
+          }
+        }
+      },
+      "oracle_best_improvement_over_default": {
+        "future_T90": {
+          "5": 0.0,
+          "25": 0.0,
+          "50": 0.0,
+          "75": 0.0,
+          "95": 0.0
+        },
+        "future_T100": {
+          "5": 0.0,
+          "25": 0.0,
+          "50": 0.0,
+          "75": 0.0,
+          "95": 0.0
+        },
+        "future_unmet": {
+          "5": 0.0,
+          "25": 0.0,
+          "50": 0.0,
+          "75": 0.0,
+          "95": 0.0
+        },
+        "future_hazard_unmet": {
+          "5": 0.0,
+          "25": 0.0,
+          "50": 0.0,
+          "75": 0.0,
+          "95": 0.0
+        }
+      },
+      "improvement_of_a_best_action_in_improvable_states": {
+        "future_T90": {
+          "5": 0.0,
+          "25": 0.0,
+          "50": 0.0,
+          "75": 0.0,
+          "95": 0.0
+        },
+        "future_T100": {
+          "5": 0.0,
+          "25": 0.0,
+          "50": 0.0,
+          "75": 0.0,
+          "95": 0.0
+        },
+        "future_unmet": {
+          "5": 1.0,
+          "25": 1.0,
+          "50": 1.0,
+          "75": 1.0,
+          "95": 1.0
+        },
+        "future_hazard_unmet": {
+          "5": -1.0,
+          "25": -1.0,
+          "50": -1.0,
+          "75": -1.0,
+          "95": -1.0
+        }
+      },
+      "counterfactual_classes": {
+        "ambiguous_classes": 29,
+        "share_with_common_best_action": 1.0,
+        "share_with_fixed_non_default_action_never_worse_than_default": 1.0,
+        "share_with_fixed_action_never_worse_and_strictly_better_somewhere": 0.0,
+        "share_where_R1_winner_is_safe_for_every_member": 1.0,
+        "cross_regime_member_pairs_with_next_tick_state": 0,
+        "share_of_those_separated_at_next_tick": null,
+        "note": "members of a class have identical 54-column inputs, hence identical predictions"
+      }
+    },
+    "20": {
+      "zero_harm_class_oracle_bound": {
+        "definition": "per observable class, the single non-default action never worse than default for ANY member and strictly better for the most members; label-based, in-sample upper bound for any deterministic observation-based policy with zero harm",
+        "classes_with_such_action": 0,
+        "of_classes": 4,
+        "states_strictly_improved": 0,
+        "states_captured": 0,
+        "improvable_states_at_tick": 0,
+        "classes_where_R1_floor_admits_that_action": 0,
+        "predicted_hazard_improvement_of_that_action": null,
+        "delta_H": 4.765116208777272
+      },
+      "diversity": {
+        "states": 4,
+        "trajectories": 4,
+        "unique_observable_x26": 4,
+        "unique_54_inputs": 1192,
+        "distinct_prediction_matrices": 4,
+        "distinct_hidden_regimes_t_h_p": 4,
+        "distinct_hidden_regimes_t_h_p_compliance": 4,
+        "templates": 4,
+        "hazard_started_states": 4
+      },
+      "ambiguity": {
+        "classes": 4,
+        "classes_with_multiple_members": 0,
+        "classes_with_multiple_t_h_p_regimes": 0,
+        "share_classes_multi_regime": 0.0,
+        "states_in_multi_regime_classes": 0,
+        "share_states_in_multi_regime_classes": 0.0,
+        "classes_with_multiple_regime_or_compliance": 0,
+        "share_states_in_multi_regime_or_compliance_classes": 0.0,
+        "classes_where_true_outcomes_differ_across_members": 0,
+        "share_states_in_outcome_heterogeneous_classes": 0.0,
+        "classes_with_no_common_best_action": 0,
+        "share_states_in_classes_with_no_common_best_action": 0.0,
+        "share_states_regime_identified_by_observation": 1.0,
+        "regime_entropy_bits": 2.0,
+        "conditional_regime_entropy_given_observation_bits": 0.0,
+        "share_of_regime_uncertainty_resolved": 1.0
+      },
+      "prediction": {
+        "future_T90": {
+          "mae": 0.0020444971139124595,
+          "r2": null,
+          "outcome_sd": 0.0,
+          "within_state_candidate_sd_actual": 0.0,
+          "within_state_candidate_sd_predicted": 0.0008562520440951911,
+          "within_state_corr_pred_vs_actual": null,
+          "q9_coverage_raw": 1.0,
+          "q9_coverage_integer_read": 1.0,
+          "direction_auc_pred_improvement_vs_realized_better": null,
+          "nondefault_pairs_realized_better": 0,
+          "nondefault_pairs_realized_worse": 0
+        },
+        "future_T100": {
+          "mae": 0.007466153523538879,
+          "r2": 0.9994203032573153,
+          "outcome_sd": 0.4330127018922193,
+          "within_state_candidate_sd_actual": 0.0,
+          "within_state_candidate_sd_predicted": 0.0019451405025714588,
+          "within_state_corr_pred_vs_actual": null,
+          "q9_coverage_raw": 0.9471476510067114,
+          "q9_coverage_integer_read": 1.0,
+          "direction_auc_pred_improvement_vs_realized_better": null,
+          "nondefault_pairs_realized_better": 0,
+          "nondefault_pairs_realized_worse": 0
+        },
+        "future_unmet": {
+          "mae": 0.020407078039420205,
+          "r2": null,
+          "outcome_sd": 0.0,
+          "within_state_candidate_sd_actual": 0.0,
+          "within_state_candidate_sd_predicted": 0.01053384013908926,
+          "within_state_corr_pred_vs_actual": null,
+          "q9_coverage_raw": 1.0,
+          "q9_coverage_integer_read": null,
+          "direction_auc_pred_improvement_vs_realized_better": null,
+          "nondefault_pairs_realized_better": 0,
+          "nondefault_pairs_realized_worse": 0
+        },
+        "future_hazard_unmet": {
+          "mae": 0.01776625860907683,
+          "r2": null,
+          "outcome_sd": 0.0,
+          "within_state_candidate_sd_actual": 0.0,
+          "within_state_candidate_sd_predicted": 0.013840121668072015,
+          "within_state_corr_pred_vs_actual": null,
+          "q9_coverage_raw": 1.0,
+          "q9_coverage_integer_read": null,
+          "direction_auc_pred_improvement_vs_realized_better": null,
+          "nondefault_pairs_realized_better": 0,
+          "nondefault_pairs_realized_worse": 0
+        }
+      },
+      "harm_separability": {
+        "auc_R1_floor_margin_vs_pair_harm": null,
+        "auc_frozen_floor_margin_vs_pair_harm": null,
+        "nondefault_pairs": 1188,
+        "harmful_pairs": 0,
+        "better_pairs": 0
+      },
+      "selectors": {
+        "frozen": {
+          "switches": 0,
+          "agreement_with_default": 1.0,
+          "capture": {
+            "count": 0,
+            "of_improvable": 0,
+            "rate": null,
+            "ci95": null
+          },
+          "harm": {
+            "count": 0,
+            "rate": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "abstain_ood": 0,
+          "abstain_width": 0,
+          "ood_states": 0,
+          "safe_set_nondefault_states": 3,
+          "a_star_non_default_states": 3,
+          "pass_switch_rule_states": 0,
+          "a_star_predicted_improvement": {
+            "future_T90": {
+              "5": -0.0012620182648108037,
+              "25": -0.0012620182648108037,
+              "50": -0.0012620182648108037,
+              "75": -0.0009465136986081027,
+              "95": -0.000189302739721621
+            },
+            "future_T100": {
+              "5": -0.004162682766981114,
+              "25": -0.004162682766981114,
+              "50": -0.004162682766980478,
+              "75": -0.0031220120752348812,
+              "95": -0.0006244024150469777
+            },
+            "future_unmet": {
+              "5": 0.004322851061496969,
+              "25": 0.021614255307484842,
+              "50": 0.028819007076646454,
+              "75": 0.028819007076646454,
+              "95": 0.028819007076646454
+            },
+            "future_hazard_unmet": {
+              "5": 0.007787716065301041,
+              "25": 0.0389385803265052,
+              "50": 0.05191810710200693,
+              "75": 0.05191810710200693,
+              "95": 0.05191810710200693
+            }
+          }
+        },
+        "R1": {
+          "switches": 0,
+          "agreement_with_default": 1.0,
+          "capture": {
+            "count": 0,
+            "of_improvable": 0,
+            "rate": null,
+            "ci95": null
+          },
+          "harm": {
+            "count": 0,
+            "rate": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "abstain_ood": 0,
+          "abstain_width": 0,
+          "ood_states": 0,
+          "safe_set_nondefault_states": 4,
+          "a_star_non_default_states": 4,
+          "pass_switch_rule_states": 0,
+          "a_star_predicted_improvement": {
+            "future_T90": {
+              "5": -0.0012620182648108054,
+              "25": -0.001262018264810804,
+              "50": -0.0012620182648108037,
+              "75": -0.0012620182648108037,
+              "95": -0.0012620182648108037
+            },
+            "future_T100": {
+              "5": -0.004162682766981114,
+              "25": -0.004162682766981114,
+              "50": -0.004162682766980478,
+              "75": -0.0034956890788702018,
+              "95": -0.0018949042274070671
+            },
+            "future_unmet": {
+              "5": 0.028819007076646454,
+              "25": 0.028819007076646454,
+              "50": 0.028819007076646454,
+              "75": 0.028819007076646454,
+              "95": 0.028819007076646454
+            },
+            "future_hazard_unmet": {
+              "5": 0.05191810710200692,
+              "25": 0.05191810710200693,
+              "50": 0.05191810710200693,
+              "75": 0.05191810710200693,
+              "95": 0.05191810710200693
+            }
+          }
+        }
+      },
+      "oracle_best_improvement_over_default": {
+        "future_T90": {
+          "5": 0.0,
+          "25": 0.0,
+          "50": 0.0,
+          "75": 0.0,
+          "95": 0.0
+        },
+        "future_T100": {
+          "5": 0.0,
+          "25": 0.0,
+          "50": 0.0,
+          "75": 0.0,
+          "95": 0.0
+        },
+        "future_unmet": {
+          "5": 0.0,
+          "25": 0.0,
+          "50": 0.0,
+          "75": 0.0,
+          "95": 0.0
+        },
+        "future_hazard_unmet": {
+          "5": 0.0,
+          "25": 0.0,
+          "50": 0.0,
+          "75": 0.0,
+          "95": 0.0
+        }
+      },
+      "improvement_of_a_best_action_in_improvable_states": {
+        "future_T90": {},
+        "future_T100": {},
+        "future_unmet": {},
+        "future_hazard_unmet": {}
+      },
+      "counterfactual_classes": {
+        "ambiguous_classes": 0
+      }
+    }
+  },
+  "integrity": {
+    "protected_files_unchanged": true,
+    "protected_hashes": {
+      "full_dataset/full_ai_learning_rows.csv.gz": "36aa757f6f2414713d7f5625f562298df2e72baf97a61969a69c0e3ecb967179",
+      "spec_version_record.json": "b0e761dfa665c1ac0b899a1e16abe5ea884a9589f392abf8487bfcd52597c1e2",
+      "candidate_action_set.json": "78dee3c225735b4ee78c108eeb0e3aa72627a9da8410055182ed9c64e4ca7e3c",
+      "final_feature_manifest.json": "67f54855bd58207df2e929d7c6f7f50753b77fa05cb29dfc49977989c1f21910",
+      "selector_design.json": "8a41c7777458d8363f4343981b08555207d2f95dfa32327c0b9fa55562de9c48",
+      "preregistered_success_criteria.json": "3ec6fdb6dfe107d35809a5dc3508d1cf2e257ede5218990321a1f342863107f2",
+      "models/c3_hgb/training_manifest.json": "603b891da3fe08241f2633aa90c39c24959ebba9d36ea5ed6074108a28e0991f",
+      "amendments/amendment_A1_acceptance_criteria.json": "cde5917771a0577ef491d643355fd9e85351f8c86347feabf2035bdb919af026",
+      "amendments/amendment_A1_evaluation.json": "51575d64c51ea11f4c0a6efa9a11b57583b59c28abdc45a6e5f3c4ddbac1ff9a",
+      "amendments/amendment_A2_evaluation_protocol.json": "ab9aeb7a6e5c9349b4017a1fa51cbebc9809afda9f55c52e49a7a768be0b299a",
+      "amendments/AMENDMENT_A2_EVALUATION_PROTOCOL.md": "3bb3f92428fa3162acb8cebc9325388f9d6d18d4b0aedd0b050baefb85733fc2",
+      "amendments/amendment_A2_approval.json": "e85a80b2721561b6cf046292ff0229cf4a8b07130b6c22a4b5c49aa2f3126dfe",
+      "amendments/amendment_A2_reference_run.json": "881116373723ebed7ab00c4ac441daa72bb69f729cadd4795fdbe50cff4e958f",
+      "amendments/amendment_A2_clarification_C1.json": "795f55560ef7f18e61f91759c910eac7ab04641b7d92cda5e4385f9ca647405c",
+      "amendments/amendment_A2_clarification_C2.json": "49a42a6db8a70ea1f6830e1f0f8135bc8ee43549afaf3e58a02e634543afb2e5",
+      "amendments/amendment_A2_clarification_C3_model_specification.json": "490345ef5e7d969f312ae901d961f8d1c71333f0c37d74280dbe8a59ee04cf39",
+      "amendments/issue2_validation_baseline_selection.json": "752cccd8df61d0b9eedfe8534e5ccd4afb398b578cc32bba2d48809ab6921905",
+      "models/c3_hgb/future_T100__mean.pkl": "dc6b05c060c923ca26d636eb9a18e468fbe6ad90b910689ba2b723b3d3e5670d",
+      "models/c3_hgb/future_T100__q0.1.pkl": "ccd1a1e979dc400e67b1a06c60e7cf1a02150d64133879693100b5d42b214347",
+      "models/c3_hgb/future_T100__q0.5.pkl": "3b15630ba212a5d0bdc896d6d11e1e39ad008660b742ea9b10f1186e293fb7e8",
+      "models/c3_hgb/future_T100__q0.9.pkl": "e075ec932edd7d84ea64ecb7e47160746f325de2416534928fb28ee3d262beed",
+      "models/c3_hgb/future_T90__mean.pkl": "987b41471e9d30abe3ba35515776ea08bc8234318564dd0fb903f8908ffcd2b7",
+      "models/c3_hgb/future_T90__q0.1.pkl": "6c597744eee71cf46923af0cae2317bacea44290037d9eaac55c7b77465cf750",
+      "models/c3_hgb/future_T90__q0.5.pkl": "f0f0269f1890de09db238f04b9b6e95ff865ea5281074bf9655724a288b91376",
+      "models/c3_hgb/future_T90__q0.9.pkl": "b4ca393d0b529c8f2438ab4e0a1b7bff5a0ff1503d3448cdd72fc0b8e5d41d11",
+      "models/c3_hgb/future_hazard_unmet__mean.pkl": "019d1fcbca68c9820cee2e1c65a11fd3e65f45900e89c93076830d280fa5d00f",
+      "models/c3_hgb/future_hazard_unmet__q0.1.pkl": "4b284e5b2de5cc0a85b487074b322b9727db719a4505bd001281bb5daf263a2e",
+      "models/c3_hgb/future_hazard_unmet__q0.5.pkl": "690a3964623cadce7ae919973657618b201f8c3d363d6a3f23b2fa6fef8b9b18",
+      "models/c3_hgb/future_hazard_unmet__q0.9.pkl": "c642972c8d552012b79d7cf592d16c0fb1e6e675318a8cb57e444d827f1e3d52",
+      "models/c3_hgb/future_unmet__mean.pkl": "73ba47a6c7f2fcef5d27cb3dc97f9611cea809976f5b18f3797e7a8cb72bd5ff",
+      "models/c3_hgb/future_unmet__q0.1.pkl": "4d4ef5eb0f614bfb6426b086a9dd44571e9b77e61e55eb155e941f003cadece3",
+      "models/c3_hgb/future_unmet__q0.5.pkl": "ce25b7f7b3345d6c5252a85a4fd0404942deef98e387bd2b923b0a88fa158e19",
+      "models/c3_hgb/future_unmet__q0.9.pkl": "89aa8a6444d133b640c6e7570fcafde99dcdab2cbf46e669cd219abf2462c956"
+    },
+    "model_hashes_verified": true,
+    "selector_code_unchanged": true,
+    "no_retraining": true,
+    "no_new_features": true,
+    "no_new_data": true,
+    "primary_test_accessed": false
+  }
+}
