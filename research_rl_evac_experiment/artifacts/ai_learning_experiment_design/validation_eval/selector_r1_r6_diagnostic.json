@@ -1,0 +1,993 @@
+{
+  "record": "VALIDATION-only offline diagnostic of selector repairs R1 and R6 (NOT a selector, NOT an amendment)",
+  "rules": {
+    "frozen_floor": "keep a iff q9_a,k <= m_d,k + delta_k for all k in K; d always kept",
+    "R1_floor": "keep a iff q9_a,k <= q9_d,k + delta_k for all k in K; d passes by construction",
+    "frozen_step3_H": "keep exact minimum H mean",
+    "R6_step3_H": "keep m_a,H <= min H mean + delta_H; a* = d if d survives, else minimal H mean (ties lowest id)",
+    "unchanged": "step 1 T90 skip, step-3 T90/T100/U tolerances, step-4 switch rule, OOD tau, width threshold, deltas"
+  },
+  "inputs": {
+    "deltas": {
+      "T90": 0.5,
+      "T100": 0.5,
+      "U": 4.7078520264313,
+      "H": 4.765116208777272
+    },
+    "width_threshold": 1.7896855518441477,
+    "tau": 0.9354293229055866,
+    "predictions": "regenerated from hash-verified C3 models on the same VALIDATION rows (deterministic)",
+    "bootstrap": "frozen cluster_boot (evaluate_c3_validation.py): trajectory-clustered, 2,000 resamples",
+    "seeds": {
+      "recommendation": 5544102,
+      "safety": 5544103,
+      "descriptive_delta": 5544105
+    },
+    "rows_parsed": {
+      "TRAIN": 1783530,
+      "VALIDATION": 549810
+    },
+    "other_roles_seen_only_as_split_role": {
+      "TEST_PRIMARY_JOINT": 970288,
+      "TEST_HELDOUT_TIMING": 548618,
+      "TEST_HELDOUT_COMPLIANCE": 890722,
+      "DIAG_EXTRAPOLATION": 429716,
+      "DIAG_TEMPLATE_ZERO_SHOT": 351640
+    }
+  },
+  "step1_R1_feasibility": {
+    "default_passes_R1_floor_in_every_state": true,
+    "per_criterion": {
+      "future_T90": {
+        "width_difference_ua_minus_ud": {
+          "5": -0.9216643573788392,
+          "25": -0.45491528366354217,
+          "50": -0.04342214055023286,
+          "75": -0.0019482615095602895,
+          "95": 0.07939745863872202
+        },
+        "share_pairs_width_difference_le_2delta": 0.9968022323370074,
+        "share_pairs_R1_demands_predicted_improvement": 0.0104178350817743,
+        "share_pairs_old_floor_demands_predicted_improvement": 0.7654648963824884
+      },
+      "future_T100": {
+        "width_difference_ua_minus_ud": {
+          "5": -0.8946006088102267,
+          "25": -0.24946182613697143,
+          "50": -0.008289986399796945,
+          "75": 0.0008901527072777693,
+          "95": 0.4970443824785029
+        },
+        "share_pairs_width_difference_le_2delta": 1.0,
+        "share_pairs_R1_demands_predicted_improvement": 0.04920022264195706,
+        "share_pairs_old_floor_demands_predicted_improvement": 0.7397917750221273
+      },
+      "future_unmet": {
+        "width_difference_ua_minus_ud": {
+          "5": -3.9707167111360206,
+          "25": -0.1503979289900519,
+          "50": 0.009662161095840557,
+          "75": 0.9561243666077814,
+          "95": 8.22965550506396
+        },
+        "share_pairs_width_difference_le_2delta": 0.9915177064228555,
+        "share_pairs_R1_demands_predicted_improvement": 0.11105453815480916,
+        "share_pairs_old_floor_demands_predicted_improvement": 0.6272061171790169
+      },
+      "future_hazard_unmet": {
+        "width_difference_ua_minus_ud": {
+          "5": -6.42036813162505,
+          "25": -1.1514524997503774,
+          "50": 0.006187550577915299,
+          "75": 0.5979193235889926,
+          "95": 13.601077139805657
+        },
+        "share_pairs_width_difference_le_2delta": 0.8973474583230681,
+        "share_pairs_R1_demands_predicted_improvement": 0.15754838356464373,
+        "share_pairs_old_floor_demands_predicted_improvement": 0.6080005109815408
+      }
+    }
+  },
+  "variants": {
+    "A_frozen_reference": {
+      "funnel": {
+        "non_default_pairs": 547965,
+        "pass_floor": {
+          "pairs": 43609,
+          "states": 240
+        },
+        "survive_step3": {
+          "pairs": 203,
+          "states": 203
+        },
+        "a_star_non_default_states": 203,
+        "pass_switch_rule_states": 0,
+        "abstain_ood_states": 0,
+        "abstain_width_states": 0,
+        "final_switch_states": 0
+      },
+      "why_no_switch": {
+        "a_star_non_default_but_no_criterion_beyond_delta": 203,
+        "a_star_non_default_first_differing_criterion_worse": 0,
+        "switch_decided_on": {
+          "future_T90": 0,
+          "future_T100": 0,
+          "future_unmet": 0,
+          "future_hazard_unmet": 0
+        }
+      },
+      "decisions": {
+        "non_default_recommendation_states": 0,
+        "exact_switches": 0,
+        "agreement_with_default": 1.0,
+        "capture_improvable": {
+          "count": 0,
+          "of": 753,
+          "rate": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ]
+        },
+        "harm_states": 0,
+        "harm_rate_all_states": 0.0,
+        "harm_rate_all_states_ci95": [
+          0.0,
+          0.0
+        ],
+        "harm_rate_among_switches": null,
+        "harm_rate_among_switches_ci95": null,
+        "frozen_safety_endpoint_on_validation_descriptive": {
+          "rule": "harm-rate upper 95% CI <= 1% of decisions AND no recommendation raises hazard-edge unmet by more than delta_H",
+          "harm_upper_ci_le_1pct": true,
+          "max_hazard_increase_vs_default": 0.0,
+          "hazard_increase_gt_delta_H": 0
+        },
+        "abstention_states": 0,
+        "abstention_rate": 0.0,
+        "ood_states": 4,
+        "ood_rate": 0.002168021680216802,
+        "paired_outcome_delta_selected_minus_default_all_states": {
+          "future_T90": {
+            "mean": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "future_T100": {
+            "mean": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "future_unmet": {
+            "mean": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "future_hazard_unmet": {
+            "mean": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          }
+        },
+        "paired_outcome_delta_among_switches": null
+      },
+      "switches": null
+    },
+    "B_R1_only": {
+      "funnel": {
+        "non_default_pairs": 547965,
+        "pass_floor": {
+          "pairs": 314765,
+          "states": 1845
+        },
+        "survive_step3": {
+          "pairs": 1855,
+          "states": 1845
+        },
+        "a_star_non_default_states": 1845,
+        "pass_switch_rule_states": 540,
+        "abstain_ood_states": 0,
+        "abstain_width_states": 0,
+        "final_switch_states": 540
+      },
+      "why_no_switch": {
+        "a_star_non_default_but_no_criterion_beyond_delta": 1305,
+        "a_star_non_default_first_differing_criterion_worse": 0,
+        "switch_decided_on": {
+          "future_T90": 0,
+          "future_T100": 0,
+          "future_unmet": 0,
+          "future_hazard_unmet": 540
+        }
+      },
+      "decisions": {
+        "non_default_recommendation_states": 540,
+        "exact_switches": 540,
+        "agreement_with_default": 0.7073170731707317,
+        "capture_improvable": {
+          "count": 102,
+          "of": 753,
+          "rate": 0.13545816733067728,
+          "ci95": [
+            0.11348394164955208,
+            0.15803117409464043
+          ]
+        },
+        "harm_states": 198,
+        "harm_rate_all_states": 0.1073170731707317,
+        "harm_rate_all_states_ci95": [
+          0.09511011932574819,
+          0.11976097256037375
+        ],
+        "harm_rate_among_switches": 0.36666666666666664,
+        "harm_rate_among_switches_ci95": [
+          0.32592592592592595,
+          0.40555555555555556
+        ],
+        "frozen_safety_endpoint_on_validation_descriptive": {
+          "rule": "harm-rate upper 95% CI <= 1% of decisions AND no recommendation raises hazard-edge unmet by more than delta_H",
+          "harm_upper_ci_le_1pct": false,
+          "max_hazard_increase_vs_default": 0.0,
+          "hazard_increase_gt_delta_H": 0
+        },
+        "abstention_states": 0,
+        "abstention_rate": 0.0,
+        "ood_states": 4,
+        "ood_rate": 0.002168021680216802,
+        "paired_outcome_delta_selected_minus_default_all_states": {
+          "future_T90": {
+            "mean": -0.14579945799457994,
+            "ci95": [
+              -0.17297376916284254,
+              -0.11745179687872859
+            ]
+          },
+          "future_T100": {
+            "mean": -0.0986449864498645,
+            "ci95": [
+              -0.11859838274932614,
+              -0.0782252187886984
+            ]
+          },
+          "future_unmet": {
+            "mean": -0.4867208672086721,
+            "ci95": [
+              -0.6902197504069453,
+              -0.2625408363888493
+            ]
+          },
+          "future_hazard_unmet": {
+            "mean": -3.8693766937669376,
+            "ci95": [
+              -4.0608235174208005,
+              -3.6609722004373384
+            ]
+          }
+        },
+        "paired_outcome_delta_among_switches": {
+          "future_T90": {
+            "mean": -0.4981481481481482,
+            "better": 250,
+            "equal": 164,
+            "worse": 126,
+            "ci95": [
+              -0.5925925925925926,
+              -0.4
+            ]
+          },
+          "future_T100": {
+            "mean": -0.337037037037037,
+            "better": 278,
+            "equal": 153,
+            "worse": 109,
+            "ci95": [
+              -0.40555555555555556,
+              -0.26481481481481484
+            ]
+          },
+          "future_unmet": {
+            "mean": -1.662962962962963,
+            "better": 295,
+            "equal": 12,
+            "worse": 233,
+            "ci95": [
+              -2.3687037037037038,
+              -0.8962037037037042
+            ]
+          },
+          "future_hazard_unmet": {
+            "mean": -13.22037037037037,
+            "better": 430,
+            "equal": 110,
+            "worse": 0,
+            "ci95": [
+              -13.905601851851852,
+              -12.485046296296298
+            ]
+          }
+        }
+      },
+      "switches": {
+        "predicted_vs_actual": {
+          "future_T90": {
+            "pred_mean_candidate": {
+              "5": 12.421629718805857,
+              "25": 12.478884671632182,
+              "50": 12.56520472168809,
+              "75": 12.633765799208135,
+              "95": 13.168525995456461
+            },
+            "pred_q9_candidate": {
+              "5": 13.465861110296363,
+              "25": 13.999999792469666,
+              "50": 13.999999792469666,
+              "75": 13.999999792469666,
+              "95": 14.000756475548531
+            },
+            "pred_mean_default": {
+              "5": 12.124867996622223,
+              "25": 12.213143897397787,
+              "50": 12.33328624669868,
+              "75": 12.45624008095673,
+              "95": 13.083157945490878
+            },
+            "actual_candidate": {
+              "5": 12.0,
+              "25": 12.0,
+              "50": 12.0,
+              "75": 13.0,
+              "95": 14.0
+            },
+            "actual_default": {
+              "5": 11.0,
+              "25": 12.0,
+              "50": 13.0,
+              "75": 14.0,
+              "95": 14.0
+            },
+            "q9_candidate_covers_actual": 0.9148148148148149,
+            "predicted_improvement_mean": -0.21487220243563926,
+            "realized_improvement_mean": 0.4981481481481482
+          },
+          "future_T100": {
+            "pred_mean_candidate": {
+              "5": 13.204480077674823,
+              "25": 13.21177712702552,
+              "50": 13.315138701021999,
+              "75": 13.376403680234358,
+              "95": 13.510410035131583
+            },
+            "pred_q9_candidate": {
+              "5": 14.949967280516208,
+              "25": 14.94997463739628,
+              "50": 14.974974637396281,
+              "75": 14.999974637396281,
+              "95": 14.999974637396281
+            },
+            "pred_mean_default": {
+              "5": 13.212450561199068,
+              "25": 13.282510899954373,
+              "50": 13.301259052196757,
+              "75": 13.333539925483167,
+              "95": 13.907870761630628
+            },
+            "actual_candidate": {
+              "5": 13.0,
+              "25": 13.0,
+              "50": 13.0,
+              "75": 14.0,
+              "95": 15.0
+            },
+            "actual_default": {
+              "5": 12.0,
+              "25": 14.0,
+              "50": 14.0,
+              "75": 14.0,
+              "95": 15.0
+            },
+            "q9_candidate_covers_actual": 0.9481481481481482,
+            "predicted_improvement_mean": 0.06759032175841137,
+            "realized_improvement_mean": 0.337037037037037
+          },
+          "future_unmet": {
+            "pred_mean_candidate": {
+              "5": 65.48083542172812,
+              "25": 66.36722171869117,
+              "50": 69.14960584620229,
+              "75": 70.30791630838876,
+              "95": 75.15383320499693
+            },
+            "pred_q9_candidate": {
+              "5": 90.0707658507621,
+              "25": 90.3642533627878,
+              "50": 90.94357680553307,
+              "75": 91.42010551144897,
+              "95": 92.39947886815632
+            },
+            "pred_mean_default": {
+              "5": 64.25416328371671,
+              "25": 65.43833359361784,
+              "50": 65.6798287700945,
+              "75": 65.87611848705393,
+              "95": 70.98951331805152
+            },
+            "actual_candidate": {
+              "5": 53.0,
+              "25": 62.75,
+              "50": 65.0,
+              "75": 68.0,
+              "95": 94.0
+            },
+            "actual_default": {
+              "5": 48.0,
+              "25": 59.0,
+              "50": 74.5,
+              "75": 79.0,
+              "95": 88.0
+            },
+            "q9_candidate_covers_actual": 0.9055555555555556,
+            "predicted_improvement_mean": -2.948538687263429,
+            "realized_improvement_mean": 1.662962962962963
+          },
+          "future_hazard_unmet": {
+            "pred_mean_candidate": {
+              "5": 1.4173342134175047,
+              "25": 2.065216095984181,
+              "50": 2.943037769644988,
+              "75": 3.291897149515992,
+              "95": 6.0424581725796
+            },
+            "pred_q9_candidate": {
+              "5": 13.062332292700955,
+              "25": 13.806002596427302,
+              "50": 16.24093288038648,
+              "75": 18.953653678850685,
+              "95": 20.714715052456214
+            },
+            "pred_mean_default": {
+              "5": 6.747778762380482,
+              "25": 9.446415821072904,
+              "50": 10.782259477050534,
+              "75": 13.325866234465147,
+              "95": 14.260345350065814
+            },
+            "actual_candidate": {
+              "5": 0.0,
+              "25": 0.0,
+              "50": 1.0,
+              "75": 7.25,
+              "95": 17.0
+            },
+            "actual_default": {
+              "5": 0.0,
+              "25": 8.0,
+              "50": 20.0,
+              "75": 27.0,
+              "95": 32.0
+            },
+            "q9_candidate_covers_actual": 0.9518518518518518,
+            "predicted_improvement_mean": 7.7736573252163605,
+            "realized_improvement_mean": 13.22037037037037
+          }
+        },
+        "harm_driver_first_worse_criterion": {
+          "future_T90": 126,
+          "future_T100": 39,
+          "future_unmet": 33,
+          "future_hazard_unmet": 0
+        },
+        "captured_among_switches": 102
+      }
+    },
+    "C_R6_only": {
+      "funnel": {
+        "non_default_pairs": 547965,
+        "pass_floor": {
+          "pairs": 43609,
+          "states": 240
+        },
+        "survive_step3": {
+          "pairs": 43609,
+          "states": 240
+        },
+        "a_star_non_default_states": 0,
+        "pass_switch_rule_states": 0,
+        "abstain_ood_states": 0,
+        "abstain_width_states": 0,
+        "final_switch_states": 0
+      },
+      "why_no_switch": {
+        "a_star_non_default_but_no_criterion_beyond_delta": 0,
+        "a_star_non_default_first_differing_criterion_worse": 0,
+        "switch_decided_on": {
+          "future_T90": 0,
+          "future_T100": 0,
+          "future_unmet": 0,
+          "future_hazard_unmet": 0
+        }
+      },
+      "decisions": {
+        "non_default_recommendation_states": 0,
+        "exact_switches": 0,
+        "agreement_with_default": 1.0,
+        "capture_improvable": {
+          "count": 0,
+          "of": 753,
+          "rate": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ]
+        },
+        "harm_states": 0,
+        "harm_rate_all_states": 0.0,
+        "harm_rate_all_states_ci95": [
+          0.0,
+          0.0
+        ],
+        "harm_rate_among_switches": null,
+        "harm_rate_among_switches_ci95": null,
+        "frozen_safety_endpoint_on_validation_descriptive": {
+          "rule": "harm-rate upper 95% CI <= 1% of decisions AND no recommendation raises hazard-edge unmet by more than delta_H",
+          "harm_upper_ci_le_1pct": true,
+          "max_hazard_increase_vs_default": 0.0,
+          "hazard_increase_gt_delta_H": 0
+        },
+        "abstention_states": 0,
+        "abstention_rate": 0.0,
+        "ood_states": 4,
+        "ood_rate": 0.002168021680216802,
+        "paired_outcome_delta_selected_minus_default_all_states": {
+          "future_T90": {
+            "mean": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "future_T100": {
+            "mean": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "future_unmet": {
+            "mean": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "future_hazard_unmet": {
+            "mean": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          }
+        },
+        "paired_outcome_delta_among_switches": null
+      },
+      "switches": null
+    },
+    "D_R1_plus_R6": {
+      "funnel": {
+        "non_default_pairs": 547965,
+        "pass_floor": {
+          "pairs": 314765,
+          "states": 1845
+        },
+        "survive_step3": {
+          "pairs": 245783,
+          "states": 1845
+        },
+        "a_star_non_default_states": 540,
+        "pass_switch_rule_states": 540,
+        "abstain_ood_states": 0,
+        "abstain_width_states": 0,
+        "final_switch_states": 540
+      },
+      "why_no_switch": {
+        "a_star_non_default_but_no_criterion_beyond_delta": 0,
+        "a_star_non_default_first_differing_criterion_worse": 0,
+        "switch_decided_on": {
+          "future_T90": 0,
+          "future_T100": 0,
+          "future_unmet": 0,
+          "future_hazard_unmet": 540
+        }
+      },
+      "decisions": {
+        "non_default_recommendation_states": 540,
+        "exact_switches": 540,
+        "agreement_with_default": 0.7073170731707317,
+        "capture_improvable": {
+          "count": 102,
+          "of": 753,
+          "rate": 0.13545816733067728,
+          "ci95": [
+            0.11348394164955208,
+            0.15803117409464043
+          ]
+        },
+        "harm_states": 198,
+        "harm_rate_all_states": 0.1073170731707317,
+        "harm_rate_all_states_ci95": [
+          0.09511011932574819,
+          0.11976097256037375
+        ],
+        "harm_rate_among_switches": 0.36666666666666664,
+        "harm_rate_among_switches_ci95": [
+          0.32592592592592595,
+          0.40555555555555556
+        ],
+        "frozen_safety_endpoint_on_validation_descriptive": {
+          "rule": "harm-rate upper 95% CI <= 1% of decisions AND no recommendation raises hazard-edge unmet by more than delta_H",
+          "harm_upper_ci_le_1pct": false,
+          "max_hazard_increase_vs_default": 0.0,
+          "hazard_increase_gt_delta_H": 0
+        },
+        "abstention_states": 0,
+        "abstention_rate": 0.0,
+        "ood_states": 4,
+        "ood_rate": 0.002168021680216802,
+        "paired_outcome_delta_selected_minus_default_all_states": {
+          "future_T90": {
+            "mean": -0.14579945799457994,
+            "ci95": [
+              -0.17297376916284254,
+              -0.11745179687872859
+            ]
+          },
+          "future_T100": {
+            "mean": -0.0986449864498645,
+            "ci95": [
+              -0.11859838274932614,
+              -0.0782252187886984
+            ]
+          },
+          "future_unmet": {
+            "mean": -0.4867208672086721,
+            "ci95": [
+              -0.6902197504069453,
+              -0.2625408363888493
+            ]
+          },
+          "future_hazard_unmet": {
+            "mean": -3.8693766937669376,
+            "ci95": [
+              -4.0608235174208005,
+              -3.6609722004373384
+            ]
+          }
+        },
+        "paired_outcome_delta_among_switches": {
+          "future_T90": {
+            "mean": -0.4981481481481482,
+            "better": 250,
+            "equal": 164,
+            "worse": 126,
+            "ci95": [
+              -0.5925925925925926,
+              -0.4
+            ]
+          },
+          "future_T100": {
+            "mean": -0.337037037037037,
+            "better": 278,
+            "equal": 153,
+            "worse": 109,
+            "ci95": [
+              -0.40555555555555556,
+              -0.26481481481481484
+            ]
+          },
+          "future_unmet": {
+            "mean": -1.662962962962963,
+            "better": 295,
+            "equal": 12,
+            "worse": 233,
+            "ci95": [
+              -2.3687037037037038,
+              -0.8962037037037042
+            ]
+          },
+          "future_hazard_unmet": {
+            "mean": -13.22037037037037,
+            "better": 430,
+            "equal": 110,
+            "worse": 0,
+            "ci95": [
+              -13.905601851851852,
+              -12.485046296296298
+            ]
+          }
+        }
+      },
+      "switches": {
+        "predicted_vs_actual": {
+          "future_T90": {
+            "pred_mean_candidate": {
+              "5": 12.421629718805857,
+              "25": 12.478884671632182,
+              "50": 12.56520472168809,
+              "75": 12.633765799208135,
+              "95": 13.168525995456461
+            },
+            "pred_q9_candidate": {
+              "5": 13.465861110296363,
+              "25": 13.999999792469666,
+              "50": 13.999999792469666,
+              "75": 13.999999792469666,
+              "95": 14.000756475548531
+            },
+            "pred_mean_default": {
+              "5": 12.124867996622223,
+              "25": 12.213143897397787,
+              "50": 12.33328624669868,
+              "75": 12.45624008095673,
+              "95": 13.083157945490878
+            },
+            "actual_candidate": {
+              "5": 12.0,
+              "25": 12.0,
+              "50": 12.0,
+              "75": 13.0,
+              "95": 14.0
+            },
+            "actual_default": {
+              "5": 11.0,
+              "25": 12.0,
+              "50": 13.0,
+              "75": 14.0,
+              "95": 14.0
+            },
+            "q9_candidate_covers_actual": 0.9148148148148149,
+            "predicted_improvement_mean": -0.21487220243563926,
+            "realized_improvement_mean": 0.4981481481481482
+          },
+          "future_T100": {
+            "pred_mean_candidate": {
+              "5": 13.204480077674823,
+              "25": 13.21177712702552,
+              "50": 13.315138701021999,
+              "75": 13.376403680234358,
+              "95": 13.510410035131583
+            },
+            "pred_q9_candidate": {
+              "5": 14.949967280516208,
+              "25": 14.94997463739628,
+              "50": 14.974974637396281,
+              "75": 14.999974637396281,
+              "95": 14.999974637396281
+            },
+            "pred_mean_default": {
+              "5": 13.212450561199068,
+              "25": 13.282510899954373,
+              "50": 13.301259052196757,
+              "75": 13.333539925483167,
+              "95": 13.907870761630628
+            },
+            "actual_candidate": {
+              "5": 13.0,
+              "25": 13.0,
+              "50": 13.0,
+              "75": 14.0,
+              "95": 15.0
+            },
+            "actual_default": {
+              "5": 12.0,
+              "25": 14.0,
+              "50": 14.0,
+              "75": 14.0,
+              "95": 15.0
+            },
+            "q9_candidate_covers_actual": 0.9481481481481482,
+            "predicted_improvement_mean": 0.06759032175841137,
+            "realized_improvement_mean": 0.337037037037037
+          },
+          "future_unmet": {
+            "pred_mean_candidate": {
+              "5": 65.48083542172812,
+              "25": 66.36722171869117,
+              "50": 69.14960584620229,
+              "75": 70.30791630838876,
+              "95": 75.15383320499693
+            },
+            "pred_q9_candidate": {
+              "5": 90.0707658507621,
+              "25": 90.3642533627878,
+              "50": 90.94357680553307,
+              "75": 91.42010551144897,
+              "95": 92.39947886815632
+            },
+            "pred_mean_default": {
+              "5": 64.25416328371671,
+              "25": 65.43833359361784,
+              "50": 65.6798287700945,
+              "75": 65.87611848705393,
+              "95": 70.98951331805152
+            },
+            "actual_candidate": {
+              "5": 53.0,
+              "25": 62.75,
+              "50": 65.0,
+              "75": 68.0,
+              "95": 94.0
+            },
+            "actual_default": {
+              "5": 48.0,
+              "25": 59.0,
+              "50": 74.5,
+              "75": 79.0,
+              "95": 88.0
+            },
+            "q9_candidate_covers_actual": 0.9055555555555556,
+            "predicted_improvement_mean": -2.948538687263429,
+            "realized_improvement_mean": 1.662962962962963
+          },
+          "future_hazard_unmet": {
+            "pred_mean_candidate": {
+              "5": 1.4173342134175047,
+              "25": 2.065216095984181,
+              "50": 2.943037769644988,
+              "75": 3.291897149515992,
+              "95": 6.0424581725796
+            },
+            "pred_q9_candidate": {
+              "5": 13.062332292700955,
+              "25": 13.806002596427302,
+              "50": 16.24093288038648,
+              "75": 18.953653678850685,
+              "95": 20.714715052456214
+            },
+            "pred_mean_default": {
+              "5": 6.747778762380482,
+              "25": 9.446415821072904,
+              "50": 10.782259477050534,
+              "75": 13.325866234465147,
+              "95": 14.260345350065814
+            },
+            "actual_candidate": {
+              "5": 0.0,
+              "25": 0.0,
+              "50": 1.0,
+              "75": 7.25,
+              "95": 17.0
+            },
+            "actual_default": {
+              "5": 0.0,
+              "25": 8.0,
+              "50": 20.0,
+              "75": 27.0,
+              "95": 32.0
+            },
+            "q9_candidate_covers_actual": 0.9518518518518518,
+            "predicted_improvement_mean": 7.7736573252163605,
+            "realized_improvement_mean": 13.22037037037037
+          }
+        },
+        "harm_driver_first_worse_criterion": {
+          "future_T90": 126,
+          "future_T100": 39,
+          "future_unmet": 33,
+          "future_hazard_unmet": 0
+        },
+        "captured_among_switches": 102
+      }
+    }
+  },
+  "r6_tiebreak_sensitivity": {
+    "C_R6_only_lowest_id": {
+      "final_switch_states": 0,
+      "harm_states": 0,
+      "capture": 0
+    },
+    "D_R1_plus_R6_lowest_id": {
+      "final_switch_states": 180,
+      "harm_states": 47,
+      "capture": 39
+    }
+  },
+  "step6_floor_informativeness": {
+    "no_floor_exact_H": {
+      "n_switches": 540,
+      "old": {
+        "harmful_rejected": 1.0,
+        "non_harmful_rejected": 1.0,
+        "n_harmful": 198,
+        "n_non_harmful": 342,
+        "harmful_passing": 0,
+        "non_harmful_passing": 0,
+        "auc_floor_margin_vs_harm": 0.5225943646996278
+      },
+      "R1": {
+        "harmful_rejected": 0.0,
+        "non_harmful_rejected": 0.0,
+        "n_harmful": 198,
+        "n_non_harmful": 342,
+        "harmful_passing": 198,
+        "non_harmful_passing": 342,
+        "auc_floor_margin_vs_harm": 0.47607655502392343
+      }
+    },
+    "no_floor_band_H": {
+      "n_switches": 540,
+      "old": {
+        "harmful_rejected": 1.0,
+        "non_harmful_rejected": 1.0,
+        "n_harmful": 198,
+        "n_non_harmful": 342,
+        "harmful_passing": 0,
+        "non_harmful_passing": 0,
+        "auc_floor_margin_vs_harm": 0.5225943646996278
+      },
+      "R1": {
+        "harmful_rejected": 0.0,
+        "non_harmful_rejected": 0.0,
+        "n_harmful": 198,
+        "n_non_harmful": 342,
+        "harmful_passing": 198,
+        "non_harmful_passing": 342,
+        "auc_floor_margin_vs_harm": 0.47607655502392343
+      }
+    },
+    "all_non_default_pairs": {
+      "old": {
+        "harmful_pairs": 237920,
+        "non_harmful_pairs": 310045,
+        "harmful_rejected": 1.0,
+        "non_harmful_rejected": 0.8593462239352352,
+        "pass_rate_harmful": 0.0,
+        "pass_rate_non_harmful": 0.14065377606476479,
+        "auc_floor_margin_vs_harm": 0.8176790391136576,
+        "passing_pairs_by_realized_outcome": {
+          "better_than_default": 0,
+          "equal_to_default": 43609,
+          "worse_than_default": 0
+        },
+        "all_pairs_by_realized_outcome": {
+          "better": 77191,
+          "equal": 232854,
+          "worse": 237920
+        }
+      },
+      "R1": {
+        "harmful_pairs": 237920,
+        "non_harmful_pairs": 310045,
+        "harmful_rejected": 0.8290517821116342,
+        "non_harmful_rejected": 0.11595736102823784,
+        "pass_rate_harmful": 0.17094821788836584,
+        "pass_rate_non_harmful": 0.8840426389717622,
+        "auc_floor_margin_vs_harm": 0.8840468089808492,
+        "passing_pairs_by_realized_outcome": {
+          "better_than_default": 47630,
+          "equal_to_default": 226463,
+          "worse_than_default": 40672
+        },
+        "all_pairs_by_realized_outcome": {
+          "better": 77191,
+          "equal": 232854,
+          "worse": 237920
+        }
+      }
+    }
+  },
+  "integrity": {
+    "protected_files_unchanged": true,
+    "n_protected": 33,
+    "selector_code_unchanged": true,
+    "no_retraining": true,
+    "no_recalibration": true,
+    "primary_test_accessed": false
+  }
+}
